@@ -146,6 +146,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
             Group {
               if let subtitleLeadingSystemImage {
                 Label(subtitle, systemImage: subtitleLeadingSystemImage)
+                  .labelStyle(.compact)
               } else {
                 Text(subtitle)
               }

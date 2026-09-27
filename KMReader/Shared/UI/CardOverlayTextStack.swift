@@ -41,6 +41,7 @@ struct CardOverlayTextStack<Detail: View>: View {
         Group {
           if let subtitleLeadingSystemImage {
             Label(subtitle, systemImage: subtitleLeadingSystemImage)
+              .labelStyle(.compact)
           } else {
             Text(subtitle)
           }

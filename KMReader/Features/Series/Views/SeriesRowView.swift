@@ -56,6 +56,7 @@ struct SeriesRowView: View {
           VStack(alignment: .leading, spacing: 4) {
             if series.oneshot {
               Label(item.oneshotLine, systemImage: "book.closed")
+                .labelStyle(.compact)
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
