@@ -59,6 +59,12 @@ nonisolated struct SeriesDisplayItem: Equatable, Identifiable, Sendable {
     series.oneshot
   }
 
+  /// Card text line for oneshots: the primary author's name, so the line
+  /// carries useful info instead of just the label; falls back to it.
+  var oneshotLine: String {
+    series.booksMetadata.authors?.primary?.name ?? String(localized: "Oneshot")
+  }
+
   var navDestination: NavDestination {
     if series.oneshot {
       return NavDestination.oneshotDetail(seriesId: series.id)

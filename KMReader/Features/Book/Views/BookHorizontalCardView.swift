@@ -108,7 +108,7 @@ struct BookHorizontalCardView: View {
               .padding(.bottom, 4)
 
             if item.oneshot {
-              Text("Oneshot")
+              Label(item.oneshotLine, systemImage: "book.closed")
                 .font(.system(size: seriesSize))
                 .foregroundColor(seriesColor)
                 .lineLimit(1)

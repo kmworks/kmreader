@@ -9,6 +9,7 @@ struct CardOverlayTextStack<Detail: View>: View {
   let title: String
   let titleLeadingSystemImage: String?
   let subtitle: String?
+  let subtitleLeadingSystemImage: String?
   let titleLineLimit: Int
   let style: CardOverlayTextStyle
   let spacing: CGFloat
@@ -18,6 +19,7 @@ struct CardOverlayTextStack<Detail: View>: View {
     title: String,
     titleLeadingSystemImage: String? = nil,
     subtitle: String? = nil,
+    subtitleLeadingSystemImage: String? = nil,
     titleLineLimit: Int = 1,
     style: CardOverlayTextStyle = .standard,
     spacing: CGFloat = 4,
@@ -26,6 +28,7 @@ struct CardOverlayTextStack<Detail: View>: View {
     self.title = title
     self.titleLeadingSystemImage = titleLeadingSystemImage
     self.subtitle = subtitle
+    self.subtitleLeadingSystemImage = subtitleLeadingSystemImage
     self.titleLineLimit = titleLineLimit
     self.style = style
     self.spacing = spacing
@@ -35,9 +38,15 @@ struct CardOverlayTextStack<Detail: View>: View {
   var body: some View {
     VStack(alignment: .leading, spacing: spacing) {
       if let subtitle = subtitle {
-        Text(subtitle)
-          .cardOverlaySubtitle(style)
-          .lineLimit(1)
+        Group {
+          if let subtitleLeadingSystemImage {
+            Label(subtitle, systemImage: subtitleLeadingSystemImage)
+          } else {
+            Text(subtitle)
+          }
+        }
+        .cardOverlaySubtitle(style)
+        .lineLimit(1)
       }
 
       if let titleLeadingSystemImage {

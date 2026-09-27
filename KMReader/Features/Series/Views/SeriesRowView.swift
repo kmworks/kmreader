@@ -55,9 +55,10 @@ struct SeriesRowView: View {
         HStack {
           VStack(alignment: .leading, spacing: 4) {
             if series.oneshot {
-              Label("Oneshot", systemImage: "book.closed")
+              Label(item.oneshotLine, systemImage: "book.closed")
                 .font(.footnote)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
             } else {
               Label(series.statusDisplayName, systemImage: series.statusIcon)
                 .font(.footnote)

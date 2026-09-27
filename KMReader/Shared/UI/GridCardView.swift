@@ -21,6 +21,8 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
   var onAction: (() -> Void)? = nil
   var titleLineLimit: Int = 1
   var subtitle: String? = nil
+  /// Leading icon for the subtitle line (oneshot cards mark the author line with a book).
+  var subtitleLeadingSystemImage: String? = nil
   var downloadIcon: String? = nil
   var downloadSpinning: Bool = false
   /// nil drops the progress bar row and the overlay progress slot entirely.
@@ -47,6 +49,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     onAction: (() -> Void)? = nil,
     titleLineLimit: Int = 1,
     subtitle: String? = nil,
+    subtitleLeadingSystemImage: String? = nil,
     downloadIcon: String? = nil,
     downloadSpinning: Bool = false,
     progress: Double? = nil,
@@ -66,6 +69,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     self.onAction = onAction
     self.titleLineLimit = titleLineLimit
     self.subtitle = subtitle
+    self.subtitleLeadingSystemImage = subtitleLeadingSystemImage
     self.downloadIcon = downloadIcon
     self.downloadSpinning = downloadSpinning
     self.progress = progress
@@ -139,10 +143,16 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
       if !showsTextOverlay && !coverOnlyCards && !coverOnly {
         VStack(alignment: .leading) {
           if let subtitle {
-            Text(subtitle)
-              .font(.system(secondaryTextStyle))
-              .foregroundColor(.secondary)
-              .lineLimit(1)
+            Group {
+              if let subtitleLeadingSystemImage {
+                Label(subtitle, systemImage: subtitleLeadingSystemImage)
+              } else {
+                Text(subtitle)
+              }
+            }
+            .font(.system(secondaryTextStyle))
+            .foregroundColor(.secondary)
+            .lineLimit(1)
           }
 
           Text(title)
@@ -174,6 +184,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     CardOverlayTextStack(
       title: title,
       subtitle: subtitle,
+      subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       titleLineLimit: titleLineLimit,
       style: style
     ) {
@@ -205,6 +216,7 @@ extension GridCardView where Badge == EmptyView {
     onAction: (() -> Void)? = nil,
     titleLineLimit: Int = 1,
     subtitle: String? = nil,
+    subtitleLeadingSystemImage: String? = nil,
     downloadIcon: String? = nil,
     downloadSpinning: Bool = false,
     progress: Double? = nil,
@@ -224,6 +236,7 @@ extension GridCardView where Badge == EmptyView {
       onAction: onAction,
       titleLineLimit: titleLineLimit,
       subtitle: subtitle,
+      subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       downloadIcon: downloadIcon,
       downloadSpinning: downloadSpinning,
       progress: progress,

@@ -102,6 +102,12 @@ nonisolated struct BookDisplayItem: Equatable, Identifiable, Sendable {
     book.oneshot
   }
 
+  /// Card text line for oneshots: the primary author's name, so the line
+  /// carries useful info instead of just the label; falls back to it.
+  var oneshotLine: String {
+    book.metadata.authors?.primary?.name ?? String(localized: "Oneshot")
+  }
+
   var isUnavailable: Bool {
     book.deleted
   }

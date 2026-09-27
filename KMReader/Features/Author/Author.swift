@@ -41,7 +41,7 @@ nonisolated extension Author: Codable {
 }
 
 // MARK: - Array Extension
-extension Array where Element == Author {
+nonisolated extension Array where Element == Author {
   /// Sorts authors by role order, then by name within the same role using
   /// locale-aware ICU collation (respects the app language and keeps the
   /// same-role ordering deterministic).
@@ -52,5 +52,10 @@ extension Array where Element == Author {
       }
       return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
     }
+  }
+
+  /// The one author worth surfacing where only a single name fits (card text lines).
+  var primary: Author? {
+    sortedByRole().first
   }
 }

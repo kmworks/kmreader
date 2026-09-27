@@ -111,8 +111,13 @@ struct SeriesCardView: View {
           .foregroundColor(overlay ? CardOverlayTextStyle.standard.secondaryColor : .secondary)
           .font(overlay ? .caption2 : .system(tertiaryTextStyle))
       }
-      Text(item.oneshot ? String(localized: "Oneshot") : "\(item.booksCount) books")
-        .lineLimit(1)
+      if item.oneshot {
+        Label(item.oneshotLine, systemImage: "book.closed")
+          .lineLimit(1)
+      } else {
+        Text("\(item.booksCount) books")
+          .lineLimit(1)
+      }
     }
   }
 

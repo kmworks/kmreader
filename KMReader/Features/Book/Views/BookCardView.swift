@@ -34,9 +34,13 @@ struct BookCardView: View {
 
   private var subtitle: String? {
     if item.oneshot {
-      return String(localized: "Oneshot")
+      return item.oneshotLine
     }
     return shouldShowSeriesTitle ? item.seriesTitle : nil
+  }
+
+  private var subtitleLeadingSystemImage: String? {
+    item.oneshot ? "book.closed" : nil
   }
 
   private var badgeSize: CGFloat {
@@ -58,6 +62,7 @@ struct BookCardView: View {
       onAction: { onReadBook?(false) },
       titleLineLimit: bookTitleLineLimit,
       subtitle: subtitle,
+      subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       downloadIcon: item.downloadStatus.displayIcon,
       downloadSpinning: item.downloadStatus.isPending,
       progress: item.progress,
