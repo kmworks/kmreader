@@ -5,12 +5,12 @@
 
 import SwiftUI
 
-/// The book detail page's action block: a prominent capsule Read button —
-/// full width in centered layouts, a fixed wide width when leading — then
-/// Peek and the download toggle as a secondary row. Pages/progress stay
-/// in the status row above, so the button carries the action label only.
-/// Alignment follows `detailHeroCentered`. Series navigation lives on the
-/// hero's series title instead of a button here.
+/// The book detail page's action block: a prominent capsule Read button
+/// filling the action card, carrying the action label over a page/progress
+/// detail line like the series continue-reading button, then Peek and the
+/// download toggle as a secondary row. Alignment follows
+/// `detailHeroCentered`. Series navigation lives on the hero's series title
+/// instead of a button here.
 struct BookActionsSection: View {
   let book: Book
   let downloadStatus: DownloadStatus?
@@ -27,24 +27,48 @@ struct BookActionsSection: View {
     }
   }
 
+  private var readDetail: Text {
+    if let progress = book.readProgress, book.isInProgress {
+      guard book.media.pagesCount > 0 else {
+        return Text("Page \(progress.page)")
+      }
+      let value = min(max(Double(progress.page) / Double(book.media.pagesCount), 0), 1)
+      return Text("Page \(progress.page)") + Text(verbatim: " · ")
+        + Text(value, format: .percent.precision(.fractionLength(0)))
+    }
+    if book.media.pagesCount > 0 {
+      return Text("\(book.media.pagesCount) pages")
+    }
+    return Text(book.media.statusValue.label)
+  }
+
   var body: some View {
     VStack(alignment: heroCentered ? .center : .leading, spacing: 8) {
       Button {
         readerActions.open(book: book, incognito: false)
       } label: {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
           Image(systemName: "book.fill")
-            .font(.subheadline)
+            .font(.callout)
 
-          Text(readLabel)
-            .font(.subheadline)
+          VStack(alignment: .leading, spacing: 1) {
+            Text(readLabel)
+              .font(.subheadline.weight(.semibold))
+              .lineLimit(1)
+              .contentTransition(.opacity)
+
+            readDetail
+              .font(.caption)
+              .opacity(0.85)
+              .lineLimit(1)
+              .contentTransition(.opacity)
+          }
         }
-        .frame(maxWidth: heroCentered ? .infinity : 480)
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
       }
       .adaptiveButtonStyle(.borderedProminent)
       .buttonBorderShape(.capsule)
-      .controlSize(.small)
 
       HStack {
         Button {
@@ -80,5 +104,6 @@ struct BookActionsSection: View {
     }
     .frame(maxWidth: .infinity, alignment: heroCentered ? .center : .leading)
     .animation(.default, value: downloadStatus)
+    .animation(.default, value: book.readProgress)
   }
 }

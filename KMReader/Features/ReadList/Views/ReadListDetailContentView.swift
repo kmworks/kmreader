@@ -45,7 +45,7 @@ struct ReadListDetailContentView<Actions: View>: View {
 
         actions
       }
-      .frame(maxWidth: isNarrowLayout ? 480 : .infinity)
+      .frame(maxWidth: 480)
       .frame(maxWidth: .infinity, alignment: isNarrowLayout ? .center : .leading)
 
       DetailTimestampsView(
