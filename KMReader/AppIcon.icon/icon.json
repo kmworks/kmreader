@@ -2,20 +2,7 @@
   "fill-specializations" : [
     {
       "value" : {
-        "linear-gradient" : [
-          "srgb:1.00000,0.70196,0.25098,1.00000",
-          "srgb:1.00000,0.23922,0.40784,1.00000"
-        ],
-        "orientation" : {
-          "start" : {
-            "x" : 0.5,
-            "y" : 0
-          },
-          "stop" : {
-            "x" : 0.5,
-            "y" : 1
-          }
-        }
+        "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
       }
     },
     {
@@ -29,40 +16,16 @@
     {
       "layers" : [
         {
-          "glass" : true,
+          "glass" : false,
           "image-name" : "icon.svg",
-          "name" : "icon-light",
+          "name" : "icon",
           "position" : {
             "scale" : 0.5,
             "translation-in-points" : [
               0,
               0
             ]
-          },
-          "hidden-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : true
-            }
-          ]
-        },
-        {
-          "glass" : true,
-          "image-name" : "icon-dark.svg",
-          "name" : "icon-dark",
-          "position" : {
-            "scale" : 0.5,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          },
-          "hidden-specializations" : [
-            {
-              "appearance" : "light",
-              "value" : true
-            }
-          ]
+          }
         }
       ],
       "shadow" : {

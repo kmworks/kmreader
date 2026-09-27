@@ -5,7 +5,6 @@
     case primary = "AppIcon"
     case classic = "AppIconClassic"
     case legacy = "AppIconLegacy"
-    case reverse = "AppIconReverse"
 
     var id: String {
       rawValue
@@ -19,8 +18,6 @@
         return String(localized: "Classic")
       case .legacy:
         return String(localized: "Legacy")
-      case .reverse:
-        return String(localized: "Reverse")
       }
     }
 
@@ -32,8 +29,6 @@
         return AppIconOption.classic.rawValue
       case .legacy:
         return AppIconOption.legacy.rawValue
-      case .reverse:
-        return AppIconOption.reverse.rawValue
       }
     }
 
@@ -45,8 +40,6 @@
         return "logoClassic"
       case .legacy:
         return "logoLegacy"
-      case .reverse:
-        return "logoReverse"
       }
     }
 
@@ -60,9 +53,6 @@
         return .classic
       case "AppIconLegacy", AppIconOption.legacy.rawValue:
         return .legacy
-      case "AppIconReverse", "AppIconReverseAlt", "AppIconGlass", "AppIconGlassAlt",
-        AppIconOption.reverse.rawValue:
-        return .reverse
       default:
         break
       }
