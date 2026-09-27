@@ -38,7 +38,7 @@ struct CollectionDetailContentView: View {
       DetailActionCard {
         CollectionBookCountView(collection: collection)
       }
-      .frame(maxWidth: isNarrowLayout ? 480 : .infinity)
+      .frame(maxWidth: 480)
       .frame(maxWidth: .infinity, alignment: isNarrowLayout ? .center : .leading)
 
       DetailTimestampsView(
