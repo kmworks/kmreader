@@ -150,14 +150,16 @@ struct LayoutConfig {
     #endif
   }
 
-  /// Font size (pt) for the series line of horizontal cards.
+  /// Font size (pt) for the series line of horizontal cards. Apple Books
+  /// steps secondary lines down further than a 1pt decrement (author ≈ 0.8x
+  /// the title), so the series/meta lines sit visibly below the title.
   static var horizontalCardSeriesFontSize: CGFloat {
-    horizontalCardFontSize - 1
+    horizontalCardFontSize - 2
   }
 
   /// Font size (pt) for the meta (bottom bar) line of horizontal cards.
   static var horizontalCardMetaFontSize: CGFloat {
-    horizontalCardFontSize - 2
+    horizontalCardFontSize - 3
   }
 
   /// Icon size (pt) for the trailing accessory icons in horizontal cards.
