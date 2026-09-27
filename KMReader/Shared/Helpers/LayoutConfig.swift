@@ -21,7 +21,9 @@ struct LayoutConfig {
   static let detailWideLayoutMinimumWidth: CGFloat = 960
 
   /// Card width for the medium browse grid (library/series/books/read
-  /// lists/collections): one notch below the large grid.
+  /// lists/collections): one notch below the large grid. The iOS value is
+  /// calibrated so a 402pt-wide iPhone fits 3 columns (3x110 + 2x16 spacing
+  /// within the 370pt content width) where the large grid fits 2.
   static var gridCardWidth: CGFloat {
     #if os(tvOS)
       return 190
@@ -30,7 +32,7 @@ struct LayoutConfig {
       // density band instead of scaling up from iPhone.
       return 104
     #else
-      return 120
+      return 110
     #endif
   }
 
