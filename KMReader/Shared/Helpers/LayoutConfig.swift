@@ -20,27 +20,29 @@ struct LayoutConfig {
   /// the two-column layout).
   static let detailWideLayoutMinimumWidth: CGFloat = 960
 
-  /// Card width for browse grids (library/series/books/read lists/collections).
+  /// Card width for the medium browse grid (library/series/books/read
+  /// lists/collections): one notch below the large grid.
   static var gridCardWidth: CGFloat {
     #if os(tvOS)
-      return 240
+      return 190
     #elseif os(macOS)
-      // Apple Books macOS covers are ~104pt; macOS stays in that density
-      // band instead of scaling up from iPhone.
-      return 128
+      // Apple Books macOS covers are ~104pt; the medium grid sits in that
+      // density band instead of scaling up from iPhone.
+      return 104
     #else
-      return 160
+      return 120
     #endif
   }
 
-  /// Card width for the large-grid browse layout (bigger covers, fewer columns).
+  /// Card width for the large-grid browse layout. Takes over the original
+  /// single-grid size, which reads as the large density in practice.
   static var largeGridCardWidth: CGFloat {
     #if os(tvOS)
-      return 320
+      return 240
     #elseif os(macOS)
-      return 160
+      return 128
     #else
-      return 200
+      return 160
     #endif
   }
 
