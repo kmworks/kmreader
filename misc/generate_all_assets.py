@@ -16,7 +16,6 @@ BRAND_ASSETS_DIR = os.path.join(ASSETS_DIR, "AppIcon.brandassets")
 LOGO_IMAGESETS = {
     "logo": ICON_SVG,
     "logoClassic": "KMReader/AppIconClassic.icon/Assets/icon-classic.svg",
-    "logoReverse": "KMReader/AppIconReverse.icon/Assets/icon.svg",
     "logoLegacy": "KMReader/AppIconLegacy.icon/Assets/icon.svg",
 }
 

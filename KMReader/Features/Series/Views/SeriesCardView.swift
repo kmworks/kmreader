@@ -113,6 +113,7 @@ struct SeriesCardView: View {
       }
       if item.oneshot {
         Label(item.oneshotLine, systemImage: "book.closed")
+          .labelStyle(.compact)
           .lineLimit(1)
       } else {
         Text("\(item.booksCount) books")

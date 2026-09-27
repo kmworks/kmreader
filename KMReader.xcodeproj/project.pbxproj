@@ -433,8 +433,8 @@
 		192E6F8B2EC4B4E30040D165 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "AppIconClassic AppIconReverse AppIconLegacy";
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "AppIconClassic AppIconReverse AppIconLegacy";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "AppIconClassic AppIconLegacy";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "AppIconClassic AppIconLegacy";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
@@ -442,7 +442,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "KMReader/KMReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 604;
+				CURRENT_PROJECT_VERSION = 605;
 				DEVELOPMENT_TEAM = M777UHWZA4;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -492,8 +492,8 @@
 		192E6F8C2EC4B4E30040D165 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "AppIconClassic AppIconReverse AppIconLegacy";
-				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "AppIconClassic AppIconReverse AppIconLegacy";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphoneos*]" = "AppIconClassic AppIconLegacy";
+				"ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES[sdk=iphonesimulator*]" = "AppIconClassic AppIconLegacy";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
@@ -501,7 +501,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "KMReader/KMReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 604;
+				CURRENT_PROJECT_VERSION = 605;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=appletvos*]" = M777UHWZA4;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = M777UHWZA4;
@@ -562,7 +562,7 @@
 				CODE_SIGN_ENTITLEMENTS = KMReaderWidgets/KMReaderWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 604;
+				CURRENT_PROJECT_VERSION = 605;
 				DEVELOPMENT_TEAM = M777UHWZA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KMReaderWidgets/Info.plist;
@@ -596,7 +596,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 604;
+				CURRENT_PROJECT_VERSION = 605;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = M777UHWZA4;
 				GENERATE_INFOPLIST_FILE = YES;
