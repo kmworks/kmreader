@@ -32,7 +32,9 @@ struct BookRowView: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      NavigationLink(value: item.navDestination) {
+      Button {
+        onReadBook?(false)
+      } label: {
         ThumbnailImage(
           id: item.bookId,
           type: .book,
@@ -42,7 +44,9 @@ struct BookRowView: View {
       }.adaptiveButtonStyle(.plain)
 
       VStack(alignment: .leading, spacing: 4) {
-        NavigationLink(value: item.navDestination) {
+        Button {
+          onReadBook?(false)
+        } label: {
           VStack(alignment: .leading, spacing: 4) {
             if item.oneshot {
               Text("Oneshot")

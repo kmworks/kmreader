@@ -74,7 +74,6 @@ struct BookHorizontalCardView: View {
         showEditSheet = true
       },
       onMutationCompleted: onMutationCompleted,
-      showDetailNavigation: true,
       showSeriesNavigation: showSeriesNavigation
     )
   }

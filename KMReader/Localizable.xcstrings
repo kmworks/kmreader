@@ -57594,6 +57594,7 @@
       }
     },
     "Read" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

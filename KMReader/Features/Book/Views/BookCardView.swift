@@ -55,7 +55,7 @@ struct BookCardView: View {
       coverOnly: coverOnly,
       cardWidth: cardWidth,
       isUnread: item.isUnread,
-      navigationLink: item.navDestination,
+      onAction: { onReadBook?(false) },
       titleLineLimit: bookTitleLineLimit,
       subtitle: subtitle,
       downloadIcon: item.downloadStatus.displayIcon,

@@ -14,11 +14,6 @@ struct BookContextMenu: View {
   var onDeleteRequested: (() -> Void)? = nil
   var onEditRequested: (() -> Void)? = nil
   var onMutationCompleted: (() -> Void)? = nil
-  /// Complements the card's tap action: cards that open the detail page on tap
-  /// (grid/list) get a Read action instead, cards that open the reader on tap
-  /// (horizontal) turn this on to get the detail entry. Read and Details
-  /// never appear together.
-  var showDetailNavigation: Bool = false
   var showSeriesNavigation: Bool = true
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -203,24 +198,15 @@ struct BookContextMenu: View {
   private var detailsSection: some View {
     #if os(iOS)
       ControlGroup {
+        NavigationLink(value: book.navDestination) {
+          Label("Details", systemImage: "info.circle")
+        }
+
         if let onReadBook = onReadBook {
-          if !showDetailNavigation {
-            Button {
-              onReadBook(false)
-            } label: {
-              Label("Read", systemImage: "book")
-            }
-          }
           Button {
             onReadBook(true)
           } label: {
             Label("Peek", systemImage: "eye.slash")
-          }
-        }
-
-        if showDetailNavigation {
-          NavigationLink(value: book.navDestination) {
-            Label("Details", systemImage: "info.circle")
           }
         }
 
@@ -232,13 +218,6 @@ struct BookContextMenu: View {
       }
     #else
       if let onReadBook = onReadBook {
-        if !showDetailNavigation {
-          Button {
-            onReadBook(false)
-          } label: {
-            Label("Read", systemImage: "book")
-          }
-        }
         Button {
           onReadBook(true)
         } label: {
@@ -246,19 +225,15 @@ struct BookContextMenu: View {
         }
         Divider()
       }
-      if showDetailNavigation || (showSeriesNavigation && !book.oneshot) {
-        if showDetailNavigation {
-          NavigationLink(value: book.navDestination) {
-            Label("Details", systemImage: "info.circle")
-          }
-        }
-        if showSeriesNavigation && !book.oneshot {
-          NavigationLink(value: NavDestination.seriesDetail(seriesId: book.seriesId)) {
-            Label("Series", systemImage: ContentIcon.series)
-          }
-        }
-        Divider()
+      NavigationLink(value: book.navDestination) {
+        Label("Details", systemImage: "info.circle")
       }
+      if showSeriesNavigation && !book.oneshot {
+        NavigationLink(value: NavDestination.seriesDetail(seriesId: book.seriesId)) {
+          Label("Series", systemImage: ContentIcon.series)
+        }
+      }
+      Divider()
     #endif
   }
 }

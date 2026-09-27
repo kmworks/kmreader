@@ -81,10 +81,6 @@ nonisolated struct BookDisplayItem: Equatable, Identifiable, Sendable {
     return readDate.formatted(.relative(presentation: .named, unitsStyle: .abbreviated))
   }
 
-  var navDestination: NavDestination {
-    book.navDestination
-  }
-
   var bookTitleLine: String {
     if book.oneshot {
       return book.metadata.title
