@@ -57,12 +57,15 @@ iOS / macOS / tvOS checks must all pass and the state must be `CLEAN`. When chec
 
 2. Squash merge with a freshly composed message — never the auto-generated commit list. Write the body as a self-contained summary of the merged change: what user-visible behavior changed and why, plus side effects worth knowing later (removed localization keys, migrations, follow-ups). `../changelog/SKILL.md` generates App Store notes from main's commit bodies (`%s` + `%b` between the latest tag and HEAD), so this message is the changelog source material: behavior first, file/class names only when they aid understanding. The PR discussion stays on GitHub; the commit must stand alone.
 
-3. Merge and clean up:
+3. Merge and clean up. Like PR creation, the body goes through a file — never inline a Markdown body into `--body`:
 
 ```bash
+cat > /tmp/kmreader-merge-body.md <<'EOF'
+<summary from step 2>
+EOF
 gh pr merge <N> --squash --delete-branch \
   --subject "<conventional title> (#N)" \
-  --body "<summary from step 2>"
+  --body-file /tmp/kmreader-merge-body.md
 
 git fetch --prune origin
 git switch main
