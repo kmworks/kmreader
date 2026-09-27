@@ -12,8 +12,8 @@ struct SeriesDetailChipsView: View {
   private let collapsedLinkLimit = 6
 
   var body: some View {
-    DetailChipFlow(items: genreItems, collapsedLimit: collapsedLinkLimit)
-    DetailChipFlow(items: tagItems, collapsedLimit: collapsedLinkLimit)
+    DetailChipFlow(items: genreItems, collapsedLimit: collapsedLinkLimit, glass: false)
+    DetailChipFlow(items: tagItems, collapsedLimit: collapsedLinkLimit, glass: false)
     DetailChipFlow(items: linkItems, collapsedLimit: collapsedLinkLimit)
   }
 

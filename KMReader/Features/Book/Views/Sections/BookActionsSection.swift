@@ -5,8 +5,9 @@
 
 import SwiftUI
 
-/// The book detail page's action block: a prominent capsule Read button,
-/// then Peek and the download toggle as a secondary row. Pages/progress stay
+/// The book detail page's action block: a prominent capsule Read button —
+/// full width in centered layouts, a fixed wide width when leading — then
+/// Peek and the download toggle as a secondary row. Pages/progress stay
 /// in the status row above, so the button carries the action label only.
 /// Alignment follows `detailHeroCentered`. Series navigation lives on the
 /// hero's series title instead of a button here.
@@ -38,6 +39,7 @@ struct BookActionsSection: View {
           Text(readLabel)
             .font(.subheadline)
         }
+        .frame(maxWidth: heroCentered ? .infinity : 480)
         .padding(.horizontal, 12)
       }
       .adaptiveButtonStyle(.borderedProminent)

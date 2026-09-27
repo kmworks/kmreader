@@ -119,15 +119,13 @@ struct SeriesDetailView: View {
   private var usesWideLayout: Bool {
     #if os(iOS)
       return PlatformHelper.isPad && horizontalSizeClass == .regular
-        && detailContentWidth >= wideLayoutMinimumWidth
+        && detailContentWidth >= LayoutConfig.detailWideLayoutMinimumWidth
     #elseif os(macOS)
-      return detailContentWidth >= wideLayoutMinimumWidth
+      return detailContentWidth >= LayoutConfig.detailWideLayoutMinimumWidth
     #else
       return false
     #endif
   }
-
-  private let wideLayoutMinimumWidth: CGFloat = 960
 
   private var readingTargetBookForCurrentContext: Book? {
     guard readingTargetInstanceId == current.instanceId, readingTargetIsOffline == isOffline else {

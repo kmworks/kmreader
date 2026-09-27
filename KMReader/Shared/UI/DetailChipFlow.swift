@@ -25,14 +25,16 @@ struct DetailChipFlow: View {
 
   let items: [Item]
   let collapsedLimit: Int
+  let glass: Bool
 
   @State private var isExpanded = false
 
   @Environment(\.detailHeroCentered) private var heroCentered
 
-  init(items: [Item], collapsedLimit: Int = 6) {
+  init(items: [Item], collapsedLimit: Int = 6, glass: Bool = true) {
     self.items = items
     self.collapsedLimit = collapsedLimit
+    self.glass = glass
   }
 
   var body: some View {
@@ -85,12 +87,12 @@ struct DetailChipFlow: View {
     switch item.destination {
     case .navigate(let destination):
       NavigationLink(value: destination) {
-        DetailChip(item.title, systemImage: item.systemImage)
+        DetailChip(item.title, systemImage: item.systemImage, glass: glass)
       }
       .adaptiveButtonStyle(.plain)
     case .external(let url):
       Link(destination: url) {
-        DetailChip(item.title, systemImage: item.systemImage)
+        DetailChip(item.title, systemImage: item.systemImage, glass: glass)
       }
       .adaptiveButtonStyle(.plain)
     }

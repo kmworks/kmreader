@@ -9,7 +9,14 @@ struct ReadListDetailContentView<Actions: View>: View {
   let readList: ReadList
   @ViewBuilder let actions: Actions
 
-  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  /// Measured width driving the centered/leading header switch. Defaults wide
+  /// where the leading layout can engage (iPad, macOS) so the first frame
+  /// doesn't flash centered.
+  #if os(macOS)
+    @State private var contentWidth: CGFloat = .infinity
+  #else
+    @State private var contentWidth: CGFloat = PlatformHelper.isPad ? .infinity : 0
+  #endif
 
   init(
     readList: ReadList,
@@ -19,8 +26,8 @@ struct ReadListDetailContentView<Actions: View>: View {
     self.actions = actions()
   }
 
-  private var isCompactLayout: Bool {
-    horizontalSizeClass == .compact
+  private var isNarrowLayout: Bool {
+    contentWidth < LayoutConfig.detailWideLayoutMinimumWidth
   }
 
   var body: some View {
@@ -38,14 +45,15 @@ struct ReadListDetailContentView<Actions: View>: View {
 
         actions
       }
-      .frame(maxWidth: isCompactLayout ? 480 : .infinity)
-      .frame(maxWidth: .infinity, alignment: isCompactLayout ? .center : .leading)
+      .frame(maxWidth: isNarrowLayout ? 480 : .infinity)
+      .frame(maxWidth: .infinity, alignment: isNarrowLayout ? .center : .leading)
 
       DetailTimestampsView(
         created: readList.createdDate, lastModified: readList.lastModifiedDate
       )
-      .frame(maxWidth: .infinity, alignment: isCompactLayout ? .center : .leading)
+      .frame(maxWidth: .infinity, alignment: isNarrowLayout ? .center : .leading)
     }
-    .environment(\.detailHeroCentered, isCompactLayout)
+    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { contentWidth = $0 }
+    .environment(\.detailHeroCentered, isNarrowLayout)
   }
 }

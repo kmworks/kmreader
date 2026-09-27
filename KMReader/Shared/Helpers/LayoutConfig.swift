@@ -15,6 +15,11 @@ import SwiftUI
 /// there is no user-adjustable density.
 struct LayoutConfig {
 
+  /// Measured content width where detail pages switch between the centered
+  /// narrow header and the leading wide one (series/read list/collection:
+  /// the two-column layout).
+  static let detailWideLayoutMinimumWidth: CGFloat = 960
+
   /// Card width for browse grids (library/series/books/read lists/collections).
   static var gridCardWidth: CGFloat {
     #if os(tvOS)

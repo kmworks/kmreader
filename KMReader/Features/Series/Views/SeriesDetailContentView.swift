@@ -10,7 +10,15 @@ struct SeriesDetailContentView<Actions: View>: View {
   @ViewBuilder let actions: Actions
 
   @AppStorage("thumbnailBlurUnreadCovers") private var thumbnailBlurUnreadCovers: Bool = false
-  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+  /// Measured width driving the centered/leading header switch. Defaults wide
+  /// where the leading layout can engage (iPad, macOS) so the first frame
+  /// doesn't flash centered.
+  #if os(macOS)
+    @State private var contentWidth: CGFloat = .infinity
+  #else
+    @State private var contentWidth: CGFloat = PlatformHelper.isPad ? .infinity : 0
+  #endif
 
   init(series: Series, @ViewBuilder actions: () -> Actions) {
     self.series = series
@@ -21,30 +29,33 @@ struct SeriesDetailContentView<Actions: View>: View {
     thumbnailBlurUnreadCovers && series.isUnread ? CoverBlurStyle.unreadRadius : 0
   }
 
-  private var isCompactLayout: Bool {
-    horizontalSizeClass == .compact
+  private var isNarrowLayout: Bool {
+    contentWidth < LayoutConfig.detailWideLayoutMinimumWidth
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      DetailHeroView(
-        id: series.id,
-        type: .series,
-        contentBlurRadius: coverBlurRadius
-      ) {
-        SeriesHeroInfoView(series: series)
+      Group {
+        DetailHeroView(
+          id: series.id,
+          type: .series,
+          contentBlurRadius: coverBlurRadius
+        ) {
+          SeriesHeroInfoView(series: series)
+        }
+
+        DetailActionCard {
+          SeriesBookCountView(series: series)
+
+          actions
+        }
+        .frame(maxWidth: isNarrowLayout ? 480 : .infinity)
+        .frame(maxWidth: .infinity, alignment: isNarrowLayout ? .center : .leading)
+
+        DetailTimestampsView(created: series.created, lastModified: series.lastModified)
+          .frame(maxWidth: .infinity, alignment: isNarrowLayout ? .center : .leading)
       }
-
-      DetailActionCard {
-        SeriesBookCountView(series: series)
-
-        actions
-      }
-      .frame(maxWidth: isCompactLayout ? 480 : .infinity)
-      .frame(maxWidth: .infinity, alignment: isCompactLayout ? .center : .leading)
-
-      DetailTimestampsView(created: series.created, lastModified: series.lastModified)
-        .frame(maxWidth: .infinity, alignment: isCompactLayout ? .center : .leading)
+      .environment(\.detailHeroCentered, isNarrowLayout)
 
       SeriesSummaryView(series: series)
 
@@ -52,6 +63,6 @@ struct SeriesDetailContentView<Actions: View>: View {
 
       SeriesAlternateTitlesView(series: series)
     }
-    .environment(\.detailHeroCentered, isCompactLayout)
+    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { contentWidth = $0 }
   }
 }

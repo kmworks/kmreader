@@ -11,8 +11,9 @@ private struct DetailHeroCenteredKey: EnvironmentKey {
 
 extension EnvironmentValues {
   /// Set by detail page content views so the hero and the action-card zone
-  /// share one alignment: centered on compact widths, leading on regular.
-  /// Wide two-column rails inject `true` for their centered rail content.
+  /// share one alignment: centered below the detail wide-layout minimum
+  /// width, leading above it. Wide two-column rails inject `true` for their
+  /// centered rail content.
   var detailHeroCentered: Bool {
     get { self[DetailHeroCenteredKey.self] }
     set { self[DetailHeroCenteredKey.self] = newValue }
