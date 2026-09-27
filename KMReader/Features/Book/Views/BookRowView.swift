@@ -49,9 +49,10 @@ struct BookRowView: View {
         } label: {
           VStack(alignment: .leading, spacing: 4) {
             if item.oneshot {
-              Text("Oneshot")
+              Label(item.oneshotLine, systemImage: "book.closed")
                 .font(.footnote)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
             } else if shouldShowSeriesTitle {
               Text(item.seriesTitle)
                 .font(.footnote)
