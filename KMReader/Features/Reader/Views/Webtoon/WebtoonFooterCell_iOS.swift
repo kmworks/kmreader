@@ -276,7 +276,8 @@
         nextDetailLabel.isHidden = true
         nextTitleLabel.text = nil
         nextDetailLabel.text = nil
-        applyNextDownload(nil)
+        // Caught up: no next book, so the download slot has nothing to show.
+        nextDownloadStack.isHidden = true
         caughtUpLabel.isHidden = false
         caughtUpLabel.text = String(localized: "You're all caught up!")
       }
