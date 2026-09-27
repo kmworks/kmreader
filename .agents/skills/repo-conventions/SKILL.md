@@ -111,11 +111,11 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Cards
 
-- Card sizes are fixed per platform, calibrated against Apple Books (`LayoutConfig`); there is no user-adjustable grid density.
+- Card sizes are fixed per platform and layout mode, calibrated against Apple Books (`LayoutConfig`); there is no free-form density slider.
 - Card text styles and the corner badge size are not fixed: they scale with the card width via `LayoutConfig.cardTitleTextStyle`/`cardSecondaryTextStyle`/`cardTertiaryTextStyle`/`cardBadgeSize`, and card views receive their width (`cardWidth`, defaulting to `gridCardWidth`) rather than a style flag.
 - Large and small grid cards share the `GridCardView` skeleton (cover with badge and optional text overlay, progress bar row, text block), which owns the card preferences; each card supplies only its badge, menu, and status line.
-- Dashboard sections render one of three card kinds: `large` (fresh content showcase: on deck, recently released/added books, recently updated series), `small` (library activity/history: recently added series, recently read books), `horizontal` (Keep Reading books, read lists in progress, pinned read lists/collections).
-- `DashboardSection.cardKind` is only the default — the user can override any books/series section, and read lists in progress, from the menu at the trailing edge of its header row (`DashboardCardKindMenu`, shared by the section views; books sections and read lists in progress, whose cards are each list's next book, offer large/small/horizontal, recently added books large/small only, series sections large/small; pinned sections stay horizontal-only), persisted in `DashboardConfiguration.cardKindOverrides` (overrides that are no longer offered are ignored). The menu itself can be hidden via the Dashboard settings toggle (`showDashboardCardKindMenu`, on by default); hiding it keeps the chosen overrides in effect.
+- Dashboard sections render one of four card kinds: `large` (fresh content showcase: on deck, recently released/added books, recently updated series), `medium` (midway width, text below the cover like large), `small` (library activity/history: recently added series, recently read books), `horizontal` (Keep Reading books, read lists in progress, pinned read lists/collections).
+- `DashboardSection.cardKind` is only the default — the user can override any books/series section, and read lists in progress, from the menu at the trailing edge of its header row (`DashboardCardKindMenu`, shared by the section views; books sections and read lists in progress, whose cards are each list's next book, offer large/medium/small/horizontal, recently added books and series sections large/medium/small; pinned sections stay horizontal-only), persisted in `DashboardConfiguration.cardKindOverrides` (overrides that are no longer offered are ignored). The menu itself can be hidden via the Dashboard settings toggle (`showDashboardCardKindMenu`, on by default); hiding it keeps the chosen overrides in effect.
 - Section list edits in Settings (show, hide, reorder, Reset) change only `sections`, keeping the overrides and the library selection; 6.4's Keep Reading toggle (`dashboardHorizontalBookCards`) is carried over once at launch (off → Keep Reading `large`).
 - Small cards are cover-only (`coverOnly`): every text line truncates at that width and stops carrying information, and card text overlay mode never renders on them.
 - Cover corner badges are gated on `thumbnailShowUnreadIndicator`: series cards show the unread count, book cards show a completed checkmark — books have no unread dot.
@@ -157,9 +157,9 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Layout Toggle & Chip Rows
 
-- Browse layout switching (grid ↔ list) lives in `LayoutModeToggleButton`, a single icon button rendered at the front of the filter chip row (the chip-row views take an optional `layoutMode` binding); pages without a chip row place the same button above the content (e.g. `DashboardSectionDetailView`).
-- Chip rows are always full-width leading-aligned — on detail pages (series/read list/collection) the selection-mode button sits trailing — so the toggle aligns with the content below; do not wrap the row in a `Spacer`-pushed trailing cluster.
-- The toggle matches chip height through a blank caption-weight text line (icon glyphs alone render shorter). Do not reintroduce toolbar layout pickers.
+- Browse layout switching (row / medium / large cards, `BrowseLayoutMode.list`/`.grid`/`.largeGrid`) lives in `LayoutModeMenu`, a dropdown menu showing the current layout's icon, rendered at the front of the filter chip row (the chip-row views take an optional `layoutMode` binding); pages without a chip row place the same menu above the content (e.g. `DashboardSectionDetailView`). The two card modes differ only in card width (`LayoutConfig.gridCardWidth` vs `largeGridCardWidth` via `BrowseLayoutMode.cardWidth`), which feeds `adaptiveColumns(cardWidth:)` and the item views' `cardWidth`.
+- Chip rows are always full-width leading-aligned — on detail pages (series/read list/collection) the selection-mode button sits trailing — so the menu aligns with the content below; do not wrap the row in a `Spacer`-pushed trailing cluster.
+- The menu matches chip height through a blank caption-weight text line (icon glyphs alone render shorter). Do not reintroduce toolbar layout pickers.
 
 ### Toolbar
 

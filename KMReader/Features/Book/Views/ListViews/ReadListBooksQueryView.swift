@@ -17,7 +17,7 @@ struct ReadListBooksQueryView: View {
   let refreshBooks: () -> Void
 
   private var columns: [GridItem] {
-    LayoutConfig.adaptiveColumns
+    LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
 
   private var spacing: CGFloat {
@@ -54,14 +54,14 @@ struct ReadListBooksQueryView: View {
           .padding()
       } else {
         switch browseLayout {
-        case .grid:
+        case .grid, .largeGrid:
           LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(bookViewModel.pagination.items) { book in
               Group {
                 if isSelectionMode && isAdmin {
                   BookSelectionItemView(
                     bookId: book.id,
-                    layout: .grid,
+                    layout: browseLayout,
                     selectedBookIds: $selectedBookIds,
                     refreshBooks: refreshBooks,
                     showSeriesTitle: true
@@ -69,9 +69,10 @@ struct ReadListBooksQueryView: View {
                 } else {
                   BookQueryItemView(
                     bookId: book.id,
-                    layout: .grid,
+                    layout: browseLayout,
                     showSeriesTitle: true,
                     readListContext: readListContext,
+                    cardWidth: browseLayout.cardWidth,
                     onItemMissing: {
                       bookViewModel.removeBook(id: book.id)
                     }

@@ -36,7 +36,7 @@ struct SeriesQueryItemView: View {
     Group {
       if let item {
         switch layout {
-        case .grid:
+        case .grid, .largeGrid:
           SeriesCardView(
             item: item,
             onMutationCompleted: reloadItem,

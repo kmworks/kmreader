@@ -15,7 +15,7 @@ struct BooksQueryView: View {
   let offlineOnly: Bool
 
   private var columns: [GridItem] {
-    LayoutConfig.adaptiveColumns
+    LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
 
   private var spacing: CGFloat {
@@ -52,12 +52,13 @@ struct BooksQueryView: View {
       }
     ) {
       switch browseLayout {
-      case .grid:
+      case .grid, .largeGrid:
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(viewModel.pagination.items) { book in
             BookQueryItemView(
               bookId: book.id,
-              layout: .grid,
+              layout: browseLayout,
+              cardWidth: browseLayout.cardWidth,
               onItemMissing: {
                 viewModel.removeBook(id: book.id)
               }

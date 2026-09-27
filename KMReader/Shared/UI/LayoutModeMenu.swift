@@ -1,18 +1,28 @@
 //
-// LayoutModeToggleButton.swift
+// LayoutModeMenu.swift
 //
 //
 
 import SwiftUI
 
-struct LayoutModeToggleButton: View {
+/// Chip-row menu that switches a browse page between row, medium, and large
+/// card layouts. Shows the current layout's icon.
+struct LayoutModeMenu: View {
   @Binding var selection: BrowseLayoutMode
 
   var body: some View {
-    Button {
-      selection = selection == .grid ? .list : .grid
+    Menu {
+      Picker(selection: $selection) {
+        ForEach(BrowseLayoutMode.allCases) { mode in
+          Label(mode.displayName, systemImage: mode.iconName).tag(mode)
+        }
+      } label: {
+        EmptyView()
+      }
+      .pickerStyle(.inline)
+      .labelsHidden()
     } label: {
-      // The blank caption-text line keeps the button as tall as sibling FilterChips,
+      // The blank caption-text line keeps the menu as tall as sibling FilterChips,
       // whose height comes from their caption text rather than the icon.
       ZStack {
         Text(verbatim: " ")

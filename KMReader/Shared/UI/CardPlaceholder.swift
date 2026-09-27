@@ -67,7 +67,7 @@ struct CardPlaceholder: View {
 
   var body: some View {
     switch layout {
-    case .grid:
+    case .grid, .largeGrid:
       gridPlaceholder
     case .list:
       listPlaceholder

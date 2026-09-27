@@ -30,7 +30,7 @@ struct CollectionQueryItemView: View {
     Group {
       if let item {
         switch layout {
-        case .grid:
+        case .grid, .largeGrid:
           CollectionCardView(
             item: item,
             onMutationCompleted: reloadItem,

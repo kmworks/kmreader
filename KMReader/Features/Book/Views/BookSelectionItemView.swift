@@ -62,7 +62,7 @@ struct BookSelectionItemView: View {
   @ViewBuilder
   private var selectionBody: some View {
     switch layout {
-    case .grid:
+    case .grid, .largeGrid:
       selectionContent
         .overlay(alignment: .topLeading) {
           SelectionBadge(isSelected: isSelected, onCover: true)
@@ -79,7 +79,7 @@ struct BookSelectionItemView: View {
   private var selectionContent: some View {
     if let item {
       switch layout {
-      case .grid:
+      case .grid, .largeGrid:
         BookCardView(
           item: item,
           onReadBook: { _ in },

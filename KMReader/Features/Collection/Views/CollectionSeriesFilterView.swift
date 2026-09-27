@@ -39,7 +39,7 @@ struct CollectionSeriesFilterView: View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 6) {
         if let layoutMode {
-          LayoutModeToggleButton(selection: layoutMode)
+          LayoutModeMenu(selection: layoutMode)
         }
 
         FilterChip(

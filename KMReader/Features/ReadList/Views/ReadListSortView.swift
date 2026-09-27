@@ -20,7 +20,7 @@ struct ReadListSortView: View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 6) {
         if let layoutMode {
-          LayoutModeToggleButton(selection: layoutMode)
+          LayoutModeMenu(selection: layoutMode)
         }
 
         Image(systemName: "arrow.up.arrow.down.circle")

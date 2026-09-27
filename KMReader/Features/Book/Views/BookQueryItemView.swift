@@ -67,7 +67,7 @@ struct BookQueryItemView: View {
           )
         } else {
           switch layout {
-          case .grid:
+          case .grid, .largeGrid:
             BookCardView(
               item: item,
               onReadBook: { incognito in

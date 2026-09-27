@@ -15,7 +15,7 @@ struct CollectionSeriesQueryView: View {
   let isAdmin: Bool
 
   private var columns: [GridItem] {
-    LayoutConfig.adaptiveColumns
+    LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
 
   private var spacing: CGFloat {
@@ -30,20 +30,21 @@ struct CollectionSeriesQueryView: View {
           .padding()
       } else {
         switch browseLayout {
-        case .grid:
+        case .grid, .largeGrid:
           LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(seriesViewModel.pagination.items) { series in
               Group {
                 if isSelectionMode && isAdmin {
                   SeriesSelectionItemView(
                     seriesId: series.id,
-                    layout: .grid,
+                    layout: browseLayout,
                     selectedSeriesIds: $selectedSeriesIds
                   )
                 } else {
                   SeriesQueryItemView(
                     seriesId: series.id,
-                    layout: .grid,
+                    layout: browseLayout,
+                    cardWidth: browseLayout.cardWidth,
                     onItemMissing: {
                       seriesViewModel.removeSeries(id: series.id)
                     }

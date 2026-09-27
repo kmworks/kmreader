@@ -25,7 +25,7 @@ struct DashboardSectionDetailView: View {
   }
 
   private var columns: [GridItem] {
-    LayoutConfig.adaptiveColumns
+    LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
 
   private var spacing: CGFloat {
@@ -44,7 +44,7 @@ struct DashboardSectionDetailView: View {
       ScrollView {
         if !section.isLocalSection {
           HStack {
-            LayoutModeToggleButton(selection: browseLayoutBinding)
+            LayoutModeMenu(selection: browseLayoutBinding)
             Spacer()
           }
           .padding(.horizontal)
@@ -148,13 +148,14 @@ struct DashboardSectionDetailView: View {
   @ViewBuilder
   private var bookContentView: some View {
     switch browseLayout {
-    case .grid:
+    case .grid, .largeGrid:
       LazyVGrid(columns: columns, spacing: spacing) {
         ForEach(pagination.items) { book in
           BookQueryItemView(
             bookId: book.id,
-            layout: .grid,
+            layout: browseLayout,
             showSeriesTitle: true,
+            cardWidth: browseLayout.cardWidth,
             onItemMissing: {
               removeItem(id: book.id)
             }
@@ -194,12 +195,13 @@ struct DashboardSectionDetailView: View {
   @ViewBuilder
   private var seriesContentView: some View {
     switch browseLayout {
-    case .grid:
+    case .grid, .largeGrid:
       LazyVGrid(columns: columns, spacing: spacing) {
         ForEach(pagination.items) { series in
           SeriesQueryItemView(
             seriesId: series.id,
-            layout: .grid,
+            layout: browseLayout,
+            cardWidth: browseLayout.cardWidth,
             onItemMissing: {
               removeItem(id: series.id)
             }

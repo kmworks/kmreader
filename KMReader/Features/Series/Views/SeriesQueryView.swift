@@ -15,7 +15,7 @@ struct SeriesQueryView: View {
   let offlineOnly: Bool
 
   private var columns: [GridItem] {
-    LayoutConfig.adaptiveColumns
+    LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
 
   private var spacing: CGFloat {
@@ -52,12 +52,13 @@ struct SeriesQueryView: View {
       }
     ) {
       switch browseLayout {
-      case .grid:
+      case .grid, .largeGrid:
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(viewModel.pagination.items) { series in
             SeriesQueryItemView(
               seriesId: series.id,
-              layout: .grid,
+              layout: browseLayout,
+              cardWidth: browseLayout.cardWidth,
               onItemMissing: {
                 viewModel.removeSeries(id: series.id)
               }

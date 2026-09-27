@@ -18,7 +18,7 @@ struct CollectionsBrowseView: View {
   @State private var hasInitialized = false
 
   private var columns: [GridItem] {
-    LayoutConfig.adaptiveColumns
+    LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
 
   private var spacing: CGFloat {
@@ -43,11 +43,12 @@ struct CollectionsBrowseView: View {
         }
       ) {
         switch browseLayout {
-        case .grid:
+        case .grid, .largeGrid:
           LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(viewModel.pagination.items) { collection in
               CollectionQueryItemView(
                 collectionId: collection.id,
+                layout: browseLayout,
                 onItemMissing: {
                   viewModel.removeCollection(id: collection.id)
                 }

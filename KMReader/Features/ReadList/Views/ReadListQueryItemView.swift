@@ -30,7 +30,7 @@ struct ReadListQueryItemView: View {
     Group {
       if let item {
         switch layout {
-        case .grid:
+        case .grid, .largeGrid:
           ReadListCardView(
             item: item,
             onMutationCompleted: reloadItem,

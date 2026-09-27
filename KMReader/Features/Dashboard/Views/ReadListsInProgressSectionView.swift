@@ -128,7 +128,7 @@ struct ReadListsInProgressSectionView: View {
         continuation: continuation,
         coverWidth: LayoutConfig.horizontalCoverWidth
       )
-    case .large, .small:
+    case .large, .medium, .small:
       ReadListContinuationCardView(
         continuation: continuation,
         coverOnly: cardKind == .small,

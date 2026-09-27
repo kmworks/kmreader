@@ -13,11 +13,12 @@ enum DashboardSectionContentKind: Sendable {
   case readLists
 }
 
-/// Card presentation of a dashboard section: large showcase cards, small
-/// utility cards, or horizontal cards. Each section has a default kind that
-/// the user can override from the section header menu.
+/// Card presentation of a dashboard section: large showcase cards, medium and
+/// small utility cards, or horizontal cards. Each section has a default kind
+/// that the user can override from the section header menu.
 enum DashboardCardKind: String, Codable, Sendable, CaseIterable {
   case large
+  case medium
   case small
   case horizontal
 
@@ -25,6 +26,8 @@ enum DashboardCardKind: String, Codable, Sendable, CaseIterable {
     switch self {
     case .large:
       return "dashboard.cardKind.large"
+    case .medium:
+      return "dashboard.cardKind.medium"
     case .small:
       return "dashboard.cardKind.small"
     case .horizontal:
@@ -36,6 +39,8 @@ enum DashboardCardKind: String, Codable, Sendable, CaseIterable {
     switch self {
     case .large:
       return "square.grid.2x2"
+    case .medium:
+      return "rectangle.grid.3x2"
     case .small:
       return "square.grid.3x3"
     case .horizontal:
@@ -47,6 +52,8 @@ enum DashboardCardKind: String, Codable, Sendable, CaseIterable {
     switch self {
     case .large:
       return LayoutConfig.dashboardLargeCardWidth
+    case .medium:
+      return LayoutConfig.dashboardMediumCardWidth
     case .small:
       return LayoutConfig.dashboardSmallCardWidth
     case .horizontal:
@@ -147,20 +154,20 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
 
   /// Card kinds the user can pick for this section. Series has no horizontal
   /// card; pinned sections only render as horizontal cards; recently added
-  /// books is a showcase section, so it offers large/small only. Read lists
+  /// books is a showcase section, so it offers no horizontal card. Read lists
   /// in progress shows each list's next book, so it offers the books kinds.
   var availableCardKinds: [DashboardCardKind] {
     switch self {
     case .recentlyAddedBooks:
-      return [.large, .small]
+      return [.large, .medium, .small]
     case .readListsInProgress:
-      return [.large, .small, .horizontal]
+      return [.large, .medium, .small, .horizontal]
     default:
       switch contentKind {
       case .books:
-        return [.large, .small, .horizontal]
+        return [.large, .medium, .small, .horizontal]
       case .series:
-        return [.large, .small]
+        return [.large, .medium, .small]
       case .collections, .readLists:
         return [.horizontal]
       }

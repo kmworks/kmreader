@@ -33,6 +33,17 @@ struct LayoutConfig {
     #endif
   }
 
+  /// Card width for the large-grid browse layout (bigger covers, fewer columns).
+  static var largeGridCardWidth: CGFloat {
+    #if os(tvOS)
+      return 320
+    #elseif os(macOS)
+      return 160
+    #else
+      return 200
+    #endif
+  }
+
   /// Large dashboard card width (showcase sections, e.g. recently added books).
   static var dashboardLargeCardWidth: CGFloat {
     #if os(tvOS)
@@ -45,6 +56,22 @@ struct LayoutConfig {
     #else
       // Apple Books showcase covers are ~150pt on both iPhone and iPad.
       return 152
+    #endif
+  }
+
+  /// Medium dashboard card width, midway between the large showcase and the
+  /// small utility cards.
+  static var dashboardMediumCardWidth: CGFloat {
+    #if os(tvOS)
+      return 270
+    #elseif os(macOS)
+      return 116
+    #else
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        return 124
+      } else {
+        return 116
+      }
     #endif
   }
 
@@ -199,8 +226,8 @@ struct LayoutConfig {
     #endif
   }
 
-  /// Adaptive grid columns based on the fixed grid card width
-  static var adaptiveColumns: [GridItem] {
-    [GridItem(.adaptive(minimum: gridCardWidth, maximum: .infinity), spacing: defaultSpacing)]
+  /// Adaptive grid columns based on the given card width
+  static func adaptiveColumns(cardWidth: CGFloat = gridCardWidth) -> [GridItem] {
+    [GridItem(.adaptive(minimum: cardWidth, maximum: .infinity), spacing: defaultSpacing)]
   }
 }
