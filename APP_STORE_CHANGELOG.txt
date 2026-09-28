@@ -1,24 +1,29 @@
 New
-- Set up a brand-new Komga server right from the login screen: KMReader detects an unclaimed server and guides you through creating the admin account.
-- Filter series and collections by age rating and release year.
-- In offline-first reading, the end page now shows the next book's download progress and when it's ready to read.
-- Fresh servers with no libraries get clear setup guidance on the dashboard.
+- Ordered read lists can now continue like series: opt in once, and any book in a list navigates in list order, with a Read Lists in Progress dashboard section showing each list's next book. Reading state syncs across your devices.
+- Dashboard sections get their own card styles: switch any section between large, small, and horizontal cards right from its header, with a new medium size in between, plus a setting to hide the style menu.
+- Browse pages get a three-way layout menu: Row, Medium, or Large grid.
+- Detail pages are redesigned around a compact hero and a single action card, with a two-column layout on iPad and Mac, collapsible metadata sections, and a prominent two-line Read button showing your progress.
+- Failed page loads in the reader now explain what went wrong and offer Retry instead of spinning forever.
+- Reading progress is only recorded after a few pages are turned (configurable), so accidentally opening a book no longer marks it as started or wipes a finished book's state.
+- Fresh default app icon: gradient glyph on white, with Classic and Legacy alternates still available.
+- Oneshot cards now show a book icon and the primary author instead of a bare label.
 
 Improvements
-- Downloads and the live server event stream now sign in with the same credentials as everything else, fixing missing page thumbnails and silent updates under API-key auth.
-- The dashboard reconnects its live updates when you return or recover from auto-offline, so changes made in other clients appear again.
-- Smoother pull-to-refresh on the Dashboard and Offline pages.
-- Multi-select on series, read list, and collection pages now uses familiar platform selection visuals.
-- Download status icons are calmer and easier to tell apart, and the read checkmark no longer looks like a download icon.
-- Series, read list, and collection pages update download state immediately after offline actions, with simpler chip-style controls.
-- Dual-page tap turns in Page Curl stay smooth in every preload profile.
-- Reading stats now default to the last 6 months.
+- Horizontal dashboard cards are tinted by the cover color, carry download status and a menu button, and match Apple Books sizing; card text and badges scale with card size.
+- The custom theme color is retired in favor of a clean monochrome look that follows the system.
+- Offline-first reading and auto-delete toggles moved into Reader settings, and section downloads moved onto each dashboard section's page with Download Latest 20 and Download All.
+- The API keys page now only protects the key this device actually uses, instead of locking keys created on your other devices.
+- Metadata edit sheets refresh the page right after saving, and their add buttons work reliably.
+- Filter and saved filters are now direct toolbar buttons on Browse and Offline pages.
+- Smoother pull-to-refresh, and iPad/macOS sidebars reload the whole page when switching collections or read lists.
+- KMReader now requires Komga 1.20.0 or later.
 
 Fixes
-- Fixed reader crashes and layout jumps on the end page while the next book downloads.
-- Fixed a crash when swiping while a next-book download update landed.
-- Fixed the end page cover losing its rounded corners after a refresh.
-- Fixed the library scope button not appearing and its picker not opening.
-- Fixed a crash decoding authentication activity records from unknown users or API keys.
-- Auto-generated API key names include the device model again, so keys from different devices are distinguishable.
-- Removed the dashboard "Server updated X ago" label, which reset every few seconds and never showed a useful time.
+- Fixed the Show More toggle disappearing on long summaries.
+- Fixed dashboard rows going stale on iPad after switching back to Home.
+- Fixed the reader's page dimension warning, which could not be dismissed.
+- Fixed book lists losing their sort order on some servers.
+- Fixed offline next/previous navigation disagreeing with the server for books sharing the same series number.
+- Fixed dark-mode cover shadows glowing white and oversized badges on small cards.
+- Fixed long-press menus not working on card covers.
+- Fixed returning to a detail page resetting its list back to the top.
