@@ -46,8 +46,11 @@ struct PaginationState<Item: Identifiable & Equatable> {
       guard newItems != items else { return false }
       items = newItems
     } else {
-      guard newItems.isEmpty == false else { return false }
-      items.append(contentsOf: newItems)
+      // The server stream can shift between page fetches, and duplicate ids break ForEach.
+      let loaded = Set(items.map(\.id))
+      let uniqueItems = newItems.filter { !loaded.contains($0.id) }
+      guard !uniqueItems.isEmpty else { return false }
+      items.append(contentsOf: uniqueItems)
     }
     return true
   }

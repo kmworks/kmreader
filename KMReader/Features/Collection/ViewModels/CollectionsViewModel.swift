@@ -132,17 +132,8 @@ class CollectionsViewModel {
   }
 
   private func applyPage(ids: [String], moreAvailable: Bool) {
-    // Appended pages dedupe against loaded items: the server stream can shift
-    // between page fetches, and duplicate ids break ForEach.
-    let wrappedIds: [IdentifiedString]
-    if pagination.currentPage == 0 {
-      wrappedIds = ids.map(IdentifiedString.init)
-    } else {
-      let loaded = Set(pagination.items.map(\.id))
-      wrappedIds = ids.filter { !loaded.contains($0) }.map(IdentifiedString.init)
-    }
     withAnimation {
-      _ = pagination.applyPage(wrappedIds)
+      _ = pagination.applyPage(ids.map(IdentifiedString.init))
     }
     pagination.advance(moreAvailable: moreAvailable)
   }
