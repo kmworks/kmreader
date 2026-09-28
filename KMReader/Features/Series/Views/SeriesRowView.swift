@@ -158,6 +158,7 @@ struct SeriesRowView: View {
           .foregroundColor(series.readStatusColor)
       }
     }
+    .lineLimit(1)
   }
 
   private func addToCollection(collectionId: String) {

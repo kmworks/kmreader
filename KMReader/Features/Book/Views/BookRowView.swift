@@ -98,6 +98,7 @@ struct BookRowView: View {
             }
             .font(.caption)
             .foregroundColor(.secondary)
+            .lineLimit(1)
 
             HStack(spacing: 4) {
               let mediaStatus = item.media.statusValue
@@ -114,7 +115,9 @@ struct BookRowView: View {
                 Label(item.size, systemImage: "doc")
                   .foregroundColor(.secondary)
               }
-            }.font(.footnote)
+            }
+            .font(.footnote)
+            .lineLimit(1)
           }
 
           Spacer()
