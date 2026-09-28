@@ -29,6 +29,19 @@ struct SeriesRowView: View {
     return Double(item.booksReadCount) / Double(item.booksCount)
   }
 
+  /// Combined "Language · Direction" metadata line; nil when the series has
+  /// neither, so the row only grows when there is something to show.
+  private var languageDirectionLine: String? {
+    var parts: [String] = []
+    if let language = series.metadata.language, !language.isEmpty {
+      parts.append(LanguageCodeHelper.displayName(for: language))
+    }
+    if let direction = series.metadata.readingDirection, !direction.isEmpty {
+      parts.append(ReadingDirection.fromString(direction).displayName)
+    }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+
   private var coverBlurRadius: CGFloat {
     thumbnailBlurUnreadCovers && item.isUnread ? CoverBlurStyle.unreadRadius : 0
   }
@@ -75,6 +88,12 @@ struct SeriesRowView: View {
                 .foregroundColor(.secondary)
             } else {
               Text("Last Updated: \(series.lastUpdatedDisplay)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+
+            if let languageDirectionLine {
+              Text(languageDirectionLine)
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
