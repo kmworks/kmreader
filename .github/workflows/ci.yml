@@ -11,7 +11,7 @@ on:
 jobs:
   ios:
     name: iOS
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -24,7 +24,7 @@ jobs:
 
   macos:
     name: macOS
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -37,7 +37,7 @@ jobs:
 
   tvos:
     name: tvOS
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

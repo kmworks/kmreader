@@ -161,7 +161,7 @@ jobs:
           fi
 
   upload:
-    runs-on: macos-26
+    runs-on: xcode-27
     needs: detect
     if: needs.detect.outputs.build_changed == 'true'
     strategy:
