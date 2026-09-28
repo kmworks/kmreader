@@ -47,12 +47,6 @@ struct SeriesRowView: View {
 
       VStack(alignment: .leading, spacing: 6) {
         NavigationLink(value: item.navDestination) {
-          Text(series.metadata.title)
-            .font(.callout)
-            .lineLimit(2)
-        }.adaptiveButtonStyle(.plain)
-
-        HStack {
           VStack(alignment: .leading, spacing: 4) {
             if series.oneshot {
               Label(item.oneshotLine, systemImage: "book.closed")
@@ -60,18 +54,27 @@ struct SeriesRowView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
-            } else {
+            }
+            Text(series.metadata.title)
+              .font(.callout)
+              .lineLimit(2)
+          }
+        }.adaptiveButtonStyle(.plain)
+
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            if !series.oneshot {
               Label(series.statusDisplayName, systemImage: series.statusIcon)
                 .font(.footnote)
                 .foregroundColor(series.statusColor)
             }
 
             if let releaseDate = series.booksMetadata.releaseDate {
-              Label("Release: \(releaseDate)", systemImage: "calendar")
+              Text("Release: \(releaseDate)")
                 .font(.caption)
                 .foregroundColor(.secondary)
             } else {
-              Label("Last Updated: \(series.lastUpdatedDisplay)", systemImage: "clock")
+              Text("Last Updated: \(series.lastUpdatedDisplay)")
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
@@ -139,7 +142,7 @@ struct SeriesRowView: View {
   @ViewBuilder
   private var readingProgressSummary: some View {
     HStack(spacing: 4) {
-      Label("\(series.booksCount) books", systemImage: ContentIcon.book)
+      Text("\(series.booksCount) books")
       Text("•")
 
       switch series.readStatus {

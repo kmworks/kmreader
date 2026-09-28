@@ -39,16 +39,13 @@ struct CollectionRowView: View {
 
         HStack {
           VStack(alignment: .leading, spacing: 4) {
-            Label("\(item.seriesCount) series", systemImage: ContentIcon.series)
+            Text("\(item.seriesCount) series")
               .font(.footnote)
               .foregroundColor(.secondary)
 
-            Label(
-              item.lastModifiedDate.formatted(date: .abbreviated, time: .omitted),
-              systemImage: "clock"
-            )
-            .font(.caption)
-            .foregroundColor(.secondary)
+            Text(item.lastModifiedDate.formatted(date: .abbreviated, time: .omitted))
+              .font(.caption)
+              .foregroundColor(.secondary)
           }
 
           Spacer()

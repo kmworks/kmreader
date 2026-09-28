@@ -70,11 +70,9 @@ struct BookRowView: View {
           VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
               if let releaseDate = item.metaReleaseDate, !releaseDate.isEmpty {
-                Label(releaseDate, systemImage: "calendar")
+                Text(releaseDate)
               } else {
-                Label(
-                  item.created.formatted(date: .abbreviated, time: .omitted),
-                  systemImage: "clock")
+                Text(item.created.formatted(date: .abbreviated, time: .omitted))
               }
               if let progressPage = item.progressPage,
                 let progressCompleted = item.progressCompleted
@@ -109,10 +107,10 @@ struct BookRowView: View {
                 Text(mediaStatus.label)
                   .foregroundColor(mediaStatus.color)
               } else {
-                Label("\(item.mediaPagesCount) pages", systemImage: "book.pages")
+                Text("\(item.mediaPagesCount) pages")
                   .foregroundColor(.secondary)
                 Text("•").foregroundColor(.secondary)
-                Label(item.size, systemImage: "doc")
+                Text(item.size)
                   .foregroundColor(.secondary)
               }
             }
