@@ -161,21 +161,12 @@ final class DashboardSectionViewModel {
   }
 
   private func applyPage(ids: [String], moreAvailable: Bool) {
-    let wrappedIds = ids.map(IdentifiedString.init)
-
     if pagination.currentPage == 0 {
       hasLoadedFirstPage = true
-      if pagination.items != wrappedIds {
-        withAnimation {
-          pagination.items = wrappedIds
-        }
-      }
-    } else if !wrappedIds.isEmpty {
-      withAnimation {
-        pagination.items.append(contentsOf: wrappedIds)
-      }
     }
-
+    withAnimation {
+      _ = pagination.applyPage(ids.map(IdentifiedString.init))
+    }
     pagination.advance(moreAvailable: moreAvailable)
   }
 
