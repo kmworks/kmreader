@@ -13,9 +13,6 @@ struct ReadListsInProgressSectionView: View {
   let section: DashboardSection
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
-  @AppStorage("showDashboardSectionGradientBackground")
-  private var showDashboardSectionGradientBackground: Bool =
-    AppConfig.showDashboardSectionGradientBackground
 
   private let logger = AppLogger(.dashboard)
 
@@ -28,83 +25,26 @@ struct ReadListsInProgressSectionView: View {
     }
   }
 
-  private var backgroundColors: [Color] {
-    [Color.dashboardGradientStart, Color.dashboardGradientEnd]
-  }
-
   private var cardKind: DashboardCardKind {
     dashboard.cardKind(for: section)
   }
 
-  private var spacing: CGFloat {
-    LayoutConfig.defaultSpacing
-  }
-
   var body: some View {
-    ZStack {
-      #if os(iOS) || os(macOS)
-        if showDashboardSectionGradientBackground {
-          LinearGradient(
-            colors: backgroundColors,
-            startPoint: .top,
-            endPoint: .bottom
-          ).ignoresSafeArea()
-        }
-      #endif
-
-      VStack(alignment: .leading, spacing: 0) {
-        HStack {
-          NavigationLink(value: NavDestination.browseReadLists) {
-            HStack {
-              Text(section.displayName)
-                .font(.title2)
-                .bold()
-                .fontDesign(.serif)
-              Image(systemName: "chevron.right")
-                .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .disabled(continuations.isEmpty)
-
-          Spacer()
-
-          DashboardCardKindMenu(section: section)
-        }
-        .padding(.horizontal)
-        .padding(.top)
-        #if os(macOS)
-          .padding(.leading, 16)
-        #endif
-
-        ScrollViewReader { proxy in
-          ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: spacing) {
-              ForEach(continuations, id: \.readListId) { continuation in
-                continuationCard(continuation)
-                  .id(continuation.readListId)
-                  .frame(width: cardKind.cardWidth)
-              }
-            }
-            .padding(.vertical)
-            #if os(macOS)
-              .padding(.leading, 16)
-            #endif
-          }
-          .contentMargins(.horizontal, spacing, for: .scrollContent)
-          .scrollClipDisabled()
-          #if os(macOS)
-            .macHorizontalScrollButtons(
-              scrollProxy: proxy,
-              itemIds: continuations.map(\.readListId)
-            )
-          #endif
+    DashboardSectionLayout(
+      section: section,
+      destination: .browseReadLists,
+      showsCardKindMenu: true,
+      isEmpty: continuations.isEmpty,
+      itemIds: continuations.map(\.readListId)
+    ) {
+      LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
+        ForEach(continuations, id: \.readListId) { continuation in
+          continuationCard(continuation)
+            .id(continuation.readListId)
+            .frame(width: cardKind.cardWidth)
         }
       }
     }
-    .opacity(continuations.isEmpty ? 0 : 1)
-    .frame(height: continuations.isEmpty ? 0 : nil)
     .onReceive(NotificationCenter.default.publisher(for: .dashboardSectionsShouldReload)) {
       notification in
       guard let command = DashboardSectionRefreshNotifier.reloadCommand(from: notification),
