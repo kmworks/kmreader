@@ -20,7 +20,7 @@ KMReader App Store app ID is `6755198424`. Confirm it with `asc apps list --name
 Before editing release copy, read and follow:
 
 - `../changelog/SKILL.md` for `APP_STORE_CHANGELOG.txt`
-- `../docs/SKILL.md` for `README.md`, `APP_STORE_DESCRIPTION.txt`, and `static/index.html`
+- `../docs/SKILL.md` for `README.md`, `APP_STORE_DESCRIPTION.txt`, and `website/src/pages/index.tsx`
 
 Do not duplicate those instructions here. This skill owns ordering, GitHub PR handling, App Store Connect release actions, and the follow-up version-cycle PR.
 
@@ -46,8 +46,8 @@ git tag --sort=-creatordate | head -20
 ```
 
 2. Generate `APP_STORE_CHANGELOG.txt` from the latest tag to `HEAD`. Read full commit bodies, not only subjects.
-3. Refresh `README.md`, `APP_STORE_DESCRIPTION.txt`, and `static/index.html` from current important product capabilities.
-4. Keep docs evergreen and concise. `APP_STORE_DESCRIPTION.txt` should be store-appropriate; `static/index.html` should align with the same product priorities.
+3. Refresh `README.md`, `APP_STORE_DESCRIPTION.txt`, and `website/src/pages/index.tsx` from current important product capabilities.
+4. Keep docs evergreen and concise. `APP_STORE_DESCRIPTION.txt` should be store-appropriate; `website/src/pages/index.tsx` should align with the same product priorities.
 5. Validate release copy:
 
 ```bash
@@ -63,7 +63,7 @@ Create a dedicated branch:
 
 ```bash
 git switch -c "docs/refresh-${version//./}-store-copy"
-git add README.md APP_STORE_DESCRIPTION.txt APP_STORE_CHANGELOG.txt static/index.html
+git add README.md APP_STORE_DESCRIPTION.txt APP_STORE_CHANGELOG.txt website/src/pages/index.tsx
 git commit -m "docs: refresh ${version} store copy"
 git push -u origin "docs/refresh-${version//./}-store-copy"
 ```

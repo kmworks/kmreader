@@ -84,7 +84,7 @@ const features: Feature[] = [
   {
     pill: 'Browse',
     title: 'Find the right book faster',
-    body: 'Keep Reading and On Deck dashboards, metadata filters, saved searches, and Spotlight indexing for downloaded content.',
+    body: 'Keep Reading and On Deck dashboards, read lists that continue like series, metadata filters, saved searches, and Spotlight indexing for downloaded content.',
     icon: <MagnifyingGlass size={26} weight="duotone" />,
   },
   {
@@ -199,7 +199,7 @@ const faqs = [
     q: 'Which server should I run?',
     a: (
       <>
-        Any Komga 1.19.0+ server works, including{' '}
+        Any Komga 1.20.0+ server works, including{' '}
         <Link href="https://kmworks.github.io/kmrs/">kmrs</Link>, the
         single-binary Rust server from the same family.
       </>

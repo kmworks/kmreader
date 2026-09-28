@@ -9,7 +9,7 @@ Read comics and books with DIVINA on iOS, macOS, and tvOS, plus EPUB and PDF on 
 Rotate individual pages, crop empty page borders in DIVINA, tune preloading for memory or smoother page turns, keep lightweight progress visible while reading, and choose native PDF presentation modes that adapt cleanly between portrait and landscape.
 
 - Browse and discover
-Use Keep Reading, On Deck, Recently Added, Recently Updated, pinned collections/read lists, reading history, an adjustable pages-read heatmap, saved filters, advanced metadata filters including age rating and release year with all/any matching, optional unread-cover blur, batch read-status updates from series pages, Spotlight indexing, widgets, and Home Screen quick actions.
+Use Keep Reading, On Deck, Recently Added, Recently Updated, Read Lists in Progress, pinned collections/read lists, reading history, an adjustable pages-read heatmap, saved filters, advanced metadata filters including age rating and release year with all/any matching, optional unread-cover blur, batch read-status updates from series pages, Spotlight indexing, widgets, and Home Screen quick actions. Dashboard sections offer per-section card styles, and ordered read lists can continue like series with reading state synced across devices.
 iPhone offers a dedicated Library tab for content-first browsing and a focused Search tab. KMReader keeps a local database for responsive browsing, dashboards, logs, and downloaded-library workflows, including large libraries. Dashboard library scopes stay tied to each saved server, and widgets mirror refreshed dashboard content.
 
 - Offline and sync
