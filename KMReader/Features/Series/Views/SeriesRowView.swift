@@ -29,17 +29,14 @@ struct SeriesRowView: View {
     return Double(item.booksReadCount) / Double(item.booksCount)
   }
 
-  /// Combined "Language · Direction" metadata line; nil when the series has
-  /// neither, so the row only grows when there is something to show.
-  private var languageDirectionLine: String? {
-    var parts: [String] = []
-    if let language = series.metadata.language, !language.isEmpty {
-      parts.append(LanguageCodeHelper.displayName(for: language))
-    }
-    if let direction = series.metadata.readingDirection, !direction.isEmpty {
-      parts.append(ReadingDirection.fromString(direction).displayName)
-    }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  private var languageLine: String? {
+    guard let language = series.metadata.language, !language.isEmpty else { return nil }
+    return LanguageCodeHelper.displayName(for: language)
+  }
+
+  private var readingDirectionValue: ReadingDirection? {
+    guard let direction = series.metadata.readingDirection, !direction.isEmpty else { return nil }
+    return ReadingDirection.fromString(direction)
   }
 
   private var coverBlurRadius: CGFloat {
@@ -92,10 +89,22 @@ struct SeriesRowView: View {
                 .foregroundColor(.secondary)
             }
 
-            if let languageDirectionLine {
-              Text(languageDirectionLine)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            if languageLine != nil || readingDirectionValue != nil {
+              HStack(spacing: 4) {
+                if let languageLine {
+                  Label(languageLine, systemImage: "globe")
+                }
+                if languageLine != nil && readingDirectionValue != nil {
+                  Text("·")
+                }
+                if let readingDirectionValue {
+                  Label(readingDirectionValue.displayName, systemImage: readingDirectionValue.icon)
+                }
+              }
+              .labelStyle(.compact)
+              .font(.caption)
+              .foregroundColor(.secondary)
+              .lineLimit(1)
             }
 
             HStack {
