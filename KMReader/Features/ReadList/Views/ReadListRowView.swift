@@ -35,16 +35,13 @@ struct ReadListRowView: View {
 
         HStack {
           VStack(alignment: .leading, spacing: 4) {
-            Label("\(item.bookCount) books", systemImage: ContentIcon.book)
+            Text("\(item.bookCount) books")
               .font(.footnote)
               .foregroundColor(.secondary)
 
-            Label(
-              item.lastModifiedDate.formatted(date: .abbreviated, time: .omitted),
-              systemImage: "clock"
-            )
-            .font(.caption)
-            .foregroundColor(.secondary)
+            Text(item.lastModifiedDate.formatted(date: .abbreviated, time: .omitted))
+              .font(.caption)
+              .foregroundColor(.secondary)
 
             if !item.summary.isEmpty {
               Text(item.summary)

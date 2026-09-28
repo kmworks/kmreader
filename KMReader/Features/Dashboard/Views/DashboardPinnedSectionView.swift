@@ -10,9 +10,6 @@ struct DashboardPinnedSectionView: View {
   let section: DashboardSection
 
   @AppStorage("currentAccount") private var current: Current = .init()
-  @AppStorage("showDashboardSectionGradientBackground")
-  private var showDashboardSectionGradientBackground: Bool =
-    AppConfig.showDashboardSectionGradientBackground
 
   @State private var viewModel: DashboardPinnedSectionViewModel
   @State private var collectionPendingDelete: CollectionDisplayItem?
@@ -67,10 +64,6 @@ struct DashboardPinnedSectionView: View {
     }
   }
 
-  private var backgroundColors: [Color] {
-    [Color.dashboardGradientStart, Color.dashboardGradientEnd]
-  }
-
   private var horizontalCardWidth: CGFloat {
     LayoutConfig.horizontalCardWidth
   }
@@ -79,97 +72,50 @@ struct DashboardPinnedSectionView: View {
     LayoutConfig.horizontalCoverWidth
   }
 
-  private var spacing: CGFloat {
-    LayoutConfig.defaultSpacing
-  }
-
   var body: some View {
     if isSupportedSection {
-      ZStack {
-        #if os(iOS) || os(macOS)
-          if showDashboardSectionGradientBackground {
-            LinearGradient(
-              colors: backgroundColors,
-              startPoint: .top,
-              endPoint: .bottom
-            ).ignoresSafeArea()
-          }
-        #endif
-
-        VStack(alignment: .leading, spacing: 0) {
-          NavigationLink(value: destination) {
-            HStack {
-              Text(section.displayName)
-                .font(.title2)
-                .bold()
-                .fontDesign(.serif)
-              Image(systemName: "chevron.right")
-                .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .padding(.horizontal)
-          .padding(.top)
-          #if os(macOS)
-            .padding(.leading, 16)
-          #endif
-          .disabled(!hasItems)
-
-          ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-              LazyHStack(alignment: .top, spacing: spacing) {
-                switch section.contentKind {
-                case .collections:
-                  ForEach(viewModel.pinnedCollections) { collection in
-                    CollectionHorizontalCardView(
-                      item: collection,
-                      coverWidth: horizontalCoverWidth,
-                      onChanged: schedulePinnedItemsReload,
-                      onDeleteRequested: {
-                        collectionPendingDelete = collection
-                        showCollectionDeleteConfirmation = true
-                      }
-                    )
-                    .id(collection.collectionId)
-                    .frame(width: horizontalCardWidth)
-                  }
-                case .readLists:
-                  ForEach(viewModel.pinnedReadLists) { readList in
-                    ReadListHorizontalCardView(
-                      item: readList,
-                      coverWidth: horizontalCoverWidth,
-                      onChanged: schedulePinnedItemsReload,
-                      onDeleteRequested: {
-                        readListPendingDelete = readList
-                        showReadListDeleteConfirmation = true
-                      }
-                    )
-                    .id(readList.readListId)
-                    .frame(width: horizontalCardWidth)
-                  }
-                default:
-                  EmptyView()
+      DashboardSectionLayout(
+        section: section,
+        destination: destination,
+        showsCardKindMenu: false,
+        isEmpty: !hasItems,
+        itemIds: itemIds
+      ) {
+        LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
+          switch section.contentKind {
+          case .collections:
+            ForEach(viewModel.pinnedCollections) { collection in
+              CollectionHorizontalCardView(
+                item: collection,
+                coverWidth: horizontalCoverWidth,
+                onChanged: schedulePinnedItemsReload,
+                onDeleteRequested: {
+                  collectionPendingDelete = collection
+                  showCollectionDeleteConfirmation = true
                 }
-              }
-              .padding(.vertical)
-              #if os(macOS)
-                .padding(.leading, 16)
-              #endif
-            }
-            .contentMargins(.horizontal, spacing, for: .scrollContent)
-            .scrollClipDisabled()
-            #if os(macOS)
-              .macHorizontalScrollButtons(
-                scrollProxy: proxy,
-                itemIds: itemIds
               )
-            #endif
+              .id(collection.collectionId)
+              .frame(width: horizontalCardWidth)
+            }
+          case .readLists:
+            ForEach(viewModel.pinnedReadLists) { readList in
+              ReadListHorizontalCardView(
+                item: readList,
+                coverWidth: horizontalCoverWidth,
+                onChanged: schedulePinnedItemsReload,
+                onDeleteRequested: {
+                  readListPendingDelete = readList
+                  showReadListDeleteConfirmation = true
+                }
+              )
+              .id(readList.readListId)
+              .frame(width: horizontalCardWidth)
+            }
+          default:
+            EmptyView()
           }
         }
       }
-      .opacity(hasItems ? 1 : 0)
-      .frame(height: hasItems ? nil : 0)
       .alert("Delete Collection", isPresented: $showCollectionDeleteConfirmation) {
         Button("Cancel", role: .cancel) {
           collectionPendingDelete = nil

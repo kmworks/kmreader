@@ -10,9 +10,6 @@ struct DashboardSectionView: View {
   let section: DashboardSection
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
-  @AppStorage("showDashboardSectionGradientBackground")
-  private var showDashboardSectionGradientBackground: Bool =
-    AppConfig.showDashboardSectionGradientBackground
 
   @State private var viewModel: DashboardSectionViewModel
 
@@ -21,10 +18,6 @@ struct DashboardSectionView: View {
   init(section: DashboardSection) {
     self.section = section
     _viewModel = State(initialValue: DashboardSectionViewModel(section: section))
-  }
-
-  private var backgroundColors: [Color] {
-    [Color.dashboardGradientStart, Color.dashboardGradientEnd]
   }
 
   private var cardKind: DashboardCardKind {
@@ -39,78 +32,25 @@ struct DashboardSectionView: View {
     cardKind == .horizontal ? LayoutConfig.horizontalCoverWidth : nil
   }
 
-  private var spacing: CGFloat {
-    LayoutConfig.defaultSpacing
-  }
-
   var body: some View {
-    ZStack {
-      #if os(iOS) || os(macOS)
-        if showDashboardSectionGradientBackground {
-          LinearGradient(
-            colors: backgroundColors,
-            startPoint: .top,
-            endPoint: .bottom
-          ).ignoresSafeArea()
-        }
-      #endif
-
-      VStack(alignment: .leading, spacing: 0) {
-        HStack {
-          NavigationLink(value: NavDestination.dashboardSectionDetail(section: section)) {
-            HStack {
-              Text(section.displayName)
-                .font(.title2)
-                .bold()
-                .fontDesign(.serif)
-              Image(systemName: "chevron.right")
-                .foregroundStyle(.secondary)
+    DashboardSectionLayout(
+      section: section,
+      destination: .dashboardSectionDetail(section: section),
+      showsCardKindMenu: true,
+      isEmpty: viewModel.pagination.isEmpty,
+      itemIds: viewModel.pagination.items.map(\.id)
+    ) {
+      LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
+        ForEach(viewModel.pagination.items) { item in
+          itemView(for: item.id)
+            .id(item.id)
+            .frame(width: itemWidth)
+            .onAppear {
+              viewModel.loadMoreIfNeeded(after: item, libraryIds: dashboard.libraryIds)
             }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .disabled(viewModel.pagination.isEmpty)
-
-          Spacer()
-
-          DashboardCardKindMenu(section: section)
-        }
-        .padding(.horizontal)
-        .padding(.top)
-        #if os(macOS)
-          .padding(.leading, 16)
-        #endif
-
-        ScrollViewReader { proxy in
-          ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: spacing) {
-              ForEach(viewModel.pagination.items) { item in
-                itemView(for: item.id)
-                  .id(item.id)
-                  .frame(width: itemWidth)
-                  .onAppear {
-                    viewModel.loadMoreIfNeeded(after: item, libraryIds: dashboard.libraryIds)
-                  }
-              }
-            }
-            .padding(.vertical)
-            #if os(macOS)
-              .padding(.leading, 16)
-            #endif
-          }
-          .contentMargins(.horizontal, spacing, for: .scrollContent)
-          .scrollClipDisabled()
-          #if os(macOS)
-            .macHorizontalScrollButtons(
-              scrollProxy: proxy,
-              itemIds: viewModel.pagination.items.map(\.id)
-            )
-          #endif
         }
       }
     }
-    .opacity(viewModel.pagination.isEmpty ? 0 : 1)
-    .frame(height: viewModel.pagination.isEmpty ? 0 : nil)
     .onReceive(NotificationCenter.default.publisher(for: .dashboardSectionsShouldReload)) {
       notification in
       guard let command = DashboardSectionRefreshNotifier.reloadCommand(from: notification) else {

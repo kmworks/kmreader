@@ -29,6 +29,16 @@ struct SeriesRowView: View {
     return Double(item.booksReadCount) / Double(item.booksCount)
   }
 
+  private var languageLine: String? {
+    guard let language = series.metadata.language, !language.isEmpty else { return nil }
+    return LanguageCodeHelper.displayName(for: language)
+  }
+
+  private var readingDirectionValue: ReadingDirection? {
+    guard let direction = series.metadata.readingDirection, !direction.isEmpty else { return nil }
+    return ReadingDirection.fromString(direction)
+  }
+
   private var coverBlurRadius: CGFloat {
     thumbnailBlurUnreadCovers && item.isUnread ? CoverBlurStyle.unreadRadius : 0
   }
@@ -47,12 +57,6 @@ struct SeriesRowView: View {
 
       VStack(alignment: .leading, spacing: 6) {
         NavigationLink(value: item.navDestination) {
-          Text(series.metadata.title)
-            .font(.callout)
-            .lineLimit(2)
-        }.adaptiveButtonStyle(.plain)
-
-        HStack {
           VStack(alignment: .leading, spacing: 4) {
             if series.oneshot {
               Label(item.oneshotLine, systemImage: "book.closed")
@@ -60,20 +64,47 @@ struct SeriesRowView: View {
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
-            } else {
+            }
+            Text(series.metadata.title)
+              .font(.callout)
+              .lineLimit(2)
+          }
+        }.adaptiveButtonStyle(.plain)
+
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            if !series.oneshot {
               Label(series.statusDisplayName, systemImage: series.statusIcon)
                 .font(.footnote)
                 .foregroundColor(series.statusColor)
             }
 
             if let releaseDate = series.booksMetadata.releaseDate {
-              Label("Release: \(releaseDate)", systemImage: "calendar")
+              Text("Release: \(releaseDate)")
                 .font(.caption)
                 .foregroundColor(.secondary)
             } else {
-              Label("Last Updated: \(series.lastUpdatedDisplay)", systemImage: "clock")
+              Text("Last Updated: \(series.lastUpdatedDisplay)")
                 .font(.caption)
                 .foregroundColor(.secondary)
+            }
+
+            if languageLine != nil || readingDirectionValue != nil {
+              HStack(spacing: 4) {
+                if let languageLine {
+                  Label(languageLine, systemImage: "globe")
+                }
+                if languageLine != nil && readingDirectionValue != nil {
+                  Text("·")
+                }
+                if let readingDirectionValue {
+                  Label(readingDirectionValue.displayName, systemImage: readingDirectionValue.icon)
+                }
+              }
+              .labelStyle(.compact)
+              .font(.caption)
+              .foregroundColor(.secondary)
+              .lineLimit(1)
             }
 
             HStack {
@@ -139,7 +170,7 @@ struct SeriesRowView: View {
   @ViewBuilder
   private var readingProgressSummary: some View {
     HStack(spacing: 4) {
-      Label("\(series.booksCount) books", systemImage: ContentIcon.book)
+      Text("\(series.booksCount) books")
       Text("•")
 
       switch series.readStatus {
@@ -158,6 +189,7 @@ struct SeriesRowView: View {
           .foregroundColor(series.readStatusColor)
       }
     }
+    .lineLimit(1)
   }
 
   private func addToCollection(collectionId: String) {

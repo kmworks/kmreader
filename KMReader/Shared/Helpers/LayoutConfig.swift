@@ -220,6 +220,28 @@ struct LayoutConfig {
     #endif
   }
 
+  /// Vertical padding inside a dashboard section band, above the header and
+  /// below the card strip. Both ends are equal so content sits evenly between
+  /// the band's gradient edges (Apple Books style); adjacent bands touch, so
+  /// each band's gray gradient edge is the separator between sections.
+  static var dashboardSectionVerticalPadding: CGFloat {
+    #if os(tvOS)
+      return 40
+    #else
+      return 30
+    #endif
+  }
+
+  /// Spacing between a dashboard section header and its card strip. Tighter
+  /// than the band padding so the header groups with its cards.
+  static var dashboardSectionHeaderSpacing: CGFloat {
+    #if os(tvOS)
+      return 24
+    #else
+      return 16
+    #endif
+  }
+
   /// Default spacing between cards
   static var defaultSpacing: CGFloat {
     #if os(tvOS)
