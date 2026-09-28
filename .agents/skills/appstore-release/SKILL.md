@@ -21,6 +21,7 @@ Before editing release copy, read and follow:
 
 - `../changelog/SKILL.md` for `APP_STORE_CHANGELOG.txt`
 - `../docs/SKILL.md` for `README.md`, `APP_STORE_DESCRIPTION.txt`, and `website/src/pages/index.tsx`
+- `../testflight/SKILL.md` for distributing builds to TestFlight groups
 
 Do not duplicate those instructions here. This skill owns ordering, GitHub PR handling, App Store Connect release actions, and the follow-up version-cycle PR.
 
