@@ -100,7 +100,7 @@ const config: Config = {
           title: 'Support',
           items: [
             {label: 'Support', href: 'mailto:everpcpc@icloud.com'},
-            {label: 'Privacy Policy', to: '/privacy/'},
+            {label: 'Privacy Policy', href: 'https://kmworks.date/kmreader/privacy'},
           ],
         },
         {
