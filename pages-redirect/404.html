@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <title>Redirecting…</title>
-<link rel="canonical" href="https://kmworks.date/reader/">
-<meta http-equiv="refresh" content="0; url=https://kmworks.date/reader/">
 <meta name="robots" content="noindex">
 </head>
 <body>
-This page moved to <a href="https://kmworks.date/reader/">https://kmworks.date/kmreader/</a>.
-<script>location.replace("https://kmworks.date/reader/");</script>
+<p>This page moved to <a id="dest" href="https://kmworks.date/reader/">kmworks.date/reader</a>.</p>
+<script>
+  var rest = location.pathname.replace(/^\/kmreader\/?/, '').replace(/^docs\/?/, '');
+  var target = 'https://kmworks.date/reader/' + rest;
+  document.getElementById('dest').href = target;
+  location.replace(target);
+</script>
 </body>
 </html>
