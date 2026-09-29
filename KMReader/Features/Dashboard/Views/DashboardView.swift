@@ -161,7 +161,7 @@ struct DashboardView: View {
       }
       .padding(.vertical)
     }
-    .tabRootNavigationBarTitle(String(localized: "title.dashboard"))
+    .platformNavigationTitle(String(localized: "title.dashboard"))
     .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
       // Refresh when server switch completes (transitions from switching to not switching)
       // This avoids race condition where refresh happens after logout but before new auth is ready

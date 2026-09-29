@@ -401,7 +401,7 @@
           .disabled(isSaveDisabled)
         }
       }
-      .inlineNavigationBarTitle(navigationTitle)
+      .platformNavigationTitle(navigationTitle)
       .task {
         _ = await loadCustomFonts()
       }

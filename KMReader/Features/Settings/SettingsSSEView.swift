@@ -99,6 +99,6 @@ struct SettingsSSEView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.sse.title)
+    .platformNavigationTitle(SettingsSection.sse.title)
   }
 }

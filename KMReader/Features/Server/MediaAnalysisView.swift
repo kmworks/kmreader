@@ -30,7 +30,7 @@ struct MediaAnalysisView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(String(localized: "Media Analysis"))
+    .platformNavigationTitle(String(localized: "Media Analysis"))
     .task {
       if current.isAdmin && !hasLoaded {
         await loadLibraries()

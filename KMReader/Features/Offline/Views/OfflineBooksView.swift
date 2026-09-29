@@ -87,7 +87,7 @@ struct OfflineBooksView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(OfflineSection.books.title)
+    .platformNavigationTitle(OfflineSection.books.title)
     #if os(iOS) || os(macOS)
       .toolbar {
         if !snapshot.isEmpty {

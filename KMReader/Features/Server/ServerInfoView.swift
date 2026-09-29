@@ -249,7 +249,7 @@ struct ServerInfoView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(ServerSection.serverInfo.title)
+    .platformNavigationTitle(ServerSection.serverInfo.title)
     .task {
       if current.isAdmin {
         await loadServerInfo()

@@ -472,7 +472,7 @@ struct DivinaPreferencesView: View {
     .animation(.default, value: forceDefaultReadingDirection)
     .animation(.default, value: readDirection)
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.divinaReader.title)
+    .platformNavigationTitle(SettingsSection.divinaReader.title)
   }
 
 }

@@ -105,7 +105,7 @@ struct DuplicatePagesUnknownView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(String(localized: "Unknown Duplicates"))
+    .platformNavigationTitle(String(localized: "Unknown Duplicates"))
     .task {
       if current.isAdmin && !hasLoaded {
         await loadData(refresh: true)

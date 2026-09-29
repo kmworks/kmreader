@@ -35,6 +35,6 @@ struct OpenSourceLicenseDetailView: View {
           .textSelectionIfAvailable()
       }
     }
-    .inlineNavigationBarTitle(license.name)
+    .platformNavigationTitle(license.name)
   }
 }

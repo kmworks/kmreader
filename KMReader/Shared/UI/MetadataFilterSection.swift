@@ -470,7 +470,7 @@ struct MultiSelectList: View {
       }
     }
     .searchable(text: $searchText, prompt: String(localized: "Search"))
-    .inlineNavigationBarTitle(title)
+    .platformNavigationTitle(title)
     .toolbar {
       ToolbarItem(placement: .cancellationAction) {
         Button(String(localized: "Reset")) {

@@ -90,7 +90,7 @@ struct ServerHistoryView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(ServerSection.history.title)
+    .platformNavigationTitle(ServerSection.history.title)
     #if os(iOS)
       .toolbar {
         ToolbarItem(placement: .primaryAction) {

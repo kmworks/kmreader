@@ -157,7 +157,7 @@ struct OfflineTasksView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(OfflineSection.tasks.title)
+    .platformNavigationTitle(OfflineSection.tasks.title)
     .alert(
       "Confirm Action", isPresented: $showingBulkAlert,
       presenting: pendingBulkAction

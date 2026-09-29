@@ -86,7 +86,7 @@ struct SettingsAccountView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(ServerSection.account.title)
+    .platformNavigationTitle(ServerSection.account.title)
     .sheet(isPresented: $showingUpdatePassword) {
       UpdatePasswordSheet(authViewModel: authViewModel)
         .presentationDetents([.medium])

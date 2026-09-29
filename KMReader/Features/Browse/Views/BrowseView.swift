@@ -102,17 +102,7 @@ struct BrowseView: View {
   }
 
   var body: some View {
-    Group {
-      if libraryTab {
-        // iPhone Library tab: the toolbar scope button carries the context, no
-        // nav title.
-        mainContent
-      } else if searchOnly {
-        mainContent.tabRootNavigationBarTitle(title)
-      } else {
-        mainContent.inlineNavigationBarTitle(title)
-      }
-    }
+    mainContent.platformNavigationTitle(title)
   }
 
   private var mainContent: some View {

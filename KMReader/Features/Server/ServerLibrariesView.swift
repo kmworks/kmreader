@@ -47,7 +47,7 @@ struct ServerLibrariesView: View {
       },
       refreshTrigger: libraryListRefreshTrigger
     )
-    .inlineNavigationBarTitle(ServerSection.libraries.title)
+    .platformNavigationTitle(ServerSection.libraries.title)
     .toolbar {
       if current.isAdmin && !isOffline {
         ToolbarItem(placement: .primaryAction) {

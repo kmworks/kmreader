@@ -115,6 +115,6 @@ struct SettingsAboutView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(String(localized: "About"))
+    .platformNavigationTitle(String(localized: "About"))
   }
 }

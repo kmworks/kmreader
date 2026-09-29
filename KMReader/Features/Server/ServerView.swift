@@ -22,7 +22,7 @@ struct ServerView: View {
       .padding(.horizontal)
       .padding(.vertical, 12)
     }
-    .inlineNavigationBarTitle(String(localized: "tab.server"))
+    .platformNavigationTitle(String(localized: "tab.server"))
   }
 
   private var managementSection: some View {

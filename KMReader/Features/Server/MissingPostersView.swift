@@ -59,7 +59,7 @@ struct MissingPostersView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(String(localized: "Missing Posters"))
+    .platformNavigationTitle(String(localized: "Missing Posters"))
     .task {
       if current.isAdmin && !hasLoaded {
         await loadData(refresh: true)

@@ -145,7 +145,7 @@ struct ServerListView: View {
     #if os(iOS) || os(macOS)
       .scrollContentBackground(.hidden)
     #endif
-    .inlineNavigationBarTitle(navigationTitle)
+    .platformNavigationTitle(navigationTitle)
     .sheet(item: $editingInstance) { instance in
       ServerEditView(
         instance: instance,
@@ -198,7 +198,7 @@ struct ServerListView: View {
       // existing navigation stack instead of presenting a second sheet.
       .navigationDestination(isPresented: $showLogin) {
         LoginView(authViewModel: authViewModel)
-        .inlineNavigationBarTitle(String(localized: "Connect to a Server"))
+        .platformNavigationTitle(String(localized: "Connect to a Server"))
       }
     #else
       .sheet(isPresented: $showLogin) {

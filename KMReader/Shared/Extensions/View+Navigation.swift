@@ -6,40 +6,13 @@
 import SwiftUI
 
 extension View {
-  /// Apply inline navigation bar title style on supported platforms.
-  /// - On iOS: sets navigation title and uses `.navigationBarTitleDisplayMode(.inline)`
-  /// - On macOS: sets navigation title only
-  /// - On other platforms (tvOS, etc.): no-op (does not set title)
-  func inlineNavigationBarTitle(_ title: String) -> some View {
-    #if os(iOS)
-      return self.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
-    #elseif os(macOS)
+  /// Set the navigation title on platforms that show one. Only macOS renders
+  /// it (as the window title); iOS and tvOS leave the navigation bar untitled
+  /// because tab labels, detail heroes, and section headers already carry page
+  /// identity.
+  func platformNavigationTitle(_ title: String) -> some View {
+    #if os(macOS)
       return self.navigationTitle(title)
-    #else
-      return self
-    #endif
-  }
-
-  /// Apply an inline navigation bar title, hiding it on iOS tab roots.
-  /// On iOS the centered inline title is squeezed between leading and
-  /// trailing toolbar items and never sits centered; the tab bar label
-  /// already identifies the page. macOS keeps the title.
-  func tabRootNavigationBarTitle(_ title: String) -> some View {
-    #if os(iOS)
-      return self.navigationTitle("").navigationBarTitleDisplayMode(.inline)
-    #elseif os(macOS)
-      return self.navigationTitle(title)
-    #else
-      return self
-    #endif
-  }
-
-  func inlineNavigationBarTitle(_ title: String, systemImage: String) -> some View {
-    #if os(iOS)
-      return self.navigationTitle(Text("\(Image(systemName: systemImage)) ") + Text(title))
-        .navigationBarTitleDisplayMode(.inline)
-    #elseif os(macOS)
-      return self.navigationTitle(Text("\(Image(systemName: systemImage)) ") + Text(title))
     #else
       return self
     #endif

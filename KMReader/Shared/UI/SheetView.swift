@@ -69,7 +69,7 @@ struct SheetView<Content: View, Controls: View>: View {
     NavigationStack {
       sheetContent()
         .padding(applyFormStyle ? 0 : PlatformHelper.sheetPadding)
-        .inlineTitleIfNeeded(title)
+        .navigationTitleIfNeeded(title)
     }
     .applySheetSize(size)
   }
@@ -141,9 +141,9 @@ struct SheetView<Content: View, Controls: View>: View {
 
 extension View {
   @ViewBuilder
-  fileprivate func inlineTitleIfNeeded(_ title: String?) -> some View {
+  fileprivate func navigationTitleIfNeeded(_ title: String?) -> some View {
     if let title {
-      self.inlineNavigationBarTitle(title)
+      self.platformNavigationTitle(title)
     } else {
       self
     }

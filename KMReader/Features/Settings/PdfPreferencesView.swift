@@ -157,7 +157,7 @@
       }
       .animation(.easeInOut(duration: 0.2), value: useNativePdfReader)
       .formStyle(.grouped)
-      .inlineNavigationBarTitle(SettingsSection.pdfReader.title)
+      .platformNavigationTitle(SettingsSection.pdfReader.title)
     }
   }
 #endif

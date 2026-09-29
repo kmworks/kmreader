@@ -57,7 +57,7 @@ struct AccountActivityView: View {
     }
     // Cannot use Form for this, it would cause endless fetch on macOS.
     .optimizedListStyle()
-    .inlineNavigationBarTitle(ServerSection.authenticationActivity.title)
+    .platformNavigationTitle(ServerSection.authenticationActivity.title)
     .task {
       if current.isAdmin {
         await loadActivities(refresh: true)
