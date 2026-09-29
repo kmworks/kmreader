@@ -24,5 +24,5 @@ Edit metadata, manage libraries and media, find missing posters or duplicates, m
 KMReader targets Komga 1.20.0+ and supports API v1/v2.
 KMReader UI is localized in English, German, French, Japanese, Korean, Simplified Chinese, Traditional Chinese, Italian, Russian, and Spanish.
 
-Privacy Policy: https://kmworks.github.io/kmreader/privacy/
+Privacy Policy: https://kmworks.date/reader/privacy/
 Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
