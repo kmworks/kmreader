@@ -13,7 +13,7 @@ nonisolated enum SeriesContinueReadingOnlineResolver {
     }
 
     if let lastRead = await fetchLatestBook(seriesId: seriesId, status: .read) {
-      if let next = try? await BookService.getNextBook(bookId: lastRead.id) {
+      if let next = try? await NextBookToReadResolver.resolve(after: lastRead, readListId: nil) {
         return next
       }
       if let unread = await fetchFirstUnreadBook(seriesId: seriesId) {

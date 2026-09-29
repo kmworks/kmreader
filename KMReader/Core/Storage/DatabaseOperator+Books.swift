@@ -295,13 +295,12 @@ extension DatabaseOperator {
         instanceId: instanceId,
         completed: true,
         downloadedOnly: downloadedOnly
-      ) {
-        if let nextBook = orderedBooks.first(where: {
-          $0.metaNumberSort > lastRead.metaNumberSort
-            || ($0.metaNumberSort == lastRead.metaNumberSort && $0.id > lastRead.id)
-        }) {
-          return nextBook.toBook()
-        }
+      ),
+        let lastReadIndex = orderedBooks.firstIndex(where: { $0.id == lastRead.id }),
+        let nextBook = orderedBooks.nextToRead(
+          after: lastReadIndex, isRead: { $0.progressCompleted == true })
+      {
+        return nextBook.toBook()
       }
 
       if let firstUnread = orderedBooks.first(where: {
@@ -567,6 +566,8 @@ extension DatabaseOperator {
     }
   }
 
+  /// The book to read after `bookId` in its series, or in `readListId`'s
+  /// order: the first later book that isn't read, else the plain next book.
   func getNextBook(instanceId: String, bookId: String, readListId: String?) async -> Book? {
     try? read { db in
       guard let currentBook = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId) else {
@@ -579,12 +580,10 @@ extension DatabaseOperator {
         books = try fetchSeriesBooks(
           db: db, seriesId: currentBook.seriesId, instanceId: instanceId, page: 0, size: 1000)
       }
-      guard let currentIndex = books.firstIndex(where: { $0.id == bookId }),
-        currentIndex < books.count - 1
-      else {
+      guard let currentIndex = books.firstIndex(where: { $0.id == bookId }) else {
         return nil
       }
-      return books[currentIndex + 1]
+      return books.nextToRead(after: currentIndex, isRead: { $0.isCompleted })
     }
   }
 

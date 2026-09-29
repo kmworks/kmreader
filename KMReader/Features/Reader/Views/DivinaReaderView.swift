@@ -1310,8 +1310,8 @@ struct DivinaReaderView: View {
         }
       }
 
-      // 4. Defer adjacent-book resolution to a background task. The two server
-      // round trips (`/books/{id}/previous` + `/.../next`) account for ~2/3 of the
+      // 4. Defer adjacent-book resolution to a background task. The previous-
+      // and next-book server lookups account for ~2/3 of the
       // open-time network latency on a typical setup, but neither result affects
       // the initial render — `previousBook`/`nextBook` are consumed only by
       // post-open features (next/prev navigation buttons, end-page hints,
@@ -1321,8 +1321,8 @@ struct DivinaReaderView: View {
       self.previousBook = nil
       self.nextBook = nil
       deferredAdjacentBookTask?.cancel()
-      deferredAdjacentBookTask = Task { [bookId] in
-        let adjacentBooks = await resolveAdjacentBooks(for: bookId)
+      deferredAdjacentBookTask = Task { [bookId, activeBook] in
+        let adjacentBooks = await resolveAdjacentBooks(for: activeBook)
         guard !Task.isCancelled, currentBookId == bookId else { return }
         previousBook = adjacentBooks.previous
         nextBook = adjacentBooks.next
@@ -1358,21 +1358,23 @@ struct DivinaReaderView: View {
     await preloadAdjacentSegmentsForCurrentPositionIfNeeded()
   }
 
-  private func resolveAdjacentBooks(for bookId: String) async -> (previous: Book?, next: Book?) {
+  /// The next book skips books already read (`NextBookToReadResolver`, like the
+  /// dashboard); the previous book stays plain order.
+  private func resolveAdjacentBooks(for book: Book) async -> (previous: Book?, next: Book?) {
     let readListId = readListContext?.id
     let instanceId = AppConfig.current.instanceId
     let database = await DatabaseOperator.databaseIfConfigured()
 
     let resolvedNextBook = await resolveAdjacentBook(
       direction: .next,
-      bookId: bookId,
+      book: book,
       readListId: readListId,
       instanceId: instanceId,
       database: database
     )
     let resolvedPreviousBook = await resolveAdjacentBook(
       direction: .previous,
-      bookId: bookId,
+      book: book,
       readListId: readListId,
       instanceId: instanceId,
       database: database
@@ -1388,7 +1390,7 @@ struct DivinaReaderView: View {
 
   private func resolveAdjacentBook(
     direction: AdjacentBookDirection,
-    bookId: String,
+    book: Book,
     readListId: String?,
     instanceId: String,
     database: DatabaseOperator?
@@ -1396,7 +1398,7 @@ struct DivinaReaderView: View {
     if AppConfig.isOffline {
       return await cachedAdjacentBook(
         direction: direction,
-        bookId: bookId,
+        bookId: book.id,
         readListId: readListId,
         instanceId: instanceId,
         database: database
@@ -1408,12 +1410,12 @@ struct DivinaReaderView: View {
       switch direction {
       case .previous:
         resolvedBook = try await BookService.getPreviousBook(
-          bookId: bookId,
+          bookId: book.id,
           readListId: readListId
         )
       case .next:
-        resolvedBook = try await BookService.getNextBook(
-          bookId: bookId,
+        resolvedBook = try await NextBookToReadResolver.resolve(
+          after: book,
           readListId: readListId
         )
       }
@@ -1424,11 +1426,11 @@ struct DivinaReaderView: View {
       return resolvedBook
     } catch {
       logger.warning(
-        "⚠️ Failed to resolve \(direction == .next ? "next" : "previous") book from server for \(bookId): \(error)"
+        "⚠️ Failed to resolve \(direction == .next ? "next" : "previous") book from server for \(book.id): \(error)"
       )
       return await cachedAdjacentBook(
         direction: direction,
-        bookId: bookId,
+        bookId: book.id,
         readListId: readListId,
         instanceId: instanceId,
         database: database
@@ -1474,7 +1476,7 @@ struct DivinaReaderView: View {
     var resolvedNextBook = viewModel.nextBook(forSegmentBookId: segmentBookId)
 
     if resolvedPreviousBook == nil || resolvedNextBook == nil {
-      let adjacentBooks = await resolveAdjacentBooks(for: segmentBookId)
+      let adjacentBooks = await resolveAdjacentBooks(for: segmentBook)
       resolvedPreviousBook = resolvedPreviousBook ?? adjacentBooks.previous
       resolvedNextBook = resolvedNextBook ?? adjacentBooks.next
     }
@@ -1490,7 +1492,7 @@ struct DivinaReaderView: View {
     if let cachedPreviousBook = viewModel.previousBook(forSegmentBookId: book.id) {
       return cachedPreviousBook
     }
-    let previousAdjacentBooks = await resolveAdjacentBooks(for: book.id)
+    let previousAdjacentBooks = await resolveAdjacentBooks(for: book)
     return previousAdjacentBooks.previous
   }
 
