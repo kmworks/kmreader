@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Redirecting…</title>
+<meta name="robots" content="noindex">
+</head>
+<body>
+<p>This page moved to <a id="dest" href="https://kmworks.date/reader/">kmworks.date/reader</a>.</p>
+<script>
+  var rest = location.pathname.replace(/^\/kmreader\/?/, '').replace(/^docs\/?/, '');
+  var target = 'https://kmworks.date/reader/' + rest;
+  document.getElementById('dest').href = target;
+  location.replace(target);
+</script>
+</body>
+</html>

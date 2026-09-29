@@ -20,5 +20,5 @@ Open Settings and add a server with its address, for example `https://komga.exam
 Sign in with your Komga username and password, or with an API key. Keys can be created and managed in the app.
 
 :::note
-Any Komga 1.20.0+ server works, including [kmrs](https://kmworks.github.io/kmrs/), the single-binary Rust server from the same family.
+Any Komga 1.20.0+ server works, including [kmrs](/server/), the single-binary Rust server from the same family.
 :::
