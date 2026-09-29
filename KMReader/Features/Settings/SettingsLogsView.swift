@@ -108,7 +108,7 @@ struct SettingsLogsView: View {
     .task {
       await loadLogs()
     }
-    .inlineNavigationBarTitle(SettingsSection.logs.title)
+    .platformNavigationTitle(SettingsSection.logs.title)
   }
 
   @ViewBuilder

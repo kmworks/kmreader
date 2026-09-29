@@ -101,7 +101,7 @@ struct SettingsAppearanceView: View {
 
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.appearance.title)
+    .platformNavigationTitle(SettingsSection.appearance.title)
     #if os(iOS)
       .onAppear {
         selectedAppIcon = AppIconOption.from(alternateIconName: UIApplication.shared.alternateIconName)

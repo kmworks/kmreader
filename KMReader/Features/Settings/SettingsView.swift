@@ -124,6 +124,6 @@ struct SettingsView: View {
       }
     }
     .formStyle(.grouped)
-    .tabRootNavigationBarTitle(String(localized: "title.settings"))
+    .platformNavigationTitle(String(localized: "title.settings"))
   }
 }

@@ -30,6 +30,6 @@ struct OpenSourceLicensesView: View {
         }
       }
     }
-    .inlineNavigationBarTitle(String(localized: "Open Source Licenses"))
+    .platformNavigationTitle(String(localized: "Open Source Licenses"))
   }
 }

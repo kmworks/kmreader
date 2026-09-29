@@ -123,7 +123,7 @@ struct ApiKeysView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(ServerSection.apiKeys.title)
+    .platformNavigationTitle(ServerSection.apiKeys.title)
     #if os(iOS)
       .toolbar {
         ToolbarItem(placement: .primaryAction) {

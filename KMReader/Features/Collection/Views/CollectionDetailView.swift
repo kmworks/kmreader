@@ -108,7 +108,7 @@ struct CollectionDetailView: View {
     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) {
       detailContentWidth = $0
     }
-    .inlineNavigationBarTitle(navigationTitle)
+    .platformNavigationTitle(navigationTitle)
     .komgaHandoff(
       title: navigationTitle,
       url: KomgaWebLinkBuilder.collection(serverURL: current.serverURL, collectionId: collectionId),

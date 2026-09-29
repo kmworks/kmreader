@@ -36,6 +36,6 @@ struct SettingsSystemFeaturesView: View {
       #endif
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.systemFeatures.title)
+    .platformNavigationTitle(SettingsSection.systemFeatures.title)
   }
 }

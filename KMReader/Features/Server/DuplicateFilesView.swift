@@ -74,7 +74,7 @@ struct DuplicateFilesView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(String(localized: "Duplicate Files"))
+    .platformNavigationTitle(String(localized: "Duplicate Files"))
     .task {
       if current.isAdmin && !hasLoaded {
         await loadData(refresh: true)

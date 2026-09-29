@@ -59,6 +59,6 @@ struct SettingsManagementView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(String(localized: "Management"))
+    .platformNavigationTitle(String(localized: "Management"))
   }
 }

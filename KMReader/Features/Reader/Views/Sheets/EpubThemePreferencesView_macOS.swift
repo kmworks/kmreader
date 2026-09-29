@@ -344,7 +344,7 @@
       .safeAreaInset(edge: .bottom, spacing: 0) {
         controlsBar
       }
-      .inlineNavigationBarTitle(navigationTitle)
+      .platformNavigationTitle(navigationTitle)
       .sheet(isPresented: $showPresetsSheet) {
         EpubThemePresetsView(onApply: { preferences in
           draft = preferences

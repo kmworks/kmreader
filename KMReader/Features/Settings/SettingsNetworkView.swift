@@ -61,7 +61,7 @@ struct SettingsNetworkView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.network.title)
+    .platformNavigationTitle(SettingsSection.network.title)
   }
 
   @ViewBuilder

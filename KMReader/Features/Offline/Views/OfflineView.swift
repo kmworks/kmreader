@@ -144,7 +144,7 @@ struct OfflineView: View {
         browseContentView
       }
     }
-    .tabRootNavigationBarTitle(title)
+    .platformNavigationTitle(title)
     .searchable(text: $searchQuery, placement: searchPlacement)
     #if os(iOS) || os(macOS)
       .refreshableWithMinimumHold {

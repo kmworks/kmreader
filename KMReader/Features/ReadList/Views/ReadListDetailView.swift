@@ -135,7 +135,7 @@ struct ReadListDetailView: View {
     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) {
       detailContentWidth = $0
     }
-    .inlineNavigationBarTitle(navigationTitle)
+    .platformNavigationTitle(navigationTitle)
     .komgaHandoff(
       title: navigationTitle,
       url: KomgaWebLinkBuilder.readList(serverURL: current.serverURL, readListId: readListId),

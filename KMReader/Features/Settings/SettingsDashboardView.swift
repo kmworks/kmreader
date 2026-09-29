@@ -113,7 +113,7 @@ struct SettingsDashboardView: View {
         }
       }
       .optimizedListStyle()
-      .inlineNavigationBarTitle(SettingsSection.dashboard.title)
+      .platformNavigationTitle(SettingsSection.dashboard.title)
       .toolbar {
         EditButton()
       }
@@ -243,7 +243,7 @@ struct SettingsDashboardView: View {
         }
       }
       .formStyle(.grouped)
-      .inlineNavigationBarTitle(SettingsSection.dashboard.title)
+      .platformNavigationTitle(SettingsSection.dashboard.title)
     }
   }
 
@@ -422,7 +422,7 @@ struct SettingsDashboardView: View {
         }
       }
       .environment(\.editMode, $editModeValue)
-      .inlineNavigationBarTitle(SettingsSection.dashboard.title)
+      .platformNavigationTitle(SettingsSection.dashboard.title)
     }
 
     private func moveItem(from source: IndexSet, to destination: Int) {

@@ -171,7 +171,7 @@ struct ServerTasksView: View {
       }
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(ServerSection.tasks.title)
+    .platformNavigationTitle(ServerSection.tasks.title)
     #if os(iOS)
       .toolbar {
         ToolbarItem(placement: .primaryAction) {

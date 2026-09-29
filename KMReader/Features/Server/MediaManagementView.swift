@@ -39,6 +39,6 @@ struct MediaManagementView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(ServerSection.media.title)
+    .platformNavigationTitle(ServerSection.media.title)
   }
 }

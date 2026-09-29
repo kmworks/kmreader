@@ -63,7 +63,7 @@ struct ServerReadingStatsView: View {
       .padding(.horizontal)
       .padding(.vertical, 12)
     }
-    .inlineNavigationBarTitle(ServerSection.readingStats.title)
+    .platformNavigationTitle(ServerSection.readingStats.title)
     .task(id: current.instanceId) {
       selectedLibraryId = ""
       await loadLocalContext()

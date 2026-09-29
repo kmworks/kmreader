@@ -291,7 +291,7 @@ struct SettingsCacheView: View {
 
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.cache.title)
+    .platformNavigationTitle(SettingsSection.cache.title)
     .alert("Clear Page (Current Server)", isPresented: $showClearImageCacheConfirmation) {
       Button("Clear", role: .destructive) {
         Task {

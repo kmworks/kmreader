@@ -28,7 +28,7 @@ struct DuplicatePagesKnownView: View {
       }
     }
     .optimizedListStyle()
-    .inlineNavigationBarTitle(String(localized: "Known Duplicates"))
+    .platformNavigationTitle(String(localized: "Known Duplicates"))
     .task {
       if current.isAdmin && !hasLoaded {
         await loadData(refresh: true)

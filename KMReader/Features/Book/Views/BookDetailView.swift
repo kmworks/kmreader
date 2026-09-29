@@ -75,7 +75,7 @@ struct BookDetailView: View {
       }
       .padding()
     }
-    .inlineNavigationBarTitle(navigationTitle)
+    .platformNavigationTitle(navigationTitle)
     .komgaHandoff(
       title: navigationTitle,
       url: KomgaWebLinkBuilder.book(serverURL: current.serverURL, bookId: bookId),

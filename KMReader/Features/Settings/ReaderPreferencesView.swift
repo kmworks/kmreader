@@ -105,7 +105,7 @@ struct ReaderPreferencesView: View {
       #endif
     }
     .formStyle(.grouped)
-    .inlineNavigationBarTitle(SettingsSection.reading.title)
+    .platformNavigationTitle(SettingsSection.reading.title)
     .alert(
       String(localized: "settings.offline.auto_delete_read"),
       isPresented: $showingAutoDeleteAlert

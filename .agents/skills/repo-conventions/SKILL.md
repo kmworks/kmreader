@@ -164,6 +164,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Toolbar
 
+- Navigation-bar titles are not shown on iOS/tvOS anywhere: tab labels, detail heroes, and section headers carry page identity, so `platformNavigationTitle` sets only the macOS window title. Do not reintroduce `.navigationTitle` on iOS.
 - Toolbar trailing policy: at most one trailing toolbar button per content page (two only when a primary action sits next to the single ellipsis menu, e.g. Dashboard search). Everything else lives inside the ellipsis menu; sheet/alert presentations from menu items must go through `deferMenuActionPresentation`.
 - When a trailing menu would hold only filter actions (BrowseView, OfflineView), it is expanded into trailing icon buttons instead: Filter always, plus Saved Filters for series/books content. Detail pages carry no Filter/Saved Filters menu entries; the filter chip row owns those entry points.
 - Toolbar button ordering: conditional buttons go on the inside of a trailing group (closer to the title); unconditional buttons hold the outer edge, so the edge position never shifts when the condition toggles (BrowseView/OfflineView keep Filter at the edge, Saved Filters inside).

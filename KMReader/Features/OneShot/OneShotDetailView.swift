@@ -88,7 +88,7 @@ struct OneshotDetailView: View {
       }
       .padding()
     }
-    .inlineNavigationBarTitle(navigationTitle)
+    .platformNavigationTitle(navigationTitle)
     .komgaHandoff(
       title: navigationTitle,
       url: KomgaWebLinkBuilder.oneshot(serverURL: current.serverURL, seriesId: seriesId),
