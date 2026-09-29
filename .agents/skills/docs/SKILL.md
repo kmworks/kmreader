@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Regenerate README.md, APP_STORE_DESCRIPTION.txt, and website/src/pages/index.tsx based on current important product features in the codebase.
+description: Regenerate README.md, APP_STORE_DESCRIPTION.txt, and the KMReader landing page (src/pages/reader/index.tsx in the kmworks/website repo) based on current important product features in the codebase.
 ---
 
 # Docs
@@ -11,13 +11,13 @@ Regenerate key project docs from current product capabilities.
 
 - The user asks to refresh project docs after feature changes.
 - README and App Store description are outdated.
-- Marketing landing content in `website/src/pages/index.tsx` needs alignment with current app features.
+- Marketing landing content in the kmworks/website repo (`src/pages/reader/index.tsx`) needs alignment with current app features.
 
 ## Target Files
 
 - `README.md`
 - `APP_STORE_DESCRIPTION.txt`
-- `website/src/pages/index.tsx`
+- `src/pages/reader/index.tsx` in the kmworks/website repo (commit there separately)
 
 ## Scope Rules
 
@@ -43,7 +43,7 @@ Regenerate key project docs from current product capabilities.
 4. Update all target files so wording and feature emphasis stay aligned.
 5. Keep `README.md` as the most complete overview.
 6. Keep `APP_STORE_DESCRIPTION.txt` concise and store-appropriate.
-7. Keep `website/src/pages/index.tsx` aligned with the same feature priorities.
+7. Keep the website repo's `src/pages/reader/index.tsx` aligned with the same feature priorities.
 
 ## Validation
 

@@ -39,3 +39,4 @@ AuthKey_*.p8
 packages/
 worktrees/
 .alma-snapshots
+.cloudflare/
