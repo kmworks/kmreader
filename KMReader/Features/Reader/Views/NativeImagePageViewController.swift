@@ -7,8 +7,8 @@
   import UIKit
 
   @MainActor
-  final class NativeImagePageViewController: UIViewController, UIScrollViewDelegate,
-    UIGestureRecognizerDelegate
+  final class NativeImagePageViewController: UIViewController, UIGestureRecognizerDelegate,
+    PageScrollControllerHost
   {
     private weak var viewModel: ReaderViewModel?
 
@@ -29,8 +29,16 @@
       doubleTapZoomMode: .enabled
     )
 
-    private let scrollView = UIScrollView()
     private let pageItem = NativePageItem()
+    private lazy var scrollController: PageScrollController = {
+      let controller = PageScrollController(contentView: pageItem)
+      controller.host = self
+      return controller
+    }()
+
+    private var scrollView: SpreadPanningScrollView {
+      scrollController.scrollView
+    }
 
     private var loadTask: Task<Void, Never>?
     private var animatedInlinePreparationTask: Task<Void, Never>?
@@ -38,11 +46,14 @@
     private var lastConfiguredPageID: ReaderPageID?
     private var isVisibleForAnimatedInlinePlayback = false
 
+    /// `wholeSpread` is set when the page shows as a whole spread; its
+    /// arrival edge applies only when the page changes.
     func configure(
       viewModel: ReaderViewModel,
       pageID: ReaderPageID,
       splitMode: PageSplitMode,
       alignment: HorizontalAlignment = .center,
+      wholeSpread: WholeSpreadPresentation? = nil,
       readingDirection: ReadingDirection,
       renderConfig: ReaderRenderConfig
     ) {
@@ -54,6 +65,7 @@
       self.alignment = alignment
       self.readingDirection = readingDirection
       self.renderConfig = renderConfig
+      scrollController.configure(viewModel: viewModel, wholeSpread: wholeSpread, itemChanged: isPageChanged)
 
       if isPageChanged {
         loadTask?.cancel()
@@ -75,6 +87,11 @@
       setupUI()
       setupGestures()
       applyConfiguration()
+    }
+
+    override func viewDidLayoutSubviews() {
+      super.viewDidLayoutSubviews()
+      scrollController.updateLayout(viewportSize: view.bounds.size)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -101,13 +118,6 @@
     private func setupUI() {
       view.backgroundColor = UIColor(renderConfig.readerBackground.color)
 
-      scrollView.translatesAutoresizingMaskIntoConstraints = false
-      scrollView.delegate = self
-      scrollView.minimumZoomScale = 1.0
-      scrollView.maximumZoomScale = 8.0
-      scrollView.showsHorizontalScrollIndicator = false
-      scrollView.showsVerticalScrollIndicator = false
-      scrollView.contentInsetAdjustmentBehavior = .never
       scrollView.backgroundColor = UIColor(renderConfig.readerBackground.color)
       view.addSubview(scrollView)
 
@@ -117,18 +127,31 @@
         scrollView.topAnchor.constraint(equalTo: view.topAnchor),
         scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
       ])
+    }
 
-      pageItem.translatesAutoresizingMaskIntoConstraints = false
-      scrollView.addSubview(pageItem)
+    /// Pans the whole spread to `edge` for a navigation command.
+    func panWholeSpread(to edge: ReaderSpreadEdge, animated: Bool) {
+      scrollController.panSpread(to: edge, animated: animated)
+    }
 
-      NSLayoutConstraint.activate([
-        pageItem.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
-        pageItem.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-        pageItem.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
-        pageItem.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-        pageItem.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-        pageItem.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
-      ])
+    /// Whether a horizontal drag would pan the whole spread rather than turn
+    /// the page.
+    func canPanWholeSpread(forHorizontalDrag translationX: CGFloat) -> Bool {
+      scrollController.canPanSpread(forHorizontalDrag: translationX)
+    }
+
+    /// Reports where the whole spread rests; the engine calls it once the
+    /// page becomes current.
+    func reportWholeSpreadPosition() {
+      scrollController.reportPosition()
+    }
+
+    var showsCommittedPage: Bool {
+      viewModel?.currentViewItem()?.pageIDs.contains(pageID) == true
+    }
+
+    func displayedImageSize(for pageID: ReaderPageID) -> CGSize? {
+      pageItem.displayedImageSize(for: pageID)
     }
 
     private func setupGestures() {
@@ -181,6 +204,7 @@
       )
 
       updateAnimatedInlinePlayback()
+      scrollController.updateLayout(viewportSize: view.bounds.size)
 
       if image == nil, readerPage != nil, !loadFailed {
         startLoadingImageIfNeeded()
@@ -290,11 +314,7 @@
       }
     }
 
-    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-      pageItem
-    }
-
-    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+    func pageScrollControllerDidZoom(_ controller: PageScrollController) {
       guard let viewModel else { return }
       let zoomed = scrollView.zoomScale > (scrollView.minimumZoomScale + 0.01)
       guard viewModel.isZoomed != zoomed else { return }

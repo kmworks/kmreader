@@ -1852,9 +1852,7 @@ struct DivinaReaderView: View {
         1
       }
 
-    if let item = viewModel.adjacentViewItem(offset: offset) {
-      viewModel.requestNavigation(toViewItem: item)
-    } else {
+    if !viewModel.requestPagedStep(offset: offset) {
       Task { @MainActor in
         _ = await navigateAcrossBoundaryIfNeeded(offset: offset)
       }

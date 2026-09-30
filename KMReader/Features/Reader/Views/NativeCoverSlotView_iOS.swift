@@ -38,6 +38,11 @@
       doubleTapZoomMode: .enabled
     )
     private var readListContext: ReaderReadListContext?
+    // Not part of `Configuration`: everything the page host reads from it
+    // follows fields that are. Its arrival edge applies only on an item
+    // change, and its start side comes from the reading direction and split
+    // mode; either change forces an apply.
+    private var wholeSpread: WholeSpreadPresentation?
     private var isPlaybackActive = false
     private var tracksGlobalZoomState = false
     private var onDismiss: (() -> Void)?
@@ -48,6 +53,14 @@
 
     func forceResetZoom() {
       pageContentView.forceResetZoom()
+    }
+
+    func panWholeSpread(to edge: ReaderSpreadEdge, animated: Bool) {
+      pageContentView.panWholeSpread(to: edge, animated: animated)
+    }
+
+    func canPanWholeSpread(forHorizontalDrag translationX: CGFloat) -> Bool {
+      !pageContentView.isHidden && pageContentView.canPanWholeSpread(forHorizontalDrag: translationX)
     }
 
     override init(frame: CGRect) {
@@ -61,6 +74,7 @@
 
     func configure(
       item: ReaderViewItem?,
+      wholeSpread: WholeSpreadPresentation?,
       viewModel: ReaderViewModel,
       screenSize: CGSize,
       readingDirection: ReadingDirection,
@@ -96,6 +110,7 @@
       self.splitWidePageMode = splitWidePageMode
       self.renderConfig = renderConfig
       self.readListContext = readListContext
+      self.wholeSpread = wholeSpread
       self.isPlaybackActive = isPlaybackActive
       self.tracksGlobalZoomState = tracksGlobalZoomState
       self.onDismiss = onDismiss
@@ -220,6 +235,7 @@
       pageContentView.configure(
         viewModel: viewModel,
         item: representedItem,
+        wholeSpread: wholeSpread,
         screenSize: currentScreenSize,
         renderConfig: renderConfig,
         readingDirection: readingDirection,

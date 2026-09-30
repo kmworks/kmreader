@@ -49,6 +49,28 @@ extension ReaderViewModel {
     }
   }
 
+  /// Whole-spread presentation of `item` in a single-page engine, or nil when
+  /// `item` is not a merged split. `currentItem` is the item the engine shows
+  /// as current, which decides the edge an arriving spread opens at.
+  func wholeSpreadPresentation(
+    for item: ReaderViewItem,
+    isDualPagePresentation: Bool,
+    readingDirection: ReadingDirection,
+    splitWidePageMode: SplitWidePageMode,
+    relativeTo currentItem: ReaderViewItem?
+  ) -> WholeSpreadPresentation? {
+    guard !isDualPagePresentation, case .split(let pageID, .both) = item else { return nil }
+    return WholeSpreadPresentation(
+      pageID: pageID,
+      startsAtLeft: isLeftSplitHalf(
+        part: .first,
+        readingDirection: readingDirection,
+        splitWidePageMode: splitWidePageMode
+      ),
+      arrivalEdge: wholeSpreadArrivalEdge(for: item, relativeTo: currentItem)
+    )
+  }
+
   private func splitPairNativePageData(
     for pageID: ReaderPageID,
     readingDirection: ReadingDirection,

@@ -294,6 +294,13 @@
       setNeedsLayout()
     }
 
+    /// Size of the prepared image shown for `pageID` (rotated and cropped), or
+    /// nil while it is not displayed.
+    func displayedImageSize(for pageID: ReaderPageID) -> CGSize? {
+      guard currentData?.pageID == pageID else { return nil }
+      return imageView.image?.size
+    }
+
     private func updateShadowAppearance() {
       let shadowOpacity: Float = showPageShadow && imageView.image != nil ? 0.25 : 0
       imageView.layer.shadowOpacity = shadowOpacity
