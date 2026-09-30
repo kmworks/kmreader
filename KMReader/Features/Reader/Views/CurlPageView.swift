@@ -361,17 +361,28 @@
       ) {
         let splitMode: PageSplitMode
         let pageID = item.pageID
+        let wholeSpread = parent.viewModel.wholeSpreadPresentation(
+          for: item,
+          isDualPagePresentation: false,
+          readingDirection: parent.readingDirection,
+          splitWidePageMode: parent.splitWidePageMode,
+          relativeTo: currentAnchor?.item
+        )
 
         switch item {
         case .page, .dual:
           splitMode = .none
         case .split(_, let part):
-          let isLeftHalf = parent.viewModel.isLeftSplitHalf(
-            part: part,
-            readingDirection: parent.readingDirection,
-            splitWidePageMode: parent.splitWidePageMode
-          )
-          splitMode = isLeftHalf ? .leftHalf : .rightHalf
+          if wholeSpread != nil {
+            splitMode = .none
+          } else {
+            let isLeftHalf = parent.viewModel.isLeftSplitHalf(
+              part: part,
+              readingDirection: parent.readingDirection,
+              splitWidePageMode: parent.splitWidePageMode
+            )
+            splitMode = isLeftHalf ? .leftHalf : .rightHalf
+          }
         case .end:
           return
         }
@@ -380,9 +391,28 @@
           viewModel: parent.viewModel,
           pageID: pageID,
           splitMode: splitMode,
+          wholeSpread: wholeSpread,
           readingDirection: parent.readingDirection,
           renderConfig: parent.renderConfig
         )
+      }
+
+      private var visibleImageController: NativeImagePageViewController? {
+        pageViewController?.viewControllers?.first as? NativeImagePageViewController
+      }
+
+      /// Pans the visible whole spread to the edge an explicit navigation
+      /// target names, e.g. a step toward its far edge.
+      private func alignVisibleWholeSpread(with target: ReaderPositionAnchor) {
+        guard let edge = ReaderSpreadEdge(splitPart: target.preferredSplitPart) else { return }
+        visibleImageController?.panWholeSpread(to: edge, animated: parent.animateTapTurns)
+      }
+
+      /// Whether the visible whole spread can still follow `pan`, which then
+      /// pans the spread instead of curling the page.
+      private func visibleWholeSpreadClaims(_ pan: UIPanGestureRecognizer) -> Bool {
+        guard let visibleImageController, let dragX = pan.horizontalDrag(in: pan.view) else { return false }
+        return visibleImageController.canPanWholeSpread(forHorizontalDrag: dragX)
       }
 
       private func configureEndController(
@@ -578,6 +608,7 @@
             to: targetItem,
             preserving: requestedTarget
           )
+          alignVisibleWholeSpread(with: requestedTarget)
           scheduleNavigationContinuation(consuming: nil, on: pageViewController)
           return
         }
@@ -623,6 +654,7 @@
               to: targetItem,
               preserving: requestedTarget
             )
+            self.alignVisibleWholeSpread(with: requestedTarget)
             self.applyPendingSnapshotIfNeeded(
               preserving: self.parent.viewModel.captureCurrentPositionAnchor(),
               on: pageViewController
@@ -680,6 +712,7 @@
         let anchor = localAnchor(for: item, preserving: preferredAnchor)
         parent.viewModel.updateCurrentPosition(anchor: anchor)
         currentAnchor = parent.viewModel.matchingPositionAnchor(for: anchor) ?? anchor
+        visibleImageController?.reportWholeSpreadPosition()
 
         preloadTask?.cancel()
         let viewModel = parent.viewModel
@@ -892,6 +925,8 @@
         let afterExists = renderedSnapshot.item(at: afterIndex(from: currentPageIndex)) != nil
 
         if let pan = gestureRecognizer as? UIPanGestureRecognizer {
+          // A whole spread pans before the page turns.
+          guard !visibleWholeSpreadClaims(pan) else { return false }
           let primaryTranslation = primaryTranslation(for: pan)
           let primaryVelocity = primaryVelocity(for: pan)
 

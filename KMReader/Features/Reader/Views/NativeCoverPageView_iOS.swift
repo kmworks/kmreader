@@ -420,6 +420,7 @@
         }
 
         guard targetIndex != currentIndex else {
+          alignCurrentWholeSpread(with: targetAnchor, animated: tapNavigationTransitionDuration > 0)
           applyCurrentPosition(targetAnchor)
           clearNavigationTargetIfMatching(target)
           return
@@ -603,6 +604,29 @@
         // flag so the tap zones, controls, and pan recognizer re-enable.
         containerView?.slotViews.forEach { $0.forceResetZoom() }
         parent.viewModel.isZoomed = false
+        if navigationTarget != nil, let positionAnchor {
+          alignCurrentWholeSpread(with: positionAnchor, animated: tapNavigationTransitionDuration > 0)
+        }
+      }
+
+      /// Pans the current whole spread to the edge an explicit navigation
+      /// target names, e.g. a step toward its far edge.
+      private func alignCurrentWholeSpread(with anchor: ReaderPositionAnchor, animated: Bool) {
+        guard let edge = ReaderSpreadEdge(splitPart: anchor.preferredSplitPart),
+          let containerView
+        else { return }
+        containerView.slotViews[deckState.frontSlotIndex].panWholeSpread(to: edge, animated: animated)
+      }
+
+      private func wholeSpreadPresentation(for item: ReaderViewItem?) -> WholeSpreadPresentation? {
+        guard let item else { return nil }
+        return parent.viewModel.wholeSpreadPresentation(
+          for: item,
+          isDualPagePresentation: parent.mode.isDualPage,
+          readingDirection: parent.readingDirection,
+          splitWidePageMode: parent.splitWidePageMode,
+          relativeTo: deckState.currentItem
+        )
       }
 
       private func cancelDragWithAnimation() {
@@ -742,8 +766,10 @@
         let viewportSize = containerView.bounds.size
         for (slotIndex, slotView) in containerView.slotViews.enumerated() {
           let renderState = slotRenderState(for: slotIndex)
+          let item = deckState.item(at: slotIndex)
           slotView.configure(
-            item: deckState.item(at: slotIndex),
+            item: item,
+            wholeSpread: wholeSpreadPresentation(for: item),
             viewModel: parent.viewModel,
             screenSize: viewportSize,
             readingDirection: parent.readingDirection,
@@ -944,6 +970,14 @@
         guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
 
         let velocity = pan.velocity(in: containerView)
+        // A whole spread pans before the page turns: drags it can still follow
+        // belong to its scroll view.
+        if let containerView,
+          let dragX = pan.horizontalDrag(in: containerView),
+          containerView.slotViews[deckState.frontSlotIndex].canPanWholeSpread(forHorizontalDrag: dragX)
+        {
+          return false
+        }
         if velocity == .zero {
           return true
         }

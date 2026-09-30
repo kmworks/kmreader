@@ -118,6 +118,9 @@
       collectionView.onDidLayout = { [weak coordinator = context.coordinator] in
         coordinator?.handleCollectionViewLayout()
       }
+      collectionView.shouldBeginPan = { [weak coordinator = context.coordinator] pan in
+        coordinator?.shouldBeginPaging(with: pan) ?? true
+      }
       return collectionView
     }
 
@@ -722,6 +725,9 @@
           to: item,
           in: collectionView
         )
+        if commit.navigationTarget != nil {
+          alignWholeSpread(item, with: commit.anchor, in: collectionView)
+        }
         if synchronizeViewModelImmediately {
           commitViewModelPosition(
             commit.anchor,
@@ -734,6 +740,33 @@
             matchingNavigationTarget: commit.navigationTarget
           )
         }
+      }
+
+      /// Pans a committed whole spread to the edge an explicit navigation
+      /// target names, e.g. a step toward its far edge.
+      private func alignWholeSpread(
+        _ item: ReaderViewItem,
+        with anchor: ReaderPositionAnchor,
+        in collectionView: UICollectionView
+      ) {
+        guard let edge = ReaderSpreadEdge(splitPart: anchor.preferredSplitPart),
+          let index = engine.renderedItems.firstIndex(of: item),
+          let cell = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? NativePagedPageCell
+        else { return }
+        cell.panWholeSpread(to: edge, animated: parent.navigationAnimationDuration > 0)
+      }
+
+      /// Leaves drags a whole spread can still follow to the spread's own
+      /// scroll view, so the spread pans before the page turns.
+      func shouldBeginPaging(with pan: UIPanGestureRecognizer) -> Bool {
+        guard let collectionView,
+          let dragX = pan.horizontalDrag(in: collectionView),
+          let indexPath = collectionView.indexPathForItem(at: pan.location(in: collectionView)),
+          let cell = collectionView.cellForItem(at: indexPath) as? NativePagedPageCell
+        else {
+          return true
+        }
+        return !cell.canPanWholeSpread(forHorizontalDrag: dragX)
       }
 
       private func refreshVisibleCells(
@@ -815,6 +848,13 @@
         pageCell.configure(
           viewModel: parent.viewModel,
           item: item,
+          wholeSpread: parent.viewModel.wholeSpreadPresentation(
+            for: item,
+            isDualPagePresentation: parent.mode.isDualPage,
+            readingDirection: parent.readingDirection,
+            splitWidePageMode: parent.splitWidePageMode,
+            relativeTo: engine.committedItem
+          ),
           screenSize: resolvedViewportSize(for: collectionView),
           renderConfig: parent.renderConfig,
           readingDirection: parent.readingDirection,

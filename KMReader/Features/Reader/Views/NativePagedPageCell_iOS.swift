@@ -25,6 +25,7 @@
     func configure(
       viewModel: ReaderViewModel,
       item: ReaderViewItem,
+      wholeSpread: WholeSpreadPresentation?,
       screenSize: CGSize,
       renderConfig: ReaderRenderConfig,
       readingDirection: ReadingDirection,
@@ -34,6 +35,7 @@
       pagedContentView.configure(
         viewModel: viewModel,
         item: item,
+        wholeSpread: wholeSpread,
         screenSize: screenSize,
         renderConfig: renderConfig,
         readingDirection: readingDirection,
@@ -45,6 +47,14 @@
 
     func updatePlaybackActive(_ isPlaybackActive: Bool) {
       pagedContentView.updatePlaybackActive(isPlaybackActive)
+    }
+
+    func panWholeSpread(to edge: ReaderSpreadEdge, animated: Bool) {
+      pagedContentView.panWholeSpread(to: edge, animated: animated)
+    }
+
+    func canPanWholeSpread(forHorizontalDrag translationX: CGFloat) -> Bool {
+      pagedContentView.canPanWholeSpread(forHorizontalDrag: translationX)
     }
 
     func resetContent(backgroundColor: UIColor) {
