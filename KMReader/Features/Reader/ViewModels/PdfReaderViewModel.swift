@@ -36,6 +36,7 @@
     private var bookId: String = ""
     private var downloadInfo: DownloadInfo?
     private var sessionStartPageNumber: Int?
+    private var progressRecordingGate = ReaderProgressRecordingGate(wasInProgress: false)
 
     init(incognito: Bool) {
       self.incognito = incognito
@@ -80,6 +81,7 @@
       beginLoading()
       bookId = book.id
       downloadInfo = book.downloadInfo
+      progressRecordingGate = ReaderProgressRecordingGate(wasInProgress: book.isInProgress)
       if book.isCompleted {
         initialPageNumber = 1
       } else {
@@ -198,6 +200,7 @@
         )
         return
       }
+      progressRecordingGate.markRecorded()
 
       logger.debug(
         "📝 [Progress/Page] Captured from PDF reader: book=\(snapshotBookId), page=\(snapshotPage), completed=\(completed)"
@@ -213,13 +216,12 @@
     }
 
     private func isProgressRecordingEligible(page: Int, totalPages: Int, completed: Bool) -> Bool {
-      let threshold = AppConfig.progressRecordingThreshold
-      guard threshold > 0 else { return true }
-      // Reaching the last page is always deliberate enough to record.
-      if completed { return true }
       let startPage = sessionStartPageNumber ?? page
-      let effectiveThreshold = totalPages > 0 ? min(threshold, max(0, totalPages - 1)) : threshold
-      return abs(page - startPage) >= effectiveThreshold
+      return progressRecordingGate.allowsRecording(
+        distance: abs(page - startPage),
+        completed: completed,
+        pageCount: totalPages > 0 ? totalPages : nil
+      )
     }
 
     func flushProgress() {
@@ -236,14 +238,17 @@
       }()
       let snapshotBookId = bookId
 
-      if let snapshotPage,
-        !isProgressRecordingEligible(
-          page: snapshotPage, totalPages: pageCount, completed: snapshotCompleted ?? false)
-      {
-        logger.debug(
-          "⏭️ [Progress/Page] Skip PDF flush: below recording threshold, book=\(snapshotBookId), page=\(snapshotPage)"
-        )
-        return
+      if let snapshotPage {
+        guard
+          isProgressRecordingEligible(
+            page: snapshotPage, totalPages: pageCount, completed: snapshotCompleted ?? false)
+        else {
+          logger.debug(
+            "⏭️ [Progress/Page] Skip PDF flush: below recording threshold, book=\(snapshotBookId), page=\(snapshotPage)"
+          )
+          return
+        }
+        progressRecordingGate.markRecorded()
       }
 
       logger.debug(

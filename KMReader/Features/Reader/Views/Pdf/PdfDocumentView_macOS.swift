@@ -55,16 +55,24 @@
     }
 
     private func loadDocument(into pdfView: PDFView, coordinator: Coordinator) {
-      guard let document = PDFDocument(url: documentURL) else { return }
+      // With no new document, an unfinished move's stale target would suppress
+      // page reports forever.
+      guard let document = PDFDocument(url: documentURL) else {
+        coordinator.cancelPositioning()
+        return
+      }
+
+      // Assigning the document already posts page changes for its first page.
+      let clampedInitialPage = max(1, min(initialPageNumber, max(1, document.pageCount)))
+      coordinator.beginPositioning(toPage: clampedInitialPage)
 
       pdfView.document = document
       coordinator.loadedDocumentURL = documentURL
 
-      let clampedInitialPage = max(1, min(initialPageNumber, max(1, document.pageCount)))
       goToPage(clampedInitialPage, in: pdfView)
 
       coordinator.lastNavigationToken = navigationToken
-      coordinator.notifyCurrentPage(from: pdfView)
+      coordinator.notifyPositionedPage(from: pdfView)
 
       scheduleInitialPageCorrection(
         targetPage: clampedInitialPage,
@@ -137,6 +145,7 @@
     ) {
       // PDFKit may reset current page multiple times during initial layout;
       // retry briefly until the target page sticks.
+      let generation = coordinator.beginPositioning(toPage: targetPage)
       let retryDelays: [TimeInterval] = [0.0, 0.05, 0.2, 0.5, 1.0]
       for (index, delay) in retryDelays.enumerated() {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak pdfView, weak coordinator] in
@@ -146,7 +155,7 @@
             goToPage(targetPage, in: pdfView)
           }
           if index == retryDelays.indices.last {
-            coordinator.notifyCurrentPage(from: pdfView)
+            coordinator.finishPositioning(generation: generation, in: pdfView)
           }
         }
       }
@@ -167,6 +176,8 @@
       var lastResolvedReadingDirection: ReadingDirection?
       var lastResolvedIsolateCoverPage: Bool?
       private weak var observedPDFView: PDFView?
+      private var positioningTarget: (page: Int, generation: Int)?
+      private var positioningGeneration = 0
       private weak var singleClickRecognizer: NSClickGestureRecognizer?
       private weak var doubleClickRecognizer: NSClickGestureRecognizer?
       private weak var longPressRecognizer: NSPressGestureRecognizer?
@@ -254,7 +265,42 @@
       @objc
       private func handlePageChanged() {
         guard let observedPDFView else { return }
-        notifyCurrentPage(from: observedPDFView)
+        notifyPositionedPage(from: observedPDFView)
+      }
+
+      /// Starts moving the view to `page` (document load, presentation change,
+      /// or jump). PDFKit resets the current page while it lays out, so until
+      /// the move finishes, a page change that lands elsewhere is not the
+      /// reader's position and is not reported.
+      @discardableResult
+      func beginPositioning(toPage page: Int) -> Int {
+        positioningGeneration += 1
+        positioningTarget = (page, positioningGeneration)
+        return positioningGeneration
+      }
+
+      /// Ends the move `generation` started, unless a newer one took over, and
+      /// reports the page it settled on.
+      func finishPositioning(generation: Int, in pdfView: PDFView) {
+        guard positioningTarget?.generation == generation else { return }
+        positioningTarget = nil
+        notifyCurrentPage(from: pdfView)
+      }
+
+      func cancelPositioning() {
+        positioningTarget = nil
+      }
+
+      func notifyPositionedPage(from pdfView: PDFView) {
+        if let positioningTarget, displayedPageNumber(in: pdfView) != positioningTarget.page {
+          return
+        }
+        notifyCurrentPage(from: pdfView)
+      }
+
+      private func displayedPageNumber(in pdfView: PDFView) -> Int? {
+        guard let document = pdfView.document, let page = pdfView.currentPage else { return nil }
+        return document.index(for: page) + 1
       }
 
       @objc

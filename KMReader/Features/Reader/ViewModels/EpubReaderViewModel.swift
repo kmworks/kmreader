@@ -92,7 +92,10 @@
     private var downloadResumeTask: Task<Void, Never>?
     private var lastUpdateTime: Date = Date()
     private let updateThrottleInterval: TimeInterval = 2.0
-    private var sessionStartGlobalPage: Int?
+    // Where the session started, kept as a chapter and page rather than a
+    // global page: global pages shift as chapters get measured.
+    private var sessionStartPosition: (chapterIndex: Int, pageIndex: Int)?
+    private var progressRecordingGate = ReaderProgressRecordingGate(wasInProgress: false)
     private let logger = AppLogger(.reader)
     private var viewportSize: CGSize = .zero
     private var preferences: EpubThemePreferences = .init()
@@ -156,6 +159,7 @@
 
     func load(book: Book) async {
       downloadInfo = book.downloadInfo
+      progressRecordingGate = ReaderProgressRecordingGate(wasInProgress: book.isInProgress)
       let shouldResumeFromProgression = !book.isCompleted
       fallbackPageNumber = shouldResumeFromProgression ? book.readProgress?.page : nil
       await load(
@@ -203,7 +207,7 @@
       initialChapterIndex = nil
       initialProgression = nil
       progressSubmissionSuppressed = false
-      sessionStartGlobalPage = nil
+      sessionStartPosition = nil
 
       do {
         logger.debug("WebPub load started for bookId=\(bookId)")
@@ -596,8 +600,8 @@
         return
       }
 
-      if sessionStartGlobalPage == nil {
-        sessionStartGlobalPage = pageOffsetBeforeChapter(chapterIndex) + pageIndex + 1
+      if sessionStartPosition == nil {
+        sessionStartPosition = (chapterIndex, pageIndex)
       }
       guard isProgressRecordingEligible(chapterIndex: chapterIndex, pageIndex: pageIndex) else {
         logger.debug(
@@ -619,6 +623,7 @@
         return
       }
       lastUpdateTime = now
+      progressRecordingGate.markRecorded()
 
       logger.debug(
         "📝 [Progress/Epub] Captured from page change: book=\(bookId), chapterIndex=\(chapterIndex), pageIndex=\(pageIndex)"
@@ -651,6 +656,7 @@
         )
         return
       }
+      progressRecordingGate.markRecorded()
 
       let snapshotBookId = bookId
       logger.debug(
@@ -667,18 +673,22 @@
     }
 
     private func isProgressRecordingEligible(chapterIndex: Int, pageIndex: Int) -> Bool {
-      let threshold = AppConfig.progressRecordingThreshold
-      guard threshold > 0 else { return true }
-      let globalPage = pageOffsetBeforeChapter(chapterIndex) + pageIndex + 1
-      if let lastPosition = lastPagePosition(),
-        chapterIndex >= lastPosition.chapterIndex, pageIndex >= lastPosition.pageIndex
-      {
-        return true
-      }
-      let startPage = sessionStartGlobalPage ?? globalPage
+      let reachedLastPage =
+        lastPagePosition().map {
+          chapterIndex >= $0.chapterIndex && pageIndex >= $0.pageIndex
+        } ?? false
+      // Both ends of the distance use the current chapter page counts.
+      let start = sessionStartPosition ?? (chapterIndex, pageIndex)
+      let distance = abs(
+        (pageOffsetBeforeChapter(chapterIndex) + pageIndex)
+          - (pageOffsetBeforeChapter(start.chapterIndex) + start.pageIndex)
+      )
       let totalPages = totalPageCount()
-      let effectiveThreshold = totalPages > 0 ? min(threshold, max(0, totalPages - 1)) : threshold
-      return abs(globalPage - startPage) >= effectiveThreshold
+      return progressRecordingGate.allowsRecording(
+        distance: distance,
+        completed: reachedLastPage,
+        pageCount: totalPages > 0 ? totalPages : nil
+      )
     }
 
     var hasContent: Bool {
@@ -806,6 +816,9 @@
         }
         initialChapterIndex = nil
         initialProgression = nil
+        // The reader only now reaches the saved position; the page it showed
+        // before the chapter was measured is not where the session started.
+        sessionStartPosition = nil
       }
 
       normalizeCurrentPosition(adjustPageCount: false)

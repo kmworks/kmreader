@@ -69,9 +69,11 @@ struct ReaderPreferencesView: View {
             }
           }
           .pickerStyle(.menu)
-          Text("Reading progress is recorded only after you turn this many pages from the page you opened at.")
-            .font(.caption)
-            .foregroundColor(.secondary)
+          Text(
+            "Unread and finished books record reading progress only after you turn this many pages. Books in progress record every page you turn."
+          )
+          .font(.caption)
+          .foregroundColor(.secondary)
         }
       }
 
