@@ -23,7 +23,7 @@ make bump / make minor / make major   # version management
 
 Never edit `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` in `project.pbxproj` by hand. Run `make bump` only when the user explicitly asks; the bump commit then rides along in the feature/fix PR, not a separate PR.
 
-After changing code: `make format`, then `make build`. Simulator interaction and debugging go through `baguette` (see the `baguette` skill): filter logs with subsystem `com.everpcpc.kmreader` (categories `API`, `SSE`, `ReaderViewModel`).
+After changing code: `make format`, then `make build`. Simulator interaction: verified multi-step UI sequences go through the `jevsim_*` MCP tools; observation, gestures, and logs go through `baguette` (see the `simulator` skill): filter logs with subsystem `com.everpcpc.kmreader` (categories `API`, `SSE`, `ReaderViewModel`).
 
 ## Coding Conventions
 
