@@ -73,6 +73,8 @@ struct OfflineTasksView: View {
         defaultLibraryIds: dashboard.libraryIds
       )
 
+      OfflineDataSyncSection(instanceId: instanceId, isOffline: isOffline)
+
       if !downloadingTasks.isEmpty {
         Section("Downloading") {
           ForEach(downloadingTasks) { task in
