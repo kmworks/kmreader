@@ -130,6 +130,7 @@
       "shouldTranslate" : false
     },
     "%@ " : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {
@@ -77436,6 +77437,7 @@
       }
     },
     "tab.books" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -77948,6 +77950,7 @@
       }
     },
     "tab.series" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

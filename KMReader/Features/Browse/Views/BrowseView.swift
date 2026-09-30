@@ -35,8 +35,21 @@ struct BrowseView: View {
   @State private var scopeLibraries: [SidebarLibraryItem] = []
   @FocusState private var isSearchFocused: Bool
 
+  /// Library browse (split view) offers only series/books; collections and
+  /// read lists live at the sidebar's top level.
+  private var availableContentTypes: [BrowseContentType] {
+    guard librarySelection == nil else { return [.series, .books] }
+    return BrowseContentType.allCases
+  }
+
   private var effectiveContent: BrowseContentType {
-    fixedContent ?? browseContent
+    if let fixedContent {
+      return fixedContent
+    }
+    guard availableContentTypes.contains(browseContent) else {
+      return .series
+    }
+    return browseContent
   }
 
   init(
@@ -126,7 +139,7 @@ struct BrowseView: View {
 
         if fixedContent == nil && !(searchOnly && activeSearchText.isEmpty) {
           Picker("", selection: $browseContent) {
-            ForEach(BrowseContentType.allCases) { type in
+            ForEach(availableContentTypes) { type in
               Label(sectionTitle(browseContent: type), systemImage: type.icon)
                 .labelStyle(.titleAndIcon)
                 .tag(type)

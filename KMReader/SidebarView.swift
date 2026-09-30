@@ -13,15 +13,12 @@ struct SidebarView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("isOffline") private var isOffline: Bool = false
 
-  @AppStorage("sidebarBrowseExpanded") private var browseExpanded: Bool = true
   @AppStorage("sidebarLibrariesExpanded") private var librariesExpanded: Bool = true
-  @AppStorage("sidebarCollectionsExpanded") private var collectionsExpanded: Bool = false
-  @AppStorage("sidebarReadListsExpanded") private var readListsExpanded: Bool = false
 
   @State private var isRefreshing: Bool = false
   @State private var libraries: [SidebarLibraryItem] = []
-  @State private var collections: [SidebarCollectionItem] = []
-  @State private var readLists: [SidebarReadListItem] = []
+  @State private var collectionsCount: Int?
+  @State private var readListsCount: Int?
 
   private var showsSettingsLink: Bool {
     #if os(iOS)
@@ -31,31 +28,10 @@ struct SidebarView: View {
     #endif
   }
 
-  private var browseExpandedBinding: Binding<Bool> {
-    Binding(
-      get: { browseExpanded },
-      set: { setBrowseExpanded($0) }
-    )
-  }
-
   private var librariesExpandedBinding: Binding<Bool> {
     Binding(
       get: { librariesExpanded },
       set: { setLibrariesExpanded($0) }
-    )
-  }
-
-  private var collectionsExpandedBinding: Binding<Bool> {
-    Binding(
-      get: { collectionsExpanded },
-      set: { setCollectionsExpanded($0) }
-    )
-  }
-
-  private var readListsExpandedBinding: Binding<Bool> {
-    Binding(
-      get: { readListsExpanded },
-      set: { setReadListsExpanded($0) }
     )
   }
 
@@ -86,13 +62,14 @@ struct SidebarView: View {
     do {
       let database = try await DatabaseOperator.database()
       let loadedLibraries = try await database.fetchSidebarLibraries(instanceId: instanceId)
-      let loadedCollections = try await database.fetchSidebarCollections(instanceId: instanceId)
-      let loadedReadLists = try await database.fetchSidebarReadLists(instanceId: instanceId)
-
+      let loadedCollectionsCount = try await database.fetchSidebarCollectionsCount(
+        instanceId: instanceId)
+      let loadedReadListsCount = try await database.fetchSidebarReadListsCount(
+        instanceId: instanceId)
       applySidebarItems(
         libraries: loadedLibraries,
-        collections: loadedCollections,
-        readLists: loadedReadLists
+        collectionsCount: loadedCollectionsCount,
+        readListsCount: loadedReadListsCount
       )
     } catch {
       ErrorManager.shared.alert(error: error)
@@ -100,36 +77,29 @@ struct SidebarView: View {
   }
 
   private func clearSidebarItemsIfNeeded() {
-    guard !libraries.isEmpty || !collections.isEmpty || !readLists.isEmpty else { return }
+    guard !libraries.isEmpty || collectionsCount != nil || readListsCount != nil else { return }
 
     withAnimation {
       libraries = []
-      collections = []
-      readLists = []
+      collectionsCount = nil
+      readListsCount = nil
     }
   }
 
   private func applySidebarItems(
     libraries loadedLibraries: [SidebarLibraryItem],
-    collections loadedCollections: [SidebarCollectionItem],
-    readLists loadedReadLists: [SidebarReadListItem]
+    collectionsCount loadedCollectionsCount: Int,
+    readListsCount loadedReadListsCount: Int
   ) {
     guard
-      libraries != loadedLibraries || collections != loadedCollections
-        || readLists != loadedReadLists
+      libraries != loadedLibraries || collectionsCount != loadedCollectionsCount
+        || readListsCount != loadedReadListsCount
     else { return }
 
     withAnimation {
       if libraries != loadedLibraries { libraries = loadedLibraries }
-      if collections != loadedCollections { collections = loadedCollections }
-      if readLists != loadedReadLists { readLists = loadedReadLists }
-    }
-  }
-
-  private func setBrowseExpanded(_ isExpanded: Bool) {
-    guard browseExpanded != isExpanded else { return }
-    withAnimation {
-      browseExpanded = isExpanded
+      if collectionsCount != loadedCollectionsCount { collectionsCount = loadedCollectionsCount }
+      if readListsCount != loadedReadListsCount { readListsCount = loadedReadListsCount }
     }
   }
 
@@ -137,20 +107,6 @@ struct SidebarView: View {
     guard librariesExpanded != isExpanded else { return }
     withAnimation {
       librariesExpanded = isExpanded
-    }
-  }
-
-  private func setCollectionsExpanded(_ isExpanded: Bool) {
-    guard collectionsExpanded != isExpanded else { return }
-    withAnimation {
-      collectionsExpanded = isExpanded
-    }
-  }
-
-  private func setReadListsExpanded(_ isExpanded: Bool) {
-    guard readListsExpanded != isExpanded else { return }
-    withAnimation {
-      readListsExpanded = isExpanded
     }
   }
 
@@ -167,6 +123,10 @@ struct SidebarView: View {
       .listStyle(.sidebar)
     #endif
     #if os(iOS)
+      // iOS paints the selection pill with the accent, which inverts the
+      // selected row against the near-white dark-mode accent; repaint the
+      // pill a neutral gray there, matching the macOS source-list selection.
+      .tint(colorScheme == .dark ? Color(uiColor: .systemGray4) : Color.accentColor)
       .refreshable {
         await refreshSidebar()
       }
@@ -207,16 +167,15 @@ struct SidebarView: View {
     #endif
   }
 
-  /// The sidebar selection pill is painted with the accent color while the
-  /// system renders selected rows in white, which is unreadable on the
-  /// near-white dark-mode accent; selected rows flip to dark content there.
+  /// With the dark-mode sidebar tinted gray, selected and unselected rows
+  /// share the same primary content color; light mode leaves the system's
+  /// forced-white content on the accent pill alone.
   @ViewBuilder
   private func sidebarRowContent<Content: View>(
-    for destination: NavDestination,
     @ViewBuilder content: () -> Content
   ) -> some View {
-    if selection == destination, colorScheme == .dark {
-      content().foregroundStyle(.black)
+    if colorScheme == .dark {
+      content().foregroundStyle(.primary)
     } else {
       content()
     }
@@ -226,45 +185,20 @@ struct SidebarView: View {
   private var listContent: some View {
     Section {
       NavigationLink(value: NavDestination.home) {
-        sidebarRowContent(for: .home) {
+        sidebarRowContent {
           Label(String(localized: "tab.home"), systemImage: "house")
         }
       }
       NavigationLink(value: NavDestination.offline) {
-        sidebarRowContent(for: .offline) {
+        sidebarRowContent {
           Label(TabItem.offline.title, systemImage: TabItem.offline.icon)
         }
       }
       NavigationLink(value: NavDestination.server) {
-        sidebarRowContent(for: .server) {
+        sidebarRowContent {
           Label(TabItem.server.title, systemImage: TabItem.server.icon)
         }
       }
-    }
-
-    Section(isExpanded: browseExpandedBinding) {
-      NavigationLink(value: NavDestination.browseSeries) {
-        sidebarRowContent(for: .browseSeries) {
-          Label(String(localized: "tab.series"), systemImage: ContentIcon.series)
-        }
-      }
-      NavigationLink(value: NavDestination.browseBooks) {
-        sidebarRowContent(for: .browseBooks) {
-          Label(String(localized: "tab.books"), systemImage: ContentIcon.book)
-        }
-      }
-      NavigationLink(value: NavDestination.browseCollections) {
-        sidebarRowContent(for: .browseCollections) {
-          Label(String(localized: "tab.collections"), systemImage: ContentIcon.collection)
-        }
-      }
-      NavigationLink(value: NavDestination.browseReadLists) {
-        sidebarRowContent(for: .browseReadLists) {
-          Label(String(localized: "tab.readLists"), systemImage: ContentIcon.readList)
-        }
-      }
-    } header: {
-      Label(String(localized: "Browse"), systemImage: ContentIcon.browse)
     }
 
     if !libraries.isEmpty {
@@ -273,7 +207,7 @@ struct SidebarView: View {
           let destination = NavDestination.browseLibrary(
             selection: LibrarySelection(sidebarItem: library))
           NavigationLink(value: destination) {
-            sidebarRowContent(for: destination) {
+            sidebarRowContent {
               SidebarItemLabel(
                 title: library.name,
                 count: library.displayBookCount
@@ -297,46 +231,31 @@ struct SidebarView: View {
       }
     }
 
-    if !collections.isEmpty {
-      Section(isExpanded: collectionsExpandedBinding) {
-        ForEach(collections) { collection in
-          let destination = NavDestination.collectionDetail(collectionId: collection.collectionId)
-          NavigationLink(value: destination) {
-            sidebarRowContent(for: destination) {
-              SidebarItemLabel(
-                title: collection.name,
-                count: collection.seriesCount
-              )
-            }
-          }
+    Section {
+      NavigationLink(value: NavDestination.browseCollections) {
+        sidebarRowContent {
+          SidebarItemLabel(
+            title: String(localized: "tab.collections"),
+            count: collectionsCount,
+            systemImage: ContentIcon.collection
+          )
         }
-      } header: {
-        Label(String(localized: "Collections"), systemImage: ContentIcon.collection)
       }
-    }
-
-    if !readLists.isEmpty {
-      Section(isExpanded: readListsExpandedBinding) {
-        ForEach(readLists) { readList in
-          let destination = NavDestination.readListDetail(readListId: readList.readListId)
-          NavigationLink(value: destination) {
-            sidebarRowContent(for: destination) {
-              SidebarItemLabel(
-                title: readList.name,
-                count: readList.bookCount
-              )
-            }
-          }
+      NavigationLink(value: NavDestination.browseReadLists) {
+        sidebarRowContent {
+          SidebarItemLabel(
+            title: String(localized: "tab.readLists"),
+            count: readListsCount,
+            systemImage: ContentIcon.readList
+          )
         }
-      } header: {
-        Label(String(localized: "Read Lists"), systemImage: ContentIcon.readList)
       }
     }
 
     if showsSettingsLink {
       Section {
         NavigationLink(value: NavDestination.settings) {
-          sidebarRowContent(for: .settings) {
+          sidebarRowContent {
             TabItem.settings.label
           }
         }

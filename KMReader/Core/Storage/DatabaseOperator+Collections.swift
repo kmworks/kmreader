@@ -7,12 +7,16 @@ import Foundation
 import GRDB
 
 extension DatabaseOperator {
-  func fetchSidebarCollections(instanceId: String) throws -> [SidebarCollectionItem] {
+  func fetchSidebarCollectionsCount(instanceId: String) throws -> Int {
     try read { db in
-      let items = try sidebarCollectionRows(db: db, instanceId: instanceId)
-      return pinnedFirst(items, isPinned: { $0.isPinned }).map {
-        SidebarCollectionItem(collectionId: $0.id, name: $0.name, seriesCount: $0.seriesCount)
-      }
+      try Int.fetchOne(
+        db,
+        sql: """
+          SELECT COUNT(*) FROM \(KomgaCollection.databaseTableName)
+          WHERE instance_id = ?
+          """,
+        arguments: [instanceId]
+      ) ?? 0
     }
   }
 
@@ -245,12 +249,16 @@ extension DatabaseOperator {
 }
 
 extension DatabaseOperator {
-  func fetchSidebarReadLists(instanceId: String) throws -> [SidebarReadListItem] {
+  func fetchSidebarReadListsCount(instanceId: String) throws -> Int {
     try read { db in
-      let items = try sidebarReadListRows(db: db, instanceId: instanceId)
-      return pinnedFirst(items, isPinned: { $0.isPinned }).map {
-        SidebarReadListItem(readListId: $0.id, name: $0.name, bookCount: $0.bookCount)
-      }
+      try Int.fetchOne(
+        db,
+        sql: """
+          SELECT COUNT(*) FROM \(KomgaReadList.databaseTableName)
+          WHERE instance_id = ?
+          """,
+        arguments: [instanceId]
+      ) ?? 0
     }
   }
 

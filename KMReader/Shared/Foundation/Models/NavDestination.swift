@@ -10,8 +10,6 @@ enum NavDestination: Hashable {
   case home
   case browse
   case browseSearch
-  case browseSeries
-  case browseBooks
   case browseCollections
   case browseReadLists
   case offline
@@ -103,16 +101,6 @@ enum NavDestination: Hashable {
       BrowseView(
         authViewModel: context.authViewModel,
         focusesSearchOnAppear: true
-      )
-    case .browseSeries:
-      BrowseView(
-        authViewModel: context.authViewModel,
-        fixedContent: .series
-      )
-    case .browseBooks:
-      BrowseView(
-        authViewModel: context.authViewModel,
-        fixedContent: .books
       )
     case .browseCollections:
       BrowseView(
