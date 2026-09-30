@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import SwiftUI
 
 @MainActor
 @Observable
@@ -13,9 +12,6 @@ final class SyncViewModel {
 
   private(set) var isSyncing = false
   private var isSyncingReadingProgress = false
-  private(set) var progress = 0.0
-  private(set) var currentPhase: SyncPhase = .libraries
-  private(set) var phaseProgress = SyncPhase.initialProgress
   private(set) var stageProgress = SyncStage.initialProgress
   private(set) var visibleStages = SyncStage.visibleStages(includeReconcile: false)
   private(set) var includesReconcileStages = false
@@ -23,14 +19,6 @@ final class SyncViewModel {
   private let worker = SyncWorker()
 
   private init() {}
-
-  var currentPhaseName: String {
-    currentPhase.localizedName
-  }
-
-  func progress(for phase: SyncPhase) -> Double {
-    phaseProgress[phase] ?? 0.0
-  }
 
   func progress(for stage: SyncStage) -> Double {
     stageProgress[stage] ?? 0.0
@@ -42,8 +30,6 @@ final class SyncViewModel {
     guard !instanceId.isEmpty else { return }
 
     isSyncing = true
-    progress = 0.0
-    phaseProgress = SyncPhase.initialProgress
     stageProgress = SyncStage.initialProgress
     includesReconcileStages = forceFullSync
     visibleStages = SyncStage.visibleStages(includeReconcile: forceFullSync)
@@ -63,7 +49,6 @@ final class SyncViewModel {
     }
     await ReadListReadingService.shared.sync(instanceId: instanceId)
 
-    progress = 1.0
     ErrorManager.shared.notify(
       message: result.hasFailures
         ? String(localized: "notification.offline.syncCompletedWithIssues")
@@ -122,55 +107,35 @@ final class SyncViewModel {
   }
 
   private func apply(_ syncProgress: SyncProgress) {
-    currentPhase = syncProgress.phase
-    updateProgress(
+    let clampedProgress = min(max(syncProgress.phaseProgress, 0.0), 1.0)
+    updateStageProgress(
       phase: syncProgress.phase,
-      phaseProgress: syncProgress.phaseProgress,
+      phaseProgress: clampedProgress,
       stage: syncProgress.stage
     )
-  }
-
-  private func updateProgress(
-    phase: SyncPhase,
-    phaseProgress: Double,
-    stage: SyncStage? = nil
-  ) {
-    let clampedPhaseProgress = min(max(phaseProgress, 0.0), 1.0)
-    let effectivePhaseProgress = updateStageProgress(
-      phase: phase,
-      phaseProgress: clampedPhaseProgress,
-      stage: stage
-    )
-    self.phaseProgress[phase] = effectivePhaseProgress
-    let phaseOffset = phase.progressOffset
-    let phaseContribution = (phase.weight / SyncPhase.totalWeight) * effectivePhaseProgress
-    progress = phaseOffset + phaseContribution
   }
 
   private func updateStageProgress(
     phase: SyncPhase,
     phaseProgress: Double,
     stage: SyncStage?
-  ) -> Double {
+  ) {
     switch phase {
     case .libraries:
       stageProgress[.libraries] = phaseProgress
-      return phaseProgress
     case .collections:
       stageProgress[.collections] = phaseProgress
-      return phaseProgress
     case .readLists:
       stageProgress[.readLists] = phaseProgress
-      return phaseProgress
     case .series:
-      return updateSplitStageProgress(
+      updateSplitStageProgress(
         incrementalStage: .seriesIncremental,
         reconcileStage: .seriesReconcile,
         phaseProgress: phaseProgress,
         stage: stage
       )
     case .books:
-      return updateSplitStageProgress(
+      updateSplitStageProgress(
         incrementalStage: .booksIncremental,
         reconcileStage: .booksReconcile,
         phaseProgress: phaseProgress,
@@ -184,11 +149,11 @@ final class SyncViewModel {
     reconcileStage: SyncStage,
     phaseProgress: Double,
     stage: SyncStage?
-  ) -> Double {
+  ) {
     guard includesReconcileStages else {
       stageProgress[incrementalStage] = phaseProgress
       stageProgress[reconcileStage] = 0.0
-      return phaseProgress
+      return
     }
 
     if stage == incrementalStage {
@@ -196,9 +161,5 @@ final class SyncViewModel {
     } else if stage == reconcileStage {
       stageProgress[reconcileStage] = phaseProgress
     }
-
-    let incrementalProgress = stageProgress[incrementalStage] ?? 0.0
-    let reconcileProgress = stageProgress[reconcileStage] ?? 0.0
-    return (incrementalProgress + reconcileProgress) / 2.0
   }
 }

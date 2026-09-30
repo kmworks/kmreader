@@ -429,7 +429,11 @@ actor SyncWorker {
 
         await report(
           .series,
-          progress: shouldContinue ? estimatedIncrementalProgress(processedPages: page) : 1.0,
+          progress: incrementalProgress(
+            processedPages: page,
+            totalPages: result.totalPages,
+            finished: !shouldContinue
+          ),
           stage: .seriesIncremental,
           onProgress: onProgress
         )
@@ -595,7 +599,11 @@ actor SyncWorker {
 
         await report(
           .books,
-          progress: shouldContinue ? estimatedIncrementalProgress(processedPages: page) : 1.0,
+          progress: incrementalProgress(
+            processedPages: page,
+            totalPages: result.totalPages,
+            finished: !shouldContinue
+          ),
           stage: .booksIncremental,
           onProgress: onProgress
         )
@@ -776,9 +784,16 @@ actor SyncWorker {
     return ids
   }
 
-  private func estimatedIncrementalProgress(processedPages: Int) -> Double {
-    guard processedPages > 0 else { return 0.0 }
-    return min(Double(processedPages) / Double(processedPages + 2), 0.9)
+  // Incremental scans stop when they reach the sync marker and the changed
+  // count is unknowable upfront, so progress tracks the scanned fraction of
+  // the whole library and jumps to 100% when the marker is hit early.
+  private func incrementalProgress(
+    processedPages: Int,
+    totalPages: Int,
+    finished: Bool
+  ) -> Double {
+    if finished { return 1.0 }
+    return min(Double(processedPages) / Double(max(totalPages, 1)), 1.0)
   }
 
   private func report(
