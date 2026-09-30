@@ -1362,7 +1362,9 @@ class ReaderViewModel {
     let startPage = sessionStartPagesByBookId[snapshot.bookId] ?? snapshot.page
     var gate =
       progressRecordingGatesByBookId[snapshot.bookId]
-      ?? ReaderProgressRecordingGate(wasInProgress: segmentBook(forBookId: snapshot.bookId)?.isInProgress == true)
+      ?? ReaderProgressRecordingGate(
+        wasInProgress: currentBook(forSegmentBookId: snapshot.bookId)?.isInProgress == true
+      )
     guard
       gate.allowsRecording(
         distance: abs(snapshot.page - startPage),
@@ -1376,10 +1378,6 @@ class ReaderViewModel {
     gate.markRecorded()
     progressRecordingGatesByBookId[snapshot.bookId] = gate
     return true
-  }
-
-  private func segmentBook(forBookId bookId: String) -> Book? {
-    segmentIndex(forSegmentBookId: bookId).map { segments[$0].currentBook }
   }
 
   private func dispatchProgressChange(
