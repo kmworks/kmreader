@@ -972,11 +972,9 @@
         let velocity = pan.velocity(in: containerView)
         // A whole spread pans before the page turns: drags it can still follow
         // belong to its scroll view.
-        let translation = pan.translation(in: containerView)
-        let drag = translation == .zero ? velocity : translation
-        if abs(drag.x) > abs(drag.y),
-          let containerView,
-          containerView.slotViews[deckState.frontSlotIndex].canPanWholeSpread(forHorizontalDrag: drag.x)
+        if let containerView,
+          let dragX = pan.horizontalDrag(in: containerView),
+          containerView.slotViews[deckState.frontSlotIndex].canPanWholeSpread(forHorizontalDrag: dragX)
         {
           return false
         }

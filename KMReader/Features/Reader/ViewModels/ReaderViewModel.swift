@@ -1622,7 +1622,9 @@ class ReaderViewModel {
     let isForward = offset > 0
     let base = navigationTarget ?? captureCurrentPositionAnchor()
 
-    if let item = base.item, isWholeSpread(item) {
+    // A zoomed page only pans at its zoom, so while zoomed a step turns the
+    // page, as it does for any other page.
+    if !isZoomed, let item = base.item, isWholeSpread(item) {
       let restingEdges: Set<ReaderSpreadEdge>
       if navigationTarget != nil {
         restingEdges = [

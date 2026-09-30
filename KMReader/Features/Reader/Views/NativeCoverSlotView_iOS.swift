@@ -38,8 +38,10 @@
       doubleTapZoomMode: .enabled
     )
     private var readListContext: ReaderReadListContext?
-    // Not part of `Configuration`: the page host applies it only when the
-    // item changes, which already forces an apply.
+    // Not part of `Configuration`: everything the page host reads from it
+    // follows fields that are. Its arrival edge applies only on an item
+    // change, and its start side comes from the reading direction and split
+    // mode; either change forces an apply.
     private var wholeSpread: WholeSpreadPresentation?
     private var isPlaybackActive = false
     private var tracksGlobalZoomState = false

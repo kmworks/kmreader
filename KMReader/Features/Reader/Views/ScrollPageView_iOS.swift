@@ -759,16 +759,14 @@
       /// Leaves drags a whole spread can still follow to the spread's own
       /// scroll view, so the spread pans before the page turns.
       func shouldBeginPaging(with pan: UIPanGestureRecognizer) -> Bool {
-        guard let collectionView else { return true }
-        let translation = pan.translation(in: collectionView)
-        let drag = translation == .zero ? pan.velocity(in: collectionView) : translation
-        guard abs(drag.x) > abs(drag.y),
+        guard let collectionView,
+          let dragX = pan.horizontalDrag(in: collectionView),
           let indexPath = collectionView.indexPathForItem(at: pan.location(in: collectionView)),
           let cell = collectionView.cellForItem(at: indexPath) as? NativePagedPageCell
         else {
           return true
         }
-        return !cell.canPanWholeSpread(forHorizontalDrag: drag.x)
+        return !cell.canPanWholeSpread(forHorizontalDrag: dragX)
       }
 
       private func refreshVisibleCells(

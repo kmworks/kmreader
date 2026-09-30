@@ -101,9 +101,9 @@
       guard gestureRecognizer === panGestureRecognizer, isPanningSpread else {
         return super.gestureRecognizerShouldBegin(gestureRecognizer)
       }
-      let translation = panGestureRecognizer.translation(in: self)
-      let drag = translation == .zero ? panGestureRecognizer.velocity(in: self) : translation
-      guard abs(drag.x) > abs(drag.y), canPanSpread(forHorizontalDrag: drag.x) else {
+      guard let dragX = panGestureRecognizer.horizontalDrag(in: self),
+        canPanSpread(forHorizontalDrag: dragX)
+      else {
         return false
       }
       return super.gestureRecognizerShouldBegin(gestureRecognizer)

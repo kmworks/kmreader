@@ -411,11 +411,8 @@
       /// Whether the visible whole spread can still follow `pan`, which then
       /// pans the spread instead of curling the page.
       private func visibleWholeSpreadClaims(_ pan: UIPanGestureRecognizer) -> Bool {
-        guard let visibleImageController else { return false }
-        let translation = pan.translation(in: pan.view)
-        let drag = translation == .zero ? pan.velocity(in: pan.view) : translation
-        return abs(drag.x) > abs(drag.y)
-          && visibleImageController.canPanWholeSpread(forHorizontalDrag: drag.x)
+        guard let visibleImageController, let dragX = pan.horizontalDrag(in: pan.view) else { return false }
+        return visibleImageController.canPanWholeSpread(forHorizontalDrag: dragX)
       }
 
       private func configureEndController(
