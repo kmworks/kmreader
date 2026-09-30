@@ -52,10 +52,6 @@ make localize
 rg -n "String\\(localized: \"<KEY>\"\\)|\"<KEY>\"" KMReader Shared KMReaderWidgets
 ```
 
-Optional terminology alignment source (if present):
-
-- `../komga/komga-webui/src/locales/`
-
 Current supported target languages:
 
 - `de`, `en`, `es`, `fr`, `it`, `ja`, `ko`, `ru`, `zh-Hans`, `zh-Hant`

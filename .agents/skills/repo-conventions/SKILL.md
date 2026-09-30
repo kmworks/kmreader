@@ -1,11 +1,11 @@
 ---
 name: repo-conventions
-description: KMReader subsystem conventions and invariants — reader state boundaries, reading-progress sync, offline downloads and caching, browse and dashboard behavior, detail page structure, platform UI placement. Use when working on the reader (DIVINA/PDF/EPUB engines, navigation, position), progress sync or offline features, dashboard sections or cards, browse pages, detail pages, or platform-specific UI.
+description: KMReader subsystem conventions and invariants — reader state boundaries, reading-progress sync, offline downloads and caching, local database (GRDB) migrations, SSE dispatch, browse and dashboard behavior, detail page structure, platform UI placement. Use when working on the reader (DIVINA/PDF/EPUB engines, navigation, position), progress sync or offline features, the local database schema, SSE, dashboard sections or cards, browse pages, detail pages, or platform-specific UI.
 ---
 
 # Repo Conventions
 
-Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide rules; this file holds the per-subsystem boundaries. When a change alters one of these boundaries, update this file in the same change (AGENTS.md rule 20).
+Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide rules; this file holds the per-subsystem boundaries. When a change alters one of these boundaries, update this file in the same change (AGENTS.md rule 18).
 
 ## Reader State Boundaries
 
@@ -62,6 +62,10 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ## Sync, Offline & Caching
 
+### SSE
+
+- SSE callbacks are single-assignment closures; implement dispatchers when multiple components need the same event.
+
 ### Read Progress
 
 - Read progress has a per-session recording threshold (`progressRecordingThreshold`, default 3, 0 = record immediately): for a book that was unread or finished when the session reached it, page-change submissions and the close/background flush are withheld until the position moves at least that many pages from the session's first page, unless the page completes the book. A book already in progress records any page turn, and once a book records in a session it keeps recording; opening a book without turning a page never records.
@@ -75,6 +79,11 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - Clearing caches or server data goes through `CacheManager` and the GRDB stores only.
 - Queueing a download backfills the book's `KomgaSeries` row from the server when missing (`OfflineManager.ensureSeriesRow`, with a `startDownload` backstop): single-book download entries don't guarantee the series row, and Offline series browse plus series download rollups query the series table.
 
+### Local Database
+
+- Runtime GRDB migrations in `LocalDatabase` are immutable once committed: never mutate an already-registered migration (e.g. `create_runtime_schema_v1`, `00002_add_protected_server_flag`) or its helpers; they are the frozen baseline. Any table shape change is a new numbered migration after the latest one; fresh installs run baseline + all later migrations in order.
+- New persisted field: update the record model and `CodingKeys`, then add a migration backfilling a safe default. Validate both upgrade and fresh-install paths.
+
 ### Read List Reading State
 
 - Read list reading state (`read_list_reading_states`) is user state, kept apart from the `KomgaReadList` server mirror.
@@ -86,6 +95,10 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - While the setting is off, `ReadListReadingService` records, syncs, and resolves nothing and publishes an empty snapshot (no local reads or writes, no client-settings requests).
 
 ## Browse & Dashboard
+
+### Library Selection
+
+- Dashboard/library selections persist via `LibraryManager` and related managers.
 
 ### Pagination & Ordering
 
@@ -188,4 +201,5 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 - Settings pages: top-level groups are Reader / Display / Server (iPhone only) / Behavior / Advanced / About.
 - Settings shared by all readers (DIVINA, EPUB, PDF) live in the Reader group's first entry, `SettingsSection.reading` (`ReaderPreferencesView`) — never in the DIVINA-only `ReaderSettingsSheet` or the per-reader preference pages; reading-session feature toggles (Keep Screen Awake, Reader Live Activity) live there too, as do the offline-reading preference toggles (Offline-first Reading, Auto Delete Read Books, in the page's first section). The read list continuation toggle (`SettingsReadListContinuationToggle`) lives there as well, in the page's Read Lists section: it is a reading behavior (entry-point resolution, recording, sync) whose dashboard section is a side effect.
+- In-reader settings sheets stay compact (no description text); full settings pages may carry description text.
 - `SettingsSystemFeaturesView` keeps Handoff only and is not linked on tvOS; new pages register a `SettingsSection` case and use `SettingsBadgeRow`/`SettingsSectionRow` entries.
