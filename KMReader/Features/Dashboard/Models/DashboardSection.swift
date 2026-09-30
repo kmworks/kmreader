@@ -130,13 +130,14 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
 
   var contentKind: DashboardSectionContentKind {
     switch self {
-    case .keepReading, .onDeck, .recentlyReadBooks, .recentlyReleasedBooks, .recentlyAddedBooks:
+    case .keepReading, .onDeck, .recentlyReadBooks, .recentlyReleasedBooks, .recentlyAddedBooks,
+      .readListsInProgress:
       return .books
     case .recentlyUpdatedSeries, .recentlyAddedSeries:
       return .series
     case .pinnedCollections:
       return .collections
-    case .pinnedReadLists, .readListsInProgress:
+    case .pinnedReadLists:
       return .readLists
     }
   }
@@ -153,24 +154,15 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
   }
 
   /// Card kinds the user can pick for this section. Series has no horizontal
-  /// card; pinned sections only render as horizontal cards; recently added
-  /// books is a showcase section, so it offers no horizontal card. Read lists
-  /// in progress shows each list's next book, so it offers the books kinds.
+  /// card; pinned sections only render as horizontal cards.
   var availableCardKinds: [DashboardCardKind] {
-    switch self {
-    case .recentlyAddedBooks:
-      return [.large, .medium, .small]
-    case .readListsInProgress:
+    switch contentKind {
+    case .books:
       return [.large, .medium, .small, .horizontal]
-    default:
-      switch contentKind {
-      case .books:
-        return [.large, .medium, .small, .horizontal]
-      case .series:
-        return [.large, .medium, .small]
-      case .collections, .readLists:
-        return [.horizontal]
-      }
+    case .series:
+      return [.large, .medium, .small]
+    case .collections, .readLists:
+      return [.horizontal]
     }
   }
 
