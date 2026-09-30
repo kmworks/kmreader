@@ -234,6 +234,16 @@ extension DatabaseOperator {
     }
   }
 
+  /// Series id of the book's series only when that series has no local row yet.
+  func fetchMissingSeriesId(bookId: String, instanceId: String) -> String? {
+    try? read { db in
+      guard let book = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId),
+        try fetchSeriesRecord(db: db, id: book.seriesId, instanceId: instanceId) == nil
+      else { return nil }
+      return book.seriesId
+    }
+  }
+
   func updateSeriesCollectionIds(seriesId: String, collectionIds: [String], instanceId: String) {
     do {
       try write { db in
