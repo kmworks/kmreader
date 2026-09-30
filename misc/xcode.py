@@ -29,6 +29,10 @@ class Color:
     NC = "\033[0m"
 
 
+# Off by default; the CAS cache is what lets separate checkouts (git worktrees) share compiled results
+COMPILATION_CACHE_ARGS = ["COMPILATION_CACHE_ENABLE_CACHING=YES"]
+
+
 class Device:
     def __init__(
         self, name: str, udid: str, state: str, platform: str, is_available: bool = True
@@ -565,6 +569,7 @@ class BuildRunner:
         ]
         archive_cmd.extend(validation_args)
         archive_cmd.extend(auth_args)
+        archive_cmd.extend(COMPILATION_CACHE_ARGS)
 
         try:
             subprocess.run(clean_cmd, check=True)
@@ -932,6 +937,7 @@ class BuildRunner:
             "build",
             "-quiet",
         ]
+        cmd.extend(COMPILATION_CACHE_ARGS)
 
         if destination:
             cmd.extend(["-destination", destination])
@@ -990,6 +996,7 @@ class BuildRunner:
             "build",
             "-quiet",
         ]
+        build_cmd.extend(COMPILATION_CACHE_ARGS)
 
         try:
             subprocess.run(build_cmd, check=True)
@@ -1042,6 +1049,7 @@ class BuildRunner:
             "build",
             "-quiet",
         ]
+        build_cmd.extend(COMPILATION_CACHE_ARGS)
 
         try:
             subprocess.run(build_cmd, check=True)
@@ -1119,6 +1127,7 @@ class BuildRunner:
             "build",
             "-quiet",
         ]
+        cmd.extend(COMPILATION_CACHE_ARGS)
 
         try:
             subprocess.run(cmd, check=True)
