@@ -56,8 +56,9 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Read Progress
 
-- Read progress has a per-session recording threshold (`progressRecordingThreshold`, default 3, 0 = record immediately): page-change submissions and the close/background flush are withheld until the position moves at least that many pages from the session's first page per book, unless the page completes the book.
-- All three engines gate on distance from the session start page (DIVINA per book id, PDF by page number, EPUB by global page index), so an accidental reader open never creates progress.
+- Read progress has a per-session recording threshold (`progressRecordingThreshold`, default 3, 0 = record immediately): for a book that was unread or finished when the session reached it, page-change submissions and the close/background flush are withheld until the position moves at least that many pages from the session's first page, unless the page completes the book. A book already in progress records any page turn, and once a book records in a session it keeps recording; opening a book without turning a page never records.
+- All three engines apply the policy through one `ReaderProgressRecordingGate` per book and measure the distance from the session start themselves (DIVINA per book id, PDF by page number, EPUB from the start chapter and page, with both ends recomputed from the current chapter page counts), so an accidental reader open never creates progress or resets a finished book.
+- The session start is the page the reader settles on, never a provisional one: the PDF document view reports no page change while it is moving to its start page or a jump target (PDFKit shows the first page meanwhile), and the EPUB reader restarts its start once the saved position is applied to a freshly measured chapter.
 - Any path that pulls reading progress after coming online must first `await ProgressSyncService.syncPendingProgress` (it waits for an in-flight push), so a pull never overwrites newer offline-queued local progress.
 
 ### Downloads & Caches

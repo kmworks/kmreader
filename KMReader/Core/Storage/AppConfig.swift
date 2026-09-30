@@ -895,8 +895,9 @@ enum AppConfig {
     }
   }
 
-  /// Page turns from the session's starting page required before read progress
-  /// is recorded; 0 records immediately. Guards against accidental reader opens.
+  /// Page turns from the session's starting page required before an unread or
+  /// finished book records read progress; 0 records immediately. Guards against
+  /// accidental reader opens; a book already in progress records any page turn.
   static nonisolated var progressRecordingThreshold: Int {
     get {
       if UserDefaults.standard.object(forKey: "progressRecordingThreshold") != nil {

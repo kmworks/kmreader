@@ -60794,70 +60794,6 @@
         }
       }
     },
-    "Reading progress is recorded only after you turn this many pages from the page you opened at." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Lesefortschritt wird erst aufgezeichnet, nachdem du ab der geöffneten Seite so viele Seiten umgeblättert hast."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading progress is recorded only after you turn this many pages from the page you opened at."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El progreso de lectura solo se registra después de pasar esta cantidad de páginas desde la página que abriste."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La progression de lecture n'est enregistrée qu'après avoir tourné ce nombre de pages à partir de la page ouverte."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I progressi di lettura vengono registrati solo dopo aver girato questo numero di pagine rispetto alla pagina aperta."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開いたページから指定したページ数をめくった後でのみ、読書の進捗が記録されます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "연 페이지에서 설정한 페이지 수만큼 넘긴 후에만 읽기 진행이 기록됩니다."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Прогресс чтения записывается только после того, как вы перевернёте указанное количество страниц от открытой страницы."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "从打开时的页面起翻过指定页数后，才开始记录阅读进度。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "從打開時的頁面起翻過指定頁數後，才開始記錄閱讀進度。"
-          }
-        }
-      }
-    },
     "Reading Settings" : {
       "localizations" : {
         "de" : {
@@ -81911,6 +81847,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未讀"
+          }
+        }
+      }
+    },
+    "Unread and finished books record reading progress only after you turn this many pages. Books in progress record every page you turn." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei ungelesenen und beendeten Büchern wird der Lesefortschritt erst aufgezeichnet, nachdem du so viele Seiten umgeblättert hast. Bei angefangenen Büchern wird jede umgeblätterte Seite aufgezeichnet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unread and finished books record reading progress only after you turn this many pages. Books in progress record every page you turn."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En los libros sin leer y los terminados, el progreso de lectura solo se registra después de pasar esta cantidad de páginas. En los libros empezados se registra cada página que pasas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pour les livres non lus et terminés, la progression de lecture n'est enregistrée qu'après avoir tourné ce nombre de pages. Pour les livres en cours, chaque page tournée est enregistrée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per i libri non letti e terminati, i progressi di lettura vengono registrati solo dopo aver girato questo numero di pagine. Per i libri iniziati viene registrata ogni pagina girata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未読と読了済みの本は、指定したページ数をめくった後でのみ読書の進捗が記録されます。読みかけの本は、めくったページがすべて記録されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "읽지 않은 책과 다 읽은 책은 설정한 페이지 수만큼 넘긴 후에만 읽기 진행이 기록됩니다. 읽는 중인 책은 넘기는 모든 페이지가 기록됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для непрочитанных и прочитанных книг прогресс чтения записывается только после того, как вы перевернёте указанное количество страниц. Для начатых книг записывается каждая перевёрнутая страница."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未读和已读完的书籍，翻过指定页数后才开始记录阅读进度。正在阅读的书籍会记录翻过的每一页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未讀和已讀完的書籍，翻過指定頁數後才開始記錄閱讀進度。正在閱讀的書籍會記錄翻過的每一頁。"
           }
         }
       }
