@@ -57,7 +57,7 @@ Additional patterns:
 - New API endpoints belong in the appropriate service; keep request-building out of views.
 - All logging goes through `AppLogger` (OSLog subsystems/categories); user-visible errors through `ErrorManager.shared` (`notify` for transient success).
 - The Xcode project uses folder references (not groups); adding/removing files does not require editing `project.pbxproj`.
-- Translate all supported languages after changing UI strings (see the `localization` skill); reference `../komga/komga-webui/src/locales/` when available.
+- Translate all supported languages after changing UI strings (see the `localization` skill).
 - When building JSON strings for storage or cache keys, use `JSONSerialization` with `sortedKeys` for stable raw values.
 - Colors that vary only between light and dark mode belong in `Assets.xcassets` as color sets with light/dark appearances, referenced as `Color.<name>` — not `colorScheme` branching in views. Assets also carry alpha and can encode gradient-stop pairs (start/end as two assets). Reserve `colorScheme` reads for layout or logic differences; clusters of one-off decorative tints serving a single view may stay local.
 - SF Symbol fill/outline is a rendering concern, not data: models and enums expose the base (outline) symbol name, and the site that knows its rendering context applies `.symbolVariant(.fill)` — never thread hardcoded `*.fill` names or parallel filled-name parameters through view APIs. Exception: an icon filled in every context is part of the status's identity (e.g. `checkmark.icloud.fill`, `exclamationmark.circle.fill` in download statuses); models may return the `.fill` name directly.
