@@ -156,7 +156,7 @@ struct LayoutConfig {
     let large = cardWidth >= cardLargeTextMinimumWidth
     #if os(tvOS)
       return CardTextStyle(
-        title: large ? .footnote : .caption,
+        title: large ? .subheadline : .caption,
         secondary: large ? .caption : .caption2,
         tertiary: .caption2
       )
