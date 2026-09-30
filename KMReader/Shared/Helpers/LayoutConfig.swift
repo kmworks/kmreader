@@ -154,25 +154,11 @@ struct LayoutConfig {
 
   static func cardTextStyle(cardWidth: CGFloat) -> CardTextStyle {
     let large = cardWidth >= cardLargeTextMinimumWidth
-    #if os(tvOS)
-      return CardTextStyle(
-        title: large ? .callout : .footnote,
-        secondary: large ? .footnote : .caption,
-        tertiary: large ? .caption : .caption2
-      )
-    #elseif os(macOS)
-      return CardTextStyle(
-        title: large ? .body : .footnote,
-        secondary: large ? .callout : .caption,
-        tertiary: large ? .footnote : .caption2
-      )
-    #else
-      return CardTextStyle(
-        title: large ? .body : .callout,
-        secondary: large ? .subheadline : .footnote,
-        tertiary: large ? .footnote : .caption
-      )
-    #endif
+    return CardTextStyle(
+      title: large ? .callout : .subheadline,
+      secondary: large ? .footnote : .caption,
+      tertiary: large ? .caption : .caption2
+    )
   }
 
   /// Font size (pt) for the title line of horizontal cards (semibold, Apple
