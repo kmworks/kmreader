@@ -425,6 +425,17 @@ enum AppConfig {
     }
   }
 
+  /// Next-book suggestions skip books already read, like the dashboard.
+  static nonisolated var suggestNextUnreadBook: Bool {
+    get {
+      if UserDefaults.standard.object(forKey: "suggestNextUnreadBook") != nil {
+        return UserDefaults.standard.bool(forKey: "suggestNextUnreadBook")
+      }
+      return true
+    }
+    set { UserDefaults.standard.set(newValue, forKey: "suggestNextUnreadBook") }
+  }
+
   /// Opt-in: ordered read lists the user reads through continue like series
   /// (reader order from any entry point, the Read Lists in Progress section).
   static nonisolated var readListContinuationEnabled: Bool {

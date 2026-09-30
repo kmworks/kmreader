@@ -47,9 +47,6 @@ nonisolated struct BookSearchFilters {
   var seriesId: String? = nil
   var readListId: String? = nil
   var releaseDateAfter: Date? = nil
-  /// Books at or after this series position (`metadata.numberSort`): Komga's
-  /// `greaterThan` operator includes its bound.
-  var numberSortFrom: Double? = nil
 
   // Metadata filters
   var authors: [String]? = nil
@@ -111,12 +108,6 @@ extension BookSearch {
           "operator": "after",
           "dateTime": iso8601UTCString(from: releaseDateAfter),
         ]
-      ])
-    }
-
-    if let numberSortFrom = filters.numberSortFrom {
-      conditions.append([
-        "numberSort": ["operator": "greaterthan", "value": numberSortFrom]
       ])
     }
 

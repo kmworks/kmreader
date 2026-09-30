@@ -44,8 +44,8 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Next Book Suggestions
 
-- The next book skips books already read, like the dashboard: the first later book in series order (or the read list's order in a read-list context) that isn't read, else the plain next book, so re-reading still moves forward. The previous book stays plain order. This covers the reader's next book (end page, next segment and its preload) and the series continue-reading target after the last read book.
-- Online through `NextBookToReadResolver` (series: a `numberSort` search from the current book's position for the first unread book, skipping the current book since Komga's `greaterThan` includes its bound; read lists: the list's unread books in list order, placed by its `bookIds`); offline and from the local projection through `Collection.nextToRead(after:isRead:)`. An appended next segment records the book it follows as its previous book, so a skipped book never lands between two segments.
+- With "Suggest Next Unread Book" on (`suggestNextUnreadBook`, on by default), the next book skips books already read, like the dashboard: the first later book in series order (or the read list's order in a read-list context) that isn't read, else the plain next book, so re-reading still moves forward. With it off, the plain next book. The previous book always stays plain order. This covers the reader's next book (end page, next segment and its preload) and the series continue-reading target after the last read book.
+- Online, `NextBookToReadResolver` makes the single `/next` request with `skipRead=true` (servers that support it skip read books themselves); when the returned book is read (servers that ignore the parameter, such as Komga), the local projection supplies the first unread book after the current one, never adding a request. Offline, and for the local continue-reading target, the same rule runs on the local projection (`Collection.nextToRead(after:isRead:)`). An appended next segment records the book it follows as its previous book, so a skipped book never lands between two segments.
 
 ### Read List Continuation
 

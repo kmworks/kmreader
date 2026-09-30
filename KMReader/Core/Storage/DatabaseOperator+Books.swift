@@ -272,7 +272,14 @@ extension DatabaseOperator {
 
   /// `downloadedOnly` restricts the candidates to downloaded books (offline
   /// mode); otherwise the whole local projection of the series takes part.
-  func fetchContinueReadingBook(seriesId: String, instanceId: String, downloadedOnly: Bool) -> Book? {
+  /// With `skipRead`, the book after the last one read skips books already
+  /// read, like the reader's next book.
+  func fetchContinueReadingBook(
+    seriesId: String,
+    instanceId: String,
+    downloadedOnly: Bool,
+    skipRead: Bool
+  ) -> Book? {
     guard !seriesId.isEmpty, !instanceId.isEmpty else { return nil }
     return try? read { db in
       if let inProgress = try fetchLatestSeriesBook(
@@ -297,8 +304,9 @@ extension DatabaseOperator {
         downloadedOnly: downloadedOnly
       ),
         let lastReadIndex = orderedBooks.firstIndex(where: { $0.id == lastRead.id }),
-        let nextBook = orderedBooks.nextToRead(
-          after: lastReadIndex, isRead: { $0.progressCompleted == true })
+        let nextBook = skipRead
+          ? orderedBooks.nextToRead(after: lastReadIndex, isRead: { $0.progressCompleted == true })
+          : orderedBooks.dropFirst(lastReadIndex + 1).first
       {
         return nextBook.toBook()
       }
@@ -566,25 +574,67 @@ extension DatabaseOperator {
     }
   }
 
-  /// The book to read after `bookId` in its series, or in `readListId`'s
-  /// order: the first later book that isn't read, else the plain next book.
-  func getNextBook(instanceId: String, bookId: String, readListId: String?) async -> Book? {
+  /// The book after `bookId` in its series, or in `readListId`'s order. With
+  /// `skipRead`, the first later book that isn't read, else the plain next book.
+  func getNextBook(instanceId: String, bookId: String, readListId: String?, skipRead: Bool) async -> Book? {
     try? read { db in
-      guard let currentBook = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId) else {
+      guard
+        let siblings = try fetchSiblingBooks(
+          db: db, bookId: bookId, readListId: readListId, instanceId: instanceId)
+      else {
         return nil
       }
-      let books: [Book]
-      if let readListId {
-        books = try fetchReadListBooks(db: db, readListId: readListId, instanceId: instanceId, page: 0, size: 1000)
-      } else {
-        books = try fetchSeriesBooks(
-          db: db, seriesId: currentBook.seriesId, instanceId: instanceId, page: 0, size: 1000)
+      guard skipRead else {
+        return siblings.books.dropFirst(siblings.index + 1).first
       }
-      guard let currentIndex = books.firstIndex(where: { $0.id == bookId }) else {
-        return nil
-      }
-      return books.nextToRead(after: currentIndex, isRead: { $0.isCompleted })
+      return siblings.books.nextToRead(after: siblings.index, isRead: { $0.isCompleted })
     }
+  }
+
+  /// The first book after `bookId`, in its series or in `readListId`'s order,
+  /// that isn't read, also skipping `readBookId`, which the server reported
+  /// read whatever the local copy says. Nil when there is none.
+  func getNextUnreadBook(
+    instanceId: String,
+    bookId: String,
+    readListId: String?,
+    readBookId: String
+  ) async -> Book? {
+    try? read { db in
+      guard
+        let siblings = try fetchSiblingBooks(
+          db: db, bookId: bookId, readListId: readListId, instanceId: instanceId)
+      else {
+        return nil
+      }
+      return siblings.books.dropFirst(siblings.index + 1).first {
+        $0.id != readBookId && !$0.isCompleted
+      }
+    }
+  }
+
+  /// The locally known books of `bookId`'s series, or of `readListId`, in
+  /// reading order, with `bookId`'s position among them.
+  private func fetchSiblingBooks(
+    db: Database,
+    bookId: String,
+    readListId: String?,
+    instanceId: String
+  ) throws -> (books: [Book], index: Int)? {
+    guard let currentBook = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId) else {
+      return nil
+    }
+    let books: [Book]
+    if let readListId {
+      books = try fetchReadListBooks(db: db, readListId: readListId, instanceId: instanceId, page: 0, size: 1000)
+    } else {
+      books = try fetchSeriesBooks(
+        db: db, seriesId: currentBook.seriesId, instanceId: instanceId, page: 0, size: 1000)
+    }
+    guard let index = books.firstIndex(where: { $0.id == bookId }) else {
+      return nil
+    }
+    return (books, index)
   }
 
   func getPreviousBook(instanceId: String, bookId: String, readListId: String? = nil) async -> Book? {

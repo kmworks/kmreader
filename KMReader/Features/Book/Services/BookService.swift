@@ -367,17 +367,26 @@ nonisolated enum BookService {
     )
   }
 
-  static func getNextBook(bookId: String, readListId: String? = nil) async throws -> Book? {
+  /// `skipRead` asks for the next book that isn't read; servers without the
+  /// parameter ignore it and return the plain next book.
+  static func getNextBook(
+    bookId: String,
+    readListId: String? = nil,
+    skipRead: Bool = false
+  ) async throws -> Book? {
+    let queryItems: [URLQueryItem]? = skipRead ? [URLQueryItem(name: "skipRead", value: "true")] : nil
     do {
       if let readListId = readListId {
         // Use readlist-specific endpoint when readListId is provided
         return try await apiClient.request(
-          path: "/api/v1/readlists/\(readListId)/books/\(bookId)/next"
+          path: "/api/v1/readlists/\(readListId)/books/\(bookId)/next",
+          queryItems: queryItems
         )
       } else {
         // Use series endpoint when no readListId
         return try await apiClient.request(
-          path: "/api/v1/books/\(bookId)/next"
+          path: "/api/v1/books/\(bookId)/next",
+          queryItems: queryItems
         )
       }
     } catch APIError.notFound {

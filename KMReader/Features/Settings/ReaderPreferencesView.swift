@@ -12,6 +12,7 @@ struct ReaderPreferencesView: View {
   @AppStorage("offlineAutoDeleteRead") private var autoDeleteRead: Bool = false
   @AppStorage("progressRecordingThreshold") private var progressRecordingThreshold: Int =
     AppConfig.progressRecordingThreshold
+  @AppStorage("suggestNextUnreadBook") private var suggestNextUnreadBook: Bool = true
   #if os(iOS)
     @AppStorage("enableReaderLiveActivity") private var enableReaderLiveActivity: Bool = true
   #endif
@@ -71,6 +72,17 @@ struct ReaderPreferencesView: View {
           Text("Reading progress is recorded only after you turn this many pages from the page you opened at.")
             .font(.caption)
             .foregroundColor(.secondary)
+        }
+      }
+
+      Section(header: Text(String(localized: "settings.reader.nextBook"))) {
+        Toggle(isOn: $suggestNextUnreadBook) {
+          VStack(alignment: .leading, spacing: 4) {
+            Text(String(localized: "settings.reader.suggestNextUnreadBook.title"))
+            Text(String(localized: "settings.reader.suggestNextUnreadBook.caption"))
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
         }
       }
 
