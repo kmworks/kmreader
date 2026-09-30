@@ -16,18 +16,33 @@ struct TapZoneModePicker: View {
   let tapZoneInversionMode: TapZoneInversionMode
   let readingDirection: ReadingDirection
 
-  private var columns: [GridItem] {
-    Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+  private let columnCount = 3
+
+  private var rows: [[TapZoneMode]] {
+    let modes = TapZoneMode.allCases
+    return stride(from: 0, to: modes.count, by: columnCount).map {
+      Array(modes[$0..<min($0 + columnCount, modes.count)])
+    }
   }
 
   private var previewAspectRatio: CGFloat {
     isPortraitScreen ? CoverAspectRatio.widthToHeight : CoverAspectRatio.heightToWidth
   }
 
+  /// Eager rows rather than a LazyVGrid: inside a self-sizing List/Form row,
+  /// the lazy grid can report two heights for the same width, which UIKit
+  /// ends as a recursive layout loop crash.
   var body: some View {
-    LazyVGrid(columns: columns, spacing: 12) {
-      ForEach(TapZoneMode.allCases, id: \.self) { mode in
-        modeButton(for: mode)
+    VStack(spacing: 12) {
+      ForEach(rows, id: \.self) { row in
+        HStack(alignment: .top, spacing: 12) {
+          ForEach(row, id: \.self) { mode in
+            modeButton(for: mode)
+          }
+          ForEach(row.count..<columnCount, id: \.self) { _ in
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+          }
+        }
       }
     }
     .padding(.vertical, 4)
@@ -47,6 +62,7 @@ struct TapZoneModePicker: View {
         caption: mode.displayName
       )
       .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
       .padding(8)
       .background(Color.secondary.opacity(0.08))
       .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
