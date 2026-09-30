@@ -130,37 +130,48 @@ struct LayoutConfig {
     #endif
   }
 
-  /// Title text style below a grid-style card cover (book/series title),
-  /// scaled to the card width.
-  static func cardTitleTextStyle(cardWidth: CGFloat) -> Font.TextStyle {
+  /// Text styles rendered below a grid-style card cover, scaled to the card
+  /// width. `title` is the book/series name, `secondary` the series/progress
+  /// lines, `tertiary` the small accessory icons.
+  struct CardTextStyle {
+    let title: Font.TextStyle
+    let secondary: Font.TextStyle
+    let tertiary: Font.TextStyle
+  }
+
+  /// Width below which a card uses the smaller text tier. Sits between the
+  /// dashboard medium and large card widths so the large card (and the large
+  /// browse grid) reads a notch larger than the medium/small cards.
+  private static var cardLargeTextMinimumWidth: CGFloat {
     #if os(tvOS)
-      return cardWidth < 300 ? .footnote : .callout
+      return 300
     #elseif os(macOS)
-      return cardWidth < 170 ? .footnote : .body
+      return 124
     #else
-      return cardWidth < 170 ? .callout : .body
+      return 130
     #endif
   }
 
-  /// Secondary text style below a grid-style card cover (series, progress, metadata).
-  static func cardSecondaryTextStyle(cardWidth: CGFloat) -> Font.TextStyle {
+  static func cardTextStyle(cardWidth: CGFloat) -> CardTextStyle {
+    let large = cardWidth >= cardLargeTextMinimumWidth
     #if os(tvOS)
-      return cardWidth < 300 ? .caption : .footnote
+      return CardTextStyle(
+        title: large ? .callout : .footnote,
+        secondary: large ? .footnote : .caption,
+        tertiary: large ? .caption : .caption2
+      )
     #elseif os(macOS)
-      return cardWidth < 170 ? .caption : .callout
+      return CardTextStyle(
+        title: large ? .body : .footnote,
+        secondary: large ? .callout : .caption,
+        tertiary: large ? .footnote : .caption2
+      )
     #else
-      return cardWidth < 170 ? .footnote : .subheadline
-    #endif
-  }
-
-  /// Tertiary text style for small icons below a grid-style card cover.
-  static func cardTertiaryTextStyle(cardWidth: CGFloat) -> Font.TextStyle {
-    #if os(tvOS)
-      return cardWidth < 300 ? .caption2 : .caption
-    #elseif os(macOS)
-      return cardWidth < 170 ? .caption2 : .footnote
-    #else
-      return cardWidth < 170 ? .caption : .footnote
+      return CardTextStyle(
+        title: large ? .body : .callout,
+        secondary: large ? .subheadline : .footnote,
+        tertiary: large ? .footnote : .caption
+      )
     #endif
   }
 

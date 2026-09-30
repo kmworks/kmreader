@@ -48,7 +48,7 @@ struct BookCardView: View {
   }
 
   private var tertiaryTextStyle: Font.TextStyle {
-    LayoutConfig.cardTertiaryTextStyle(cardWidth: cardWidth)
+    LayoutConfig.cardTextStyle(cardWidth: cardWidth).tertiary
   }
 
   var body: some View {

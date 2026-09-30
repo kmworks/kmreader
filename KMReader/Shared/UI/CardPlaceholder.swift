@@ -47,12 +47,8 @@ struct CardPlaceholder: View {
     kind == .book && thumbnailShowProgressBar
   }
 
-  private var gridTitleTextStyle: Font.TextStyle {
-    LayoutConfig.cardTitleTextStyle(cardWidth: cardWidth)
-  }
-
-  private var gridSecondaryTextStyle: Font.TextStyle {
-    LayoutConfig.cardSecondaryTextStyle(cardWidth: cardWidth)
+  private var gridTextStyle: LayoutConfig.CardTextStyle {
+    LayoutConfig.cardTextStyle(cardWidth: cardWidth)
   }
 
   private var gridContentSpacing: CGFloat {
@@ -145,17 +141,17 @@ struct CardPlaceholder: View {
     switch kind {
     case .book:
       let titleLines: [(textStyle: Font.TextStyle, text: String, width: CGFloat, opacity: Double)] = [
-        (textStyle: gridTitleTextStyle, text: "1 - Book Title", width: 0.85, opacity: 0.2),
-        (textStyle: gridSecondaryTextStyle, text: "200 pages", width: 0.6, opacity: 0.15),
+        (textStyle: gridTextStyle.title, text: "1 - Book Title", width: 0.85, opacity: 0.2),
+        (textStyle: gridTextStyle.secondary, text: "200 pages", width: 0.6, opacity: 0.15),
       ]
       guard showsBookSeriesTitleLine else { return titleLines }
       return [
-        (textStyle: gridSecondaryTextStyle, text: "Series Title", width: 0.55, opacity: 0.18)
+        (textStyle: gridTextStyle.secondary, text: "Series Title", width: 0.55, opacity: 0.18)
       ] + titleLines
     case .series:
       return [
-        (textStyle: gridTitleTextStyle, text: "Series Title", width: 0.8, opacity: 0.2),
-        (textStyle: gridSecondaryTextStyle, text: "12 books", width: 0.6, opacity: 0.15),
+        (textStyle: gridTextStyle.title, text: "Series Title", width: 0.8, opacity: 0.2),
+        (textStyle: gridTextStyle.secondary, text: "12 books", width: 0.6, opacity: 0.15),
       ]
     case .collection:
       return [
