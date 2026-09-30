@@ -1412,9 +1412,10 @@ struct DivinaReaderView: View {
           readListId: readListId
         )
       case .next:
-        resolvedBook = try await BookService.getNextBook(
-          bookId: bookId,
-          readListId: readListId
+        resolvedBook = try await NextBookToReadResolver.resolve(
+          after: bookId,
+          readListId: readListId,
+          instanceId: instanceId
         )
       }
 
@@ -1451,10 +1452,12 @@ struct DivinaReaderView: View {
         readListId: readListId
       )
     case .next:
-      return await database?.getNextBook(
+      guard let database else { return nil }
+      return await NextBookToReadResolver.resolveLocally(
+        after: bookId,
+        readListId: readListId,
         instanceId: instanceId,
-        bookId: bookId,
-        readListId: readListId
+        database: database
       )
     }
   }

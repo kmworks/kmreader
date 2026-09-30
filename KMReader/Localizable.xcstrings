@@ -72955,6 +72955,198 @@
         }
       }
     },
+    "settings.reader.nextBook" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes Buch"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next Book"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siguiente libro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Livre suivant"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Libro successivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次の本"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다음 책"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая книга"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一本书"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一本書"
+          }
+        }
+      }
+    },
+    "settings.reader.suggestNextUnreadBook.caption" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Am Ende eines Buches und auf Serienseiten werden bereits gelesene Bücher übersprungen. Sind alle folgenden Bücher gelesen, wird das nächste in der Reihenfolge vorgeschlagen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At the end of a book and on series pages, skip books you've already read. When every later book is read, the next one in order is suggested."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al terminar un libro y en las páginas de series, se omiten los libros que ya has leído. Si todos los libros siguientes están leídos, se sugiere el siguiente en orden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À la fin d'un livre et sur les pages de séries, les livres déjà lus sont ignorés. Si tous les livres suivants sont lus, le suivant dans l'ordre est proposé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alla fine di un libro e nelle pagine delle serie, i libri già letti vengono saltati. Se tutti i libri successivi sono già letti, viene suggerito il successivo nell'ordine."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本を読み終えたときやシリーズページで、既読の本をスキップします。以降の本がすべて既読の場合は、順番どおりの次の本を提案します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "책을 다 읽었을 때와 시리즈 페이지에서 이미 읽은 책은 건너뜁니다. 이후의 책을 모두 읽었다면 순서상 다음 책을 추천합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В конце книги и на страницах серий уже прочитанные книги пропускаются. Если все следующие книги прочитаны, предлагается следующая по порядку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读完一本书时和在系列页面上，跳过已读的书。如果之后的书都已读，则推荐顺序中的下一本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "讀完一本書時和在系列頁面上，略過已讀的書。如果之後的書都已讀，則推薦順序中的下一本。"
+          }
+        }
+      }
+    },
+    "settings.reader.suggestNextUnreadBook.title" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes ungelesenes Buch vorschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggest Next Unread Book"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sugerir el siguiente libro sin leer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggérer le prochain livre non lu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggerisci il prossimo libro non letto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未読の次の本を提案"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "읽지 않은 다음 책 추천"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предлагать следующую непрочитанную книгу"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推荐下一本未读的书"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推薦下一本未讀的書"
+          }
+        }
+      }
+    },
     "settings.sync_data" : {
       "localizations" : {
         "de" : {
