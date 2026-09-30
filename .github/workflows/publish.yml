@@ -23,7 +23,7 @@ jobs:
       release_sha: ${{ steps.changed.outputs.release_sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -143,7 +143,7 @@ jobs:
     if: needs.detect.outputs.create_release == 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Ensure GitHub release exists
         env:
@@ -170,7 +170,7 @@ jobs:
         platform: [ios, macos, tvos]
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Prepare App Store Connect API key
         id: prepare
