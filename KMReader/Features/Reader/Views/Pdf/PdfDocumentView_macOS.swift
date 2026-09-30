@@ -55,7 +55,12 @@
     }
 
     private func loadDocument(into pdfView: PDFView, coordinator: Coordinator) {
-      guard let document = PDFDocument(url: documentURL) else { return }
+      // With no new document, an unfinished move's stale target would suppress
+      // page reports forever.
+      guard let document = PDFDocument(url: documentURL) else {
+        coordinator.cancelPositioning()
+        return
+      }
 
       // Assigning the document already posts page changes for its first page.
       let clampedInitialPage = max(1, min(initialPageNumber, max(1, document.pageCount)))
@@ -280,6 +285,10 @@
         guard positioningTarget?.generation == generation else { return }
         positioningTarget = nil
         notifyCurrentPage(from: pdfView)
+      }
+
+      func cancelPositioning() {
+        positioningTarget = nil
       }
 
       func notifyPositionedPage(from pdfView: PDFView) {
