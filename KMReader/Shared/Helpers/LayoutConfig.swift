@@ -156,21 +156,21 @@ struct LayoutConfig {
     let large = cardWidth >= cardLargeTextMinimumWidth
     #if os(tvOS)
       return CardTextStyle(
-        title: large ? .callout : .footnote,
-        secondary: large ? .footnote : .caption,
-        tertiary: large ? .caption : .caption2
+        title: large ? .footnote : .caption,
+        secondary: large ? .caption : .caption2,
+        tertiary: .caption2
       )
     #elseif os(macOS)
       return CardTextStyle(
-        title: large ? .body : .footnote,
-        secondary: large ? .callout : .caption,
-        tertiary: large ? .footnote : .caption2
+        title: large ? .callout : .caption,
+        secondary: large ? .footnote : .caption2,
+        tertiary: .caption2
       )
     #else
       return CardTextStyle(
-        title: large ? .body : .callout,
-        secondary: large ? .subheadline : .footnote,
-        tertiary: large ? .footnote : .caption
+        title: large ? .callout : .subheadline,
+        secondary: large ? .footnote : .caption,
+        tertiary: large ? .caption : .caption2
       )
     #endif
   }
