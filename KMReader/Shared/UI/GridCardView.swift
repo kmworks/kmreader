@@ -99,16 +99,8 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     thumbnailBlurUnreadCovers && isUnread ? CoverBlurStyle.unreadRadius : 0
   }
 
-  private var titleTextStyle: Font.TextStyle {
-    LayoutConfig.cardTitleTextStyle(cardWidth: cardWidth)
-  }
-
-  private var secondaryTextStyle: Font.TextStyle {
-    LayoutConfig.cardSecondaryTextStyle(cardWidth: cardWidth)
-  }
-
-  private var tertiaryTextStyle: Font.TextStyle {
-    LayoutConfig.cardTertiaryTextStyle(cardWidth: cardWidth)
+  private var textStyle: LayoutConfig.CardTextStyle {
+    LayoutConfig.cardTextStyle(cardWidth: cardWidth)
   }
 
   var body: some View {
@@ -151,7 +143,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
                 Text(subtitle)
               }
             }
-            .font(.system(secondaryTextStyle))
+            .font(.system(textStyle.secondary))
             .foregroundColor(.secondary)
             .lineLimit(1)
           }
@@ -164,13 +156,13 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
             if let downloadIcon {
               Spacer()
               DownloadStatusIcon(systemName: downloadIcon, spinning: downloadSpinning)
-                .font(.system(tertiaryTextStyle))
+                .font(.system(textStyle.tertiary))
             }
           }
-          .font(.system(secondaryTextStyle))
+          .font(.system(textStyle.secondary))
           .foregroundColor(.secondary)
         }
-        .font(.system(titleTextStyle))
+        .font(.system(textStyle.title))
         // Match the progress bar's horizontal inset.
         .padding(.horizontal, PlatformHelper.progressBarHeight)
       }
