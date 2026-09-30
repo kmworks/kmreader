@@ -62,6 +62,7 @@ struct TapZoneModePicker: View {
         caption: mode.displayName
       )
       .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
       .padding(8)
       .background(Color.secondary.opacity(0.08))
       .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
