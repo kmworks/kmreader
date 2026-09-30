@@ -14,7 +14,7 @@ jobs:
     runs-on: xcode-27
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -27,7 +27,7 @@ jobs:
     runs-on: xcode-27
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -40,7 +40,7 @@ jobs:
     runs-on: xcode-27
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Show Xcode version
         run: xcodebuild -version
