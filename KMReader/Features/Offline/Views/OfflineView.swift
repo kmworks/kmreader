@@ -25,28 +25,9 @@ struct OfflineView: View {
   #endif
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
-  @State private var showSyncConfirmation = false
-  @State private var latestReadHistoryTime: Date?
-  @State private var syncInfo: OfflineInstanceSyncInfo?
-
-  private var syncViewModel: SyncViewModel {
-    SyncViewModel.shared
-  }
 
   private var coverSyncViewModel: OfflineCoverSyncViewModel {
     OfflineCoverSyncViewModel.shared
-  }
-
-  private var lastSyncTimeText: String {
-    guard let syncInfo else {
-      return String(localized: "settings.sync_data.never")
-    }
-    if syncInfo.latestSync == Date(timeIntervalSince1970: 0) {
-      return String(localized: "settings.sync_data.never")
-    }
-    let formatter = RelativeDateTimeFormatter()
-    formatter.unitsStyle = .short
-    return formatter.localizedString(for: syncInfo.latestSync, relativeTo: Date())
   }
 
   private var title: String {
@@ -120,13 +101,10 @@ struct OfflineView: View {
           .padding()
         }
 
-        VStack(spacing: 12) {
-          syncCard
-          downloadShortcuts
-        }
-        .padding(.horizontal)
-        .padding(.top, librarySelection == nil ? 12 : 0)
-        .padding(.bottom, 12)
+        downloadShortcuts
+          .padding(.horizontal)
+          .padding(.top, librarySelection == nil ? 12 : 0)
+          .padding(.bottom, 12)
 
         HStack {
           Spacer()
@@ -195,26 +173,6 @@ struct OfflineView: View {
         SavedFiltersView(filterType: savedFilterType)
       }
     #endif
-    .alert(
-      String(localized: "offline.sync.confirm.title"),
-      isPresented: $showSyncConfirmation
-    ) {
-      Button(String(localized: "offline.sync.confirm.action")) {
-        Task {
-          await syncViewModel.syncData()
-          await loadSyncInfo()
-        }
-      }
-      Button(String(localized: "offline.sync.confirm.forceAction"), role: .destructive) {
-        Task {
-          await syncViewModel.syncData(forceFullSync: true)
-          await loadSyncInfo()
-        }
-      }
-      Button(String(localized: "Cancel"), role: .cancel) {}
-    } message: {
-      Text(String(localized: "offline.sync.confirm.message"))
-    }
     .onSubmit(of: .search) {
       activeSearchText = searchQuery
     }
@@ -243,17 +201,9 @@ struct OfflineView: View {
         isOffline: newValue
       )
     }
-    .task(id: current.instanceId) {
-      guard !authViewModel.isSwitching else { return }
-      latestReadHistoryTime = AppConfig.recentlyReadRecordTime(instanceId: current.instanceId)
-      await loadSyncInfo()
-    }
     .onChange(of: resolvedLibraryIdsKey) { _, _ in
       guard !authViewModel.isSwitching else { return }
       refreshTrigger = UUID()
-      Task {
-        await loadSyncInfo()
-      }
     }
   }
 
@@ -279,77 +229,6 @@ struct OfflineView: View {
         showSavedFilters: $showSavedFilters
       )
     }
-  }
-
-  private var syncCard: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Button {
-        showSyncConfirmation = true
-      } label: {
-        HStack {
-          Label(
-            String(localized: "settings.sync_data"),
-            systemImage: "arrow.triangle.2.circlepath"
-          )
-          Spacer()
-          if syncViewModel.isSyncing {
-            ProgressView()
-          } else {
-            Text(lastSyncTimeText)
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-        }
-      }
-      .disabled(syncViewModel.isSyncing || isOffline)
-
-      Text(String(localized: "settings.sync_data.description"))
-        .font(.caption)
-        .foregroundColor(.secondary)
-
-      Divider()
-
-      Button {
-        triggerReadingProgressSync(force: true)
-      } label: {
-        HStack {
-          Image(systemName: "book.circle")
-            .imageScale(.small)
-          Text(
-            String(
-              localized: "offline.sync.confirm.progressOnlyAction",
-              defaultValue: "Sync Reading History"
-            )
-          )
-          .font(.caption)
-          Spacer()
-          if let syncTime = latestReadHistoryTime {
-            HStack(spacing: 4) {
-              Text(
-                String(
-                  localized: "offline.sync.readHistory.lastRead",
-                  defaultValue: "Last read"
-                )
-              )
-              Text(syncTime.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)))
-                .monospacedDigit()
-            }
-            .font(.caption2)
-            .foregroundColor(.secondary)
-          } else {
-            Text(String(localized: "settings.sync_data.never"))
-              .font(.caption2)
-              .foregroundColor(.secondary)
-              .monospacedDigit()
-          }
-        }
-      }
-      .disabled(isOffline)
-
-    }
-    .padding(12)
-    .background(.thinMaterial)
-    .clipShape(RoundedRectangle(cornerRadius: 12))
   }
 
   private var downloadShortcuts: some View {
@@ -390,9 +269,7 @@ struct OfflineView: View {
 
   private func refreshOfflinePage() async {
     guard !authViewModel.isSwitching else { return }
-    latestReadHistoryTime = AppConfig.recentlyReadRecordTime(instanceId: current.instanceId)
     await refreshBrowse()
-    await loadSyncInfo()
   }
 
   #if os(iOS) || os(macOS)
@@ -418,34 +295,4 @@ struct OfflineView: View {
       }
     }
   #endif
-
-  private func loadSyncInfo() async {
-    guard !current.instanceId.isEmpty else {
-      if syncInfo != nil { syncInfo = nil }
-      return
-    }
-
-    do {
-      let database = try await DatabaseOperator.database()
-      let loadedSyncInfo = try await database.fetchOfflineInstanceSyncInfo(
-        instanceId: current.instanceId
-      )
-      if syncInfo != loadedSyncInfo {
-        syncInfo = loadedSyncInfo
-      }
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
-  }
-
-  private func triggerReadingProgressSync(force: Bool = false) {
-    guard !isOffline, !current.instanceId.isEmpty else { return }
-
-    Task(priority: .utility) {
-      await syncViewModel.syncReadingProgressOnly(force: force)
-      await MainActor.run {
-        latestReadHistoryTime = AppConfig.recentlyReadRecordTime(instanceId: current.instanceId)
-      }
-    }
-  }
 }

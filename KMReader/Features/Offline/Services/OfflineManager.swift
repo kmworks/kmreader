@@ -399,6 +399,7 @@ actor OfflineManager {
     case .pending:
       await cancelDownload(bookId: info.bookId, instanceId: instanceId)
     case .notDownloaded, .failed:
+      await ensureSeriesRow(instanceId: instanceId, bookId: info.bookId)
       try? await DatabaseOperator.database().updateBookDownloadStatus(
         bookId: info.bookId,
         instanceId: instanceId,
@@ -411,7 +412,23 @@ actor OfflineManager {
     }
   }
 
+  /// Single-book download entries don't guarantee a local series row, which Offline
+  /// series browse and series download rollups need; backfill it from the server.
+  private func ensureSeriesRow(instanceId: String, bookId: String) async {
+    do {
+      let database = try await DatabaseOperator.database()
+      guard let seriesId = await database.fetchMissingSeriesId(bookId: bookId, instanceId: instanceId)
+      else { return }
+      let series = try await SeriesService.getOneSeries(id: seriesId)
+      await database.upsertSeries(dto: series, instanceId: instanceId)
+      await database.syncSeriesDownloadStatus(seriesId: seriesId, instanceId: instanceId)
+    } catch {
+      logger.warning("⚠️ Failed to backfill series row for book \(bookId): \(error)")
+    }
+  }
+
   func retryDownload(instanceId: String, bookId: String) async {
+    await ensureSeriesRow(instanceId: instanceId, bookId: bookId)
     try? await DatabaseOperator.database().updateBookDownloadStatus(
       bookId: bookId,
       instanceId: instanceId,
@@ -431,6 +448,7 @@ actor OfflineManager {
       removeReadingDownloadRequest(bookId: info.bookId)
       return
     case .notDownloaded, .failed:
+      await ensureSeriesRow(instanceId: instanceId, bookId: info.bookId)
       try? await DatabaseOperator.database().updateBookDownloadStatus(
         bookId: info.bookId,
         instanceId: instanceId,
@@ -926,6 +944,8 @@ actor OfflineManager {
 
   private func startDownload(instanceId: String, info: DownloadInfo) async {
     guard activeTasks[info.bookId] == nil else { return }
+
+    await ensureSeriesRow(instanceId: instanceId, bookId: info.bookId)
 
     logger.info("📥 Enqueue download: \(info.bookId)")
     // Initialize progress (status stays as pending during download)

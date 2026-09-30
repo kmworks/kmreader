@@ -64,6 +64,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 - Cancelling a download removes its on-disk book directory; failed downloads keep partial content for resume.
 - Clearing caches or server data goes through `CacheManager` and the GRDB stores only.
+- Queueing a download backfills the book's `KomgaSeries` row from the server when missing (`OfflineManager.ensureSeriesRow`, with a `startDownload` backstop): single-book download entries don't guarantee the series row, and Offline series browse plus series download rollups query the series table.
 
 ### Read List Reading State
 
