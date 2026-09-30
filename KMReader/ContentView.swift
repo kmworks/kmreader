@@ -199,7 +199,7 @@ struct ContentView: View {
             OfflineRecoveryService.shared.startIfNeeded()
           }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { oldPhase, phase in
           if phase == .active {
             let shouldReauthenticate = shouldReauthenticateProtectedCurrentInstance
             if shouldReauthenticate {
@@ -244,10 +244,21 @@ struct ContentView: View {
               }
             }
           } else if phase == .inactive {
-            if privacyProtection {
-              showPrivacyBlur = true
+            // Lift the mask as soon as the app starts coming forward so the
+            // snapshot cross-fade reveals live content. Skip when
+            // reauthentication is due — content is only swapped for the
+            // splash at .active.
+            if oldPhase == .background && !shouldReauthenticateProtectedCurrentInstance {
+              withAnimation(.easeInOut(duration: 0.2)) {
+                showPrivacyBlur = false
+              }
             }
           } else if phase == .background {
+            // Mask only on real backgrounding, not .inactive, so the
+            // swipe-to-switcher gesture keeps showing live content. No
+            // fade-in here: the switcher snapshot is taken while the
+            // animation is still running and would capture the mask
+            // mid-fade, leaving content visible in the card.
             if privacyProtection {
               showPrivacyBlur = true
             }
@@ -282,16 +293,9 @@ struct ContentView: View {
     #endif
     .overlay {
       if showPrivacyBlur {
-        ZStack {
-          Rectangle()
-            .fill(.ultraThinMaterial)
-            .ignoresSafeArea()
-
-          Image(systemName: "lock.fill")
-            .font(.system(size: 60))
-            .foregroundStyle(.secondary)
-        }
-        .transition(.opacity)
+        Rectangle()
+          .fill(.ultraThinMaterial)
+          .ignoresSafeArea()
       }
     }
   }
