@@ -3,9 +3,10 @@
   import UIKit
 
   final class NativePagedPageContentView: UIView, UIScrollViewDelegate, UIGestureRecognizerDelegate {
-    private let scrollView = UIScrollView()
+    private let scrollView = SpreadPanningScrollView()
     private let contentStack = UIStackView()
     private var pageViews: [NativePageItem] = []
+    private var contentWidthConstraint: NSLayoutConstraint?
 
     private weak var viewModel: ReaderViewModel?
     private var currentItem: ReaderViewItem?
@@ -29,6 +30,11 @@
     private var tracksGlobalZoomState = true
     private var isUpdatingZoomState = false
     private var lastLayoutBoundsSize: CGSize = .zero
+    private var wholeSpread: WholeSpreadPresentation?
+    // Edge the whole spread keeps across viewport and content-size changes:
+    // where it arrived, then wherever its latest pan settled.
+    private var spreadRestingEdge: ReaderSpreadEdge = .start
+    private var needsSpreadPlacement = false
 
     override init(frame: CGRect) {
       super.init(frame: frame)
@@ -43,11 +49,15 @@
       super.layoutSubviews()
       resetViewportStateIfNeeded()
       updatePages()
+      updateWholeSpreadLayout()
     }
 
+    /// `wholeSpread` is set when `item` shows as a whole spread; its arrival
+    /// edge applies only when the item changes.
     func configure(
       viewModel: ReaderViewModel,
       item: ReaderViewItem,
+      wholeSpread: WholeSpreadPresentation?,
       screenSize: CGSize,
       renderConfig: ReaderRenderConfig,
       readingDirection: ReadingDirection,
@@ -56,23 +66,22 @@
       tracksGlobalZoomState: Bool
     ) {
       let itemChanged = currentItem != item
+      let becameActive = isPlaybackActive && (itemChanged || !self.isPlaybackActive)
 
       self.viewModel = viewModel
       self.currentItem = item
+      self.wholeSpread = wholeSpread
       self.currentScreenSize = screenSize
       self.currentSplitWidePageMode = splitWidePageMode
       self.renderConfig = renderConfig
       self.readingDirection = readingDirection
       self.isPlaybackActive = isPlaybackActive
       self.tracksGlobalZoomState = tracksGlobalZoomState
-      self.currentPageData = viewModel.nativePageData(
-        for: item,
-        readingDirection: readingDirection,
-        splitWidePageMode: splitWidePageMode,
-        isPlaybackActive: isPlaybackActive
-      )
+      self.currentPageData = renderedPageData(isPlaybackActive: isPlaybackActive)
+      scrollView.spreadStartsAtLeft = wholeSpread?.startsAtLeft ?? true
 
       if itemChanged {
+        spreadRestingEdge = wholeSpread?.arrivalEdge ?? .start
         resetZoomState()
       }
 
@@ -82,20 +91,45 @@
         readingDirection == .rtl ? .forceRightToLeft : .forceLeftToRight
 
       updatePages()
+      updateWholeSpreadLayout()
+      if becameActive {
+        reportWholeSpreadPositionIfActive()
+      }
     }
 
     func updatePlaybackActive(_ isPlaybackActive: Bool) {
       guard self.isPlaybackActive != isPlaybackActive else { return }
       self.isPlaybackActive = isPlaybackActive
-      guard let viewModel, let currentItem else { return }
+      guard viewModel != nil, currentItem != nil else { return }
 
-      currentPageData = viewModel.nativePageData(
-        for: currentItem,
+      currentPageData = renderedPageData(isPlaybackActive: isPlaybackActive)
+      updatePages()
+      reportWholeSpreadPositionIfActive()
+    }
+
+    /// Pans the whole spread to `edge` for a navigation command.
+    func panWholeSpread(to edge: ReaderSpreadEdge, animated: Bool) {
+      guard wholeSpread != nil, scrollView.isAtBaseZoom else { return }
+      spreadRestingEdge = edge
+      scrollView.panSpread(to: edge, animated: animated)
+      reportWholeSpreadPositionIfActive()
+    }
+
+    /// Whether a horizontal drag would pan the whole spread rather than turn
+    /// the page.
+    func canPanWholeSpread(forHorizontalDrag translationX: CGFloat) -> Bool {
+      wholeSpread != nil && scrollView.canPanSpread(forHorizontalDrag: translationX)
+    }
+
+    private func renderedPageData(isPlaybackActive: Bool) -> [NativePageData] {
+      guard let viewModel, let currentItem else { return [] }
+      // A whole spread renders its page uncut, like a single page.
+      return viewModel.nativePageData(
+        for: wholeSpread.map { .page(id: $0.pageID) } ?? currentItem,
         readingDirection: readingDirection,
         splitWidePageMode: currentSplitWidePageMode,
         isPlaybackActive: isPlaybackActive
       )
-      updatePages()
     }
 
     func resetContent(backgroundColor: UIColor? = nil) {
@@ -106,6 +140,8 @@
       isPlaybackActive = false
       tracksGlobalZoomState = true
       lastLayoutBoundsSize = .zero
+      wholeSpread = nil
+      spreadRestingEdge = .start
       if let backgroundColor {
         self.backgroundColor = backgroundColor
         scrollView.backgroundColor = backgroundColor
@@ -135,6 +171,13 @@
       contentStack.translatesAutoresizingMaskIntoConstraints = false
       scrollView.addSubview(contentStack)
 
+      // A whole spread widens the content past the viewport by this
+      // constraint's constant, so it pans at base zoom.
+      let contentWidthConstraint = contentStack.widthAnchor.constraint(
+        equalTo: scrollView.frameLayoutGuide.widthAnchor
+      )
+      self.contentWidthConstraint = contentWidthConstraint
+
       NSLayoutConstraint.activate([
         scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
         scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -144,7 +187,7 @@
         contentStack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
         contentStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
         contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-        contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+        contentWidthConstraint,
         contentStack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
       ])
 
@@ -229,14 +272,92 @@
       scrollView.setZoomScale(scrollView.minimumZoomScale, animated: false)
       scrollView.contentOffset = .zero
       isUpdatingZoomState = false
+      needsSpreadPlacement = true
+      setNeedsLayout()
     }
 
     // Reset this slot's scroll view to minimum scale unconditionally, independent
     // of tracksGlobalZoomState or item identity. Lets the cover coordinator clear
     // a stale scale left on a slot that was zoomed while a page transition was in
     // flight. Uses isUpdatingZoomState so it does not re-fire scrollViewDidZoom.
+    // A whole spread returns to the edge it rests at.
     func forceResetZoom() {
       resetScrollViewportState()
+      updateWholeSpreadLayout()
+    }
+
+    /// Sizes the content for a whole spread and places it at its resting edge
+    /// whenever the item, viewport, or spread width changes.
+    private func updateWholeSpreadLayout() {
+      guard let contentWidthConstraint else { return }
+      let viewportSize = bounds.size
+      guard viewportSize.width > 0, viewportSize.height > 0 else { return }
+
+      let contentWidth =
+        wholeSpreadImageSize().map {
+          WholeSpreadLayout.contentWidth(imageSize: $0, viewportSize: viewportSize)
+        } ?? viewportSize.width
+      let extraWidth = max(contentWidth - viewportSize.width, 0)
+      if abs(contentWidthConstraint.constant - extraWidth) > 0.5 {
+        contentWidthConstraint.constant = extraWidth
+        needsSpreadPlacement = true
+      }
+
+      guard needsSpreadPlacement, scrollView.isAtBaseZoom else { return }
+      needsSpreadPlacement = false
+      scrollView.layoutIfNeeded()
+      scrollView.placeSpread(at: spreadRestingEdge)
+      reportWholeSpreadPositionIfActive()
+    }
+
+    private func wholeSpreadImageSize() -> CGSize? {
+      guard let wholeSpread, let viewModel else { return nil }
+      if let size = pageViews.first?.displayedImageSize(for: wholeSpread.pageID) {
+        return size
+      }
+      guard let page = viewModel.readerPage(for: wholeSpread.pageID)?.page,
+        let width = page.width, let height = page.height
+      else {
+        return nil
+      }
+      return viewModel.rotation.rotatedSize(CGSize(width: CGFloat(width), height: CGFloat(height)))
+    }
+
+    private func reportWholeSpreadPositionIfActive() {
+      guard isPlaybackActive, let wholeSpread, let viewModel else { return }
+      viewModel.recordWholeSpreadPosition(
+        pageID: wholeSpread.pageID,
+        restingEdges: scrollView.restingSpreadEdges
+      )
+    }
+
+    private func wholeSpreadPanDidSettle() {
+      scrollView.clearPendingSpreadPan()
+      guard wholeSpread != nil, scrollView.isAtBaseZoom else { return }
+      spreadRestingEdge = scrollView.nearestSpreadEdge
+      reportWholeSpreadPositionIfActive()
+    }
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+      self.scrollView.clearPendingSpreadPan()
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+      if !decelerate {
+        wholeSpreadPanDidSettle()
+      }
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+      wholeSpreadPanDidSettle()
+    }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+      wholeSpreadPanDidSettle()
+    }
+
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+      wholeSpreadPanDidSettle()
     }
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {

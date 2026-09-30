@@ -21,6 +21,10 @@ class ReaderViewModel {
   // (e.g. rotation to dual layout) preserves it so a later rebuild can restore
   // the same split side instead of falling back to the first half.
   private var splitPartPreference: (pageID: ReaderPageID, part: ReaderSplitPart)?
+  // Edges the committed whole spread rests at, as its page host last reported:
+  // none between its edges, both when it fits the viewport.
+  @ObservationIgnored
+  private var wholeSpreadRestingEdges: (pageID: ReaderPageID, edges: Set<ReaderSpreadEdge>)?
   private(set) var navigationTarget: ReaderPositionAnchor?
   var isLoading = true
   var loadingTitle = String(localized: "Loading book...")
@@ -1524,6 +1528,7 @@ class ReaderViewModel {
       allowDualPairs: isActuallyUsingDualPageMode,
       forceDualPairs: forceDualPagePairs,
       splitWidePages: effectiveSplitWidePages,
+      keepsSplitSpreadsWhole: Self.keepsSplitSpreadsWhole,
       pageCurl: pageTransitionStyle == .pageCurl,
       isolatePages: Set(isolatePages),
       rotation: rotation
@@ -1575,6 +1580,13 @@ class ReaderViewModel {
   }
 
   func requestNavigation(toViewItem viewItem: ReaderViewItem?) {
+    requestNavigation(toViewItem: viewItem, splitPart: nil)
+  }
+
+  private func requestNavigation(
+    toViewItem viewItem: ReaderViewItem?,
+    splitPart explicitSplitPart: ReaderSplitPart?
+  ) {
     guard
       let viewItem = matchingViewItem(
         preferredItem: viewItem,
@@ -1596,8 +1608,48 @@ class ReaderViewModel {
     navigationTarget = ReaderPositionAnchor(
       item: viewItem,
       focusedPageID: focusedPageID,
-      preferredSplitPart: preferredSplitPart(for: viewItem, pageID: focusedPageID)
+      preferredSplitPart: explicitSplitPart ?? preferredSplitPart(for: viewItem, pageID: focusedPageID)
     )
+  }
+
+  /// Requests one paged step (tap, key, remote); false when there is nothing
+  /// to step to. A whole spread has two stops, its start and end edges: a step
+  /// first pans it to the edge the step leaves through, and stepping back onto
+  /// a spread lands on its end edge. Steps chain from an in-flight target, so
+  /// rapid steps still visit every stop.
+  func requestPagedStep(offset: Int) -> Bool {
+    guard offset != 0 else { return false }
+    let isForward = offset > 0
+    let base = navigationTarget ?? captureCurrentPositionAnchor()
+
+    if let item = base.item, isWholeSpread(item) {
+      let restingEdges: Set<ReaderSpreadEdge>
+      if navigationTarget != nil {
+        restingEdges = [
+          ReaderSpreadEdge(splitPart: base.preferredSplitPart)
+            ?? wholeSpreadArrivalEdge(for: item, relativeTo: currentViewItem())
+        ]
+      } else {
+        restingEdges = committedWholeSpreadRestingEdges(for: item.pageID)
+      }
+      let departureEdge: ReaderSpreadEdge = isForward ? .end : .start
+      if !restingEdges.contains(departureEdge) {
+        navigationTarget = ReaderPositionAnchor(
+          item: item,
+          focusedPageID: item.pageID,
+          preferredSplitPart: departureEdge.splitPart
+        )
+        return true
+      }
+    }
+
+    guard let item = adjacentViewItem(offset: offset) else { return false }
+    let arrivalEdge: ReaderSpreadEdge = isForward ? .start : .end
+    requestNavigation(
+      toViewItem: item,
+      splitPart: isWholeSpread(item) ? arrivalEdge.splitPart : nil
+    )
+    return true
   }
 
   func clearNavigationTarget() {
@@ -1736,11 +1788,77 @@ class ReaderViewModel {
     case .first, .second:
       splitPartPreference = (id, part)
     case .both:
-      // A merged split keeps the previously committed side for the same page.
-      if splitPartPreference?.pageID != id {
+      // A merged split keeps the previously committed side for the same page,
+      // unless the anchor names one (a whole spread's committed edge).
+      if let anchoredPart = anchor.preferredSplitPart, anchoredPart != .both {
+        splitPartPreference = (id, anchoredPart)
+      } else if splitPartPreference?.pageID != id {
         splitPartPreference = nil
       }
     }
+  }
+
+  /// Whether `item` is a whole spread: a split wide page kept whole in
+  /// single-page presentation, panning across the viewport.
+  func isWholeSpread(_ item: ReaderViewItem) -> Bool {
+    guard Self.keepsSplitSpreadsWhole, !isActuallyUsingDualPageMode else { return false }
+    guard case .split(_, .both) = item else { return false }
+    return true
+  }
+
+  /// Edge a whole spread opens at when a page host starts showing it. An
+  /// explicit navigation target names its edge, and the current item reopens
+  /// at its committed side. The item right before the current one is reached
+  /// by stepping back, so it opens at its end edge; anything else opens at its
+  /// start edge.
+  func wholeSpreadArrivalEdge(
+    for item: ReaderViewItem,
+    relativeTo currentItem: ReaderViewItem?
+  ) -> ReaderSpreadEdge {
+    guard case .split(let pageID, .both) = item else { return .start }
+    if let navigationTarget, navigationTarget.item == item,
+      let edge = ReaderSpreadEdge(splitPart: navigationTarget.preferredSplitPart)
+    {
+      return edge
+    }
+    guard let currentItem, currentItem != item else {
+      return ReaderSpreadEdge(splitPart: splitPartPreference(forPageID: pageID)) ?? .start
+    }
+    if let index = viewItemIndex(for: item),
+      let currentIndex = viewItemIndex(for: currentItem),
+      index == currentIndex - 1
+    {
+      return .end
+    }
+    return .start
+  }
+
+  /// Records the edges a whole spread's page host rests at after a pan
+  /// settles or the host starts showing the committed item: none between its
+  /// edges, both when it fits the viewport. Resting at one edge also makes it
+  /// the committed split side, so rebuilds reopen the spread there.
+  func recordWholeSpreadPosition(pageID: ReaderPageID, restingEdges: Set<ReaderSpreadEdge>) {
+    wholeSpreadRestingEdges = (pageID, restingEdges)
+    guard restingEdges.count == 1, let part = restingEdges.first?.splitPart else { return }
+    guard splitPartPreference?.pageID != pageID || splitPartPreference?.part != part else { return }
+    splitPartPreference = (pageID, part)
+  }
+
+  private func committedWholeSpreadRestingEdges(for pageID: ReaderPageID) -> Set<ReaderSpreadEdge> {
+    if let wholeSpreadRestingEdges, wholeSpreadRestingEdges.pageID == pageID {
+      return wholeSpreadRestingEdges.edges
+    }
+    return [ReaderSpreadEdge(splitPart: splitPartPreference(forPageID: pageID)) ?? .start]
+  }
+
+  /// Single-page presentation keeps a split wide page whole on iOS, where the
+  /// page hosts pan across it; macOS and tvOS page through its halves.
+  private static var keepsSplitSpreadsWhole: Bool {
+    #if os(iOS)
+      true
+    #else
+      false
+    #endif
   }
 
   func currentViewItem() -> ReaderViewItem? {
@@ -1777,6 +1895,7 @@ private func generateViewItems(
   allowDualPairs: Bool,
   forceDualPairs: Bool,
   splitWidePages: Bool,
+  keepsSplitSpreadsWhole: Bool,
   pageCurl: Bool,
   isolatePages: Set<Int> = [],
   rotation: ReaderRotation = .none
@@ -1870,7 +1989,8 @@ private func generateViewItems(
       let isWideCoverPage = isCoverPage && !currentIsPortrait
 
       // Wide pages split only when enabled. In dual-page mode that produces a two-slot
-      // spread; otherwise the page stays as a single item.
+      // spread; in single-page presentation, one whole spread that pans, or two
+      // half items where the platform pages through the halves.
       let isWidePageEligibleForSplit =
         (splitWidePages || (pageCurl && allowDualPairs))
         && !currentIsPortrait
@@ -1895,7 +2015,7 @@ private func generateViewItems(
       }
 
       if shouldSplitPage {
-        if allowDualPairs {
+        if allowDualPairs || keepsSplitSpreadsWhole {
           items.append(.split(id: readerPages[index].id, part: .both))
         } else {
           items.append(.split(id: readerPages[index].id, part: .first))

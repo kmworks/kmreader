@@ -20,6 +20,13 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - Seamless cross-book navigation: the committed `ReaderPositionAnchor` is the source of truth; `.end` items retain their segment's final `ReaderPageID`; `currentBook`/`ReaderSession.book` follow the segment; `currentBookId` remains the whole-book load anchor.
 - Split wide pages keep their committed side across layout rebuilds; propagate it via `ReaderPositionAnchor.preferredSplitPart` and `ReaderViewItem.preferredSplitPart(preserving:)` whenever adapters construct a new anchor.
 
+### Whole Spreads
+
+- On iOS, single-page presentation keeps a split wide page whole: `generateViewItems` emits one `.split(id, .both)`, the same item dual presentation uses, and single-page engines render it uncut at the scale a single page gets (`WholeSpreadLayout`), panning across it at base zoom through `SpreadPanningScrollView`. macOS and tvOS still page through `.first`/`.second` halves. Engines build `WholeSpreadPresentation` via `ReaderViewModel.wholeSpreadPresentation(for:isDualPagePresentation:…)` from their own mode, never the view model's dual flag.
+- A whole spread has two stops, its start and end edges in reading order (`ReaderSpreadEdge`, mapped onto `.first`/`.second`). Paged steps (taps, keys, remote) go through `ReaderViewModel.requestPagedStep(offset:)`: a step first pans to the edge it leaves through, as a navigation target on the same item that names that edge, and stepping back onto a spread lands on its end edge. Steps chain from an in-flight target. Engines apply a same-item target's edge to the current page host, clearing the target like any command that resolves to the current position.
+- Swipes pan freely and never turn the page mid-gesture: the host's scroll view begins only for horizontal drags it can still follow, and each engine's page-turn gesture (collection view pan, cover pan, curl pan) refuses drags the current spread can still follow. A turn needs a new drag from the far edge.
+- Hosts report the edges they rest at (`recordWholeSpreadPosition(pageID:restingEdges:)`) when they start showing the committed item and whenever a pan settles; a single resting edge becomes the committed split side, so rebuilds reopen the spread there. A host starting to show a spread opens it at `wholeSpreadArrivalEdge(for:relativeTo:)`: an explicit target's edge, the committed side for the current item, the end edge for the item right before the current one, else the start edge.
+
 ### Page Curl & Cover Adapters
 
 - Page Curl adapters must not publish a position while mounting or dismantling.

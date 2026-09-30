@@ -29,8 +29,15 @@
       doubleTapZoomMode: .enabled
     )
 
-    private let scrollView = UIScrollView()
+    private let scrollView = SpreadPanningScrollView()
     private let pageItem = NativePageItem()
+    private var contentWidthConstraint: NSLayoutConstraint?
+    private var wholeSpread: WholeSpreadPresentation?
+    // Edge the whole spread keeps across viewport and content-size changes:
+    // where it arrived, then wherever its latest pan settled.
+    private var spreadRestingEdge: ReaderSpreadEdge = .start
+    private var needsSpreadPlacement = false
+    private var lastLayoutViewportSize: CGSize = .zero
 
     private var loadTask: Task<Void, Never>?
     private var animatedInlinePreparationTask: Task<Void, Never>?
@@ -38,11 +45,14 @@
     private var lastConfiguredPageID: ReaderPageID?
     private var isVisibleForAnimatedInlinePlayback = false
 
+    /// `wholeSpread` is set when the page shows as a whole spread; its
+    /// arrival edge applies only when the page changes.
     func configure(
       viewModel: ReaderViewModel,
       pageID: ReaderPageID,
       splitMode: PageSplitMode,
       alignment: HorizontalAlignment = .center,
+      wholeSpread: WholeSpreadPresentation? = nil,
       readingDirection: ReadingDirection,
       renderConfig: ReaderRenderConfig
     ) {
@@ -52,8 +62,10 @@
       self.pageID = pageID
       self.splitMode = splitMode
       self.alignment = alignment
+      self.wholeSpread = wholeSpread
       self.readingDirection = readingDirection
       self.renderConfig = renderConfig
+      scrollView.spreadStartsAtLeft = wholeSpread?.startsAtLeft ?? true
 
       if isPageChanged {
         loadTask?.cancel()
@@ -62,6 +74,8 @@
         scrollView.setZoomScale(scrollView.minimumZoomScale, animated: false)
         viewModel.isZoomed = false
         hideAnimatedInlinePlayback()
+        spreadRestingEdge = wholeSpread?.arrivalEdge ?? .start
+        needsSpreadPlacement = true
       }
       lastConfiguredPageID = pageID
 
@@ -75,6 +89,16 @@
       setupUI()
       setupGestures()
       applyConfiguration()
+    }
+
+    override func viewDidLayoutSubviews() {
+      super.viewDidLayoutSubviews()
+      let viewportSize = view.bounds.size
+      if viewportSize != lastLayoutViewportSize {
+        lastLayoutViewportSize = viewportSize
+        needsSpreadPlacement = true
+      }
+      updateWholeSpreadLayout()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -121,14 +145,88 @@
       pageItem.translatesAutoresizingMaskIntoConstraints = false
       scrollView.addSubview(pageItem)
 
+      // A whole spread widens the content past the viewport by this
+      // constraint's constant, so it pans at base zoom.
+      let contentWidthConstraint = pageItem.widthAnchor.constraint(
+        equalTo: scrollView.frameLayoutGuide.widthAnchor
+      )
+      self.contentWidthConstraint = contentWidthConstraint
+
       NSLayoutConstraint.activate([
         pageItem.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
         pageItem.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
         pageItem.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
         pageItem.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-        pageItem.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+        contentWidthConstraint,
         pageItem.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
       ])
+    }
+
+    /// Pans the whole spread to `edge` for a navigation command.
+    func panWholeSpread(to edge: ReaderSpreadEdge, animated: Bool) {
+      guard wholeSpread != nil, scrollView.isAtBaseZoom else { return }
+      spreadRestingEdge = edge
+      scrollView.panSpread(to: edge, animated: animated)
+      reportWholeSpreadPosition()
+    }
+
+    /// Whether a horizontal drag would pan the whole spread rather than turn
+    /// the page.
+    func canPanWholeSpread(forHorizontalDrag translationX: CGFloat) -> Bool {
+      wholeSpread != nil && scrollView.canPanSpread(forHorizontalDrag: translationX)
+    }
+
+    /// Reports where the whole spread rests; the engine calls it once the
+    /// page becomes current, and settled pans call it on their own.
+    func reportWholeSpreadPosition() {
+      guard let wholeSpread, let viewModel else { return }
+      viewModel.recordWholeSpreadPosition(
+        pageID: wholeSpread.pageID,
+        restingEdges: scrollView.restingSpreadEdges
+      )
+    }
+
+    /// Sizes the content for a whole spread and places it at its resting edge
+    /// whenever the page, viewport, or spread width changes.
+    private func updateWholeSpreadLayout() {
+      guard isViewLoaded, let contentWidthConstraint else { return }
+      let viewportSize = view.bounds.size
+      guard viewportSize.width > 0, viewportSize.height > 0 else { return }
+
+      let contentWidth =
+        wholeSpreadImageSize().map {
+          WholeSpreadLayout.contentWidth(imageSize: $0, viewportSize: viewportSize)
+        } ?? viewportSize.width
+      let extraWidth = max(contentWidth - viewportSize.width, 0)
+      if abs(contentWidthConstraint.constant - extraWidth) > 0.5 {
+        contentWidthConstraint.constant = extraWidth
+        needsSpreadPlacement = true
+      }
+
+      guard needsSpreadPlacement, scrollView.isAtBaseZoom else { return }
+      needsSpreadPlacement = false
+      scrollView.layoutIfNeeded()
+      scrollView.placeSpread(at: spreadRestingEdge)
+    }
+
+    private func wholeSpreadImageSize() -> CGSize? {
+      guard let wholeSpread, let viewModel else { return nil }
+      if let size = pageItem.displayedImageSize(for: wholeSpread.pageID) {
+        return size
+      }
+      guard let page = viewModel.readerPage(for: wholeSpread.pageID)?.page,
+        let width = page.width, let height = page.height
+      else {
+        return nil
+      }
+      return viewModel.rotation.rotatedSize(CGSize(width: CGFloat(width), height: CGFloat(height)))
+    }
+
+    private func wholeSpreadPanDidSettle() {
+      scrollView.clearPendingSpreadPan()
+      guard wholeSpread != nil, scrollView.isAtBaseZoom else { return }
+      spreadRestingEdge = scrollView.nearestSpreadEdge
+      reportWholeSpreadPosition()
     }
 
     private func setupGestures() {
@@ -181,6 +279,7 @@
       )
 
       updateAnimatedInlinePlayback()
+      updateWholeSpreadLayout()
 
       if image == nil, readerPage != nil, !loadFailed {
         startLoadingImageIfNeeded()
@@ -292,6 +391,28 @@
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
       pageItem
+    }
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+      self.scrollView.clearPendingSpreadPan()
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+      if !decelerate {
+        wholeSpreadPanDidSettle()
+      }
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+      wholeSpreadPanDidSettle()
+    }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+      wholeSpreadPanDidSettle()
+    }
+
+    func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) {
+      wholeSpreadPanDidSettle()
     }
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {

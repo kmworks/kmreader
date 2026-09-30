@@ -38,6 +38,9 @@
       doubleTapZoomMode: .enabled
     )
     private var readListContext: ReaderReadListContext?
+    // Not part of `Configuration`: the page host applies it only when the
+    // item changes, which already forces an apply.
+    private var wholeSpread: WholeSpreadPresentation?
     private var isPlaybackActive = false
     private var tracksGlobalZoomState = false
     private var onDismiss: (() -> Void)?
@@ -48,6 +51,14 @@
 
     func forceResetZoom() {
       pageContentView.forceResetZoom()
+    }
+
+    func panWholeSpread(to edge: ReaderSpreadEdge, animated: Bool) {
+      pageContentView.panWholeSpread(to: edge, animated: animated)
+    }
+
+    func canPanWholeSpread(forHorizontalDrag translationX: CGFloat) -> Bool {
+      !pageContentView.isHidden && pageContentView.canPanWholeSpread(forHorizontalDrag: translationX)
     }
 
     override init(frame: CGRect) {
@@ -61,6 +72,7 @@
 
     func configure(
       item: ReaderViewItem?,
+      wholeSpread: WholeSpreadPresentation?,
       viewModel: ReaderViewModel,
       screenSize: CGSize,
       readingDirection: ReadingDirection,
@@ -96,6 +108,7 @@
       self.splitWidePageMode = splitWidePageMode
       self.renderConfig = renderConfig
       self.readListContext = readListContext
+      self.wholeSpread = wholeSpread
       self.isPlaybackActive = isPlaybackActive
       self.tracksGlobalZoomState = tracksGlobalZoomState
       self.onDismiss = onDismiss
@@ -220,6 +233,7 @@
       pageContentView.configure(
         viewModel: viewModel,
         item: representedItem,
+        wholeSpread: wholeSpread,
         screenSize: currentScreenSize,
         renderConfig: renderConfig,
         readingDirection: readingDirection,
