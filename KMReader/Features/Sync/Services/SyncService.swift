@@ -408,37 +408,6 @@ nonisolated enum SyncService {
     }
   }
 
-  static func syncNextBook(bookId: String, readListId: String? = nil) async -> Book? {
-    do {
-      let database = try await DatabaseOperator.database()
-      if let book = try await BookService.getNextBook(bookId: bookId, readListId: readListId) {
-        let instanceId = AppConfig.current.instanceId
-        await database.upsertBook(dto: book, instanceId: instanceId)
-        return book
-      }
-    } catch {
-      logger.error("❌ Failed to sync next book: \(error)")
-    }
-    return nil
-  }
-
-  static func syncPreviousBook(bookId: String, readListId: String? = nil) async -> Book? {
-    do {
-      let database = try await DatabaseOperator.database()
-      if let book = try await BookService.getPreviousBook(
-        bookId: bookId,
-        readListId: readListId
-      ) {
-        let instanceId = AppConfig.current.instanceId
-        await database.upsertBook(dto: book, instanceId: instanceId)
-        return book
-      }
-    } catch {
-      logger.error("❌ Failed to sync previous book: \(error)")
-    }
-    return nil
-  }
-
   static func syncCollections(
     libraryIds: [String]?,
     page: Int,
