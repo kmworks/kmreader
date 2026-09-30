@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules that must not be violated when working in this repository. For architecture and feature details, read the code. Subsystem conventions and invariants live in the `repo-conventions` skill (`.agents/skills/repo-conventions/SKILL.md`) — load it when working on the reader, sync/offline, dashboard, detail pages, or platform UI placement.
+Rules that must not be violated when working in this repository. For architecture and feature details, read the code. Subsystem conventions and invariants live in the `repo-conventions` skill (`.agents/skills/repo-conventions/SKILL.md`) — load it when working on the reader, sync/offline/persistence, dashboard, detail pages, or platform UI placement.
 
 ## Project
 
@@ -36,41 +36,28 @@ After changing code: `make format`, then `make build`. Simulator interaction: ve
 7. **State**: `@Observable`, never `ObservableObject`.
 8. **Preferences**: `@AppStorage` in views, `AppConfig` elsewhere; `UserDefaults` only inside `AppConfig.swift`.
 9. No stored variables in view bodies; avoid computed-property clutter there too.
-10. In-reader settings sheets stay compact; full settings pages may carry description text.
-11. Platform differences via `PlatformHelper` and `#if os(...)`.
-12. UIKit/AppKit interop in either direction is fine; be explicit about dependency injection and verify environment/data propagation across hosting boundaries.
-13. **Banned**: non-optional object-style environment dependencies (`@Environment(SomeType.self)`, `@EnvironmentObject`). Pass objects via initializers, context structs, or action closures; use non-object custom `EnvironmentKey`s when needed.
-14. **Banned**: `@unchecked Sendable`, `nonisolated(unsafe)`, `unsafeBitCast`, other `unsafe*` escape hatches. Redesign instead.
-15. Do not store async/throwing/`@Sendable` closures in SwiftUI `View` value types (iOS 17 AttributeGraph crash risk); use concrete command types or passed-in services.
-16. **Animation boundaries**: local implicit `.animation(..., value:)` only for micro-interactions (press/hover/selected states); explicit `withAnimation {}` for navigation, presentation, content, and pagination changes. No broad/root `.animation` on containers rendering lists.
-17. No patch-style fixes for structural problems; no compensating flags/delays/counters around a broken ownership boundary. Refactor toward the stable architecture.
-18. End-state quality beats diff size; do not fear rewriting a subsystem when that is the cleaner design.
-19. Temporary compatibility layers must say why they exist and what replaces them; treat them as debt.
-20. When a change alters a lifetime, ownership, persistence, navigation, platform, reader-mode, or UI-placement boundary, update the conventions in the same change: `AGENTS.md` for repo-wide rules, the `repo-conventions` skill for subsystem boundaries.
-21. No hand-rolled fallback shims for newer OS APIs; gate features to the OS version that supports them natively.
-22. **No force casts** (`as!`), especially on GRDB `Row` subscripts; use the generic converting subscript (`let date: Date = row["created_date"]`) or `as?` with a fallback.
-23. Never render an empty `HStack`/`VStack`; put the condition around the stack itself so nothing renders when there is no content.
-24. Lazy containers (`LazyVStack`/`LazyHStack`/`LazyVGrid`) only for genuinely unbounded content (paginated or otherwise huge lists); eager stacks everywhere else — lazy stacks cache child frames and misplace children during animated layout updates.
-25. Plain-style buttons and links (`.buttonStyle(.plain)`, text-or-label-only) must declare `.contentShape(Rectangle())` (or an equivalent hit shape) **on the content inside the button's label** so the whole frame is tappable; without it only the glyphs respond. `.contentShape` applied outside on the button itself has no effect on hit-testing, regardless of button style.
+10. Platform differences via `PlatformHelper` and `#if os(...)`.
+11. UIKit/AppKit interop in either direction is fine; be explicit about dependency injection and verify environment/data propagation across hosting boundaries.
+12. **Banned**: non-optional object-style environment dependencies (`@Environment(SomeType.self)`, `@EnvironmentObject`). Pass objects via initializers, context structs, or action closures; use non-object custom `EnvironmentKey`s when needed.
+13. **Banned**: `@unchecked Sendable`, `nonisolated(unsafe)`, `unsafeBitCast`, other `unsafe*` escape hatches. Redesign instead.
+14. Do not store async/throwing/`@Sendable` closures in SwiftUI `View` value types (iOS 17 AttributeGraph crash risk); use concrete command types or passed-in services.
+15. **Animation boundaries**: local implicit `.animation(..., value:)` only for micro-interactions (press/hover/selected states); explicit `withAnimation {}` for navigation, presentation, content, and pagination changes. No broad/root `.animation` on containers rendering lists.
+16. No patch-style fixes for structural problems — no compensating flags/delays/counters around a broken ownership boundary. Refactor toward the stable architecture even when it means rewriting a subsystem; end-state quality beats diff size.
+17. Temporary compatibility layers must say why they exist and what replaces them; treat them as debt.
+18. When a change alters a lifetime, ownership, persistence, navigation, platform, reader-mode, or UI-placement boundary, update the conventions in the same change: `AGENTS.md` for repo-wide rules, the `repo-conventions` skill for subsystem boundaries.
+19. No hand-rolled fallback shims for newer OS APIs; gate features to the OS version that supports them natively.
+20. **No force casts** (`as!`), especially on GRDB `Row` subscripts; use the generic converting subscript (`let date: Date = row["created_date"]`) or `as?` with a fallback.
+21. Never render an empty `HStack`/`VStack`; put the condition around the stack itself so nothing renders when there is no content.
+22. Lazy containers (`LazyVStack`/`LazyHStack`/`LazyVGrid`) only for genuinely unbounded content (paginated or otherwise huge lists); eager stacks everywhere else — lazy stacks cache child frames and misplace children during animated layout updates.
+23. Plain-style buttons and links (`.buttonStyle(.plain)`, text-or-label-only) must declare `.contentShape(Rectangle())` (or an equivalent hit shape) **on the content inside the button's label** so the whole frame is tappable; without it only the glyphs respond. `.contentShape` applied outside on the button itself has no effect on hit-testing, regardless of button style.
 
 Additional patterns:
 
 - Pass shared object dependencies explicitly at split/tab roots, `NavigationStack` roots, sheets, full-screen covers, scene boundaries, and any `UIHostingController`/`NSHostingController` boundary; do not assume environment inheritance survives snapshot/rotation/scene transitions.
-- SSE callbacks are single-assignment closures; implement dispatchers when multiple components need the same event.
 - New API endpoints belong in the appropriate service; keep request-building out of views.
-- Dashboard/library selections persist via `LibraryManager` and related managers.
 - All logging goes through `AppLogger` (OSLog subsystems/categories); user-visible errors through `ErrorManager.shared` (`notify` for transient success).
 - The Xcode project uses folder references (not groups); adding/removing files does not require editing `project.pbxproj`.
-- Translate all supported languages (see `misc/translate.py`); reference `../komga/komga-webui/src/locales/` when available.
+- Translate all supported languages after changing UI strings (see the `localization` skill); reference `../komga/komga-webui/src/locales/` when available.
 - When building JSON strings for storage or cache keys, use `JSONSerialization` with `sortedKeys` for stable raw values.
-- Colors that only vary between light and dark mode belong in `Assets.xcassets` as color sets with light/dark appearances, referenced as `Color.<name>` — not `colorScheme` branching in views. Assets also carry alpha and can encode gradient-stop pairs (start/end as two assets), so a flipped gradient still needs no branch. Reserve `colorScheme` reads for layout or logic differences; clusters of one-off decorative tints serving a single view may stay local when converting would mean many single-use assets.
-- SF Symbol fill/outline duality is a rendering concern, not data: models and enums expose the base (outline) symbol name, and the site that knows its rendering context applies `.symbolVariant(.fill)` (e.g. white-on-cover icons). Do not thread hardcoded `*.fill` names or parallel filled-name parameters through view APIs. Exception: an icon that renders filled in every context is part of the status's identity, not a rendering choice — models may return the `.fill` name directly (e.g. `checkmark.icloud.fill`, `exclamationmark.circle.fill` in download statuses).
-
-## GRDB Migration Discipline
-
-Runtime GRDB migrations in `LocalDatabase` are immutable once committed.
-
-- Never mutate an already-registered migration (e.g. `create_runtime_schema_v1`, `00002_add_protected_server_flag`) or its helpers; they are the frozen baseline.
-- Any table shape change is a new numbered migration after the latest one; fresh installs run baseline + all later migrations in order.
-- New persisted field: update the record model and `CodingKeys`, then add a migration backfilling a safe default.
-- Validate both upgrade and fresh-install paths.
+- Colors that vary only between light and dark mode belong in `Assets.xcassets` as color sets with light/dark appearances, referenced as `Color.<name>` — not `colorScheme` branching in views. Assets also carry alpha and can encode gradient-stop pairs (start/end as two assets). Reserve `colorScheme` reads for layout or logic differences; clusters of one-off decorative tints serving a single view may stay local.
+- SF Symbol fill/outline is a rendering concern, not data: models and enums expose the base (outline) symbol name, and the site that knows its rendering context applies `.symbolVariant(.fill)` — never thread hardcoded `*.fill` names or parallel filled-name parameters through view APIs. Exception: an icon filled in every context is part of the status's identity (e.g. `checkmark.icloud.fill`, `exclamationmark.circle.fill` in download statuses); models may return the `.fill` name directly.
