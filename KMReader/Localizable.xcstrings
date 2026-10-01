@@ -33044,6 +33044,7 @@
       }
     },
     "In single page mode, split landscape pages into two separate pages" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33103,6 +33104,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在單頁模式下，根據閱讀方向將橫向頁面分割為兩個獨立頁面"
+          }
+        }
+      }
+    },
+    "In single page mode, split landscape pages into two separate pages; Scroll keeps a spread whole and pans across it" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Einzelseitenmodus Querformatseiten in zwei separate Seiten aufteilen; Scrollen hält einen Spread ganz und schiebt ihn quer"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In single page mode, split landscape pages into two separate pages; Scroll keeps a spread whole and pans across it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En modo de página única, divide las páginas horizontales en dos páginas; Desplazarse mantiene la doble página completa y la recorre"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En mode page unique, diviser les pages paysage en deux pages distinctes ; Défilement garde la double page entière et la fait défiler"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In modalità pagina singola, dividi le pagine orizzontali in due pagine separate; Scorri mantiene la doppia pagina intera e la scorre"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "シングルページモードで横長ページを2つのページに分割します。スクロールは見開きをそのまま表示し、パンで移動します"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단일 페이지 모드에서 가로 페이지를 두 개의 페이지로 분할합니다. 스크롤은 양면 페이지를 그대로 유지하고 밀어서 봅니다"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В режиме одной страницы разделять горизонтальные страницы на две; Прокрутка сохраняет разворот целиком и прокручивает его"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在单页模式下将横向页面分割为两个独立页面；滚动可保持跨页完整并平移浏览"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在單頁模式下將橫向頁面分割為兩個獨立頁面；捲動可保持跨頁完整並平移瀏覽"
           }
         }
       }
@@ -59601,6 +59666,71 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上一本"
+          }
+        }
+      }
+    },
+    "reader.splitWidePage.scroll" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrollen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desplazarse"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Défilement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scorri"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スクロール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스크롤"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прокрутка"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "滚动"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "捲動"
           }
         }
       }

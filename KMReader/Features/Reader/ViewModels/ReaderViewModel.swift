@@ -1541,7 +1541,7 @@ class ReaderViewModel {
       allowDualPairs: isActuallyUsingDualPageMode,
       forceDualPairs: forceDualPagePairs,
       splitWidePages: effectiveSplitWidePages,
-      keepsSplitSpreadsWhole: Self.keepsSplitSpreadsWhole,
+      keepsSplitSpreadsWhole: keepsSplitSpreadsWhole,
       pageCurl: pageTransitionStyle == .pageCurl,
       isolatePages: Set(isolatePages),
       rotation: rotation
@@ -1816,7 +1816,7 @@ class ReaderViewModel {
   /// Whether `item` is a whole spread: a split wide page kept whole in
   /// single-page presentation, panning across the viewport.
   func isWholeSpread(_ item: ReaderViewItem) -> Bool {
-    guard Self.keepsSplitSpreadsWhole, !isActuallyUsingDualPageMode else { return false }
+    guard keepsSplitSpreadsWhole, !isActuallyUsingDualPageMode else { return false }
     guard case .split(_, .both) = item else { return false }
     return true
   }
@@ -1866,11 +1866,12 @@ class ReaderViewModel {
     return [ReaderSpreadEdge(splitPart: splitPartPreference(forPageID: pageID)) ?? .start]
   }
 
-  /// Single-page presentation keeps a split wide page whole on iOS, where the
-  /// page hosts pan across it; macOS and tvOS page through its halves.
-  private static var keepsSplitSpreadsWhole: Bool {
+  /// Split Wide Pages set to Scroll keeps a split wide page whole in iOS
+  /// single-page presentation, where the page hosts pan across it; every other
+  /// mode pages through its halves, as macOS and tvOS always do.
+  private var keepsSplitSpreadsWhole: Bool {
     #if os(iOS)
-      true
+      splitWidePageMode == .scroll
     #else
       false
     #endif
