@@ -229,6 +229,17 @@ struct LayoutConfig {
     #endif
   }
 
+  /// Band padding when the gradient background is off: without a visible band
+  /// edge the full padding reads as empty space between sections, so the gap
+  /// shrinks to twice the header-to-cards spacing.
+  static var dashboardSectionVerticalPaddingCompact: CGFloat {
+    #if os(tvOS)
+      return 24
+    #else
+      return 16
+    #endif
+  }
+
   /// Spacing between a dashboard section header and its card strip. Tighter
   /// than the band padding so the header groups with its cards.
   static var dashboardSectionHeaderSpacing: CGFloat {
