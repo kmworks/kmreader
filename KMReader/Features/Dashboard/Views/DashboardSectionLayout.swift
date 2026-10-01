@@ -21,6 +21,12 @@ struct DashboardSectionLayout<Content: View>: View {
   private var showGradientBackground: Bool =
     AppConfig.showDashboardSectionGradientBackground
 
+  private var verticalPadding: CGFloat {
+    showGradientBackground
+      ? LayoutConfig.dashboardSectionVerticalPadding
+      : LayoutConfig.dashboardSectionVerticalPaddingCompact
+  }
+
   var body: some View {
     ZStack {
       #if os(iOS) || os(macOS)
@@ -56,7 +62,7 @@ struct DashboardSectionLayout<Content: View>: View {
           }
         }
         .padding(.horizontal)
-        .padding(.top, LayoutConfig.dashboardSectionVerticalPadding)
+        .padding(.top, verticalPadding)
         #if os(macOS)
           .padding(.leading, 16)
         #endif
@@ -65,7 +71,7 @@ struct DashboardSectionLayout<Content: View>: View {
           ScrollView(.horizontal, showsIndicators: false) {
             content()
               .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-              .padding(.bottom, LayoutConfig.dashboardSectionVerticalPadding)
+              .padding(.bottom, verticalPadding)
               #if os(macOS)
                 .padding(.leading, 16)
               #endif
