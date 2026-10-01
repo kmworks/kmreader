@@ -6,9 +6,10 @@
 import SwiftUI
 
 struct SettingsView: View {
+  @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
 
-  /// iPhone has no Server tab; the current-server card and single-row
+  /// iPhone has no Server tab; the current-server card and server
   /// management/account entries live in Settings instead.
   /// iPad keeps the sidebar Server page, tvOS keeps its Server tab.
   private var showsServerSections: Bool {
@@ -24,6 +25,37 @@ struct SettingsView: View {
       if showsServerSections {
         Section {
           SettingsServerCardView()
+        }
+
+        Section {
+          if current.isAdmin {
+            NavigationLink(value: NavDestination.settingsLibraries) {
+              SettingsBadgeRow(
+                title: ServerSection.libraries.title,
+                icon: ServerSection.libraries.icon,
+                color: ServerSection.libraries.color
+              )
+            }
+          }
+          NavigationLink(value: NavDestination.settingsAccount) {
+            SettingsBadgeRow(
+              title: ServerSection.account.title,
+              icon: ServerSection.account.icon,
+              color: ServerSection.account.color
+            )
+          }
+        }
+      }
+
+      Section {
+        NavigationLink(value: NavDestination.settingsAppearance) {
+          SettingsSectionRow(section: .appearance)
+        }
+        NavigationLink(value: NavDestination.settingsBrowse) {
+          SettingsSectionRow(section: .browse)
+        }
+        NavigationLink(value: NavDestination.settingsDashboard) {
+          SettingsSectionRow(section: .dashboard)
         }
       }
 
@@ -47,46 +79,44 @@ struct SettingsView: View {
             SettingsSectionRow(section: .epubSettings)
           }
         #endif
-      } header: {
-        Text(String(localized: "Reader"))
       }
 
-      Section(header: Text(String(localized: "Display"))) {
-        NavigationLink(value: NavDestination.settingsAppearance) {
-          SettingsSectionRow(section: .appearance)
-        }
-        NavigationLink(value: NavDestination.settingsBrowse) {
-          SettingsSectionRow(section: .browse)
-        }
-        NavigationLink(value: NavDestination.settingsDashboard) {
-          SettingsSectionRow(section: .dashboard)
-        }
-      }
-
-      if showsServerSections {
+      if showsServerSections, current.isAdmin {
         Section {
-          NavigationLink(value: NavDestination.settingsManagement) {
+          NavigationLink(value: NavDestination.settingsServerInfo) {
             SettingsBadgeRow(
-              title: String(localized: "Management"),
-              icon: "server.rack",
-              color: .indigo,
+              title: ServerSection.serverInfo.title,
+              icon: ServerSection.serverInfo.icon,
+              color: ServerSection.serverInfo.color
+            )
+          }
+          NavigationLink(value: NavDestination.settingsTasks) {
+            SettingsBadgeRow(
+              title: ServerSection.tasks.title,
+              icon: ServerSection.tasks.icon,
+              color: ServerSection.tasks.color,
               badge: taskQueueStatus.count > 0 ? "\(taskQueueStatus.count)" : nil,
               badgeColor: .secondary
             )
           }
-          NavigationLink(value: NavDestination.settingsAccount) {
+          NavigationLink(value: NavDestination.settingsHistory) {
             SettingsBadgeRow(
-              title: ServerSection.account.title,
-              icon: ServerSection.account.icon,
-              color: ServerSection.account.color
+              title: ServerSection.history.title,
+              icon: ServerSection.history.icon,
+              color: ServerSection.history.color
             )
           }
-        } header: {
-          Text(String(localized: "Server"))
+          NavigationLink(value: NavDestination.settingsMedia) {
+            SettingsBadgeRow(
+              title: ServerSection.media.title,
+              icon: ServerSection.media.icon,
+              color: ServerSection.media.color
+            )
+          }
         }
       }
 
-      Section(header: Text(String(localized: "Behavior"))) {
+      Section {
         NavigationLink(value: NavDestination.settingsSSE) {
           SettingsSectionRow(section: .sse)
         }
@@ -102,7 +132,7 @@ struct SettingsView: View {
         #endif
       }
 
-      Section(header: Text(String(localized: "Advanced"))) {
+      Section {
         #if os(iOS) || os(macOS)
           NavigationLink(value: NavDestination.settingsNetwork) {
             SettingsSectionRow(section: .network)

@@ -16,7 +16,9 @@ struct ServerView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         ServerCardView()
-        managementSection
+        if current.isAdmin {
+          managementSection
+        }
         accountSection
       }
       .padding(.horizontal)
@@ -40,45 +42,43 @@ struct ServerView: View {
         }
         .adaptiveButtonStyle(.plain)
 
-        if current.isAdmin {
-          NavigationLink(value: NavDestination.settingsServerInfo) {
-            ServerActionTile(
-              title: ServerSection.serverInfo.title,
-              systemImage: ServerSection.serverInfo.icon,
-              color: ServerSection.serverInfo.color
-            )
-          }
-          .adaptiveButtonStyle(.plain)
-
-          NavigationLink(value: NavDestination.settingsTasks) {
-            ServerActionTile(
-              title: ServerSection.tasks.title,
-              systemImage: ServerSection.tasks.icon,
-              color: ServerSection.tasks.color,
-              badge: taskQueueStatus.count > 0 ? "\(taskQueueStatus.count)" : nil,
-              badgeColor: Color.secondary
-            )
-          }
-          .adaptiveButtonStyle(.plain)
-
-          NavigationLink(value: NavDestination.settingsHistory) {
-            ServerActionTile(
-              title: ServerSection.history.title,
-              systemImage: ServerSection.history.icon,
-              color: ServerSection.history.color
-            )
-          }
-          .adaptiveButtonStyle(.plain)
-
-          NavigationLink(value: NavDestination.settingsMedia) {
-            ServerActionTile(
-              title: ServerSection.media.title,
-              systemImage: ServerSection.media.icon,
-              color: ServerSection.media.color
-            )
-          }
-          .adaptiveButtonStyle(.plain)
+        NavigationLink(value: NavDestination.settingsServerInfo) {
+          ServerActionTile(
+            title: ServerSection.serverInfo.title,
+            systemImage: ServerSection.serverInfo.icon,
+            color: ServerSection.serverInfo.color
+          )
         }
+        .adaptiveButtonStyle(.plain)
+
+        NavigationLink(value: NavDestination.settingsTasks) {
+          ServerActionTile(
+            title: ServerSection.tasks.title,
+            systemImage: ServerSection.tasks.icon,
+            color: ServerSection.tasks.color,
+            badge: taskQueueStatus.count > 0 ? "\(taskQueueStatus.count)" : nil,
+            badgeColor: Color.secondary
+          )
+        }
+        .adaptiveButtonStyle(.plain)
+
+        NavigationLink(value: NavDestination.settingsHistory) {
+          ServerActionTile(
+            title: ServerSection.history.title,
+            systemImage: ServerSection.history.icon,
+            color: ServerSection.history.color
+          )
+        }
+        .adaptiveButtonStyle(.plain)
+
+        NavigationLink(value: NavDestination.settingsMedia) {
+          ServerActionTile(
+            title: ServerSection.media.title,
+            systemImage: ServerSection.media.icon,
+            color: ServerSection.media.color
+          )
+        }
+        .adaptiveButtonStyle(.plain)
       }
     }
   }

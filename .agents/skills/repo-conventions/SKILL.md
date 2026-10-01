@@ -168,7 +168,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 ### Tabs & Navigation Entries
 
 - Series continue-reading accessory: `tabViewBottomAccessory(isEnabled:)` in `PhoneTabView` (iOS 26.1+ only), modifier permanently attached with `isEnabled` toggling visibility; other platforms use the inline `SeriesReadingActionButton`. Do not reintroduce the floating `safeAreaInset` bar. The reading target is resolved from the local projection first (presented as the page appears) and only confirmed against the server after the detail sync, so the bar never pops in late with fallback content.
-- iPhone has no Server tab: the current-server card plus Management/Account entries live in `SettingsView` on iPhone only; iPad/tvOS keep the full `ServerView`.
+- iPhone has no Server tab: the current-server card, Libraries/Account, and admin-only management entries (Server Info/Tasks/History/Media) live inline in `SettingsView` on iPhone only; iPad/tvOS keep the full `ServerView`, whose Management tiles are likewise admin-only.
 - iPhone Library tab root is `LibraryBrowseView`; its scope is the global dashboard selection (no tab-local store). `LibraryScopeToolbarButton` is the shared leading button (explicit `HStack` icon + `Text`, sheet/list owned by the parent view), always shown at tab roots regardless of library count; a single library is titled with its name.
 - `NavDestination.browseLibrary` carries its `LibrarySelection` in the destination value; do not reintroduce side channels into `BrowseView`.
 - Split-view sidebar (iPad/macOS): Home/Offline/Server, then the expandable Libraries section, then Collections and Read Lists as plain rows (badged with their total counts) opening the full cross-library lists — never per-item expandable sections, since collections/read lists can be numerous. Per-library browse (`browseLibrary`) offers only the Series/Books content tabs; collections and read lists live at the sidebar's top level.
@@ -200,7 +200,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Settings Pages
 
-- Settings pages: top-level groups are Reader / Display / Server (iPhone only) / Behavior / Advanced / About.
+- Settings pages carry no group titles; top-level groups are Server (iPhone only: server card, then Libraries/Account) / Display / Reader / server management (iPhone only, admin-only) / Behavior / Advanced / About. The Libraries entry is admin-only everywhere — its page is read-only for regular users.
 - Settings shared by all readers (DIVINA, EPUB, PDF) live in the Reader group's first entry, `SettingsSection.reading` (`ReaderPreferencesView`) — never in the DIVINA-only `ReaderSettingsSheet` or the per-reader preference pages; reading-session feature toggles (Keep Screen Awake, Reader Live Activity) live there too, as do the offline-reading preference toggles (Offline-first Reading, Auto Delete Read Books, in the page's first section). The read list continuation toggle (`SettingsReadListContinuationToggle`) lives there as well, in the page's Read Lists section: it is a reading behavior (entry-point resolution, recording, sync) whose dashboard section is a side effect.
 - In-reader settings sheets stay compact (no description text); full settings pages may carry description text.
 - `SettingsSystemFeaturesView` keeps Handoff only and is not linked on tvOS; new pages register a `SettingsSection` case and use `SettingsBadgeRow`/`SettingsSectionRow` entries.

@@ -13,7 +13,13 @@ import SwiftUI
     var body: some View {
       NavigationSplitView(columnVisibility: $columnVisibility) {
         List(selection: $selectedSection) {
-          Section(String(localized: "Reader")) {
+          Section {
+            SettingsSectionRow(section: .appearance)
+            SettingsSectionRow(section: .browse)
+            SettingsSectionRow(section: .dashboard)
+          }
+
+          Section {
             SettingsSectionRow(section: .reading)
             SettingsSectionRow(section: .divinaReader)
             SettingsSectionRow(section: .pdfReader)
@@ -21,19 +27,13 @@ import SwiftUI
             SettingsSectionRow(section: .epubSettings)
           }
 
-          Section(String(localized: "Display")) {
-            SettingsSectionRow(section: .appearance)
-            SettingsSectionRow(section: .browse)
-            SettingsSectionRow(section: .dashboard)
-          }
-
-          Section(String(localized: "Behavior")) {
+          Section {
             SettingsSectionRow(section: .sse)
             SettingsSectionRow(section: .systemFeatures)
             SettingsSectionRow(section: .spotlight)
           }
 
-          Section(String(localized: "Advanced")) {
+          Section {
             SettingsSectionRow(section: .network)
             SettingsSectionRow(section: .cache)
             SettingsSectionRow(section: .logs)
