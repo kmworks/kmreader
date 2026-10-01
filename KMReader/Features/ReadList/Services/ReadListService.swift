@@ -123,6 +123,7 @@ nonisolated enum ReadListService {
     let instanceId = AppConfig.current.instanceId
     try await DatabaseOperator.database().deleteReadList(id: readListId, instanceId: instanceId)
     await ContentProjectionNotifier.postReadListDidChange(readListId: readListId, refreshDelay: 0)
+    await SyncService.postSidebarProjectionDidChange(instanceId: instanceId)
   }
 
   static func removeBooksFromReadList(readListId: String, bookIds: [String]) async throws {

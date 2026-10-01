@@ -52,6 +52,16 @@ struct BrowseView: View {
     return browseContent
   }
 
+  /// The picker reads the effective content so a persisted collections/read
+  /// lists selection still shows Series highlighted inside library browse,
+  /// where only series/books are offered.
+  private var browseContentBinding: Binding<BrowseContentType> {
+    Binding(
+      get: { effectiveContent },
+      set: { browseContent = $0 }
+    )
+  }
+
   init(
     authViewModel: AuthViewModel,
     fixedContent: BrowseContentType? = nil,
@@ -100,10 +110,8 @@ struct BrowseView: View {
       return library.seriesCount.map { Int($0) }
     case .books:
       return library.booksCount.map { Int($0) }
-    case .collections:
-      return library.collectionsCount.map { Int($0) }
-    case .readlists:
-      return library.readlistsCount.map { Int($0) }
+    case .collections, .readlists:
+      return nil
     }
   }
 
@@ -138,7 +146,7 @@ struct BrowseView: View {
         }
 
         if fixedContent == nil && !(searchOnly && activeSearchText.isEmpty) {
-          Picker("", selection: $browseContent) {
+          Picker("", selection: browseContentBinding) {
             ForEach(availableContentTypes) { type in
               Label(sectionTitle(browseContent: type), systemImage: type.icon)
                 .labelStyle(.titleAndIcon)
