@@ -171,6 +171,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - iPhone has no Server tab: the current-server card plus Management/Account entries live in `SettingsView` on iPhone only; iPad/tvOS keep the full `ServerView`.
 - iPhone Library tab root is `LibraryBrowseView`; its scope is the global dashboard selection (no tab-local store). `LibraryScopeToolbarButton` is the shared leading button (explicit `HStack` icon + `Text`, sheet/list owned by the parent view), always shown at tab roots regardless of library count; a single library is titled with its name.
 - `NavDestination.browseLibrary` carries its `LibrarySelection` in the destination value; do not reintroduce side channels into `BrowseView`.
+- Split-view sidebar (iPad/macOS): Home/Offline/Server, then the expandable Libraries section, then Collections and Read Lists as plain rows (badged with their total counts) opening the full cross-library lists — never per-item expandable sections, since collections/read lists can be numerous. Per-library browse (`browseLibrary`) offers only the Series/Books content tabs; collections and read lists live at the sidebar's top level.
 - Reading stats entry lives on the Dashboard (toolbar menu item on iOS/macOS, header button on tvOS), pushing `NavDestination.settingsReadingStats`.
 
 ### Detail Heroes & Wide Layouts

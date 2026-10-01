@@ -434,11 +434,13 @@ nonisolated enum SyncService {
       let collection = try await CollectionService.getCollection(id: id)
       let instanceId = AppConfig.current.instanceId
       await database.upsertCollection(dto: collection, instanceId: instanceId)
+      await postSidebarProjectionDidChange(instanceId: instanceId)
       return collection
     } catch APIError.notFound {
       let instanceId = AppConfig.current.instanceId
       await database.deleteCollection(id: id, instanceId: instanceId)
       await ContentProjectionNotifier.postCollectionDidChange(collectionId: id, refreshDelay: 0)
+      await postSidebarProjectionDidChange(instanceId: instanceId)
       throw APIError.notFound(message: "Collection not found", url: nil, response: nil, request: nil)
     }
   }
@@ -505,6 +507,7 @@ nonisolated enum SyncService {
       let readList = try await ReadListService.getReadList(id: id)
       let instanceId = AppConfig.current.instanceId
       await database.upsertReadList(dto: readList, instanceId: instanceId)
+      await postSidebarProjectionDidChange(instanceId: instanceId)
       let item = try? await database.fetchReadListDisplayItem(readListId: id, instanceId: instanceId)
       if item?.offlinePolicy != .manual {
         try? await syncAllReadListBooks(readListId: id)
@@ -514,6 +517,7 @@ nonisolated enum SyncService {
       let instanceId = AppConfig.current.instanceId
       await database.deleteReadList(id: id, instanceId: instanceId)
       await ContentProjectionNotifier.postReadListDidChange(readListId: id, refreshDelay: 0)
+      await postSidebarProjectionDidChange(instanceId: instanceId)
       throw APIError.notFound(message: "Read list not found", url: nil, response: nil, request: nil)
     }
   }
