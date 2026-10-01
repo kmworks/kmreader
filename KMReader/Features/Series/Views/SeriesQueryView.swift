@@ -63,7 +63,6 @@ struct SeriesQueryView: View {
                 viewModel.removeSeries(id: series.id)
               }
             )
-            .padding(.bottom)
             .onAppear {
               if viewModel.pagination.shouldLoadMore(after: series) {
                 loadSeries(refresh: false)

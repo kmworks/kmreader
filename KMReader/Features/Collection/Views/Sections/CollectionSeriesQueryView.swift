@@ -51,7 +51,6 @@ struct CollectionSeriesQueryView: View {
                   )
                 }
               }
-              .padding(.bottom)
               .onAppear {
                 if seriesViewModel.pagination.shouldLoadMore(after: series) {
                   Task { await loadMore(refresh: false) }

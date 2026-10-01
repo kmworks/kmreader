@@ -53,7 +53,6 @@ struct CollectionsBrowseView: View {
                   viewModel.removeCollection(id: collection.id)
                 }
               )
-              .padding(.bottom)
               .onAppear {
                 if viewModel.pagination.shouldLoadMore(after: collection) {
                   Task {

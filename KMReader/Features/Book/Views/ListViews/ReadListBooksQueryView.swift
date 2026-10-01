@@ -79,7 +79,6 @@ struct ReadListBooksQueryView: View {
                   )
                 }
               }
-              .padding(.bottom)
               .onAppear {
                 if bookViewModel.pagination.shouldLoadMore(after: book) {
                   Task { await loadMore(refresh: false) }

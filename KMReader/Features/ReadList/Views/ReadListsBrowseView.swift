@@ -53,7 +53,6 @@ struct ReadListsBrowseView: View {
                   viewModel.removeReadList(id: readList.id)
                 }
               )
-              .padding(.bottom)
               .onAppear {
                 if viewModel.pagination.shouldLoadMore(after: readList) {
                   Task {

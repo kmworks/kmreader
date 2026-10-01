@@ -73,7 +73,6 @@ struct SeriesBooksQueryView: View {
                   )
                 }
               }
-              .padding(.bottom)
               .onAppear {
                 if bookViewModel.pagination.shouldLoadMore(after: book) {
                   loadBooks(refresh: false)
