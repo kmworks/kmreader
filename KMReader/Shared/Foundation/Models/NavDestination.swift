@@ -72,7 +72,6 @@ enum NavDestination: Hashable {
   case settingsServers
   case settingsApiKey
   case settingsAuthenticationActivity
-  case settingsManagement
   case settingsAccount
   case settingsAbout
 
@@ -242,8 +241,6 @@ enum NavDestination: Hashable {
       ApiKeysView()
     case .settingsAuthenticationActivity:
       AccountActivityView()
-    case .settingsManagement:
-      SettingsManagementView()
     case .settingsAccount:
       SettingsAccountView(authViewModel: context.authViewModel)
     case .settingsAbout:
