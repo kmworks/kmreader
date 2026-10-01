@@ -121,9 +121,11 @@ struct DivinaPreferencesView: View {
               }
             }
             .pickerStyle(.menu)
-            Text("In single page mode, split landscape pages into two separate pages")
-              .font(.caption)
-              .foregroundColor(.secondary)
+            Text(
+              "In single page mode, split landscape pages into two separate pages; Scroll keeps a spread whole and pans across it"
+            )
+            .font(.caption)
+            .foregroundColor(.secondary)
           }
         }
 

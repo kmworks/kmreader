@@ -10,6 +10,7 @@ enum SplitWidePageMode: String, CaseIterable, Hashable, Sendable {
   case auto = "auto"
   case ltr = "ltr"
   case rtl = "rtl"
+  case scroll = "scroll"
 
   var displayName: String {
     switch self {
@@ -21,6 +22,8 @@ enum SplitWidePageMode: String, CaseIterable, Hashable, Sendable {
       return String(localized: "reading_direction.ltr", defaultValue: "Left to Right")
     case .rtl:
       return String(localized: "reading_direction.rtl", defaultValue: "Right to Left")
+    case .scroll:
+      return String(localized: "reader.splitWidePage.scroll", defaultValue: "Scroll")
     }
   }
 
@@ -34,6 +37,8 @@ enum SplitWidePageMode: String, CaseIterable, Hashable, Sendable {
       return "rectangle.trailinghalf.inset.filled.arrow.trailing"
     case .rtl:
       return "rectangle.leadinghalf.inset.filled.arrow.leading"
+    case .scroll:
+      return "scroll"
     }
   }
 
@@ -51,6 +56,8 @@ enum SplitWidePageMode: String, CaseIterable, Hashable, Sendable {
       return .ltr
     case .rtl:
       return .rtl
+    case .scroll:
+      return readingDirection
     }
   }
 }
