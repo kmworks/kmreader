@@ -63,7 +63,6 @@ struct BooksQueryView: View {
                 viewModel.removeBook(id: book.id)
               }
             )
-            .padding(.bottom)
             .onAppear {
               if viewModel.pagination.shouldLoadMore(after: book) {
                 loadBooks(refresh: false)

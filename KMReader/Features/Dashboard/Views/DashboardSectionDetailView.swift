@@ -160,7 +160,6 @@ struct DashboardSectionDetailView: View {
               removeItem(id: book.id)
             }
           )
-          .padding(.bottom)
           .onAppear {
             if pagination.shouldLoadMore(after: book) {
               Task { await loadItems(refresh: false) }
@@ -206,7 +205,6 @@ struct DashboardSectionDetailView: View {
               removeItem(id: series.id)
             }
           )
-          .padding(.bottom)
           .onAppear {
             if pagination.shouldLoadMore(after: series) {
               Task { await loadItems(refresh: false) }
