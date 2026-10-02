@@ -6,25 +6,141 @@
 import Foundation
 
 nonisolated enum ReadingStatsService {
+  private static let apiClient = APIClient.shared
+  private static let logger = AppLogger(.api)
+
+  // An unsupported verdict expires after this interval so a server upgrade is picked up.
+  private static let capabilityRecheckInterval: TimeInterval = 24 * 60 * 60
 
   @concurrent
-  static func fetchReadingStats(libraryId: String?) async throws -> ReadingStatsPayload {
+  static func fetchReadingStats(libraryId: String?) async throws -> (
+    payload: ReadingStatsPayload, dataSource: ReadingStatsDataSource
+  ) {
     let normalizedLibraryId = normalizeLibraryId(libraryId)
     let instanceId = AppConfig.current.instanceId
     guard !instanceId.isEmpty else {
-      return .empty
+      return (.empty, .local)
     }
+
+    if shouldQueryServer(instanceId: instanceId) {
+      do {
+        let payload = try await fetchServerPayload(libraryId: normalizedLibraryId)
+        recordServerCapability(instanceId: instanceId, supported: true)
+        return (payload, .server)
+      } catch let error as APIError {
+        guard case .notFound = error else { throw error }
+        // The server lost the endpoints (e.g. downgrade): remember and fall back to local.
+        recordServerCapability(instanceId: instanceId, supported: false)
+        logger.info("Server reading stats unavailable, falling back to local stats")
+      }
+    }
+
+    return (await fetchLocalPayload(instanceId: instanceId, libraryId: normalizedLibraryId), .local)
+  }
+
+  private static func shouldQueryServer(instanceId: String) -> Bool {
+    guard !AppConfig.isOffline else { return false }
+    guard let record = AppConfig.serverReadingStatsCapability.record(instanceId: instanceId) else {
+      return true
+    }
+    if record.supported { return true }
+    return Date().timeIntervalSince(record.checkedAt) >= capabilityRecheckInterval
+  }
+
+  private static func recordServerCapability(instanceId: String, supported: Bool) {
+    var capability = AppConfig.serverReadingStatsCapability
+    // A repeated supported verdict is not worth a UserDefaults round-trip; an
+    // unsupported verdict must always refresh checkedAt, it throttles re-probes.
+    guard !(supported && capability.record(instanceId: instanceId)?.supported == true) else { return }
+    capability.upsert(instanceId: instanceId, supported: supported, checkedAt: Date())
+    AppConfig.serverReadingStatsCapability = capability
+  }
+
+  // MARK: - Server Stats
+
+  private static func fetchServerPayload(libraryId: String?) async throws -> ReadingStatsPayload {
+    var libraryQuery: [URLQueryItem] = []
+    if let libraryId {
+      libraryQuery.append(URLQueryItem(name: "libraryId", value: libraryId))
+    }
+    let activityQuery =
+      libraryQuery + [URLQueryItem(name: "tzOffsetMinutes", value: "\(TimeZone.current.secondsFromGMT() / 60)")]
+
+    async let summaryTask: ServerReadingSummaryResponse = apiClient.request(
+      path: "/api/v1/stats/reading/summary",
+      queryItems: libraryQuery.isEmpty ? nil : libraryQuery
+    )
+    async let activityTask: ServerReadingActivityResponse = apiClient.request(
+      path: "/api/v1/stats/reading/activity",
+      queryItems: activityQuery
+    )
+    async let topsTask: ServerReadingTopsResponse = apiClient.request(
+      path: "/api/v1/stats/reading/tops",
+      queryItems: libraryQuery.isEmpty ? nil : libraryQuery
+    )
+
+    let summary = try await summaryTask
+    let activity = try await activityTask
+    let tops = try await topsTask
+
+    return ReadingStatsPayload(
+      summary: summary.summary,
+      statusDistribution: mapStatusDistribution(summary.statusDistribution),
+      dailyDistribution: mapWeekdayDistribution(activity.weekdayDistribution),
+      hourlyDistribution: mapHourlyDistribution(activity.hourlyDistribution),
+      readingTimeSeries: activity.readingTimeSeries,
+      topAuthors: tops.topAuthors,
+      topGenres: tops.topGenres,
+      topTags: tops.topTags,
+      genreDistribution: tops.genreDistribution,
+      tagDistribution: tops.tagDistribution,
+      generatedAt: summary.generatedAt
+    )
+  }
+
+  // Server status names map onto the same localized labels the local aggregation uses.
+  private static func mapStatusDistribution(_ items: [ReadingStatsItem]) -> [ReadingStatsItem] {
+    items
+      .map { item in
+        let localizedName: String
+        switch item.name {
+        case "read": localizedName = String(localized: "readStatus.read")
+        case "inProgress": localizedName = String(localized: "readStatus.inProgress")
+        case "unread": localizedName = String(localized: "readStatus.unread")
+        default: localizedName = item.name
+        }
+        return ReadingStatsItem(name: localizedName, value: item.value)
+      }
+      .filter { $0.value > 0 }
+  }
+
+  // Index 0 is Sunday on both sides, matching Calendar.current.shortWeekdaySymbols.
+  private static func mapWeekdayDistribution(_ counts: [Int]) -> [ReadingStatsItem] {
+    Calendar.current.shortWeekdaySymbols.enumerated().map { index, symbol in
+      ReadingStatsItem(name: symbol, value: Double(index < counts.count ? counts[index] : 0))
+    }
+  }
+
+  private static func mapHourlyDistribution(_ counts: [Int]) -> [ReadingStatsItem] {
+    (0..<24).map { hour in
+      ReadingStatsItem(name: String(format: "%d:00", hour), value: Double(hour < counts.count ? counts[hour] : 0))
+    }
+  }
+
+  // MARK: - Local Stats
+
+  private static func fetchLocalPayload(instanceId: String, libraryId: String?) async -> ReadingStatsPayload {
     guard let database = await DatabaseOperator.databaseIfConfigured() else {
       return .empty
     }
 
     async let readBooksTask = database.fetchBooksWithReadProgressForStats(
       instanceId: instanceId,
-      libraryId: normalizedLibraryId
+      libraryId: libraryId
     )
     async let totalBooksTask = database.fetchTotalBooksCount(
       instanceId: instanceId,
-      libraryId: normalizedLibraryId
+      libraryId: libraryId
     )
 
     let readBooks = await readBooksTask
