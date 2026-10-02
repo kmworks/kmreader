@@ -201,16 +201,21 @@ actor OfflineManager {
 
   /// Namespaced directory for a specific instance's offline books.
   private static func offlineDirectory(for instanceId: String) -> URL {
-    let sanitized = instanceId.isEmpty ? "default" : instanceId
-    let url = baseDirectory().appendingPathComponent(sanitized, isDirectory: true)
+    let url = offlineDirectoryURL(for: instanceId)
     ensureDirectoryExists(at: url)
     excludeFromBackupIfNeeded(at: url)
     return url
   }
 
+  /// On-disk location for an instance's offline books. Unlike `offlineDirectory`, never creates it.
+  private static func offlineDirectoryURL(for instanceId: String) -> URL {
+    let sanitized = instanceId.isEmpty ? "default" : instanceId
+    return baseDirectory().appendingPathComponent(sanitized, isDirectory: true)
+  }
+
   /// Remove all offline downloads for a specific instance.
   nonisolated static func removeOfflineData(for instanceId: String) {
-    let url = offlineDirectory(for: instanceId)
+    let url = offlineDirectoryURL(for: instanceId)
     try? FileManager.default.removeItem(at: url)
   }
 
@@ -224,7 +229,7 @@ actor OfflineManager {
 
   /// On-disk location for a book's offline files. Unlike `bookDirectory`, never creates it.
   private static func bookDirectoryURL(instanceId: String, bookId: String) -> URL {
-    offlineDirectory(for: instanceId)
+    offlineDirectoryURL(for: instanceId)
       .appendingPathComponent(bookId, isDirectory: true)
   }
 
@@ -257,11 +262,10 @@ actor OfflineManager {
     }
   }
 
-  private func webPubRootURL(bookDir: URL) -> URL {
-    let url = bookDir.appendingPathComponent("webpub", isDirectory: true)
-    Self.ensureDirectoryExists(at: url)
-    Self.excludeFromBackupIfNeeded(at: url)
-    return url
+  /// On-disk location of a book's extracted WebPub root. Never creates it; write paths
+  /// create the directory themselves when extracting resources.
+  private static func webPubRootDirectoryURL(bookDir: URL) -> URL {
+    bookDir.appendingPathComponent("webpub", isDirectory: true)
   }
 
   private static func webPubResourceURL(root: URL, href: String) -> URL {
@@ -361,8 +365,9 @@ actor OfflineManager {
 
   func getOfflineWebPubRootURL(instanceId: String, bookId: String) async -> URL? {
     guard await isBookDownloaded(bookId: bookId) else { return nil }
-    let bookDir = bookDirectory(instanceId: instanceId, bookId: bookId)
-    return webPubRootURL(bookDir: bookDir)
+    let root = Self.webPubRootDirectoryURL(
+      bookDir: Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId))
+    return FileManager.default.fileExists(atPath: root.path) ? root : nil
   }
 
   func cachedOfflineWebPubResourceURL(
@@ -371,8 +376,8 @@ actor OfflineManager {
     href: String
   ) async -> URL? {
     guard await isBookDownloaded(bookId: bookId) else { return nil }
-    let bookDir = bookDirectory(instanceId: instanceId, bookId: bookId)
-    let root = webPubRootURL(bookDir: bookDir)
+    let root = Self.webPubRootDirectoryURL(
+      bookDir: Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId))
     let destination = Self.webPubResourceURL(root: root, href: href)
     if FileManager.default.fileExists(atPath: destination.path) {
       return destination
@@ -592,24 +597,75 @@ actor OfflineManager {
   /// Cleanup orphaned offline files that no longer have corresponding local database entries.
   /// Returns the number of orphaned directories deleted and total bytes freed.
   func cleanupOrphanedFiles() async -> (deletedCount: Int, bytesFreed: Int64) {
-    let instanceId = AppConfig.current.instanceId
-    let offlineDir = Self.offlineDirectory(for: instanceId)
     let fm = FileManager.default
-
-    guard let contents = try? fm.contentsOfDirectory(atPath: offlineDir.path) else {
+    let baseDir = Self.baseDirectory()
+    guard let instanceDirNames = try? fm.contentsOfDirectory(atPath: baseDir.path) else {
       return (0, 0)
     }
 
-    // Get all downloaded book IDs from local database
-    let downloadedBooks =
-      (try? await DatabaseOperator.database().fetchDownloadedBooks(instanceId: instanceId)) ?? []
-    let downloadedBookIds = Set(downloadedBooks.map { $0.id })
+    let currentInstanceId = AppConfig.current.instanceId
+    var totalDeletedCount = 0
+    var totalBytesFreed: Int64 = 0
+
+    for instanceDirName in instanceDirNames {
+      let instanceDir = baseDir.appendingPathComponent(instanceDirName)
+      var isDir: ObjCBool = false
+      guard fm.fileExists(atPath: instanceDir.path, isDirectory: &isDir), isDir.boolValue else {
+        continue
+      }
+
+      // `offlineDirectory` maps an empty instance id to "default".
+      let instanceId = instanceDirName == "default" ? "" : instanceDirName
+      let result = await cleanupOrphanedBookDirectories(
+        instanceId: instanceId,
+        instanceDir: instanceDir,
+        skipInFlight: instanceId == currentInstanceId
+      )
+      totalDeletedCount += result.deletedCount
+      totalBytesFreed += result.bytesFreed
+
+      if Self.isDirectoryEmpty(at: instanceDir) {
+        try? fm.removeItem(at: instanceDir)
+      }
+    }
+
+    if totalDeletedCount > 0 {
+      logger.info(
+        "✅ Cleanup complete: \(totalDeletedCount) orphaned directories, \(totalBytesFreed) bytes freed")
+    }
+
+    return (totalDeletedCount, totalBytesFreed)
+  }
+
+  private func cleanupOrphanedBookDirectories(
+    instanceId: String,
+    instanceDir: URL,
+    skipInFlight: Bool
+  ) async -> (deletedCount: Int, bytesFreed: Int64) {
+    let fm = FileManager.default
+    guard let contents = try? fm.contentsOfDirectory(atPath: instanceDir.path) else {
+      return (0, 0)
+    }
+
+    // Books with an active download state; anything else on disk is orphaned.
+    let statusesByBookId =
+      (try? await DatabaseOperator.database().fetchDownloadStatusesByBookId(instanceId: instanceId))
+      ?? [:]
+
+    var inFlightBookIds = Set<String>()
+    if skipInFlight {
+      inFlightBookIds.formUnion(activeTasks.keys)
+      #if os(iOS)
+        inFlightBookIds.formUnion(backgroundDownloadInfo.keys)
+      #endif
+    }
 
     var deletedCount = 0
     var bytesFreed: Int64 = 0
+    var contentlessDownloadedBookIds: [String] = []
 
     for bookId in contents {
-      let bookDir = offlineDir.appendingPathComponent(bookId)
+      let bookDir = instanceDir.appendingPathComponent(bookId)
 
       // Skip if not a directory
       var isDir: ObjCBool = false
@@ -617,26 +673,45 @@ actor OfflineManager {
         continue
       }
 
-      // Check if this book is still in downloaded state in local database
-      if !downloadedBookIds.contains(bookId) {
-        // Orphaned directory - calculate size and delete
-        if let size = try? Self.calculateDirectorySize(bookDir) {
-          bytesFreed += size
-        }
+      if inFlightBookIds.contains(bookId) {
+        continue
+      }
 
-        do {
-          try fm.removeItem(at: bookDir)
-          deletedCount += 1
-          logger.info("🗑️ Cleaned up orphaned offline directory: \(bookId)")
-        } catch {
-          logger.error("❌ Failed to cleanup orphaned directory \(bookId): \(error)")
-        }
+      let hasFiles = Self.directoryContainsFiles(bookDir)
+      switch statusesByBookId[bookId] {
+      case "downloaded":
+        // A downloaded book whose directory holds no files lost its content (purged
+        // cache or interrupted finalize): drop the shell and reset its status below
+        // so it no longer reads as downloaded.
+        guard !hasFiles else { continue }
+        contentlessDownloadedBookIds.append(bookId)
+      case .some:
+        // Pending/failed downloads keep partial content for resume on retry.
+        guard !hasFiles else { continue }
+      case .none:
+        break
+      }
+
+      if let size = try? Self.calculateDirectorySize(bookDir) {
+        bytesFreed += size
+      }
+
+      do {
+        try fm.removeItem(at: bookDir)
+        deletedCount += 1
+        logger.info("🗑️ Cleaned up orphaned offline directory: \(bookId)")
+      } catch {
+        logger.error("❌ Failed to cleanup orphaned directory \(bookId): \(error)")
       }
     }
 
-    if deletedCount > 0 {
-      logger.info(
-        "✅ Cleanup complete: \(deletedCount) orphaned directories, \(bytesFreed) bytes freed")
+    for bookId in contentlessDownloadedBookIds {
+      try? await DatabaseOperator.database().updateBookDownloadStatus(
+        bookId: bookId, instanceId: instanceId, status: .notDownloaded)
+    }
+    if !contentlessDownloadedBookIds.isEmpty {
+      await postDownloadProjectionsDidChange(
+        bookIds: contentlessDownloadedBookIds, instanceId: instanceId)
     }
 
     return (deletedCount, bytesFreed)
@@ -1450,7 +1525,7 @@ actor OfflineManager {
     instanceId: String, bookId: String, pageNumber: Int, fileExtension: String
   ) async throws -> URL? {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return nil }
-    let dir = bookDirectory(instanceId: instanceId, bookId: bookId)
+    let dir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
 
     let file = dir.appendingPathComponent("page-\(pageNumber).\(fileExtension)")
     if FileManager.default.fileExists(atPath: file.path) {
@@ -1469,7 +1544,7 @@ actor OfflineManager {
     instanceId: String, bookId: String, page: BookPage
   ) async throws -> URL? {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return nil }
-    let dir = bookDirectory(instanceId: instanceId, bookId: bookId)
+    let dir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
 
     for file in offlinePageImageFileURLs(bookDir: dir, page: page) {
       if FileManager.default.fileExists(atPath: file.path) {
@@ -1508,7 +1583,7 @@ actor OfflineManager {
     let pagesMissingDimensions = pages.filter { !$0.hasValidDimensions }
     guard !pagesMissingDimensions.isEmpty else { return pages }
 
-    let bookDir = bookDirectory(instanceId: instanceId, bookId: bookId)
+    let bookDir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
     let cache = pageImageCache(for: instanceId)
     var localFileURLsByEntryPath: [String: URL] = [:]
 
@@ -1628,7 +1703,7 @@ actor OfflineManager {
 
   func clearOfflinePageImageDerivatives(instanceId: String, bookId: String, pageNumber: Int) async {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return }
-    let dir = bookDirectory(instanceId: instanceId, bookId: bookId)
+    let dir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
     let baseName = "page-\(pageNumber)@2x"
     let candidates = ["png", "jpg", "jpeg"].map { fileExtension in
       dir.appendingPathComponent(baseName).appendingPathExtension(fileExtension)
@@ -1645,7 +1720,7 @@ actor OfflineManager {
 
   func refreshDownloadedBookSize(instanceId: String, bookId: String) async {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return }
-    let bookDir = bookDirectory(instanceId: instanceId, bookId: bookId)
+    let bookDir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
     guard let size = try? Self.calculateDirectorySize(bookDir) else { return }
 
     try? await DatabaseOperator.database().updateBookDownloadStatus(
@@ -1659,7 +1734,7 @@ actor OfflineManager {
 
   func readOfflinePDFPreparationStamp(instanceId: String, bookId: String) async -> String? {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return nil }
-    let file = bookDirectory(instanceId: instanceId, bookId: bookId).appendingPathComponent(
+    let file = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId).appendingPathComponent(
       Self.pdfPreparationStampFileName
     )
     guard FileManager.default.fileExists(atPath: file.path) else { return nil }
@@ -1684,7 +1759,7 @@ actor OfflineManager {
 
   func getOfflineEpubURL(instanceId: String, bookId: String) async -> URL? {
     guard await isBookDownloaded(bookId: bookId) else { return nil }
-    let file = bookDirectory(instanceId: instanceId, bookId: bookId).appendingPathComponent(
+    let file = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId).appendingPathComponent(
       Self.epubFileName
     )
     return FileManager.default.fileExists(atPath: file.path) ? file : nil
@@ -1692,7 +1767,7 @@ actor OfflineManager {
 
   func getOfflinePDFURL(instanceId: String, bookId: String) async -> URL? {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return nil }
-    let file = bookDirectory(instanceId: instanceId, bookId: bookId).appendingPathComponent(
+    let file = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId).appendingPathComponent(
       Self.pdfFileName
     )
     return FileManager.default.fileExists(atPath: file.path) ? file : nil
@@ -2737,7 +2812,8 @@ actor OfflineManager {
     case .archiveImages:
       return existingImageArchiveFileURL(in: bookDir) != nil || Self.directoryContainsPageImages(bookDir)
     case .epubWebPub:
-      return existingEpubFileURL(in: bookDir) != nil || Self.directoryContainsFiles(webPubRootURL(bookDir: bookDir))
+      return existingEpubFileURL(in: bookDir) != nil
+        || Self.directoryContainsFiles(Self.webPubRootDirectoryURL(bookDir: bookDir))
     case .epubDivina:
       return existingEpubFileURL(in: bookDir) != nil || Self.directoryContainsPageImages(bookDir)
     default:
