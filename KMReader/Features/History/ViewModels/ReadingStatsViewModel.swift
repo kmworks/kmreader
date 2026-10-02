@@ -9,6 +9,7 @@ import Foundation
 @Observable
 final class ReadingStatsViewModel {
   var payload: ReadingStatsPayload?
+  var dataSource: ReadingStatsDataSource = .local
   var lastUpdatedAt: Date?
   var selectedTimeRange: ReadingStatsTimeRange = .last6Months
   var isLoading = false
@@ -22,6 +23,7 @@ final class ReadingStatsViewModel {
   func load(instanceId: String, libraryId: String, forceRefresh: Bool = false) async {
     guard !instanceId.isEmpty else {
       payload = nil
+      dataSource = .local
       lastUpdatedAt = nil
       errorMessage = nil
       return
@@ -49,7 +51,12 @@ final class ReadingStatsViewModel {
       let fetched = try await ReadingStatsService.fetchReadingStats(
         libraryId: normalizedLibraryId(libraryId)
       )
-      let snapshot = ReadingStatsSnapshot(libraryId: normalizedLibraryId(libraryId), cachedAt: Date(), payload: fetched)
+      let snapshot = ReadingStatsSnapshot(
+        libraryId: normalizedLibraryId(libraryId),
+        cachedAt: Date(),
+        payload: fetched.payload,
+        dataSource: fetched.dataSource
+      )
       cacheStore.upsert(snapshot: snapshot, instanceId: instanceId, libraryId: libraryId)
       apply(snapshot: snapshot)
     } catch {
@@ -241,6 +248,7 @@ final class ReadingStatsViewModel {
 
   private func apply(snapshot: ReadingStatsSnapshot) {
     payload = snapshot.payload
+    dataSource = snapshot.dataSource
     lastUpdatedAt = snapshot.cachedAt
   }
 
@@ -261,22 +269,29 @@ final class ReadingStatsViewModel {
   }()
 
   private static let additionalDateFormatters: [DateFormatter] = {
-    let formats = [
+    // Bare date strings are UTC day keys: the server time series uses UTC days
+    // and the local aggregation's dayKey is UTC-formatted as well.
+    let utcFormats = [
       "yyyy-MM-dd",
       "yyyy-MM",
       "yyyy",
+    ]
+    let localFormats = [
       "yyyy-MM-dd HH:mm:ss",
       "yyyy-MM-dd'T'HH:mm:ss",
       "yyyy-MM-dd'T'HH:mm:ss.SSS",
     ]
 
-    return formats.map { format in
+    func makeFormatter(_ format: String, _ timeZone: TimeZone) -> DateFormatter {
       let formatter = DateFormatter()
       formatter.locale = Locale(identifier: "en_US_POSIX")
-      formatter.timeZone = .current
+      formatter.timeZone = timeZone
       formatter.dateFormat = format
       return formatter
     }
+
+    return utcFormats.map { makeFormatter($0, TimeZone(secondsFromGMT: 0) ?? .gmt) }
+      + localFormats.map { makeFormatter($0, .current) }
   }()
 
   private static let utcCalendar: Calendar = {

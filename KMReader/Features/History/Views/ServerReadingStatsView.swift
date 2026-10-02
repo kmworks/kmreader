@@ -17,6 +17,8 @@ struct ServerReadingStatsView: View {
   @State private var syncInfo: OfflineInstanceSyncInfo?
 
   private var shouldShowInitialSyncHint: Bool {
+    // Server-side stats do not depend on the local sync state.
+    guard viewModel.dataSource == .local else { return false }
     guard let syncInfo else { return false }
     let neverSyncedAt = Date(timeIntervalSince1970: 0)
     let hasNeverSynced =
@@ -251,11 +253,19 @@ struct ServerReadingStatsView: View {
   }
 
   private func summarySection(_ summary: ReadingStatsSummary) -> some View {
-    let cards = [
+    var cards = [
       (String(localized: "Books Started"), formatCount(summary.booksStartedReading), "book"),
       (String(localized: "Books Completed"), formatCount(summary.booksCompletedReading), "checkmark.circle"),
       (String(localized: "Pages Read"), formatCount(summary.totalPagesRead), "doc.text"),
       (String(localized: "Reading Days"), formatCount(summary.readingDays), "calendar"),
+    ]
+    if let currentStreakDays = summary.currentStreakDays, currentStreakDays > 0 {
+      cards.append((String(localized: "Current Streak"), formatCount(currentStreakDays), "flame"))
+    }
+    if let longestStreakDays = summary.longestStreakDays, longestStreakDays > 0 {
+      cards.append((String(localized: "Longest Streak"), formatCount(longestStreakDays), "trophy"))
+    }
+    cards += [
       (String(localized: "Avg Pages / Book"), formatDecimal(summary.averagePagesPerBook), "chart.bar.xaxis"),
       (String(localized: "Total Books"), formatCount(summary.totalBooks), "books.vertical"),
       (String(localized: "Last Read"), formatLastRead(summary.lastReadAt), "clock.arrow.circlepath"),

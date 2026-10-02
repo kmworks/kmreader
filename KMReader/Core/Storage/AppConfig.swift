@@ -1133,6 +1133,20 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var serverReadingStatsCapability: ServerReadingStatsCapability {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverReadingStatsCapability"),
+        let capability = ServerReadingStatsCapability(rawValue: stored)
+      {
+        return capability
+      }
+      return ServerReadingStatsCapability()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverReadingStatsCapability")
+    }
+  }
+
   private static nonisolated var recentlyReadRecordTimeByInstance: [String: TimeInterval] {
     get {
       guard

@@ -101,6 +101,10 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - The local snapshot loads with each instance in `ContentView`'s per-instance startup task, independent of the network catch-up (which is offline-gated and debounced), so continuation works on offline launches and with On Deck hidden.
 - While the setting is off, `ReadListReadingService` records, syncs, and resolves nothing and publishes an empty snapshot (no local reads or writes, no client-settings requests).
 
+### Reading Stats
+
+- Reading stats prefer the server's `/api/v1/stats/reading/*` endpoints (kmrs 0.17.0+; absent on Komga) and fall back to local GRDB aggregation. The first fetch of the three endpoints doubles as the capability probe: a 404 from any of them records the instance as unsupported and the same load is then served locally. Per-instance verdicts live in `AppConfig.serverReadingStatsCapability` (UserDefaults); an unsupported verdict expires after 24h so a server upgrade is picked up automatically, and offline mode never probes. The fetch result carries its `ReadingStatsDataSource`, persisted on the cached snapshot, so the view can hide local-sync hints whenever the data came from the server.
+
 ## Browse & Dashboard
 
 ### Library Selection

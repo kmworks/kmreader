@@ -31,6 +31,7 @@ nonisolated struct ReadingStatsTimePoint: Codable, Equatable, Sendable, Identifi
     case value
     case count
     case hours
+    case pagesRead
     case date
     case timestamp
     case time
@@ -42,7 +43,7 @@ nonisolated struct ReadingStatsTimePoint: Codable, Equatable, Sendable, Identifi
     let decodedDate = try container.decodeFirstString(forKeys: [.date, .timestamp, .time, .period])
     dateString = decodedDate
     name = try container.decodeFirstString(forKeys: [.name, .label, .title, .key]) ?? decodedDate ?? "-"
-    value = try container.decodeFirstDouble(forKeys: [.value, .hours, .count]) ?? 0
+    value = try container.decodeFirstDouble(forKeys: [.value, .hours, .count, .pagesRead]) ?? 0
   }
 
   func encode(to encoder: Encoder) throws {
