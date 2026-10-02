@@ -22,7 +22,6 @@ struct ReaderSettingsSheet: View {
   @AppStorage("showTapZoneHints") private var showTapZoneHints: Bool = true
   @AppStorage("animateTapTurns") private var animateTapTurns: Bool = AppConfig.animateTapTurns
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
-  @AppStorage("autoFullscreenOnOpen") private var autoFullscreenOnOpen: Bool = false
   @AppStorage("enableLiveText") private var enableLiveText: Bool = false
   @AppStorage("imageUpscalingMode") private var imageUpscalingMode: ReaderImageUpscalingMode =
     AppConfig.imageUpscalingMode
@@ -109,12 +108,6 @@ struct ReaderSettingsSheet: View {
                   step: 5
                 )
               }
-            }
-          #endif
-
-          #if os(macOS)
-            Toggle(isOn: $autoFullscreenOnOpen) {
-              Text("Auto Full Screen on Open")
             }
           #endif
 

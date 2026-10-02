@@ -19,6 +19,9 @@ struct ReaderPreferencesView: View {
   #if os(iOS) || os(tvOS)
     @AppStorage("keepScreenAwakeWhileReading") private var keepScreenAwakeWhileReading: Bool = false
   #endif
+  #if os(macOS)
+    @AppStorage("autoFullscreenOnOpen") private var autoFullscreenOnOpen: Bool = false
+  #endif
 
   @State private var showingAutoDeleteAlert = false
 
@@ -92,8 +95,19 @@ struct ReaderPreferencesView: View {
         SettingsReadListContinuationToggle()
       }
 
-      #if os(iOS) || os(tvOS)
-        Section(header: Text(String(localized: "Screen"))) {
+      Section(header: Text(String(localized: "Screen"))) {
+        #if os(macOS)
+          Toggle(isOn: $autoFullscreenOnOpen) {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Auto Full Screen on Open")
+              Text(String(localized: "Automatically enter full screen when opening the reader"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+          }
+        #endif
+
+        #if os(iOS) || os(tvOS)
           Toggle(isOn: $keepScreenAwakeWhileReading) {
             VStack(alignment: .leading, spacing: 4) {
               Text(String(localized: "Keep Screen Awake While Reading"))
@@ -102,8 +116,8 @@ struct ReaderPreferencesView: View {
                 .foregroundStyle(.secondary)
             }
           }
-        }
-      #endif
+        #endif
+      }
 
       #if os(iOS)
         Section(header: Text("Live Activities")) {
