@@ -73,10 +73,10 @@ struct SettingsAboutView: View {
           }
         }
 
-        if let feedbackURL = URL(string: "https://github.com/kmworks/kmreader/issues") {
-          Link(destination: feedbackURL) {
+        if let discordURL = URL(string: "https://discord.gg/WQtE6VhjpP") {
+          Link(destination: discordURL) {
             HStack {
-              Label(String(localized: "Feedback"), systemImage: "paperplane")
+              Label(String(localized: "Discord"), systemImage: "bubble.left.and.bubble.right")
               Spacer()
               Image(systemName: "arrow.up.right.square")
                 .font(.caption)
@@ -89,7 +89,7 @@ struct SettingsAboutView: View {
           Link(destination: sourceURL) {
             HStack {
               Label(
-                String(localized: "Source Code"),
+                String(localized: "GitHub"),
                 systemImage: "chevron.left.forwardslash.chevron.right"
               )
               Spacer()
