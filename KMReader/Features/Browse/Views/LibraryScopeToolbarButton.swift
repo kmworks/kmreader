@@ -7,8 +7,10 @@ import SwiftUI
 
 /// Labeled library scope button for leading toolbar placement (Home, Offline,
 /// iPhone Library tab): shows the library icon plus the current dashboard
-/// scope (single library name, or the "%lld Libraries" count). Parents own the
-/// library list, the >1-library visibility condition, and the
+/// scope (single library name, or the "%lld Libraries" count). iPad keeps the
+/// icon only — a wide text button gets pushed into the toolbar's overflow
+/// menu when the bar is crowded, and the sidebar already lists the libraries.
+/// Parents own the library list, the >1-library visibility condition, and the
 /// LibraryPickerSheet presentation; this view is only the button label.
 struct LibraryScopeToolbarButton: View {
   let libraries: [SidebarLibraryItem]
@@ -34,6 +36,14 @@ struct LibraryScopeToolbarButton: View {
       format, selectedIds.isEmpty ? libraries.count : selectedIds.count)
   }
 
+  private var showsScopeTitle: Bool {
+    #if os(iOS)
+      return !PlatformHelper.isPad
+    #else
+      return true
+    #endif
+  }
+
   var body: some View {
     Button {
       isPresented = true
@@ -42,8 +52,12 @@ struct LibraryScopeToolbarButton: View {
       // compose icon + text explicitly.
       HStack(spacing: 4) {
         Image(systemName: ContentIcon.library)
-        Text(scopeTitle)
+        if showsScopeTitle {
+          Text(scopeTitle)
+        }
       }
     }
+    .accessibilityLabel(scopeTitle)
+    .help(scopeTitle)
   }
 }
