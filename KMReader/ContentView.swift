@@ -83,7 +83,11 @@ struct ContentView: View {
               MainSplitView(context: context)
             #elseif os(iOS)
               if PlatformHelper.isPad {
-                MainSplitView(context: context)
+                if #available(iOS 18.0, *) {
+                  PadTabView(context: context)
+                } else {
+                  MainSplitView(context: context)
+                }
               } else {
                 if #available(iOS 18.0, *) {
                   PhoneTabView(context: context)

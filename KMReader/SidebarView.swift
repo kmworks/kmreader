@@ -16,9 +16,7 @@ struct SidebarView: View {
   @AppStorage("sidebarLibrariesExpanded") private var librariesExpanded: Bool = true
 
   @State private var isRefreshing: Bool = false
-  @State private var libraries: [SidebarLibraryItem] = []
-  @State private var collectionsCount: Int?
-  @State private var readListsCount: Int?
+  @State private var store = SidebarItemsStore()
 
   private var showsSettingsLink: Bool {
     #if os(iOS)
@@ -50,57 +48,7 @@ struct SidebarView: View {
     await SyncService.syncLibraries(instanceId: current.instanceId)
     await SyncService.syncCollections(instanceId: current.instanceId)
     await SyncService.syncReadLists(instanceId: current.instanceId)
-    await loadSidebarItems(instanceId: current.instanceId)
-  }
-
-  private func loadSidebarItems(instanceId: String) async {
-    guard !instanceId.isEmpty else {
-      clearSidebarItemsIfNeeded()
-      return
-    }
-
-    do {
-      let database = try await DatabaseOperator.database()
-      let loadedLibraries = try await database.fetchSidebarLibraries(instanceId: instanceId)
-      let loadedCollectionsCount = try await database.fetchSidebarCollectionsCount(
-        instanceId: instanceId)
-      let loadedReadListsCount = try await database.fetchSidebarReadListsCount(
-        instanceId: instanceId)
-      applySidebarItems(
-        libraries: loadedLibraries,
-        collectionsCount: loadedCollectionsCount,
-        readListsCount: loadedReadListsCount
-      )
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
-  }
-
-  private func clearSidebarItemsIfNeeded() {
-    guard !libraries.isEmpty || collectionsCount != nil || readListsCount != nil else { return }
-
-    withAnimation {
-      libraries = []
-      collectionsCount = nil
-      readListsCount = nil
-    }
-  }
-
-  private func applySidebarItems(
-    libraries loadedLibraries: [SidebarLibraryItem],
-    collectionsCount loadedCollectionsCount: Int,
-    readListsCount loadedReadListsCount: Int
-  ) {
-    guard
-      libraries != loadedLibraries || collectionsCount != loadedCollectionsCount
-        || readListsCount != loadedReadListsCount
-    else { return }
-
-    withAnimation {
-      if libraries != loadedLibraries { libraries = loadedLibraries }
-      if collectionsCount != loadedCollectionsCount { collectionsCount = loadedCollectionsCount }
-      if readListsCount != loadedReadListsCount { readListsCount = loadedReadListsCount }
-    }
+    await store.load(instanceId: current.instanceId)
   }
 
   private func setLibrariesExpanded(_ isExpanded: Bool) {
@@ -132,13 +80,13 @@ struct SidebarView: View {
       }
     #endif
     .task(id: current.instanceId) {
-      await loadSidebarItems(instanceId: current.instanceId)
+      await store.load(instanceId: current.instanceId)
     }
     .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) {
       notification in
       guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
       Task {
-        await loadSidebarItems(instanceId: current.instanceId)
+        await store.load(instanceId: current.instanceId)
       }
     }
     #if os(macOS)
@@ -201,9 +149,9 @@ struct SidebarView: View {
       }
     }
 
-    if !libraries.isEmpty {
+    if !store.libraries.isEmpty {
       Section(isExpanded: librariesExpandedBinding) {
-        ForEach(libraries) { library in
+        ForEach(store.libraries) { library in
           let destination = NavDestination.browseLibrary(
             selection: LibrarySelection(sidebarItem: library))
           NavigationLink(value: destination) {
@@ -236,7 +184,7 @@ struct SidebarView: View {
         sidebarRowContent {
           SidebarItemLabel(
             title: String(localized: "tab.collections"),
-            count: collectionsCount,
+            count: store.collectionsCount,
             systemImage: ContentIcon.collection
           )
         }
@@ -245,7 +193,7 @@ struct SidebarView: View {
         sidebarRowContent {
           SidebarItemLabel(
             title: String(localized: "tab.readLists"),
-            count: readListsCount,
+            count: store.readListsCount,
             systemImage: ContentIcon.readList
           )
         }
