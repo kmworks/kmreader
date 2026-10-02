@@ -10,7 +10,6 @@ struct DivinaPreferencesView: View {
   @AppStorage("tapZoneMode") private var tapZoneMode: TapZoneMode = .defaultLayout
   @AppStorage("tapZoneInversionMode") private var tapZoneInversionMode: TapZoneInversionMode = .auto
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
-  @AppStorage("autoFullscreenOnOpen") private var autoFullscreenOnOpen: Bool = false
   @AppStorage("readerBackground") private var readerBackground: ReaderBackground = .system
   @AppStorage("pageLayout") private var pageLayout: PageLayout = .auto
   @AppStorage("isolateCoverPage") private var isolateCoverPage: Bool = true
@@ -205,17 +204,6 @@ struct DivinaPreferencesView: View {
                 step: 5
               )
               Text("Adjust the width of webtoon pages as a percentage of screen width")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            }
-          }
-        #endif
-
-        #if os(macOS)
-          Toggle(isOn: $autoFullscreenOnOpen) {
-            VStack(alignment: .leading, spacing: 4) {
-              Text("Auto Full Screen on Open")
-              Text("Automatically enter full screen when opening the reader")
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
