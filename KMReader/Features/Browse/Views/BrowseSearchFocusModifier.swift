@@ -35,6 +35,23 @@ extension View {
 }
 
 #if os(iOS) || os(macOS)
+  extension View {
+    @ViewBuilder
+    func searchableIfNeeded(
+      text: Binding<String>,
+      isPresented: Binding<Bool>,
+      enabled: Bool
+    ) -> some View {
+      if enabled {
+        searchable(text: text, isPresented: isPresented)
+      } else {
+        self
+      }
+    }
+  }
+#endif
+
+#if os(iOS) || os(macOS)
   @available(iOS 18.0, macOS 15.0, *)
   private struct BrowseSearchFocusModifier: ViewModifier {
     let isSearchFocused: FocusState<Bool>.Binding

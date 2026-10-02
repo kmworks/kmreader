@@ -15,6 +15,11 @@ struct DashboardView: View {
   @State private var isCheckingConnection = false
   @State private var scopeLibraries: [SidebarLibraryItem] = []
   @State private var hasLoadedScopeLibraries = false
+  @State private var searchQuery = ""
+  // Results re-query only on submit, so the submitted text is stored apart
+  // from the live field text.
+  @State private var submittedSearchText = ""
+  @State private var isSearchPresented = false
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -30,7 +35,8 @@ struct DashboardView: View {
     hasLoadedScopeLibraries && scopeLibraries.isEmpty && !isOffline
   }
 
-  private var showsBrowseSearchButton: Bool {
+  private var showsDashboardSearchField: Bool {
+    // iPhone has a search tab instead; tvOS search lives on the browse page.
     #if os(macOS)
       return true
     #elseif os(iOS)
@@ -38,17 +44,6 @@ struct DashboardView: View {
     #else
       return false
     #endif
-  }
-
-  @ViewBuilder
-  private var browseSearchButton: some View {
-    if showsBrowseSearchButton {
-      NavigationLink(value: NavDestination.browseSearch) {
-        Image(systemName: "magnifyingglass")
-      }
-      .help(String(localized: "Search"))
-      .accessibilityLabel(String(localized: "Search"))
-    }
   }
 
   @ViewBuilder
@@ -162,6 +157,37 @@ struct DashboardView: View {
       .padding(.vertical)
     }
     .platformNavigationTitle(String(localized: "title.dashboard"))
+    .overlay {
+      // The dashboard stays mounted underneath, so cancelling a search never
+      // reloads sections. The overlay appears only once a query is submitted —
+      // while typing or after clearing, the dashboard stays visible.
+      if showsDashboardSearchField && isSearchPresented && !submittedSearchText.isEmpty {
+        DashboardSearchResultsView(searchText: submittedSearchText)
+      }
+    }
+    #if os(iOS) || os(macOS)
+      .searchableIfNeeded(
+        text: $searchQuery,
+        isPresented: $isSearchPresented,
+        enabled: showsDashboardSearchField
+      )
+      .onSubmit(of: .search) {
+        submittedSearchText = searchQuery
+      }
+      .onChange(of: searchQuery) { _, newValue in
+        // Clearing the field resets results immediately, like the standalone
+        // search page; other edits still wait for submit.
+        if newValue.isEmpty {
+          submittedSearchText = ""
+        }
+      }
+      .onChange(of: isSearchPresented) { _, presented in
+        if !presented {
+          searchQuery = ""
+          submittedSearchText = ""
+        }
+      }
+    #endif
     .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
       // Refresh when server switch completes (transitions from switching to not switching)
       // This avoids race condition where refresh happens after logout but before new auth is ready
@@ -227,8 +253,6 @@ struct DashboardView: View {
         #endif
 
         ToolbarItemGroup(placement: .confirmationAction) {
-          browseSearchButton
-
           if isOffline {
             Button {
               Task {
