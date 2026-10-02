@@ -244,6 +244,7 @@
             nextBook: viewModel?.nextBook(forSegmentBookId: segmentBookId),
             readListContext: readListContext,
             nextBookOfflineState: viewModel?.nextBookOfflineState(forSegmentBookId: segmentBookId),
+            remainingUnreadCount: viewModel?.remainingUnreadCount(forSegmentBookId: segmentBookId),
             onDismiss: onDismiss
           )
         }
@@ -744,6 +745,7 @@
             nextBook: viewModel?.nextBook(forSegmentBookId: segmentBookId),
             readListContext: readListContext,
             nextBookOfflineState: viewModel?.nextBookOfflineState(forSegmentBookId: segmentBookId),
+            remainingUnreadCount: viewModel?.remainingUnreadCount(forSegmentBookId: segmentBookId),
             onDismiss: onDismiss
           )
           return cell

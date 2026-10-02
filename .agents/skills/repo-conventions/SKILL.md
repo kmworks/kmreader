@@ -50,6 +50,11 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - The status row is a permanently reserved constant-height slot toggled by alpha — never `isHidden`, which would re-lay out the page; in streaming mode the slot collapses entirely.
 - Adapters refresh end content only via the page-presentation invalidation channel. The next-segment preload trigger distance must stay ahead of the download, not just the page turn.
 
+### End-Page Remaining Unread
+
+- `ReaderViewModel.remainingUnreadCount(forSegmentBookId:)` backs the end page's remaining-unread line with the series unread count from the local projection. It refreshes when a segment loads and again after a completing progress snapshot settles (the projection only moves then), publishing through the page-presentation invalidation channel like `nextBookOfflineState`.
+- The line renders only in a series context — hidden in a read-list context, where the page reports list order, not series membership — and only while the count is positive.
+
 ### Next Book Suggestions
 
 - With "Suggest Next Unread Book" on (`suggestNextUnreadBook`, on by default), the next book skips books already read, like the dashboard: the first later book in series order (or the read list's order in a read-list context) that isn't read, else the plain next book, so re-reading still moves forward. With it off, the plain next book. The previous book always stays plain order. This covers the reader's next book (end page, next segment and its preload) and the series continue-reading target after the last read book.

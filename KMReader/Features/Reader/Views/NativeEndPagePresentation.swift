@@ -26,6 +26,8 @@ struct NativeEndPagePresentation {
     let showsCaughtUp: Bool
     /// Offline state of this section's book while it is the segment's next book.
     let nextBookOfflineState: NextBookOfflineState?
+    /// Remaining unread line for the finished book's series (series context only).
+    let unreadRemainingText: String?
   }
 
   let relationTitle: String
@@ -38,13 +40,17 @@ struct NativeEndPagePresentation {
     nextBook: Book?,
     readListContext: ReaderReadListContext?,
     sectionDisplayMode: SectionDisplayMode = .both,
-    nextBookOfflineState: NextBookOfflineState? = nil
+    nextBookOfflineState: NextBookOfflineState? = nil,
+    remainingUnreadCount: Int? = nil
   ) -> NativeEndPagePresentation {
     // End page sits between the finished book and its next sibling.
     // `previousBook` intentionally represents the finished/current segment book shown on the leading side.
     let relationTitle = readListContext?.name ?? previousBook?.seriesTitle ?? nextBook?.seriesTitle ?? ""
     let previousVisible = sectionDisplayMode != .nextOnly && previousBook != nil
     let nextVisible = sectionDisplayMode != .previousOnly
+    // A read list page reports list order, not series membership: the series
+    // unread count would read as a list statistic there.
+    let unreadText = readListContext == nil ? unreadRemainingText(for: remainingUnreadCount) : nil
 
     let previousSection = Section(
       isVisible: previousVisible,
@@ -55,7 +61,8 @@ struct NativeEndPagePresentation {
       showsCover: previousVisible,
       showsMetadata: previousVisible,
       showsCaughtUp: false,
-      nextBookOfflineState: nil
+      nextBookOfflineState: nil,
+      unreadRemainingText: nil
     )
 
     let nextSection = Section(
@@ -67,7 +74,8 @@ struct NativeEndPagePresentation {
       showsCover: nextBook != nil && nextVisible,
       showsMetadata: nextBook != nil && nextVisible,
       showsCaughtUp: nextBook == nil && nextVisible,
-      nextBookOfflineState: nextBook != nil ? nextBookOfflineState : nil
+      nextBookOfflineState: nextBook != nil ? nextBookOfflineState : nil,
+      unreadRemainingText: unreadText
     )
 
     return NativeEndPagePresentation(
@@ -76,6 +84,11 @@ struct NativeEndPagePresentation {
       next: nextSection,
       showsCloseButton: nextSection.showsCaughtUp
     )
+  }
+
+  static func unreadRemainingText(for count: Int?) -> String? {
+    guard let count, count > 0 else { return nil }
+    return String(localized: "\(count) unread left")
   }
 
   func layoutMode(for size: CGSize, readingDirection: ReadingDirection) -> LayoutMode {

@@ -15,6 +15,7 @@
     private var previousBook: Book?
     private var nextBook: Book?
     private var nextBookOfflineState: NextBookOfflineState?
+    private var remainingUnreadCount: Int?
     private var readListContext: ReaderReadListContext?
     private var onDismiss: (() -> Void)?
 
@@ -34,11 +35,14 @@
     private let nextBadgeLabel = NSTextField(labelWithString: "")
     private let nextTitleLabel = NSTextField(labelWithString: "")
     private let nextDetailLabel = NSTextField(labelWithString: "")
+    private let nextUnreadLabel = NSTextField(labelWithString: "")
     private let nextDownloadStack = NSStackView()
     private let nextStatusContainer = NSView()
     private let nextProgressCircle = CircularProgressView()
     private let nextStatusIconView = NSImageView()
     private let caughtUpLabel = NSTextField(labelWithString: "")
+    private let caughtUpUnreadLabel = NSTextField(labelWithString: "")
+    private let caughtUpGroup = NSStackView()
 
     private let closeButton = NSButton()
 
@@ -53,11 +57,13 @@
       nextBook: Book?,
       readListContext: ReaderReadListContext?,
       nextBookOfflineState: NextBookOfflineState? = nil,
+      remainingUnreadCount: Int? = nil,
       onDismiss: (() -> Void)?
     ) {
       self.previousBook = previousBook
       self.nextBook = nextBook
       self.nextBookOfflineState = nextBookOfflineState
+      self.remainingUnreadCount = remainingUnreadCount
       self.readListContext = readListContext
       self.onDismiss = onDismiss
       applyContent()
@@ -140,6 +146,11 @@
       nextDetailLabel.font = NSFont.preferredFont(forTextStyle: .caption1)
       nextBookStack.addArrangedSubview(nextDetailLabel)
 
+      nextUnreadLabel.alignment = .center
+      nextUnreadLabel.maximumNumberOfLines = 1
+      nextUnreadLabel.font = NSFont.preferredFont(forTextStyle: .caption1)
+      nextBookStack.addArrangedSubview(nextUnreadLabel)
+
       nextDownloadStack.orientation = .vertical
       nextDownloadStack.alignment = .centerX
       nextDownloadStack.spacing = 6
@@ -180,8 +191,18 @@
       caughtUpLabel.alignment = .center
       caughtUpLabel.maximumNumberOfLines = 2
       caughtUpLabel.font = NSFont.preferredFont(forTextStyle: .headline)
-      nextBookStack.addArrangedSubview(caughtUpLabel)
-      nextBookStack.setCustomSpacing(20, after: caughtUpLabel)
+
+      caughtUpUnreadLabel.alignment = .center
+      caughtUpUnreadLabel.maximumNumberOfLines = 1
+      caughtUpUnreadLabel.font = NSFont.preferredFont(forTextStyle: .caption1)
+
+      caughtUpGroup.orientation = .vertical
+      caughtUpGroup.alignment = .centerX
+      caughtUpGroup.spacing = 6
+      caughtUpGroup.addArrangedSubview(caughtUpLabel)
+      caughtUpGroup.addArrangedSubview(caughtUpUnreadLabel)
+      nextBookStack.addArrangedSubview(caughtUpGroup)
+      nextBookStack.setCustomSpacing(20, after: caughtUpGroup)
 
       closeButton.bezelStyle = .rounded
       closeButton.target = self
@@ -233,9 +254,11 @@
       nextBadgeLabel.textColor = textColor.withAlphaComponent(0.55)
       nextTitleLabel.textColor = textColor
       nextDetailLabel.textColor = textColor.withAlphaComponent(0.6)
+      nextUnreadLabel.textColor = textColor.withAlphaComponent(0.6)
       nextProgressCircle.color = textColor
       nextStatusIconView.contentTintColor = textColor.withAlphaComponent(0.6)
       caughtUpLabel.textColor = textColor
+      caughtUpUnreadLabel.textColor = textColor.withAlphaComponent(0.6)
       EndPageCloseButtonStyle.apply(to: closeButton, textColor: textColor)
     }
 
@@ -251,14 +274,24 @@
         previousBookStack.isHidden = true
       }
 
+      // A read list page reports list order, not series membership: the series
+      // unread count would read as a list statistic there.
+      let unreadText =
+        readListContext == nil
+        ? NativeEndPagePresentation.unreadRemainingText(for: remainingUnreadCount) : nil
+
       if let nextBook {
         closeButton.isHidden = true
         nextBadgeLabel.isHidden = false
-        caughtUpLabel.isHidden = true
+        caughtUpGroup.isHidden = true
+        caughtUpLabel.stringValue = ""
+        caughtUpUnreadLabel.stringValue = ""
         nextTitleLabel.isHidden = false
         nextDetailLabel.isHidden = false
         nextTitleLabel.stringValue = nextBook.readerChapterTitle
         nextDetailLabel.stringValue = nextBook.readerChapterDetail
+        nextUnreadLabel.stringValue = unreadText ?? ""
+        nextUnreadLabel.isHidden = unreadText == nil
         applyNextDownload(nextBookOfflineState)
       } else {
         closeButton.isHidden = false
@@ -267,10 +300,14 @@
         nextDetailLabel.isHidden = true
         nextTitleLabel.stringValue = ""
         nextDetailLabel.stringValue = ""
+        nextUnreadLabel.stringValue = ""
+        nextUnreadLabel.isHidden = true
         // Caught up: no next book, so the download slot has nothing to show.
         nextDownloadStack.isHidden = true
-        caughtUpLabel.isHidden = false
+        caughtUpGroup.isHidden = false
         caughtUpLabel.stringValue = String(localized: "You're all caught up!")
+        caughtUpUnreadLabel.stringValue = unreadText ?? ""
+        caughtUpUnreadLabel.isHidden = unreadText == nil
       }
 
       EndPageCloseButtonStyle.apply(to: closeButton, textColor: NSColor(readerBackground.contentColor))

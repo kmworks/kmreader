@@ -7,6 +7,7 @@
     private var previousBook: Book?
     private var nextBook: Book?
     private var nextBookOfflineState: NextBookOfflineState?
+    private var remainingUnreadCount: Int?
     private var readListContext: ReaderReadListContext?
     private var readingDirection: ReadingDirection = .ltr
     private var sectionDisplayMode: NativeEndPagePresentation.SectionDisplayMode = .both
@@ -43,13 +44,17 @@
     private let nextMetadataStack = UIStackView()
     private let nextTitleLabel = UILabel()
     private let nextDetailLabel = UILabel()
+    private let nextUnreadLabel = UILabel()
     private let nextDownloadStack = UIStackView()
     private let nextStatusContainer = UIView()
     private let nextProgressCircle = CircularProgressView()
     private let nextStatusIconView = UIImageView()
+    private let caughtUpContainer = UIView()
+    private let caughtUpColumn = UIStackView()
     private let caughtUpStack = UIStackView()
     private let caughtUpIconView = UIImageView()
     private let caughtUpLabel = UILabel()
+    private let caughtUpUnreadLabel = UILabel()
 
     private let horizontalDividerStack = UIStackView()
     private let leadingDivider = UIView()
@@ -97,11 +102,13 @@
       sectionDisplayMode: NativeEndPagePresentation.SectionDisplayMode = .both,
       renderConfig: ReaderRenderConfig,
       nextBookOfflineState: NextBookOfflineState? = nil,
+      remainingUnreadCount: Int? = nil,
       onDismiss: (() -> Void)?
     ) {
       self.previousBook = previousBook
       self.nextBook = nextBook
       self.nextBookOfflineState = nextBookOfflineState
+      self.remainingUnreadCount = remainingUnreadCount
       self.readListContext = readListContext
       self.readingDirection = readingDirection
       self.sectionDisplayMode = sectionDisplayMode
@@ -202,6 +209,13 @@
       NativeEndPageLayoutMetrics.protectVerticalText(nextDetailLabel)
       nextMetadataStack.addArrangedSubview(nextDetailLabel)
 
+      nextUnreadLabel.numberOfLines = 1
+      nextUnreadLabel.textAlignment = .center
+      nextUnreadLabel.adjustsFontForContentSizeCategory = true
+      nextUnreadLabel.lineBreakMode = .byTruncatingTail
+      NativeEndPageLayoutMetrics.protectVerticalText(nextUnreadLabel)
+      nextMetadataStack.addArrangedSubview(nextUnreadLabel)
+
       nextDownloadStack.axis = .vertical
       nextDownloadStack.alignment = .center
       nextDownloadStack.spacing = 6
@@ -245,7 +259,6 @@
       caughtUpStack.axis = .horizontal
       caughtUpStack.alignment = .center
       caughtUpStack.spacing = 8
-      nextStack.addArrangedSubview(caughtUpStack)
 
       caughtUpIconView.image = UIImage(systemName: "checkmark.circle.fill")
       caughtUpIconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)
@@ -256,6 +269,36 @@
       caughtUpLabel.adjustsFontForContentSizeCategory = true
       NativeEndPageLayoutMetrics.protectVerticalText(caughtUpLabel)
       caughtUpStack.addArrangedSubview(caughtUpLabel)
+
+      caughtUpUnreadLabel.numberOfLines = 1
+      caughtUpUnreadLabel.textAlignment = .center
+      caughtUpUnreadLabel.adjustsFontForContentSizeCategory = true
+      caughtUpUnreadLabel.lineBreakMode = .byTruncatingTail
+      NativeEndPageLayoutMetrics.protectVerticalText(caughtUpUnreadLabel)
+
+      caughtUpColumn.axis = .vertical
+      caughtUpColumn.alignment = .center
+      caughtUpColumn.spacing = 8
+      caughtUpColumn.addArrangedSubview(caughtUpStack)
+      caughtUpColumn.addArrangedSubview(caughtUpUnreadLabel)
+
+      // The container fills the next-book column in every layout mode and
+      // centers its content explicitly, so the caught-up block sits in the
+      // middle of the side-by-side column instead of hugging its top edge.
+      caughtUpColumn.translatesAutoresizingMaskIntoConstraints = false
+      caughtUpContainer.addSubview(caughtUpColumn)
+      NSLayoutConstraint.activate([
+        caughtUpColumn.centerXAnchor.constraint(equalTo: caughtUpContainer.centerXAnchor),
+        caughtUpColumn.centerYAnchor.constraint(equalTo: caughtUpContainer.centerYAnchor),
+        caughtUpColumn.leadingAnchor.constraint(greaterThanOrEqualTo: caughtUpContainer.leadingAnchor),
+        caughtUpColumn.trailingAnchor.constraint(lessThanOrEqualTo: caughtUpContainer.trailingAnchor),
+        caughtUpColumn.topAnchor.constraint(greaterThanOrEqualTo: caughtUpContainer.topAnchor),
+        caughtUpColumn.bottomAnchor.constraint(lessThanOrEqualTo: caughtUpContainer.bottomAnchor),
+        // Keep the container at least as tall as its content: in stacked and
+        // single-section modes it wraps the block, in side-by-side it fills.
+        caughtUpContainer.heightAnchor.constraint(greaterThanOrEqualTo: caughtUpColumn.heightAnchor),
+      ])
+      nextStack.addArrangedSubview(caughtUpContainer)
 
       horizontalDividerStack.axis = .horizontal
       horizontalDividerStack.alignment = .center
@@ -379,7 +422,8 @@
         nextBook: nextBook,
         readListContext: readListContext,
         sectionDisplayMode: sectionDisplayMode,
-        nextBookOfflineState: nextBookOfflineState
+        nextBookOfflineState: nextBookOfflineState,
+        remainingUnreadCount: remainingUnreadCount
       )
       let relationTitle = presentation.relationTitle
 
@@ -395,7 +439,9 @@
       nextBadgeLabel.font = metrics.badgeFont
       nextTitleLabel.font = metrics.titleFont
       nextDetailLabel.font = metrics.detailFont
+      nextUnreadLabel.font = metrics.detailFont
       caughtUpLabel.font = .preferredFont(forTextStyle: .headline)
+      caughtUpUnreadLabel.font = metrics.detailFont
       dividerTitleLabel.font = .preferredFont(forTextStyle: .caption1)
 
       previousBadgeLabel.textColor = textColor.withAlphaComponent(0.55)
@@ -404,10 +450,12 @@
       nextBadgeLabel.textColor = textColor.withAlphaComponent(0.55)
       nextTitleLabel.textColor = textColor
       nextDetailLabel.textColor = textColor.withAlphaComponent(0.6)
+      nextUnreadLabel.textColor = textColor.withAlphaComponent(0.6)
       nextProgressCircle.color = textColor
       nextStatusIconView.tintColor = textColor.withAlphaComponent(0.6)
       caughtUpIconView.tintColor = textColor
       caughtUpLabel.textColor = textColor
+      caughtUpUnreadLabel.textColor = textColor.withAlphaComponent(0.6)
       dividerTitleLabel.textColor = textColor.withAlphaComponent(0.8)
       leadingDivider.backgroundColor = textColor.withAlphaComponent(0.3)
       trailingDivider.backgroundColor = textColor.withAlphaComponent(0.3)
@@ -438,23 +486,32 @@
         nextContainer.isHidden = false
         nextBadgeLabel.isHidden = presentation.next.badgeText == nil
         nextMetadataStack.isHidden = !presentation.next.showsMetadata
-        caughtUpStack.isHidden = !presentation.next.showsCaughtUp
+        caughtUpContainer.isHidden = !presentation.next.showsCaughtUp
         caughtUpLabel.text = presentation.next.showsCaughtUp ? String(localized: "You're all caught up!") : nil
         nextCoverView.isHidden = !presentation.next.showsCover
         nextCoverView.configure(bookID: presentation.next.bookID)
         nextTitleLabel.text = presentation.next.title
         nextDetailLabel.text = presentation.next.detail
+        let unreadText = presentation.next.unreadRemainingText
+        nextUnreadLabel.text = presentation.next.showsMetadata ? unreadText : nil
+        nextUnreadLabel.isHidden = !presentation.next.showsMetadata || unreadText == nil
+        caughtUpUnreadLabel.text = presentation.next.showsCaughtUp ? unreadText : nil
+        caughtUpUnreadLabel.isHidden = !presentation.next.showsCaughtUp || unreadText == nil
         applyNextDownload(presentation.next.nextBookOfflineState)
       } else {
         nextContainer.isHidden = true
         nextBadgeLabel.isHidden = true
         nextMetadataStack.isHidden = true
-        caughtUpStack.isHidden = true
+        caughtUpContainer.isHidden = true
         caughtUpLabel.text = nil
         nextCoverView.isHidden = true
         nextCoverView.configure(bookID: nil)
         nextTitleLabel.text = nil
         nextDetailLabel.text = nil
+        nextUnreadLabel.text = nil
+        nextUnreadLabel.isHidden = true
+        caughtUpUnreadLabel.text = nil
+        caughtUpUnreadLabel.isHidden = true
         applyNextDownload(nil)
       }
 

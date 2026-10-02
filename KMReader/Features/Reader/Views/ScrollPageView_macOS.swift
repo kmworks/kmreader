@@ -825,6 +825,7 @@
             readingDirection: parent.readingDirection,
             renderConfig: parent.renderConfig,
             nextBookOfflineState: parent.viewModel.nextBookOfflineState(forSegmentBookId: segmentBookId),
+            remainingUnreadCount: parent.viewModel.remainingUnreadCount(forSegmentBookId: segmentBookId),
             onDismiss: parent.onDismiss
           )
           return

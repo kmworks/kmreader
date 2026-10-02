@@ -28,6 +28,7 @@
       sectionDisplayMode: SectionDisplayMode = .both,
       renderConfig: ReaderRenderConfig,
       nextBookOfflineState: NextBookOfflineState? = nil,
+      remainingUnreadCount: Int? = nil,
       onDismiss: @escaping () -> Void
     ) {
       endPageView.configure(
@@ -38,6 +39,7 @@
         sectionDisplayMode: presentationSectionDisplayMode(for: sectionDisplayMode),
         renderConfig: renderConfig,
         nextBookOfflineState: nextBookOfflineState,
+        remainingUnreadCount: remainingUnreadCount,
         onDismiss: onDismiss
       )
     }

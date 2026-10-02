@@ -194,6 +194,7 @@
           readingDirection: readingDirection,
           renderConfig: renderConfig,
           nextBookOfflineState: viewModel.nextBookOfflineState(forSegmentBookId: id.bookId),
+          remainingUnreadCount: viewModel.remainingUnreadCount(forSegmentBookId: id.bookId),
           onDismiss: onDismiss
         )
         return
