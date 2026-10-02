@@ -283,6 +283,20 @@ import OSLog
       try? target.setResourceValues(values)
     }
 
+    /// Removes empty directories above `fileURL`, stopping at the app's support directory.
+    nonisolated private static func pruneEmptyAncestorDirectories(of fileURL: URL) {
+      guard let stopURL = try? AppStorageDirectory.supportDirectory() else { return }
+      let fm = FileManager.default
+      let stopPath = stopURL.standardizedFileURL.path
+      var current = fileURL.deletingLastPathComponent().standardizedFileURL
+      while current.path != stopPath, current.path.hasPrefix(stopPath + "/") {
+        guard let contents = try? fm.contentsOfDirectory(atPath: current.path), contents.isEmpty
+        else { return }
+        try? fm.removeItem(at: current)
+        current = current.deletingLastPathComponent()
+      }
+    }
+
     private func handleDownloadCompletion(
       taskIdentifier: Int,
       destinationURL: URL,
@@ -290,6 +304,10 @@ import OSLog
     ) {
       guard let taskInfo = activeTasks[taskIdentifier] else {
         logger.warning("⚠️ Completed download for unknown task: \(taskIdentifier)")
+        // The task is no longer tracked (cancelled or reset), so nothing will
+        // consume the file: drop it and the shell that moveDownloadedFile created.
+        try? FileManager.default.removeItem(at: destinationURL)
+        Self.pruneEmptyAncestorDirectories(of: destinationURL)
         return
       }
 

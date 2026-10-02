@@ -81,6 +81,8 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 ### Downloads & Caches
 
 - Cancelling a download removes its on-disk book directory; failed downloads keep partial content for resume.
+- Only download/extraction write paths create the on-disk book or instance directory (`bookDirectory`/`offlineDirectory`); read-only lookups go through the non-creating `bookDirectoryURL`/`offlineDirectoryURL`/`webPubRootDirectoryURL` so opening a book never leaves an empty shell behind.
+- `OfflineManager.cleanupOrphanedFiles` sweeps every instance namespace under `OfflineBooks/`, skipping in-flight downloads of the current instance: directories of books with no download intent (notDownloaded or no local row) are deleted; pending/failed books keep directories that hold files (resume on retry) and lose empty shells; downloaded books whose directory holds no files are deleted and reset to `.notDownloaded`; empty instance directories are pruned at the end. It runs once at launch after the database opens, after stale-book reconcile during full sync, and from the Offline page's manual action.
 - Clearing caches or server data goes through `CacheManager` and the GRDB stores only.
 - Queueing a download backfills the book's `KomgaSeries` row from the server when missing (`OfflineManager.ensureSeriesRow`, with a `startDownload` backstop): single-book download entries don't guarantee the series row, and Offline series browse plus series download rollups query the series table.
 

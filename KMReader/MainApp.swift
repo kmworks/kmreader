@@ -94,6 +94,9 @@ struct MainApp: App {
       await DatabaseOperator.configure(databaseQueue: queue)
       _ = OfflineManager.shared
       databaseQueue = queue
+      Task.detached(priority: .utility) {
+        _ = await OfflineManager.shared.cleanupOrphanedFiles()
+      }
       #if os(iOS)
         QuickActionService.handlePendingShortcutIfNeeded()
       #endif
