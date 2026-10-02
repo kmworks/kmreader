@@ -110,21 +110,11 @@ struct BrowseView: View {
         }
 
         ToolbarItemGroup(placement: .confirmationAction) {
-          if effectiveContent == .series || effectiveContent == .books {
-            Button {
-              showSavedFilters = true
-            } label: {
-              Image(systemName: "bookmark")
-            }
-            .accessibilityLabel(String(localized: "Saved Filters"))
-          }
-
-          Button {
-            showFilterSheet = true
-          } label: {
-            Image(systemName: "line.3.horizontal.decrease")
-          }
-          .accessibilityLabel(String(localized: "Filter"))
+          BrowseFilterToolbarButtons(
+            showsSavedFilters: effectiveContent == .series || effectiveContent == .books,
+            onShowSavedFilters: { showSavedFilters = true },
+            onShowFilter: { showFilterSheet = true }
+          )
         }
       }
       .sheet(isPresented: $showLibraryPicker) {
