@@ -22,8 +22,6 @@ import SwiftUI
 
     let context: AppViewContext
 
-    @Environment(\.colorScheme) private var colorScheme
-
     @AppStorage("currentAccount") private var current: Current = .init()
 
     @State private var deepLinkRouter = DeepLinkRouter.shared
@@ -43,24 +41,18 @@ import SwiftUI
             rootContent(for: .offline)
           }
         }
-        Tab(TabItem.server.title, systemImage: TabItem.server.icon, value: PadTab.server) {
-          NavigationStack {
-            rootContent(for: .server)
-          }
-        }
 
         // Sections always render after every plain tab in the sidebar,
         // regardless of declaration order.
         if !store.libraries.isEmpty {
           TabSection(String(localized: "Libraries")) {
             ForEach(store.libraries) { library in
-              Tab(
-                library.name, systemImage: ContentIcon.library,
-                value: PadTab.library(library.libraryId)
-              ) {
+              Tab(value: PadTab.library(library.libraryId)) {
                 NavigationStack {
                   rootContent(for: .browseLibrary(selection: LibrarySelection(sidebarItem: library)))
                 }
+              } label: {
+                Text(library.name)
               }
             }
           }
@@ -83,6 +75,12 @@ import SwiftUI
           }
         }
 
+        Tab(TabItem.server.title, systemImage: TabItem.server.icon, value: PadTab.server) {
+          NavigationStack {
+            rootContent(for: .server)
+          }
+        }
+
         Tab(TabItem.settings.title, systemImage: TabItem.settings.icon, value: PadTab.settings) {
           NavigationStack {
             rootContent(for: .settings)
@@ -90,11 +88,6 @@ import SwiftUI
         }
       }
       .tabViewStyle(.sidebarAdaptable)
-      // The sidebar paints the selection pill and unselected row icons with
-      // the tint. The near-white dark-mode accent makes the pill unreadable
-      // (white-on-white), so dark mode uses a neutral gray light enough for
-      // row icons to stay visible. Tab contents re-tint to the accent below.
-      .tint(colorScheme == .dark ? Color(uiColor: .systemGray) : Color.accentColor)
       .tabBarMinimizeBehaviorIfAvailable()
       .task(id: current.instanceId) {
         await store.load(instanceId: current.instanceId)
@@ -128,7 +121,6 @@ import SwiftUI
       destination.content(context: context)
         .environment(\.browseLibrarySelection, destination.librarySelection)
         .environment(\.readerActions, context.readerActions)
-        .tint(Color.accentColor)
         .handleNavigation(context: context)
     }
 
