@@ -5,6 +5,8 @@
 
 import SwiftUI
 
+/// Standalone browse page shell: owns the search field, toolbar, navigation
+/// title, search query state, and refresh triggers around `BrowseContentView`.
 struct BrowseView: View {
   let authViewModel: AuthViewModel
   let fixedContent: BrowseContentType?
@@ -21,8 +23,8 @@ struct BrowseView: View {
   @Environment(\.browseLibrarySelection) private var librarySelection
 
   @AppStorage("currentAccount") private var current: Current = .init()
-  @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
+  @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
 
   @State private var refreshTrigger = UUID()
   @State private var initializedLibraryIdsKey: String?
@@ -34,33 +36,6 @@ struct BrowseView: View {
   @State private var showSavedFilters = false
   @State private var scopeLibraries: [SidebarLibraryItem] = []
   @FocusState private var isSearchFocused: Bool
-
-  /// Library browse (split view) offers only series/books; collections and
-  /// read lists live at the sidebar's top level.
-  private var availableContentTypes: [BrowseContentType] {
-    guard librarySelection == nil else { return [.series, .books] }
-    return BrowseContentType.allCases
-  }
-
-  private var effectiveContent: BrowseContentType {
-    if let fixedContent {
-      return fixedContent
-    }
-    guard availableContentTypes.contains(browseContent) else {
-      return .series
-    }
-    return browseContent
-  }
-
-  /// The picker reads the effective content so a persisted collections/read
-  /// lists selection still shows Series highlighted inside library browse,
-  /// where only series/books are offered.
-  private var browseContentBinding: Binding<BrowseContentType> {
-    Binding(
-      get: { effectiveContent },
-      set: { browseContent = $0 }
-    )
-  }
 
   init(
     authViewModel: AuthViewModel,
@@ -92,89 +67,25 @@ struct BrowseView: View {
     }
   }
 
-  private var resolvedLibraryIds: [String] {
-    if let library = librarySelection {
-      return [library.libraryId]
-    }
-    return dashboard.libraryIds
-  }
-
   private var resolvedLibraryIdsKey: String {
-    resolvedLibraryIds.joined(separator: ",")
-  }
-
-  func sectionCount(browseContent: BrowseContentType) -> Int? {
-    guard let library = librarySelection else { return nil }
-    switch browseContent {
-    case .series:
-      return library.seriesCount.map { Int($0) }
-    case .books:
-      return library.booksCount.map { Int($0) }
-    case .collections, .readlists:
-      return nil
+    if let library = librarySelection {
+      return library.libraryId
     }
-  }
-
-  func sectionTitle(browseContent: BrowseContentType) -> String {
-    if let count = sectionCount(browseContent: browseContent) {
-      return String(format: "%@ (%d)", browseContent.displayName, count)
-    }
-    return browseContent.displayName
+    return dashboard.libraryIds.joined(separator: ",")
   }
 
   var body: some View {
-    mainContent.platformNavigationTitle(title)
-  }
-
-  private var mainContent: some View {
-    ScrollView {
-      VStack(spacing: 0) {
-        if !libraryTab, let library = librarySelection {
-          VStack(alignment: .leading) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-              Image(systemName: ContentIcon.library)
-              Text(library.name)
-                .font(.title2)
-              if let fileSize = library.fileSize {
-                Text(fileSize.humanReadableFileSize)
-                  .font(.subheadline)
-                  .foregroundColor(.secondary)
-              }
-              Spacer()
-            }
-          }.padding()
-        }
-
-        if fixedContent == nil && !(searchOnly && activeSearchText.isEmpty) {
-          Picker("", selection: browseContentBinding) {
-            ForEach(availableContentTypes) { type in
-              Label(sectionTitle(browseContent: type), systemImage: type.icon)
-                .labelStyle(.titleAndIcon)
-                .tag(type)
-            }
-          }
-          .pickerStyle(.segmented)
-          .labelsHidden()
-          .frame(maxWidth: .infinity)
-          .padding(.horizontal)
-          .padding(.vertical, 8)
-        }
-
-        if searchOnly && activeSearchText.isEmpty {
-          ContentUnavailableView {
-            Label(String(localized: "tab.search", defaultValue: "Search"), systemImage: "magnifyingglass")
-          } description: {
-            Text(
-              String(
-                localized: "search.empty.hint",
-                defaultValue: "Search series, books, collections, and read lists."))
-          }
-          .frame(maxWidth: .infinity, minHeight: 320)
-        } else {
-          browseContentView
-        }
-      }
-    }
+    BrowseContentView(
+      fixedContent: fixedContent,
+      metadataFilter: metadataFilter,
+      searchOnly: searchOnly,
+      searchText: activeSearchText,
+      showsLibraryHeader: !libraryTab,
+      refreshTrigger: refreshTrigger,
+      showFilterSheet: $showFilterSheet,
+      showSavedFilters: $showSavedFilters
+    )
+    .platformNavigationTitle(title)
     .searchableIfNeeded(text: $searchQuery, enabled: !libraryTab)
     .browseSearchFocus($isSearchFocused, when: focusesSearchOnAppear)
     .onAppear {
@@ -255,6 +166,18 @@ struct BrowseView: View {
     }
   }
 
+  /// Mirrors `BrowseContentView.effectiveContent` for the toolbar's
+  /// content-dependent buttons.
+  private var effectiveContent: BrowseContentType {
+    if let fixedContent {
+      return fixedContent
+    }
+    if librarySelection != nil, browseContent != .series, browseContent != .books {
+      return .series
+    }
+    return browseContent
+  }
+
   private func refreshBrowse() {
     refreshTrigger = UUID()
     isRefreshDisabled = true
@@ -283,44 +206,6 @@ struct BrowseView: View {
       }
     } catch {
       ErrorManager.shared.alert(error: error)
-    }
-  }
-
-  @ViewBuilder
-  private var browseContentView: some View {
-    switch effectiveContent {
-    case .series:
-      SeriesBrowseView(
-        libraryIds: resolvedLibraryIds,
-        searchText: activeSearchText,
-        refreshTrigger: refreshTrigger,
-        metadataFilter: metadataFilter,
-        showFilterSheet: $showFilterSheet,
-        showSavedFilters: $showSavedFilters,
-      )
-    case .books:
-      BooksBrowseView(
-        libraryIds: resolvedLibraryIds,
-        searchText: activeSearchText,
-        refreshTrigger: refreshTrigger,
-        metadataFilter: metadataFilter,
-        showFilterSheet: $showFilterSheet,
-        showSavedFilters: $showSavedFilters,
-      )
-    case .collections:
-      CollectionsBrowseView(
-        libraryIds: resolvedLibraryIds,
-        searchText: activeSearchText,
-        refreshTrigger: refreshTrigger,
-        showFilterSheet: $showFilterSheet
-      )
-    case .readlists:
-      ReadListsBrowseView(
-        libraryIds: resolvedLibraryIds,
-        searchText: activeSearchText,
-        refreshTrigger: refreshTrigger,
-        showFilterSheet: $showFilterSheet
-      )
     }
   }
 }
