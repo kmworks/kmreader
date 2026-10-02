@@ -7,17 +7,9 @@ import SwiftUI
 
 extension View {
   @ViewBuilder
-  func searchableIfNeeded(
-    text: Binding<String>,
-    placement: SearchFieldPlacement? = nil,
-    enabled: Bool
-  ) -> some View {
+  func searchableIfNeeded(text: Binding<String>, enabled: Bool) -> some View {
     if enabled {
-      if let placement {
-        searchable(text: text, placement: placement)
-      } else {
-        searchable(text: text)
-      }
+      searchable(text: text)
     } else {
       self
     }

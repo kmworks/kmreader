@@ -166,16 +166,8 @@ struct BrowseView: View {
     }
   }
 
-  /// Mirrors `BrowseContentView.effectiveContent` for the toolbar's
-  /// content-dependent buttons.
   private var effectiveContent: BrowseContentType {
-    if let fixedContent {
-      return fixedContent
-    }
-    if librarySelection != nil, browseContent != .series, browseContent != .books {
-      return .series
-    }
-    return browseContent
+    .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
   }
 
   private func refreshBrowse() {

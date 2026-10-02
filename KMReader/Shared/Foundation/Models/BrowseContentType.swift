@@ -52,4 +52,20 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
       return false
     }
   }
+
+  /// Library-scoped browse offers only series/books, so a persisted
+  /// collections/read lists pick resolves to series there.
+  static func effective(
+    fixed: BrowseContentType?,
+    libraryScoped: Bool,
+    persisted: BrowseContentType
+  ) -> BrowseContentType {
+    if let fixed {
+      return fixed
+    }
+    if libraryScoped, persisted != .series, persisted != .books {
+      return .series
+    }
+    return persisted
+  }
 }

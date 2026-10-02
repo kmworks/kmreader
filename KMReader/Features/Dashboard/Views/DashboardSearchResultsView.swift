@@ -13,13 +13,31 @@ import SwiftUI
 struct DashboardSearchResultsView: View {
   let searchText: String
 
+  @Environment(\.browseLibrarySelection) private var librarySelection
+
+  @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
+
   @State private var refreshTrigger = UUID()
+  // The in-content filter bars drive these bindings; without real state the
+  // sort/preset chips would be dead buttons here (unlike `BrowseView`, the
+  // overlay has no toolbar filter buttons of its own).
+  @State private var showFilterSheet = false
+  @State private var showSavedFilters = false
+
+  private var effectiveContent: BrowseContentType {
+    .effective(fixed: nil, libraryScoped: librarySelection != nil, persisted: browseContent)
+  }
 
   var body: some View {
     BrowseContentView(
       searchText: searchText,
-      refreshTrigger: refreshTrigger
+      refreshTrigger: refreshTrigger,
+      showFilterSheet: $showFilterSheet,
+      showSavedFilters: $showSavedFilters
     )
     .background(PlatformHelper.systemBackgroundColor)
+    .sheet(isPresented: $showSavedFilters) {
+      SavedFiltersView(filterType: effectiveContent == .series ? .series : .books)
+    }
   }
 }

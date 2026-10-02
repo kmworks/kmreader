@@ -58,13 +58,7 @@ struct BrowseContentView: View {
   }
 
   private var effectiveContent: BrowseContentType {
-    if let fixedContent {
-      return fixedContent
-    }
-    guard availableContentTypes.contains(browseContent) else {
-      return .series
-    }
-    return browseContent
+    .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
   }
 
   /// The picker reads the effective content so a persisted collections/read
@@ -84,7 +78,7 @@ struct BrowseContentView: View {
     return dashboard.libraryIds
   }
 
-  func sectionCount(browseContent: BrowseContentType) -> Int? {
+  private func sectionCount(browseContent: BrowseContentType) -> Int? {
     guard let library = librarySelection else { return nil }
     switch browseContent {
     case .series:
@@ -96,7 +90,7 @@ struct BrowseContentView: View {
     }
   }
 
-  func sectionTitle(browseContent: BrowseContentType) -> String {
+  private func sectionTitle(browseContent: BrowseContentType) -> String {
     if let count = sectionCount(browseContent: browseContent) {
       return String(format: "%@ (%d)", browseContent.displayName, count)
     }
