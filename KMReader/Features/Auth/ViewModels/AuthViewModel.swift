@@ -30,7 +30,8 @@ class AuthViewModel {
     username: String,
     password: String,
     serverURL: String,
-    displayName: String? = nil
+    displayName: String? = nil,
+    autoCreateApiKey: Bool
   ) async throws {
     isLoading = true
     defer { isLoading = false }
@@ -39,14 +40,14 @@ class AuthViewModel {
     let result = try await AuthService.login(
       username: username, password: password, serverURL: serverURL, timeout: AppConfig.authTimeout)
 
-    // Prefer an auto-created API key over storing the password credential:
-    // it never expires and works for background downloads without relying on
-    // shared cookies. Falls back to password auth when the server cannot
-    // create keys.
+    // When enabled, prefer an auto-created API key over storing the password
+    // credential: it never expires and works for background downloads without
+    // relying on shared cookies. Falls back to password auth when the server
+    // cannot create keys.
     var authToken = result.authToken
     var authMethod = AuthenticationMethod.basicAuth
     var apiKeyId: String?
-    if let apiKey = await createApiKeyCredential(serverURL: serverURL) {
+    if autoCreateApiKey, let apiKey = await createApiKeyCredential(serverURL: serverURL) {
       authToken = apiKey.key
       authMethod = .apiKey
       apiKeyId = apiKey.id
@@ -71,9 +72,8 @@ class AuthViewModel {
   /// creation or verification fails, e.g. on older servers.
   private func createApiKeyCredential(serverURL: String) async -> ApiKey? {
     do {
-      let apiKey = try await AuthService.createApiKey(
-        comment: ApiKey.appManagedComment(deviceName: PlatformHelper.deviceName)
-      )
+      let comment = ApiKey.appManagedComment(deviceName: PlatformHelper.deviceName)
+      let apiKey = try await AuthService.createApiKey(comment: comment)
       // Replace the password-established session with an API-key-established
       // one; this also verifies the key authenticates. Requests carrying
       // both X-Auth-Token and X-API-Key only skip server-side API key
@@ -87,6 +87,8 @@ class AuthViewModel {
         authMethod: .apiKey
       )
       logger.info("🔑 Created API key credential for \(serverURL)")
+      await AuthService.deleteStaleAppManagedKeys(
+        serverURL: serverURL, authToken: apiKey.key, comment: comment, keeping: apiKey.id)
       return apiKey
     } catch {
       logger.warning(
@@ -222,32 +224,12 @@ class AuthViewModel {
         timeout: AppConfig.authTimeout
       )
 
-      // Migrate legacy password-auth instances to an auto-created API key on
-      // switch, so subsequent requests stop depending on expiring sessions
-      // and shared cookies.
-      var authToken = instance.authToken
-      var authMethod = instance.authMethod
-      if authMethod == .basicAuth,
-        let apiKey = await createApiKeyCredential(serverURL: instance.serverURL)
-      {
-        authToken = apiKey.key
-        authMethod = .apiKey
-        _ = try? await DatabaseOperator.database().upsertInstance(
-          serverURL: instance.serverURL,
-          username: instance.username,
-          authToken: authToken,
-          isAdmin: validatedUser.isAdmin,
-          authMethod: .apiKey,
-          apiKeyId: apiKey.id
-        )
-      }
-
       // Apply switch configuration
       try await applyLoginConfiguration(
         serverURL: instance.serverURL,
         username: instance.username,
-        authToken: authToken,
-        authMethod: authMethod,
+        authToken: instance.authToken,
+        authMethod: instance.authMethod,
         user: validatedUser,
         displayName: instance.displayName,
         instanceId: instance.instanceId,

@@ -10,6 +10,8 @@ struct ServerEditView: View {
   let instance: ServerDisplayItem
   let onSaved: () -> Void
 
+  private let logger = AppLogger(.auth)
+
   @Environment(\.dismiss) private var dismiss
   @AppStorage("currentAccount") private var current: Current = .init()
 
@@ -19,6 +21,7 @@ struct ServerEditView: View {
   @State private var password: String = ""
   @State private var apiKey: String = ""
   @State private var authMethod: AuthenticationMethod
+  @State private var autoCreateApiKey = true
   @State private var protected: Bool
   @State private var isValidating = false
   @State private var isSaving = false
@@ -131,6 +134,20 @@ struct ServerEditView: View {
               .onChange(of: password) { _, _ in
                 resetValidation()
               }
+
+            Toggle(isOn: $autoCreateApiKey) {
+              VStack(alignment: .leading, spacing: 4) {
+                Text(String(localized: "Auto-create API Key"))
+                Text(
+                  String(
+                    localized:
+                      "When a new password is set, replace it with a generated API key that never expires."
+                  )
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              }
+            }
           } else {
             SecureField(String(localized: "API Key"), text: $apiKey)
               .textContentType(.password)
@@ -334,6 +351,33 @@ struct ServerEditView: View {
       }
 
       do {
+        var finalAuthToken = resolvedAuthToken
+        var finalAuthMethod = authMethod
+        var finalApiKeyId: String?
+        if authMethod == .basicAuth, !password.isEmpty, autoCreateApiKey {
+          let comment = ApiKey.appManagedComment(deviceName: PlatformHelper.deviceName)
+          do {
+            let createdKey = try await AuthService.createApiKey(
+              serverURL: trimmedServerURL,
+              authToken: resolvedAuthToken,
+              comment: comment
+            )
+            finalAuthToken = createdKey.key
+            finalAuthMethod = .apiKey
+            finalApiKeyId = createdKey.id
+            await AuthService.deleteStaleAppManagedKeys(
+              serverURL: trimmedServerURL,
+              authToken: createdKey.key,
+              comment: comment,
+              keeping: createdKey.id
+            )
+          } catch {
+            logger.warning(
+              "⚠️ API key creation failed, keeping password authentication for \(trimmedServerURL): \(error.diagnosticDescription)"
+            )
+          }
+        }
+
         let database = try await DatabaseOperator.database()
         guard
           let updatedInstance = try await database.updateServerDisplayItem(
@@ -341,8 +385,9 @@ struct ServerEditView: View {
             name: resolvedName,
             serverURL: trimmedServerURL,
             username: trimmedUsername,
-            authToken: resolvedAuthToken,
-            authMethod: authMethod,
+            authToken: finalAuthToken,
+            authMethod: finalAuthMethod,
+            apiKeyId: finalApiKeyId,
             protected: protected
           )
         else {
