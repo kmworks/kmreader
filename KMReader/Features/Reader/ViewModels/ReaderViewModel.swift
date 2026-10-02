@@ -35,6 +35,9 @@ class ReaderViewModel {
   /// Surfaced on the end page so a slow download never looks like a dead tap,
   /// and a finished download reads as "ready" instead of going blank.
   private(set) var nextBookOfflineState: NextBookOfflineState?
+  /// Unread books left in each segment book's series, from the local
+  /// projection. Surfaced on the end page as the remaining-unread line.
+  private(set) var remainingUnreadCountByBookId: [String: Int] = [:]
   var incognitoMode: Bool = false
   var isZoomed: Bool = false
 
@@ -430,6 +433,10 @@ class ReaderViewModel {
     return segments[segmentIndex].previousBook
   }
 
+  func remainingUnreadCount(forSegmentBookId bookId: String) -> Int? {
+    remainingUnreadCountByBookId[bookId]
+  }
+
   /// End page is rendered between the finished segment book and its next sibling.
   /// The leading "previous" slot intentionally shows the finished/current segment book.
   func endPagePreviousBook(forSegmentBookId bookId: String) -> Book? {
@@ -592,6 +599,9 @@ class ReaderViewModel {
   private func setSegments(_ segments: [ReaderSegment]) {
     self.segments = segments
     rebuildReaderPages()
+    for segment in segments {
+      scheduleRemainingUnreadCountRefresh(forSegmentBookId: segment.currentBook.id)
+    }
   }
 
   private func updateSegmentContext(
@@ -645,6 +655,7 @@ class ReaderViewModel {
         pages: pages
       ))
     rebuildReaderPages()
+    scheduleRemainingUnreadCountRefresh(forSegmentBookId: currentBook.id)
   }
 
   private func prependSegment(
@@ -663,6 +674,7 @@ class ReaderViewModel {
       at: 0
     )
     rebuildReaderPages()
+    scheduleRemainingUnreadCountRefresh(forSegmentBookId: currentBook.id)
   }
 
   private func fetchSegmentPages(for book: Book, purpose: SegmentFetchPurpose) async -> [BookPage]? {
@@ -1055,6 +1067,42 @@ class ReaderViewModel {
     notifyPagePresentationInvalidation(.all)
   }
 
+  /// Refreshes the series unread count backing the end-page line. The local
+  /// projection is the source: reader progress writes update it incrementally,
+  /// so a refresh right after a settle reflects the completion. All segments
+  /// of the series share one count, so a sibling's completion updates every
+  /// cached segment of the same series.
+  private func refreshRemainingUnreadCount(forSegmentBookId bookId: String) async {
+    guard let book = currentBook(forSegmentBookId: bookId) else { return }
+    let series = await DatabaseOperator.databaseIfConfigured()?.fetchSeries(id: book.seriesId)
+    let count = series?.booksUnreadCount
+    var changed = false
+    for segment in segments where segment.currentBook.seriesId == book.seriesId {
+      if remainingUnreadCountByBookId[segment.currentBook.id] != count {
+        remainingUnreadCountByBookId[segment.currentBook.id] = count
+        changed = true
+      }
+    }
+    guard changed else { return }
+    notifyPagePresentationInvalidation(.all)
+  }
+
+  private func scheduleRemainingUnreadCountRefresh(forSegmentBookId bookId: String) {
+    Task {
+      await refreshRemainingUnreadCount(forSegmentBookId: bookId)
+    }
+  }
+
+  /// A completing snapshot only moves the series unread count once the dispatch
+  /// service has written it to the local projection; wait for that settle
+  /// before refreshing, or the end page shows the pre-completion count.
+  private func scheduleRemainingUnreadCountSettleRefresh(forSegmentBookId bookId: String) {
+    Task {
+      _ = await ReaderProgressDispatchService.shared.waitUntilSettled(bookIds: [bookId])
+      await refreshRemainingUnreadCount(forSegmentBookId: bookId)
+    }
+  }
+
   /// Clears a stale in-flight download marker on the preload error paths. A
   /// published `.ready` state is kept: the end page should keep showing
   /// "ready" until the reader moves on to another book.
@@ -1400,6 +1448,9 @@ class ReaderViewModel {
           snapshotPage: previousSnapshot.page,
           snapshotCompleted: previousSnapshot.completed
         )
+        if previousSnapshot.completed {
+          scheduleRemainingUnreadCountSettleRefresh(forSegmentBookId: previousSnapshot.bookId)
+        }
       } else {
         logger.debug(
           "⏭️ [Progress/Page] Skip boundary flush: below recording threshold, book=\(previousSnapshot.bookId), page=\(previousSnapshot.page)"
@@ -1422,6 +1473,9 @@ class ReaderViewModel {
       page: currentSnapshot.page,
       completed: currentSnapshot.completed
     )
+    if currentSnapshot.completed {
+      scheduleRemainingUnreadCountSettleRefresh(forSegmentBookId: currentSnapshot.bookId)
+    }
   }
 
   func flushProgress() {

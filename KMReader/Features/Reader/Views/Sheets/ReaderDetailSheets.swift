@@ -20,10 +20,17 @@ extension View {
 }
 
 private struct ReaderDetailSheetContent: View {
-  let book: Book
-  let series: Series
-
+  /// Seed values from the reader's load-time state; the sheet re-reads the
+  /// local projection on presentation so progress recorded since the book
+  /// loaded (e.g. the just-finished book) is reflected.
+  @State private var book: Book
+  @State private var series: Series
   @State private var showingSeries: Bool = false
+
+  init(book: Book, series: Series) {
+    _book = State(initialValue: book)
+    _series = State(initialValue: series)
+  }
 
   private var title: String {
     if showingSeries {
@@ -70,6 +77,15 @@ private struct ReaderDetailSheetContent: View {
         } label: {
           Image(systemName: showingSeries ? ContentIcon.book : ContentIcon.series)
         }
+      }
+    }
+    .task {
+      let database = await DatabaseOperator.databaseIfConfigured()
+      if let freshBook = await database?.fetchBook(id: book.id) {
+        book = freshBook
+      }
+      if let freshSeries = await database?.fetchSeries(id: series.id) {
+        series = freshSeries
       }
     }
   }

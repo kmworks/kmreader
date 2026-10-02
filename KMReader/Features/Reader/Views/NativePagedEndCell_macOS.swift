@@ -29,6 +29,7 @@
       readingDirection: ReadingDirection,
       renderConfig: ReaderRenderConfig,
       nextBookOfflineState: NextBookOfflineState? = nil,
+      remainingUnreadCount: Int? = nil,
       onDismiss: (() -> Void)?
     ) {
       endPageView.configure(
@@ -38,6 +39,7 @@
         readingDirection: readingDirection,
         renderConfig: renderConfig,
         nextBookOfflineState: nextBookOfflineState,
+        remainingUnreadCount: remainingUnreadCount,
         onDismiss: onDismiss
       )
     }
