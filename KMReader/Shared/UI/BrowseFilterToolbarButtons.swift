@@ -5,10 +5,11 @@
 
 import SwiftUI
 
-/// Trailing filter actions for browse pages (Browse, Offline). iPad merges
-/// them into one menu: crowded bars push separate buttons into the system
-/// overflow menu, where sheet presentations are dropped and the driving
-/// state flag sticks, leaving the button dead until the view is recreated.
+/// Trailing filter actions for browse pages (Browse, Offline). iPad hides
+/// them entirely: the chip row in the page opens the same sheets, and
+/// crowded bars push toolbar buttons into the system overflow menu, where
+/// sheet presentations are dropped and the driving state flag sticks,
+/// leaving the button dead until the view is recreated.
 struct BrowseFilterToolbarButtons: View {
   let showsSavedFilters: Bool
   let onShowSavedFilters: () -> Void
@@ -24,33 +25,16 @@ struct BrowseFilterToolbarButtons: View {
     self.onShowFilter = onShowFilter
   }
 
-  private var mergesIntoMenu: Bool {
+  private var showsToolbarButtons: Bool {
     #if os(iOS)
-      return PlatformHelper.isPad
+      return !PlatformHelper.isPad
     #else
-      return false
+      return true
     #endif
   }
 
   var body: some View {
-    if mergesIntoMenu {
-      Menu {
-        if showsSavedFilters {
-          Button {
-            deferMenuActionPresentation { onShowSavedFilters() }
-          } label: {
-            Label(String(localized: "Saved Filters"), systemImage: "bookmark")
-          }
-        }
-        Button {
-          deferMenuActionPresentation { onShowFilter() }
-        } label: {
-          Label(String(localized: "Filter"), systemImage: "line.3.horizontal.decrease")
-        }
-      } label: {
-        Image(systemName: "ellipsis")
-      }
-    } else {
+    if showsToolbarButtons {
       if showsSavedFilters {
         Button(action: onShowSavedFilters) {
           Image(systemName: "bookmark")
