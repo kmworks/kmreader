@@ -96,17 +96,18 @@ enum PlatformHelper {
     #endif
   }
 
-  /// Device name for display purposes (e.g. API key comments). Built from
-  /// the machine identifier plus a short stable suffix: since iOS 16,
-  /// `UIDevice.current.name` returns only a generic model name ("iPhone")
-  /// without the restricted user-assigned-device-name entitlement, so it is
-  /// not usable for telling devices apart.
+  /// Device name for display purposes (e.g. API key comments). A readable base
+  /// plus a short per-install suffix, since neither base alone can tell
+  /// KMReader installs apart: since iOS 16, `UIDevice.current.name` returns
+  /// only a generic model name ("iPhone") without the restricted
+  /// user-assigned-device-name entitlement, and macOS host names are
+  /// user-assigned and not unique across machines.
   @MainActor
   static var deviceName: String {
     #if os(iOS) || os(tvOS)
       return "\(machineIdentifier) · \(deviceNameSuffix)"
     #elseif os(macOS)
-      return Host.current().localizedName ?? "Mac"
+      return "\(Host.current().localizedName ?? "Mac") · \(deviceNameSuffix)"
     #else
       return "Unknown"
     #endif

@@ -427,6 +427,7 @@ extension DatabaseOperator {
     username: String,
     authToken: String,
     authMethod: AuthenticationMethod,
+    apiKeyId: String? = nil,
     protected: Bool
   ) throws -> ServerDisplayItem? {
     try write { db in
@@ -434,11 +435,12 @@ extension DatabaseOperator {
       instance.name = name
       instance.serverURL = serverURL
       instance.username = username
-      // A manually replaced credential invalidates any recorded auto-created
-      // key association; the deterministic key comment re-heals it on the
-      // next API keys view if the same key is still in use.
+      // A replaced credential drops the recorded auto-created key association
+      // unless the caller just created that key and passes its id; without an
+      // id the deterministic key comment re-heals the association on the next
+      // API keys view if the same key is still in use.
       if instance.authToken != authToken {
-        instance.apiKeyId = nil
+        instance.apiKeyId = apiKeyId
       }
       instance.authToken = authToken
       instance.authMethod = authMethod

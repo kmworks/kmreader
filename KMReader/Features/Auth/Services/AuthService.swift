@@ -215,12 +215,56 @@ nonisolated enum AuthService {
     )
   }
 
+  /// Create an API key with explicit credentials, without touching the shared
+  /// session — for saving edited credentials of a server that is not logged in.
+  static func createApiKey(serverURL: String, authToken: String, comment: String) async throws
+    -> ApiKey
+  {
+    let body = try JSONEncoder().encode(ApiKeyRequest(comment: comment))
+    return try await apiClient.requestTemporary(
+      serverURL: serverURL,
+      path: "/api/v2/users/me/api-keys",
+      method: "POST",
+      authToken: authToken,
+      body: body
+    )
+  }
+
   static func deleteApiKey(id: String) async throws {
     let _: EmptyResponse = try await apiClient.request(
       path: "/api/v2/users/me/api-keys/\(id)",
       method: "DELETE",
       category: .general
     )
+  }
+
+  /// Best-effort revoke of other keys carrying this device's deterministic
+  /// comment, authenticated with the freshly created key: the key list only
+  /// returns redacted values, so a re-login/re-save cannot reuse an existing
+  /// key and would otherwise accumulate dead duplicates on the account.
+  static func deleteStaleAppManagedKeys(
+    serverURL: String, authToken: String, comment: String, keeping keptId: String
+  ) async {
+    do {
+      let keys: [ApiKey] = try await apiClient.performLoginTemporary(
+        serverURL: serverURL,
+        path: "/api/v2/users/me/api-keys",
+        authToken: authToken,
+        authMethod: .apiKey
+      )
+      for key in keys where key.comment == comment && key.id != keptId {
+        let _: EmptyResponse? = try? await apiClient.performLoginTemporary(
+          serverURL: serverURL,
+          path: "/api/v2/users/me/api-keys/\(key.id)",
+          method: "DELETE",
+          authToken: authToken,
+          authMethod: .apiKey
+        )
+      }
+    } catch {
+      logger.warning(
+        "⚠️ Stale API key cleanup failed for \(serverURL): \(error.diagnosticDescription)")
+    }
   }
 
   static func updatePassword(userId: String, password: String) async throws {

@@ -18,6 +18,7 @@ struct LoginView: View {
   @State private var confirmPassword = ""
   @State private var apiKey = ""
   @State private var instanceName = ""
+  @State private var autoCreateApiKey = true
   @State private var loginErrorMessage: String?
   @State private var authMethod: AuthenticationMethod = .basicAuth
   @State private var probeState: ProbeState = .idle
@@ -123,7 +124,8 @@ struct LoginView: View {
             username: usernameText,
             password: password,
             serverURL: serverURL,
-            displayName: displayName
+            displayName: displayName,
+            autoCreateApiKey: autoCreateApiKey
           )
         } else {
           switch authMethod {
@@ -132,7 +134,8 @@ struct LoginView: View {
               username: usernameText,
               password: password,
               serverURL: serverURL,
-              displayName: displayName
+              displayName: displayName,
+              autoCreateApiKey: autoCreateApiKey
             )
           case .apiKey:
             try await authViewModel.loginWithAPIKey(
@@ -363,6 +366,24 @@ struct LoginView: View {
               }
           }
         }
+      }
+
+      if probeState == .unclaimed || authMethod == .basicAuth {
+        Toggle(isOn: $autoCreateApiKey) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(String(localized: "Auto-create API Key"))
+              .font(.callout)
+            Text(
+              String(
+                localized:
+                  "Replace password authentication with a generated API key that never expires."
+              )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
 
       if let loginErrorMessage {
