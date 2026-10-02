@@ -91,7 +91,7 @@ make run-tvos-sim
 
 ## Community
 
-- [Discord](https://discord.gg/komga-678794935368941569)
+- [Discord](https://discord.gg/WQtE6VhjpP)
 
 ## Open Source Licenses
 
