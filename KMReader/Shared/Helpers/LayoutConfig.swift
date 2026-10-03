@@ -96,38 +96,52 @@ struct LayoutConfig {
   }
 
   /// Width of horizontal cards (dashboard book sections, pinned read lists/collections).
-  /// iOS/tvOS span three small-card widths so the strip stays balanced next to
-  /// small cards while matching Apple Books' Reading Now length; macOS keeps
-  /// its denser band at 2.5x.
+  /// Apple Books' reading cards measure ~250pt wide on iPhone and iPad alike;
+  /// macOS uses the same size. tvOS doubles the whole card for the 10-foot UI.
   static var horizontalCardWidth: CGFloat {
     #if os(tvOS)
-      return 570
-    #elseif os(macOS)
-      return 250
+      return 500
     #else
-      if UIDevice.current.userInterfaceIdiom == .pad {
-        return 288
-      } else {
-        return 240
-      }
+      return 250
     #endif
   }
 
-  /// Cover width inside horizontal cards. The cover is about as tall as the
-  /// text column it sits next to (two-line title + series line + bottom bar ≈
-  /// 4 lines + 4pt spacing), so the card is no taller than its text.
+  /// Cover width inside horizontal cards. Calibrated by cover height, since
+  /// Apple Books crops covers to a narrower-than-√2 frame: its covers are
+  /// ~67pt tall on iPad and ~60pt on iPhone, which divided by the slot's √2
+  /// aspect gives the widths below. The cover then stands about as tall as
+  /// the text column it sits next to (two-line title + series line + bottom
+  /// bar ≈ 4 lines + 4pt spacing), so the card is no taller than its text.
+  /// tvOS doubles the iPad cover.
   static var horizontalCoverWidth: CGFloat {
     #if os(tvOS)
-      return 99
+      return 96
     #elseif os(macOS)
       return 45
     #else
       if UIDevice.current.userInterfaceIdiom == .pad {
-        return 56
+        return 48
       } else {
-        return 45
+        return 43
       }
     #endif
+  }
+
+  /// Content padding of horizontal cards. tvOS doubles it with the rest of
+  /// the card.
+  static var horizontalCardPadding: CGFloat {
+    #if os(tvOS)
+      return 16
+    #else
+      return 8
+    #endif
+  }
+
+  /// Spacing between the cover and the text column in horizontal cards.
+  /// Matches the card's padding so the cover sits equidistant from the card
+  /// edges and the text, like Apple Books.
+  static var horizontalCardCoverSpacing: CGFloat {
+    horizontalCardPadding
   }
 
   /// Text styles rendered below a grid-style card cover, scaled to the card
@@ -165,44 +179,42 @@ struct LayoutConfig {
   /// Books style); the series and meta lines step down from it. Fixed pt
   /// instead of a text style keeps the text column height directly computable
   /// for `horizontalCoverWidth` (4 lines ≈ 5.2x the size, +4pt spacing).
+  /// Apple Books uses 13pt on iPhone and iPad alike; tvOS doubles it.
   static var horizontalCardFontSize: CGFloat {
     #if os(tvOS)
-      return 28
-    #elseif os(macOS)
-      return 13
+      return 26
     #else
-      if UIDevice.current.userInterfaceIdiom == .pad {
-        return 16
-      } else {
-        return 13
-      }
+      return 13
     #endif
   }
 
   /// Font size (pt) for the series line of horizontal cards. Apple Books
   /// steps secondary lines down further than a 1pt decrement (author ≈ 0.8x
-  /// the title), so the series/meta lines sit visibly below the title.
+  /// the title), so the series/meta lines sit visibly below the title; tvOS
+  /// doubles the decrement to keep the step proportional.
   static var horizontalCardSeriesFontSize: CGFloat {
-    horizontalCardFontSize - 2
+    #if os(tvOS)
+      return horizontalCardFontSize - 4
+    #else
+      return horizontalCardFontSize - 2
+    #endif
   }
 
   /// Font size (pt) for the meta (bottom bar) line of horizontal cards.
   static var horizontalCardMetaFontSize: CGFloat {
-    horizontalCardFontSize - 3
+    #if os(tvOS)
+      return horizontalCardFontSize - 6
+    #else
+      return horizontalCardFontSize - 3
+    #endif
   }
 
   /// Icon size (pt) for the trailing accessory icons in horizontal cards.
   static var horizontalCardAccessoryIconSize: CGFloat {
     #if os(tvOS)
       return 30
-    #elseif os(macOS)
-      return 14
     #else
-      if UIDevice.current.userInterfaceIdiom == .pad {
-        return 16
-      } else {
-        return 15
-      }
+      return 15
     #endif
   }
 

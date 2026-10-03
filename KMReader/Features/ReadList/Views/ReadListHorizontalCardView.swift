@@ -48,7 +48,7 @@ struct ReadListHorizontalCardView: View {
   var body: some View {
     HStack(alignment: .center, spacing: 12) {
       NavigationLink(value: NavDestination.readListDetail(readListId: item.readListId)) {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: LayoutConfig.horizontalCardCoverSpacing) {
           ThumbnailImage(
             id: item.readListId, type: .readlist, width: coverWidth,
             preserveAspectRatioOverride: false
@@ -90,7 +90,7 @@ struct ReadListHorizontalCardView: View {
       .font(.system(size: LayoutConfig.horizontalCardAccessoryIconSize, weight: .medium))
       .padding(.trailing, 2)
     }
-    .padding(8)
+    .padding(LayoutConfig.horizontalCardPadding)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background {
       RoundedRectangle(cornerRadius: 12)
