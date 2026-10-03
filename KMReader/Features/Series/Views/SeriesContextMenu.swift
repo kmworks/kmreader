@@ -109,25 +109,6 @@ struct SeriesContextMenu: View {
               Label("Refresh Metadata", systemImage: "arrow.clockwise")
             }
 
-            #if os(iOS) || os(macOS)
-              if KomfIntegrationStore.shared.isAvailable {
-                Menu {
-                  Button {
-                    deferMenuActionPresentation { onKomfIdentifyRequested?() }
-                  } label: {
-                    Label("Identify", systemImage: "sparkles")
-                  }
-                  Button {
-                    matchWithKomf()
-                  } label: {
-                    Label("Match", systemImage: "arrow.triangle.2.circlepath")
-                  }
-                } label: {
-                  Label(title: { Text(verbatim: "Komf") }, icon: { Image(systemName: "sparkles") })
-                }
-              }
-            #endif
-
             if onDeleteRequested != nil {
               Divider()
               Button(role: .destructive) {
@@ -139,6 +120,25 @@ struct SeriesContextMenu: View {
           } label: {
             Label("Manage", systemImage: "gearshape")
           }
+
+          #if os(iOS) || os(macOS)
+            if KomfIntegrationStore.shared.isAvailable {
+              Menu {
+                Button {
+                  deferMenuActionPresentation { onKomfIdentifyRequested?() }
+                } label: {
+                  Label("Identify", systemImage: "sparkles")
+                }
+                Button {
+                  matchWithKomf()
+                } label: {
+                  Label("Match", systemImage: "arrow.triangle.2.circlepath")
+                }
+              } label: {
+                Label(title: { Text(verbatim: "Komf") }, icon: { Image(systemName: "sparkles") })
+              }
+            }
+          #endif
 
           Divider()
         }
