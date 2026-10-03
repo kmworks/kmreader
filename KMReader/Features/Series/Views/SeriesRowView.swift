@@ -14,6 +14,7 @@ struct SeriesRowView: View {
 
   @State private var showCollectionPicker = false
   @State private var showEditSheet = false
+  @State private var showKomfIdentify = false
 
   var series: Series {
     item.series
@@ -127,6 +128,8 @@ struct SeriesRowView: View {
           EllipsisMenuButton {
             SeriesContextMenu(
               seriesId: item.seriesId,
+              libraryId: item.series.libraryId,
+              seriesTitle: item.metaTitle,
               downloadStatus: item.downloadStatus,
               offlinePolicy: item.offlinePolicy,
               offlinePolicyLimit: item.offlinePolicyLimit,
@@ -147,6 +150,9 @@ struct SeriesRowView: View {
               onEditRequested: {
                 showEditSheet = true
               },
+              onKomfIdentifyRequested: {
+                showKomfIdentify = true
+              },
               onMutationCompleted: onMutationCompleted
             )
             .id(item.seriesId)
@@ -164,6 +170,9 @@ struct SeriesRowView: View {
     }
     .sheet(isPresented: $showEditSheet) {
       SeriesEditSheet(series: series)
+    }
+    .sheet(isPresented: $showKomfIdentify) {
+      KomfIdentifySheet(series: series)
     }
   }
 

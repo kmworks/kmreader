@@ -25,6 +25,8 @@ struct SeriesDetailView: View {
   @State private var showEditSheet = false
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
+  @State private var showKomfIdentify = false
+  @State private var showKomfResetConfirmation = false
   @State private var readingTargetBook: Book?
   @State private var readingTargetInstanceId: String?
   @State private var readingTargetIsOffline: Bool?
@@ -261,16 +263,41 @@ struct SeriesDetailView: View {
           }
       }
     }
+    .sheet(isPresented: $showKomfIdentify) {
+      if let series {
+        KomfIdentifySheet(series: series)
+      }
+    }
+    .alert("Reset Metadata with komf?", isPresented: $showKomfResetConfirmation) {
+      Button("Reset", role: .destructive) {
+        resetWithKomf()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text(
+        "komf removes the metadata it wrote for \(series?.metadata.title ?? "this series"), including field locks and uploaded covers."
+      )
+    }
     .sheet(isPresented: $showSavedFilters) {
       SavedFiltersView(filterType: .seriesBooks)
     }
     .task {
       guard loadedSeriesId != seriesId else { return }
       loadedSeriesId = seriesId
+      #if os(iOS) || os(macOS)
+        Task {
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
+      #endif
       await refreshSeriesData()
     }
     .onChange(of: current) {
       clearReadingTargetForContextChange()
+      #if os(iOS) || os(macOS)
+        Task {
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
+      #endif
       Task {
         await refreshSeriesData()
       }
@@ -395,6 +422,18 @@ extension SeriesDetailView {
       } catch {
         ErrorManager.shared.alert(error: error)
       }
+    }
+  }
+
+  private func resetWithKomf() {
+    guard let series else { return }
+    Task {
+      await KomfActions.reset(
+        libraryId: series.libraryId,
+        seriesId: series.id,
+        seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
+      )
+      await refreshSeriesData()
     }
   }
 
@@ -552,6 +591,20 @@ extension SeriesDetailView {
         } label: {
           Label("Refresh Metadata", systemImage: "arrow.clockwise")
         }
+
+        #if os(iOS) || os(macOS)
+          if KomfIntegrationStore.shared.isAvailable, let series {
+            Divider()
+
+            KomfMenu(
+              libraryId: series.libraryId,
+              seriesId: series.id,
+              seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title,
+              onIdentify: { showKomfIdentify = true },
+              onReset: { showKomfResetConfirmation = true }
+            )
+          }
+        #endif
 
         Divider()
       }

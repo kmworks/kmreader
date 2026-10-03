@@ -23,6 +23,8 @@ struct OneshotDetailView: View {
   @State private var showEditSheet = false
   @State private var showCollectionPicker = false
   @State private var showReadListPicker = false
+  @State private var showKomfIdentify = false
+  @State private var showKomfResetConfirmation = false
 
   init(seriesId: String) {
     self.seriesId = seriesId
@@ -137,9 +139,29 @@ struct OneshotDetailView: View {
           }
       }
     }
+    .sheet(isPresented: $showKomfIdentify) {
+      if let series {
+        KomfIdentifySheet(series: series, book: book)
+      }
+    }
+    .alert("Reset Metadata with komf?", isPresented: $showKomfResetConfirmation) {
+      Button("Reset", role: .destructive) {
+        resetWithKomf()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text(
+        "komf removes the metadata it wrote for \(series?.metadata.title ?? "this oneshot"), including field locks and uploaded covers."
+      )
+    }
     .task {
       guard loadedSeriesId != seriesId else { return }
       loadedSeriesId = seriesId
+      #if os(iOS) || os(macOS)
+        Task {
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
+      #endif
       await refreshOneshotData()
     }
     .onReceive(NotificationCenter.default.publisher(for: .bookProjectionDidChange)) {
@@ -381,6 +403,18 @@ struct OneshotDetailView: View {
     }
   }
 
+  private func resetWithKomf() {
+    guard let series else { return }
+    Task {
+      await KomfActions.reset(
+        libraryId: series.libraryId,
+        seriesId: series.id,
+        seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
+      )
+      await refreshOneshotData()
+    }
+  }
+
   @ViewBuilder
   private var oneshotToolbarContent: some View {
     Menu {
@@ -414,6 +448,20 @@ struct OneshotDetailView: View {
         } label: {
           Label("Refresh Metadata", systemImage: "arrow.clockwise")
         }
+
+        #if os(iOS) || os(macOS)
+          if KomfIntegrationStore.shared.isAvailable, let series {
+            Divider()
+
+            KomfMenu(
+              libraryId: series.libraryId,
+              seriesId: series.id,
+              seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title,
+              onIdentify: { showKomfIdentify = true },
+              onReset: { showKomfResetConfirmation = true }
+            )
+          }
+        #endif
       }
 
       Divider()

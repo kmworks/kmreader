@@ -20,6 +20,7 @@ struct SeriesCardView: View {
 
   @State private var showCollectionPicker = false
   @State private var showEditSheet = false
+  @State private var showKomfIdentify = false
 
   var progress: Double {
     guard item.booksCount > 0 else { return 0 }
@@ -55,6 +56,8 @@ struct SeriesCardView: View {
     } menu: {
       SeriesContextMenu(
         seriesId: item.seriesId,
+        libraryId: item.series.libraryId,
+        seriesTitle: item.metaTitle,
         downloadStatus: item.downloadStatus,
         offlinePolicy: item.offlinePolicy,
         offlinePolicyLimit: item.offlinePolicyLimit,
@@ -75,6 +78,9 @@ struct SeriesCardView: View {
         onEditRequested: {
           showEditSheet = true
         },
+        onKomfIdentifyRequested: {
+          showKomfIdentify = true
+        },
         onMutationCompleted: onMutationCompleted
       )
     } detail: {
@@ -93,6 +99,9 @@ struct SeriesCardView: View {
     }
     .sheet(isPresented: $showEditSheet) {
       SeriesEditSheet(series: item.series)
+    }
+    .sheet(isPresented: $showKomfIdentify) {
+      KomfIdentifySheet(series: item.series)
     }
   }
 

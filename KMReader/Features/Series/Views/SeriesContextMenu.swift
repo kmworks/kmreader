@@ -7,6 +7,8 @@ import SwiftUI
 
 struct SeriesContextMenu: View {
   let seriesId: String
+  let libraryId: String
+  let seriesTitle: String
   let downloadStatus: SeriesDownloadStatus
   let offlinePolicy: OfflinePolicy
   let offlinePolicyLimit: Int
@@ -17,6 +19,7 @@ struct SeriesContextMenu: View {
   var onShowCollectionPicker: (() -> Void)? = nil
   var onDeleteRequested: (() -> Void)? = nil
   var onEditRequested: (() -> Void)? = nil
+  var onKomfIdentifyRequested: (() -> Void)? = nil
   var onMutationCompleted: (() -> Void)? = nil
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -117,6 +120,17 @@ struct SeriesContextMenu: View {
           } label: {
             Label("Manage", systemImage: "gearshape")
           }
+
+          #if os(iOS) || os(macOS)
+            if KomfIntegrationStore.shared.isAvailable {
+              KomfMenu(
+                libraryId: libraryId,
+                seriesId: seriesId,
+                seriesTitle: seriesTitle,
+                onIdentify: { onKomfIdentifyRequested?() }
+              )
+            }
+          #endif
 
           Divider()
         }

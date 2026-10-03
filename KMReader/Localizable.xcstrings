@@ -32968,18 +32968,17 @@
       }
     },
     "history.lookingForEvents" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading more to find matching events…"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lade weitere, um passende Ereignisse zu finden…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading more to find matching events…"
           }
         },
         "es" : {
@@ -33299,6 +33298,70 @@
     },
     "https://" : {
       "shouldTranslate" : false
+    },
+    "Identify" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifizieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identify"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifier"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifica"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "식별"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Определить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別"
+          }
+        }
+      }
     },
     "Identify with komf" : {
       "localizations" : {
@@ -36432,6 +36495,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 的 komf 任務失敗"
+          }
+        }
+      }
+    },
+    "komf job for %@ is taking longer than expected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "komf-Auftrag für %@ dauert länger als erwartet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "komf job for %@ is taking longer than expected"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El trabajo de komf para %@ está tardando más de lo esperado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tâche komf pour %@ prend plus de temps que prévu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'attività komf per %@ sta richiedendo più tempo del previsto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ の komf ジョブは予想より時間がかかっています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@의 komf 작업이 예상보다 오래 걸리고 있습니다"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задача komf для %@ выполняется дольше ожидаемого"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的 komf 任务耗时超出预期"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的 komf 任務耗時超出預期"
           }
         }
       }
@@ -43924,66 +44051,66 @@
         }
       }
     },
-    "Match with komf" : {
+    "Match" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit komf abgleichen"
+            "value" : "Abgleichen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Match with komf"
+            "value" : "Match"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Coincidir con komf"
+            "value" : "Coincidir"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Faire correspondre avec komf"
+            "value" : "Faire correspondre"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abbina con komf"
+            "value" : "Abbina"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "komf でマッチ"
+            "value" : "マッチ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "komf로 매칭"
+            "value" : "매칭"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сопоставить через komf"
+            "value" : "Сопоставить"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "通过 komf 匹配"
+            "value" : "匹配"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "透過 komf 比對"
+            "value" : "比對"
           }
         }
       }
@@ -65110,66 +65237,66 @@
         }
       }
     },
-    "Reset Metadata with komf" : {
+    "Reset Metadata" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Metadaten mit komf zurücksetzen"
+            "value" : "Metadaten zurücksetzen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reset Metadata with komf"
+            "value" : "Reset Metadata"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablecer metadatos con komf"
+            "value" : "Restablecer metadatos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Réinitialiser les métadonnées avec komf"
+            "value" : "Réinitialiser les métadonnées"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina metadati con komf"
+            "value" : "Ripristina metadati"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "komf でメタデータをリセット"
+            "value" : "メタデータをリセット"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "komf로 메타데이터 재설정"
+            "value" : "메타데이터 재설정"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сбросить метаданные через komf"
+            "value" : "Сбросить метаданные"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "通过 komf 重置元数据"
+            "value" : "重置元数据"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "透過 komf 重置中繼資料"
+            "value" : "重置中繼資料"
           }
         }
       }

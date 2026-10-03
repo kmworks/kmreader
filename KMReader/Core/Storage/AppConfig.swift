@@ -1147,6 +1147,20 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var serverKomfCapability: ServerKomfCapability {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverKomfCapability"),
+        let capability = ServerKomfCapability(rawValue: stored)
+      {
+        return capability
+      }
+      return ServerKomfCapability()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverKomfCapability")
+    }
+  }
+
   private static nonisolated var recentlyReadRecordTimeByInstance: [String: TimeInterval] {
     get {
       guard

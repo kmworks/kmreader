@@ -135,6 +135,11 @@ struct ContentView: View {
           if enableSSE && !isOffline {
             await SSEService.shared.connect()
           }
+          #if os(iOS) || os(macOS)
+            Task {
+              await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+            }
+          #endif
           await ExternalContentSurfaceService.refreshWidgetsForCurrentInstance()
 
           // Wire automatic recovery from auto-entered offline mode. The
