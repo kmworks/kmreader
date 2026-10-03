@@ -635,7 +635,7 @@ extension SeriesDetailView {
                 Label("Reset Metadata", systemImage: "arrow.counterclockwise")
               }
             } label: {
-              Label(title: { Text(verbatim: "komf") }, icon: { Image(systemName: "sparkles") })
+              Label(title: { Text(verbatim: "Komf") }, icon: { Image(systemName: "sparkles") })
             }
           }
         #endif

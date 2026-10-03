@@ -123,7 +123,7 @@ struct SeriesContextMenu: View {
                     Label("Match", systemImage: "arrow.triangle.2.circlepath")
                   }
                 } label: {
-                  Label(title: { Text(verbatim: "komf") }, icon: { Image(systemName: "sparkles") })
+                  Label(title: { Text(verbatim: "Komf") }, icon: { Image(systemName: "sparkles") })
                 }
               }
             #endif
