@@ -429,7 +429,10 @@ extension SeriesDetailView {
           seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
         )
       } catch {
-        await KomfIntegrationStore.shared.invalidate()
+        if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
+          await KomfIntegrationStore.shared.invalidate()
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
         ErrorManager.shared.alert(error: error)
       }
     }
@@ -609,27 +612,29 @@ extension SeriesDetailView {
           Label("Refresh Metadata", systemImage: "arrow.clockwise")
         }
 
-        if KomfIntegrationStore.shared.isAvailable {
-          Divider()
+        #if os(iOS) || os(macOS)
+          if KomfIntegrationStore.shared.isAvailable {
+            Divider()
 
-          Button {
-            deferMenuActionPresentation { showKomfIdentify = true }
-          } label: {
-            Label("Identify with komf", systemImage: "sparkles")
-          }
+            Button {
+              deferMenuActionPresentation { showKomfIdentify = true }
+            } label: {
+              Label("Identify with komf", systemImage: "sparkles")
+            }
 
-          Button {
-            matchWithKomf()
-          } label: {
-            Label("Match with komf", systemImage: "arrow.triangle.2.circlepath")
-          }
+            Button {
+              matchWithKomf()
+            } label: {
+              Label("Match with komf", systemImage: "arrow.triangle.2.circlepath")
+            }
 
-          Button {
-            deferMenuActionPresentation { showKomfResetConfirmation = true }
-          } label: {
-            Label("Reset Metadata with komf", systemImage: "arrow.counterclockwise")
+            Button {
+              deferMenuActionPresentation { showKomfResetConfirmation = true }
+            } label: {
+              Label("Reset Metadata with komf", systemImage: "arrow.counterclockwise")
+            }
           }
-        }
+        #endif
 
         Divider()
       }

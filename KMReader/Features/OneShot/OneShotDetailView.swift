@@ -411,7 +411,10 @@ struct OneshotDetailView: View {
           seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
         )
       } catch {
-        await KomfIntegrationStore.shared.invalidate()
+        if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
+          await KomfIntegrationStore.shared.invalidate()
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
         ErrorManager.shared.alert(error: error)
       }
     }

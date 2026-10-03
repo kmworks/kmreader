@@ -45,17 +45,22 @@ final class KomfIntegrationStore {
     do {
       let fetched = try await KomfService.getIntegration()
       integration = fetched
-      checkedInstanceId = instanceId
+      // Only a connected state is latched per instance; anything else (pending,
+      // error, unreachable) is re-probed on the next detail-page visit so a
+      // completed connection shows up without an instance switch.
+      checkedInstanceId = fetched.isConnected ? instanceId : nil
       var capability = AppConfig.serverKomfCapability
       capability.upsert(instanceId: instanceId, supported: true, checkedAt: Date())
       AppConfig.serverKomfCapability = capability
     } catch {
       integration = nil
-      checkedInstanceId = instanceId
       if case APIError.notFound = error {
+        checkedInstanceId = instanceId
         var capability = AppConfig.serverKomfCapability
         capability.upsert(instanceId: instanceId, supported: false, checkedAt: Date())
         AppConfig.serverKomfCapability = capability
+      } else {
+        checkedInstanceId = nil
       }
     }
   }

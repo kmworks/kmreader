@@ -80,7 +80,7 @@ struct KomfIdentifySheet: View {
     Section {
       if providerLinks.count > 1, let first = providerLinks.first {
         providerLinkRow(
-          key: "aggregate",
+          key: first.id,
           icon: "square.stack.3d.up",
           title: String(localized: "Aggregate all providers"),
           caption: String(localized: "Combine \(providerLinks.count) provider links"),
@@ -227,16 +227,18 @@ struct KomfIdentifySheet: View {
     isSearching = true
     searchFailed = false
     do {
-      results = try await KomfService.search(
+      let fetched = try await KomfService.search(
         name: trimmedQuery,
         libraryId: series.libraryId,
         seriesId: series.id
       )
+      // A superseded task must not clobber the newer query's state.
+      if Task.isCancelled { return }
+      results = fetched
     } catch {
-      if !Task.isCancelled {
-        searchFailed = true
-        results = []
-      }
+      if Task.isCancelled { return }
+      searchFailed = true
+      results = []
     }
     isSearching = false
   }
@@ -259,6 +261,9 @@ struct KomfIdentifySheet: View {
       )
       dismiss()
     } catch {
+      if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
+        await KomfIntegrationStore.shared.invalidate()
+      }
       submitError = error.localizedDescription
       pendingKey = nil
     }

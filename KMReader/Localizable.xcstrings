@@ -32968,18 +32968,17 @@
       }
     },
     "history.lookingForEvents" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading more to find matching events…"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lade weitere, um passende Ereignisse zu finden…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading more to find matching events…"
           }
         },
         "es" : {
@@ -36432,6 +36431,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 的 komf 任務失敗"
+          }
+        }
+      }
+    },
+    "komf job for %@ is taking longer than expected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "komf-Auftrag für %@ dauert länger als erwartet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "komf job for %@ is taking longer than expected"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El trabajo de komf para %@ está tardando más de lo esperado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tâche komf pour %@ prend plus de temps que prévu"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'attività komf per %@ sta richiedendo più tempo del previsto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ の komf ジョブは予想より時間がかかっています"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@의 komf 작업이 예상보다 오래 걸리고 있습니다"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задача komf для %@ выполняется дольше ожидаемого"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的 komf 任务耗时超出预期"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的 komf 任務耗時超出預期"
           }
         }
       }
