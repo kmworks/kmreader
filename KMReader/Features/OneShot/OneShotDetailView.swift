@@ -23,6 +23,8 @@ struct OneshotDetailView: View {
   @State private var showEditSheet = false
   @State private var showCollectionPicker = false
   @State private var showReadListPicker = false
+  @State private var showKomfIdentify = false
+  @State private var showKomfResetConfirmation = false
 
   init(seriesId: String) {
     self.seriesId = seriesId
@@ -137,9 +139,25 @@ struct OneshotDetailView: View {
           }
       }
     }
+    .sheet(isPresented: $showKomfIdentify) {
+      if let series {
+        KomfIdentifySheet(series: series, book: book)
+      }
+    }
+    .alert("Reset Metadata with komf?", isPresented: $showKomfResetConfirmation) {
+      Button("Reset", role: .destructive) {
+        resetWithKomf()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text(
+        "komf removes the metadata it wrote for \(series?.metadata.title ?? "this oneshot"), including field locks and uploaded covers."
+      )
+    }
     .task {
       guard loadedSeriesId != seriesId else { return }
       loadedSeriesId = seriesId
+      await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
       await refreshOneshotData()
     }
     .onReceive(NotificationCenter.default.publisher(for: .bookProjectionDidChange)) {
@@ -381,6 +399,43 @@ struct OneshotDetailView: View {
     }
   }
 
+  private func matchWithKomf() {
+    guard let series else { return }
+    Task {
+      do {
+        let response = try await KomfService.matchSeries(
+          libraryId: series.libraryId, seriesId: series.id)
+        await KomfJobTracker.shared.track(
+          jobId: response.id,
+          seriesId: series.id,
+          seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
+        )
+      } catch {
+        await KomfIntegrationStore.shared.invalidate()
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func resetWithKomf() {
+    guard let series else { return }
+    Task {
+      do {
+        try await KomfService.resetSeries(libraryId: series.libraryId, seriesId: series.id)
+        _ = try? await SyncService.syncSeriesDetail(seriesId: series.id)
+        await ContentProjectionNotifier.postSeriesDidChange(
+          seriesId: series.id, reason: .content)
+        await DashboardSectionRefreshNotifier.postSeriesContentChanged(
+          source: .manual, reason: "komf metadata reset")
+        ErrorManager.shared.notify(
+          message: String(localized: "komf metadata reset for \(series.metadata.title)"))
+        await refreshOneshotData()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
   @ViewBuilder
   private var oneshotToolbarContent: some View {
     Menu {
@@ -414,6 +469,30 @@ struct OneshotDetailView: View {
         } label: {
           Label("Refresh Metadata", systemImage: "arrow.clockwise")
         }
+
+        #if os(iOS) || os(macOS)
+          if KomfIntegrationStore.shared.isAvailable {
+            Divider()
+
+            Button {
+              deferMenuActionPresentation { showKomfIdentify = true }
+            } label: {
+              Label("Identify with komf", systemImage: "sparkles")
+            }
+
+            Button {
+              matchWithKomf()
+            } label: {
+              Label("Match with komf", systemImage: "arrow.triangle.2.circlepath")
+            }
+
+            Button {
+              deferMenuActionPresentation { showKomfResetConfirmation = true }
+            } label: {
+              Label("Reset Metadata with komf", systemImage: "arrow.counterclockwise")
+            }
+          }
+        #endif
       }
 
       Divider()
