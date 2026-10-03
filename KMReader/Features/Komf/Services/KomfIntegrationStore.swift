@@ -70,4 +70,12 @@ final class KomfIntegrationStore {
     checkedInstanceId = nil
     integration = nil
   }
+
+  /// Drop the cached state and re-probe when an action reports the integration
+  /// is gone server-side (409).
+  func handleConflictIfNeeded(_ error: Error) async {
+    guard case APIError.httpError(let code, _, _, _, _) = error, code == 409 else { return }
+    invalidate()
+    await refresh(isAdmin: AppConfig.current.isAdmin)
+  }
 }

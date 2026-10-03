@@ -261,9 +261,7 @@ struct KomfIdentifySheet: View {
       )
       dismiss()
     } catch {
-      if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
-        await KomfIntegrationStore.shared.invalidate()
-      }
+      await KomfIntegrationStore.shared.handleConflictIfNeeded(error)
       submitError = error.localizedDescription
       pendingKey = nil
     }

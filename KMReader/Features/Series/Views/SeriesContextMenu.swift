@@ -123,20 +123,12 @@ struct SeriesContextMenu: View {
 
           #if os(iOS) || os(macOS)
             if KomfIntegrationStore.shared.isAvailable {
-              Menu {
-                Button {
-                  deferMenuActionPresentation { onKomfIdentifyRequested?() }
-                } label: {
-                  Label("Identify", systemImage: "sparkles")
-                }
-                Button {
-                  matchWithKomf()
-                } label: {
-                  Label("Match", systemImage: "arrow.triangle.2.circlepath")
-                }
-              } label: {
-                Label(title: { Text(verbatim: "Komf") }, icon: { Image(systemName: "sparkles") })
-              }
+              KomfMenu(
+                libraryId: libraryId,
+                seriesId: seriesId,
+                seriesTitle: seriesTitle,
+                onIdentify: { onKomfIdentifyRequested?() }
+              )
             }
           #endif
 
@@ -233,26 +225,6 @@ struct SeriesContextMenu: View {
           message: String(localized: "notification.series.metadataRefreshed"))
         onMutationCompleted?()
       } catch {
-        ErrorManager.shared.alert(error: error)
-      }
-    }
-  }
-
-  private func matchWithKomf() {
-    Task {
-      do {
-        let response = try await KomfService.matchSeries(
-          libraryId: libraryId, seriesId: seriesId)
-        await KomfJobTracker.shared.track(
-          jobId: response.id,
-          seriesId: seriesId,
-          seriesTitle: seriesTitle
-        )
-      } catch {
-        if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
-          await KomfIntegrationStore.shared.invalidate()
-          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
-        }
         ErrorManager.shared.alert(error: error)
       }
     }

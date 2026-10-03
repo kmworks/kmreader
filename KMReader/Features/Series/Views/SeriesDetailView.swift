@@ -284,13 +284,21 @@ struct SeriesDetailView: View {
     .task {
       guard loadedSeriesId != seriesId else { return }
       loadedSeriesId = seriesId
-      await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+      #if os(iOS) || os(macOS)
+        Task {
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
+      #endif
       await refreshSeriesData()
     }
     .onChange(of: current) {
       clearReadingTargetForContextChange()
+      #if os(iOS) || os(macOS)
+        Task {
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
+      #endif
       Task {
-        await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
         await refreshSeriesData()
       }
     }
@@ -417,43 +425,15 @@ extension SeriesDetailView {
     }
   }
 
-  private func matchWithKomf() {
-    guard let series else { return }
-    Task {
-      do {
-        let response = try await KomfService.matchSeries(
-          libraryId: series.libraryId, seriesId: series.id)
-        await KomfJobTracker.shared.track(
-          jobId: response.id,
-          seriesId: series.id,
-          seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
-        )
-      } catch {
-        if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
-          await KomfIntegrationStore.shared.invalidate()
-          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
-        }
-        ErrorManager.shared.alert(error: error)
-      }
-    }
-  }
-
   private func resetWithKomf() {
     guard let series else { return }
     Task {
-      do {
-        try await KomfService.resetSeries(libraryId: series.libraryId, seriesId: series.id)
-        _ = try? await SyncService.syncSeriesDetail(seriesId: series.id)
-        await ContentProjectionNotifier.postSeriesDidChange(
-          seriesId: series.id, reason: .content)
-        await DashboardSectionRefreshNotifier.postSeriesContentChanged(
-          source: .manual, reason: "komf metadata reset")
-        ErrorManager.shared.notify(
-          message: String(localized: "komf metadata reset for \(series.metadata.title)"))
-        await refreshSeriesData()
-      } catch {
-        ErrorManager.shared.alert(error: error)
-      }
+      await KomfActions.reset(
+        libraryId: series.libraryId,
+        seriesId: series.id,
+        seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title
+      )
+      await refreshSeriesData()
     }
   }
 
@@ -613,30 +593,16 @@ extension SeriesDetailView {
         }
 
         #if os(iOS) || os(macOS)
-          if KomfIntegrationStore.shared.isAvailable {
+          if KomfIntegrationStore.shared.isAvailable, let series {
             Divider()
 
-            Menu {
-              Button {
-                deferMenuActionPresentation { showKomfIdentify = true }
-              } label: {
-                Label("Identify", systemImage: "sparkles")
-              }
-
-              Button {
-                matchWithKomf()
-              } label: {
-                Label("Match", systemImage: "arrow.triangle.2.circlepath")
-              }
-
-              Button {
-                deferMenuActionPresentation { showKomfResetConfirmation = true }
-              } label: {
-                Label("Reset Metadata", systemImage: "arrow.counterclockwise")
-              }
-            } label: {
-              Label(title: { Text(verbatim: "Komf") }, icon: { Image(systemName: "sparkles") })
-            }
+            KomfMenu(
+              libraryId: series.libraryId,
+              seriesId: series.id,
+              seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title,
+              onIdentify: { showKomfIdentify = true },
+              onReset: { showKomfResetConfirmation = true }
+            )
           }
         #endif
 

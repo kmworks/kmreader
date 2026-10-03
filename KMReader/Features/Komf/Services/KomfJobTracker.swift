@@ -63,7 +63,11 @@ final class KomfJobTracker {
           return
         }
         consecutiveErrors += 1
-        if consecutiveErrors >= Self.maxConsecutiveErrors { return }
+        if consecutiveErrors >= Self.maxConsecutiveErrors {
+          // Same best-effort exit as the timeout path: refresh whatever landed.
+          await refreshSeries(seriesId: seriesId)
+          return
+        }
       }
     }
     // Timed out: the job may still be running server-side, so refresh whatever

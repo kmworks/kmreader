@@ -18,6 +18,6 @@ nonisolated struct KomfIntegration: Codable, Equatable, Sendable {
   let komfReachable: Bool
 
   var isConnected: Bool {
-    configured && state == Self.connectedState
+    state == Self.connectedState
   }
 }
