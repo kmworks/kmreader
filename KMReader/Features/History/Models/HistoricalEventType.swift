@@ -44,7 +44,7 @@ enum HistoricalEventType: String, CaseIterable {
     case .bookFileDeleted:
       return .red
     case .seriesFolderDeleted:
-      return .orange
+      return .brown
     case .bookConverted:
       return .blue
     case .bookImported:

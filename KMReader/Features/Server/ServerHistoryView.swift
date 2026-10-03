@@ -19,15 +19,18 @@ struct ServerHistoryView: View {
   @State private var seriesNameById: [String: String] = [:]
   @State private var selectedEvent: HistoricalEvent?
   @State private var typeFilter: HistoricalEventType?
+  @State private var filterLoadHalted = false
 
   private var displayedItems: [HistoricalEvent] {
     guard let typeFilter else { return pagination.items }
     return pagination.items.filter { $0.type == typeFilter.rawValue }
   }
 
-  private var filterMenuTitle: String {
-    typeFilter?.label ?? String(localized: "history.allTypes", defaultValue: "All Types")
-  }
+  #if os(tvOS)
+    private var filterMenuTitle: String {
+      typeFilter?.label ?? String(localized: "history.allTypes", defaultValue: "All Types")
+    }
+  #endif
 
   var body: some View {
     List {
@@ -106,16 +109,48 @@ struct ServerHistoryView: View {
             }
             .padding(.vertical)
           } else if typeFilter != nil && pagination.hasMorePages {
-            HStack {
-              Spacer()
-              ProgressView()
-              Spacer()
-            }
-            .padding(.vertical)
-            .onAppear {
-              Task {
-                await loadMoreHistory()
+            if filterLoadHalted {
+              HStack {
+                Spacer()
+                Button(String(localized: "Retry")) {
+                  filterLoadHalted = false
+                  Task {
+                    await loadMoreHistory()
+                  }
+                }
+                Spacer()
               }
+              .padding(.vertical, 4)
+            } else if displayedItems.isEmpty {
+              HStack(spacing: 8) {
+                Spacer()
+                ProgressView()
+                Text(
+                  String(
+                    localized: "history.lookingForEvents",
+                    defaultValue: "Loading more to find matching events…")
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+                Spacer()
+              }
+              .padding(.vertical)
+              .onAppear {
+                Task {
+                  await loadMoreHistory()
+                }
+              }
+            } else {
+              HStack {
+                Spacer()
+                Button(String(localized: "Load More")) {
+                  Task {
+                    await loadMoreHistory()
+                  }
+                }
+                Spacer()
+              }
+              .padding(.vertical, 4)
             }
           } else if typeFilter != nil && displayedItems.isEmpty {
             HStack {
@@ -137,7 +172,11 @@ struct ServerHistoryView: View {
           Menu {
             filterMenuItems
           } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle")
+            Image(
+              systemName: typeFilter == nil
+                ? "line.3.horizontal.decrease.circle"
+                : "line.3.horizontal.decrease.circle.fill"
+            )
           }
           .disabled(!current.isAdmin)
           .help(String(localized: "history.filter", defaultValue: "Filter by Type"))
@@ -170,6 +209,9 @@ struct ServerHistoryView: View {
         await loadHistory(refresh: true)
       }
     }
+    .onChange(of: typeFilter) { _, _ in
+      filterLoadHalted = false
+    }
   }
 
   @ViewBuilder
@@ -190,25 +232,21 @@ struct ServerHistoryView: View {
 
   @ViewBuilder
   private func historyRow(event: HistoricalEvent) -> some View {
-    if let destination = navDestination(for: event) {
-      NavigationLink(value: destination) {
+    Group {
+      if let destination = navDestination(for: event) {
+        NavigationLink(value: destination) {
+          historyRowContent(event: event)
+        }
+      } else {
         historyRowContent(event: event)
+          .tvFocusableHighlight()
       }
-      .contextMenu {
-        detailsButton(for: event)
-      }
-      .onAppear {
-        triggerLoadMoreIfNeeded(after: event)
-      }
-    } else {
-      historyRowContent(event: event)
-        .tvFocusableHighlight()
-        .contextMenu {
-          detailsButton(for: event)
-        }
-        .onAppear {
-          triggerLoadMoreIfNeeded(after: event)
-        }
+    }
+    .contextMenu {
+      detailsButton(for: event)
+    }
+    .onAppear {
+      triggerLoadMoreIfNeeded(after: event)
     }
   }
 
@@ -285,6 +323,7 @@ struct ServerHistoryView: View {
         systemImage: "info.circle"
       )
     }
+    .disabled(event.properties.isEmpty)
   }
 
   private func navDestination(for event: HistoricalEvent) -> NavDestination? {
@@ -330,7 +369,7 @@ struct ServerHistoryView: View {
         let displayValue: String
         if key.lowercased().contains("hash"), value.count > 12 {
           displayValue = String(value.prefix(12)) + "…"
-        } else if value.contains("/") || value.contains("\\") {
+        } else if key == "former file" || key == "source" {
           displayValue = baseName(value)
         } else {
           displayValue = value
@@ -368,6 +407,7 @@ struct ServerHistoryView: View {
       lastTriggeredItemId = nil
       bookNameById.removeAll()
       seriesNameById.removeAll()
+      filterLoadHalted = false
     }
 
     withAnimation {
@@ -417,6 +457,7 @@ struct ServerHistoryView: View {
       await updateLocalReferences(for: pagination.items)
     } catch {
       lastTriggeredItemId = nil
+      filterLoadHalted = true
       ErrorManager.shared.alert(error: error)
     }
 

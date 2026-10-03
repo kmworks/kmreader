@@ -32264,7 +32264,6 @@
       }
     },
     "history.allTypes" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32329,7 +32328,6 @@
       }
     },
     "history.event.bookConverted" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32394,7 +32392,6 @@
       }
     },
     "history.event.bookFileDeleted" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32459,7 +32456,6 @@
       }
     },
     "history.event.bookImported" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32524,7 +32520,6 @@
       }
     },
     "history.event.bookPurged" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32589,7 +32584,6 @@
       }
     },
     "history.event.bookTrashed" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32654,7 +32648,6 @@
       }
     },
     "history.event.duplicatePageDeleted" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32719,7 +32712,6 @@
       }
     },
     "history.event.seriesFolderDeleted" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32784,7 +32776,6 @@
       }
     },
     "history.event.seriesPurged" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32849,7 +32840,6 @@
       }
     },
     "history.event.seriesTrashed" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32914,7 +32904,6 @@
       }
     },
     "history.filter" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32978,8 +32967,72 @@
         }
       }
     },
-    "history.noFile" : {
+    "history.lookingForEvents" : {
       "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading more to find matching events…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade weitere, um passende Ereignisse zu finden…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando más para encontrar eventos coincidentes…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement pour trouver des événements correspondants…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caricamento di altri eventi corrispondenti…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一致するイベントをさらに読み込んでいます…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일치하는 이벤트를 찾기 위해 더 불러오는 중…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загружаем дальше, чтобы найти подходящие события…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在加载更多以查找匹配事件…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在載入更多以尋找相符事件…"
+          }
+        }
+      }
+    },
+    "history.noFile" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33044,7 +33097,6 @@
       }
     },
     "history.noMatchingEvents" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33109,7 +33161,6 @@
       }
     },
     "history.viewDetails" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
