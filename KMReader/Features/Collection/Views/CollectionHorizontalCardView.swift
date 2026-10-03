@@ -46,7 +46,7 @@ struct CollectionHorizontalCardView: View {
       NavigationLink(
         value: NavDestination.collectionDetail(collectionId: item.collectionId)
       ) {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: LayoutConfig.horizontalCardCoverSpacing) {
           ThumbnailImage(
             id: item.collectionId, type: .collection, width: coverWidth,
             preserveAspectRatioOverride: false
@@ -88,7 +88,7 @@ struct CollectionHorizontalCardView: View {
       .font(.system(size: LayoutConfig.horizontalCardAccessoryIconSize, weight: .medium))
       .padding(.trailing, 2)
     }
-    .padding(8)
+    .padding(LayoutConfig.horizontalCardPadding)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background {
       RoundedRectangle(cornerRadius: 12)

@@ -86,7 +86,7 @@ struct BookHorizontalCardView: View {
       Button {
         onReadBook?(false)
       } label: {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: LayoutConfig.horizontalCardCoverSpacing) {
           ThumbnailImage(
             id: item.bookId,
             type: .book,
@@ -134,7 +134,7 @@ struct BookHorizontalCardView: View {
 
       accessories
     }
-    .padding(8)
+    .padding(LayoutConfig.horizontalCardPadding)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background {
       RoundedRectangle(cornerRadius: 12)
