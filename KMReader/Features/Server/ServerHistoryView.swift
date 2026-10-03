@@ -410,8 +410,6 @@ struct ServerHistoryView: View {
     if refresh {
       pagination.reset()
       lastTriggeredItemId = nil
-      bookNameById.removeAll()
-      seriesNameById.removeAll()
       filterLoadHalted = false
     }
 
@@ -423,10 +421,10 @@ struct ServerHistoryView: View {
         size: pagination.pageSize
       )
       let items = page.content ?? []
+      await updateLocalReferences(for: items)
       _ = pagination.applyPage(items)
       pagination.advance(moreAvailable: !(page.last ?? true))
       lastTriggeredItemId = nil
-      await updateLocalReferences(for: pagination.items)
     } catch {
       lastTriggeredItemId = nil
       ErrorManager.shared.alert(error: error)
@@ -446,10 +444,10 @@ struct ServerHistoryView: View {
         size: pagination.pageSize
       )
       let items = page.content ?? []
+      await updateLocalReferences(for: items)
       _ = pagination.applyPage(items)
       pagination.advance(moreAvailable: !(page.last ?? true))
       lastTriggeredItemId = nil
-      await updateLocalReferences(for: pagination.items)
     } catch {
       lastTriggeredItemId = nil
       filterLoadHalted = true
