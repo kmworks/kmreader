@@ -7,6 +7,8 @@ import SwiftUI
 
 struct SeriesContextMenu: View {
   let seriesId: String
+  let libraryId: String
+  let seriesTitle: String
   let downloadStatus: SeriesDownloadStatus
   let offlinePolicy: OfflinePolicy
   let offlinePolicyLimit: Int
@@ -17,6 +19,7 @@ struct SeriesContextMenu: View {
   var onShowCollectionPicker: (() -> Void)? = nil
   var onDeleteRequested: (() -> Void)? = nil
   var onEditRequested: (() -> Void)? = nil
+  var onKomfIdentifyRequested: (() -> Void)? = nil
   var onMutationCompleted: (() -> Void)? = nil
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -105,6 +108,25 @@ struct SeriesContextMenu: View {
             } label: {
               Label("Refresh Metadata", systemImage: "arrow.clockwise")
             }
+
+            #if os(iOS) || os(macOS)
+              if KomfIntegrationStore.shared.isAvailable {
+                Menu {
+                  Button {
+                    deferMenuActionPresentation { onKomfIdentifyRequested?() }
+                  } label: {
+                    Label("Identify", systemImage: "sparkles")
+                  }
+                  Button {
+                    matchWithKomf()
+                  } label: {
+                    Label("Match", systemImage: "arrow.triangle.2.circlepath")
+                  }
+                } label: {
+                  Label(title: { Text(verbatim: "komf") }, icon: { Image(systemName: "sparkles") })
+                }
+              }
+            #endif
 
             if onDeleteRequested != nil {
               Divider()
@@ -211,6 +233,26 @@ struct SeriesContextMenu: View {
           message: String(localized: "notification.series.metadataRefreshed"))
         onMutationCompleted?()
       } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func matchWithKomf() {
+    Task {
+      do {
+        let response = try await KomfService.matchSeries(
+          libraryId: libraryId, seriesId: seriesId)
+        await KomfJobTracker.shared.track(
+          jobId: response.id,
+          seriesId: seriesId,
+          seriesTitle: seriesTitle
+        )
+      } catch {
+        if case APIError.httpError(let code, _, _, _, _) = error, code == 409 {
+          await KomfIntegrationStore.shared.invalidate()
+          await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+        }
         ErrorManager.shared.alert(error: error)
       }
     }

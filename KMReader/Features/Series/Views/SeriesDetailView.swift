@@ -616,22 +616,26 @@ extension SeriesDetailView {
           if KomfIntegrationStore.shared.isAvailable {
             Divider()
 
-            Button {
-              deferMenuActionPresentation { showKomfIdentify = true }
-            } label: {
-              Label("Identify with komf", systemImage: "sparkles")
-            }
+            Menu {
+              Button {
+                deferMenuActionPresentation { showKomfIdentify = true }
+              } label: {
+                Label("Identify", systemImage: "sparkles")
+              }
 
-            Button {
-              matchWithKomf()
-            } label: {
-              Label("Match with komf", systemImage: "arrow.triangle.2.circlepath")
-            }
+              Button {
+                matchWithKomf()
+              } label: {
+                Label("Match", systemImage: "arrow.triangle.2.circlepath")
+              }
 
-            Button {
-              deferMenuActionPresentation { showKomfResetConfirmation = true }
+              Button {
+                deferMenuActionPresentation { showKomfResetConfirmation = true }
+              } label: {
+                Label("Reset Metadata", systemImage: "arrow.counterclockwise")
+              }
             } label: {
-              Label("Reset Metadata with komf", systemImage: "arrow.counterclockwise")
+              Label(title: { Text(verbatim: "komf") }, icon: { Image(systemName: "sparkles") })
             }
           }
         #endif
