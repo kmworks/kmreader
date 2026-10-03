@@ -18,6 +18,19 @@ struct ServerHistoryView: View {
   @State private var bookNameById: [String: String] = [:]
   @State private var seriesNameById: [String: String] = [:]
   @State private var selectedEvent: HistoricalEvent?
+  @State private var typeFilter: HistoricalEventType?
+  @State private var filterLoadHalted = false
+
+  private var displayedItems: [HistoricalEvent] {
+    guard let typeFilter else { return pagination.items }
+    return pagination.items.filter { $0.type == typeFilter.rawValue }
+  }
+
+  #if os(tvOS)
+    private var filterMenuTitle: String {
+      typeFilter?.label ?? String(localized: "history.allTypes", defaultValue: "All Types")
+    }
+  #endif
 
   var body: some View {
     List {
@@ -48,9 +61,19 @@ struct ServerHistoryView: View {
           .tvFocusableHighlight()
         }
       } else {
-        #if os(tvOS) || os(macOS)
+        #if os(tvOS)
           if current.isAdmin {
             Section {
+              Menu {
+                filterMenuItems
+              } label: {
+                HStack {
+                  Spacer()
+                  Label(filterMenuTitle, systemImage: "line.3.horizontal.decrease.circle")
+                  Spacer()
+                }
+              }
+
               Button(role: .destructive) {
                 Task {
                   await clearLocalReferencedEntities()
@@ -74,7 +97,7 @@ struct ServerHistoryView: View {
         #endif
 
         Section {
-          ForEach(pagination.items, id: \.id) { event in
+          ForEach(displayedItems, id: \.id) { event in
             historyRow(event: event)
           }
 
@@ -85,14 +108,80 @@ struct ServerHistoryView: View {
               Spacer()
             }
             .padding(.vertical)
+          } else if typeFilter != nil && pagination.hasMorePages {
+            if filterLoadHalted {
+              HStack {
+                Spacer()
+                Button(String(localized: "Retry")) {
+                  filterLoadHalted = false
+                  Task {
+                    await loadMoreHistory()
+                  }
+                }
+                Spacer()
+              }
+              .padding(.vertical, 4)
+            } else if displayedItems.isEmpty {
+              HStack(spacing: 8) {
+                Spacer()
+                ProgressView()
+                Text(
+                  String(
+                    localized: "history.lookingForEvents",
+                    defaultValue: "Loading more to find matching events…")
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+                Spacer()
+              }
+              .padding(.vertical)
+              .onAppear {
+                Task {
+                  await loadMoreHistory()
+                }
+              }
+            } else {
+              HStack {
+                Spacer()
+                Button(String(localized: "Load More")) {
+                  Task {
+                    await loadMoreHistory()
+                  }
+                }
+                Spacer()
+              }
+              .padding(.vertical, 4)
+            }
+          } else if typeFilter != nil && displayedItems.isEmpty {
+            HStack {
+              Spacer()
+              Text(String(localized: "history.noMatchingEvents", defaultValue: "No matching events"))
+                .foregroundColor(.secondary)
+              Spacer()
+            }
+            .padding(.vertical)
           }
         }
       }
     }
     .optimizedListStyle()
     .platformNavigationTitle(ServerSection.history.title)
-    #if os(iOS)
+    #if os(iOS) || os(macOS)
       .toolbar {
+        ToolbarItem(placement: .primaryAction) {
+          Menu {
+            filterMenuItems
+          } label: {
+            Image(
+              systemName: typeFilter == nil
+                ? "line.3.horizontal.decrease.circle"
+                : "line.3.horizontal.decrease.circle.fill"
+            )
+          }
+          .disabled(!current.isAdmin)
+          .help(String(localized: "history.filter", defaultValue: "Filter by Type"))
+          .accessibilityLabel(String(localized: "history.filter", defaultValue: "Filter by Type"))
+        }
         ToolbarItem(placement: .primaryAction) {
           Button(role: .destructive) {
             Task {
@@ -120,76 +209,193 @@ struct ServerHistoryView: View {
         await loadHistory(refresh: true)
       }
     }
+    .onChange(of: typeFilter) { _, _ in
+      filterLoadHalted = false
+    }
+  }
+
+  @ViewBuilder
+  private var filterMenuItems: some View {
+    Picker(selection: $typeFilter) {
+      Text(String(localized: "history.allTypes", defaultValue: "All Types"))
+        .tag(HistoricalEventType?.none)
+      ForEach(HistoricalEventType.allCases, id: \.self) { type in
+        Text(type.label)
+          .tag(HistoricalEventType?.some(type))
+      }
+    } label: {
+      EmptyView()
+    }
+    .pickerStyle(.inline)
+    .labelsHidden()
   }
 
   @ViewBuilder
   private func historyRow(event: HistoricalEvent) -> some View {
-    HStack(alignment: .top, spacing: 12) {
-      Image(systemName: iconName(for: event.type))
-        .foregroundColor(.secondary)
-        .frame(width: 24)
+    Group {
+      if let destination = navDestination(for: event) {
+        NavigationLink(value: destination) {
+          historyRowContent(event: event)
+        }
+      } else {
+        historyRowContent(event: event)
+          .tvFocusableHighlight()
+      }
+    }
+    .contextMenu {
+      detailsButton(for: event)
+    }
+    .onAppear {
+      triggerLoadMoreIfNeeded(after: event)
+    }
+  }
 
-      VStack(alignment: .leading, spacing: 6) {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-          Text(event.type)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .layoutPriority(1)
+  @ViewBuilder
+  private func historyRowContent(event: HistoricalEvent) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        eventTypeBadge(for: event.type)
 
-          Spacer()
+        Spacer()
 
-          Text(event.timestamp.formattedMediumDateTime)
+        Text(relativeTimestamp(event.timestamp))
+          .font(.caption)
+          .foregroundColor(.secondary)
+          .lineLimit(1)
+          .fixedSize(horizontal: true, vertical: false)
+      }
+
+      Text(primaryName(for: event))
+        .lineLimit(1)
+        .truncationMode(.tail)
+
+      if let seriesId = event.seriesId, !seriesId.isEmpty, let seriesName = seriesNameById[seriesId] {
+        HStack(spacing: 6) {
+          Image(systemName: ContentIcon.series)
             .font(.caption)
+          Text(seriesName)
             .foregroundColor(.secondary)
             .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-
-          Button {
-            selectedEvent = event
-          } label: {
-            Image(systemName: "info.circle")
-          }
-          .buttonStyle(.borderless)
-          .disabled(event.properties.isEmpty)
-          .frame(width: 24)
-        }
-
-        if let seriesId = event.seriesId, !seriesId.isEmpty {
-          HStack(spacing: 6) {
-            Image(systemName: ContentIcon.series)
-              .font(.caption)
-            Text(seriesNameById[seriesId] ?? seriesId)
-              .foregroundColor(.secondary)
-              .lineLimit(1)
-          }
-        }
-
-        if let bookId = event.bookId, !bookId.isEmpty {
-          HStack(spacing: 6) {
-            Image(systemName: ContentIcon.book)
-              .font(.caption)
-            Text(bookNameById[bookId] ?? bookId)
-              .foregroundColor(.secondary)
-              .lineLimit(1)
-          }
         }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
+
+      if let bookId = event.bookId, !bookId.isEmpty, let bookName = bookNameById[bookId] {
+        HStack(spacing: 6) {
+          Image(systemName: ContentIcon.book)
+            .font(.caption)
+          Text(bookName)
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
+      }
+
+      if let extraLine = extraPropertiesLine(for: event) {
+        Text(extraLine)
+          .font(.caption2)
+          .foregroundColor(.secondary)
+          .lineLimit(1)
+          .truncationMode(.tail)
+      }
     }
-    .tvFocusableHighlight()
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, 4)
-    .onAppear {
-      guard pagination.hasMorePages,
-        !isLoadingMore,
-        pagination.shouldLoadMore(after: event, threshold: 3),
-        lastTriggeredItemId != event.id
-      else {
-        return
+  }
+
+  @ViewBuilder
+  private func eventTypeBadge(for type: String) -> some View {
+    let eventType = HistoricalEventType(rawValue: type)
+    Text(eventType?.label ?? type)
+      .font(.caption2)
+      .fontWeight(.medium)
+      .padding(.horizontal, 6)
+      .padding(.vertical, 2)
+      .background((eventType?.color ?? .gray).opacity(0.15), in: Capsule())
+      .foregroundColor(eventType?.color ?? .gray)
+  }
+
+  @ViewBuilder
+  private func detailsButton(for event: HistoricalEvent) -> some View {
+    Button {
+      selectedEvent = event
+    } label: {
+      Label(
+        String(localized: "history.viewDetails", defaultValue: "View Details"),
+        systemImage: "info.circle"
+      )
+    }
+    .disabled(event.properties.isEmpty)
+  }
+
+  private func navDestination(for event: HistoricalEvent) -> NavDestination? {
+    switch event.type {
+    case HistoricalEventType.seriesFolderDeleted.rawValue:
+      return nil
+    case HistoricalEventType.bookFileDeleted.rawValue:
+      guard let seriesId = event.seriesId, !seriesId.isEmpty else { return nil }
+      return .seriesDetail(seriesId: seriesId)
+    default:
+      if let bookId = event.bookId, !bookId.isEmpty {
+        return .bookDetail(bookId: bookId)
       }
-      lastTriggeredItemId = event.id
-      Task {
-        await loadMoreHistory()
+      if let seriesId = event.seriesId, !seriesId.isEmpty {
+        return .seriesDetail(seriesId: seriesId)
       }
+      return nil
+    }
+  }
+
+  private func primaryName(for event: HistoricalEvent) -> String {
+    if let name = event.properties["name"], !name.isEmpty {
+      return baseName(name)
+    }
+    if let bookId = event.bookId, let name = bookNameById[bookId] {
+      return name
+    }
+    if let seriesId = event.seriesId, let name = seriesNameById[seriesId] {
+      return name
+    }
+    return String(localized: "history.noFile", defaultValue: "No file")
+  }
+
+  private func baseName(_ path: String) -> String {
+    path.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? path
+  }
+
+  private func extraPropertiesLine(for event: HistoricalEvent) -> String? {
+    let parts = event.properties
+      .filter { $0.key != "name" }
+      .sorted { $0.key < $1.key }
+      .map { key, value in
+        let displayValue: String
+        if key.lowercased().contains("hash"), value.count > 12 {
+          displayValue = String(value.prefix(12)) + "…"
+        } else if key == "former file" || key == "source" {
+          displayValue = baseName(value)
+        } else {
+          displayValue = value
+        }
+        return "\(key): \(displayValue)"
+      }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+
+  private func relativeTimestamp(_ date: Date) -> String {
+    let formatter = RelativeDateTimeFormatter()
+    formatter.unitsStyle = .short
+    return formatter.localizedString(for: date, relativeTo: Date())
+  }
+
+  private func triggerLoadMoreIfNeeded(after event: HistoricalEvent) {
+    guard pagination.hasMorePages,
+      !isLoadingMore,
+      pagination.shouldLoadMore(after: event, threshold: 3),
+      lastTriggeredItemId != event.id
+    else {
+      return
+    }
+    lastTriggeredItemId = event.id
+    Task {
+      await loadMoreHistory()
     }
   }
 
@@ -201,6 +407,7 @@ struct ServerHistoryView: View {
       lastTriggeredItemId = nil
       bookNameById.removeAll()
       seriesNameById.removeAll()
+      filterLoadHalted = false
     }
 
     withAnimation {
@@ -250,6 +457,7 @@ struct ServerHistoryView: View {
       await updateLocalReferences(for: pagination.items)
     } catch {
       lastTriggeredItemId = nil
+      filterLoadHalted = true
       ErrorManager.shared.alert(error: error)
     }
 
@@ -262,13 +470,11 @@ struct ServerHistoryView: View {
     let instanceId = AppConfig.current.instanceId
     let bookIds = Set(
       events
-        .filter { $0.type == "BookFileDeleted" }
         .compactMap { $0.bookId }
         .filter { !$0.isEmpty }
     )
     let seriesIds = Set(
       events
-        .filter { $0.type == "SeriesFolderDeleted" }
         .compactMap { $0.seriesId }
         .filter { !$0.isEmpty }
     )
@@ -303,13 +509,13 @@ struct ServerHistoryView: View {
     let instanceId = AppConfig.current.instanceId
     let bookIds = Set(
       pagination.items
-        .filter { $0.type == "BookFileDeleted" }
+        .filter { $0.type == HistoricalEventType.bookFileDeleted.rawValue }
         .compactMap { $0.bookId }
         .filter { !$0.isEmpty }
     )
     let seriesIds = Set(
       pagination.items
-        .filter { $0.type == "SeriesFolderDeleted" }
+        .filter { $0.type == HistoricalEventType.seriesFolderDeleted.rawValue }
         .compactMap { $0.seriesId }
         .filter { !$0.isEmpty }
     )
@@ -350,23 +556,6 @@ struct ServerHistoryView: View {
     ErrorManager.shared.notify(message: message)
 
     isClearingLocal = false
-  }
-
-  private func iconName(for type: String) -> String {
-    switch type {
-    case "BookFileDeleted":
-      return "xmark.circle"
-    case "SeriesFolderDeleted":
-      return "folder.badge.minus"
-    case "DuplicatePageDeleted":
-      return "book.closed"
-    case "BookConverted":
-      return "archivebox"
-    case "BookImported":
-      return "tray.and.arrow.down"
-    default:
-      return "clock"
-    }
   }
 }
 
