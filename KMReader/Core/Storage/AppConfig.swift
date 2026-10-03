@@ -1024,6 +1024,83 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var pageTranslationEnabled: Bool {
+    get {
+      if UserDefaults.standard.object(forKey: "pageTranslationEnabled") != nil {
+        return UserDefaults.standard.bool(forKey: "pageTranslationEnabled")
+      }
+      return false
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "pageTranslationEnabled")
+    }
+  }
+
+  static nonisolated var pageTranslationTargetLanguage: String {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "pageTranslationTargetLanguage") {
+        return stored
+      }
+      return "zh-Hans"
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "pageTranslationTargetLanguage")
+    }
+  }
+
+  static nonisolated var pageTranslationAPIBaseURL: String {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "pageTranslationAPIBaseURL") {
+        return stored
+      }
+      return "https://api.deepseek.com/v1"
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "pageTranslationAPIBaseURL")
+    }
+  }
+
+  static nonisolated var pageTranslationAPIKey: String {
+    get {
+      UserDefaults.standard.string(forKey: "pageTranslationAPIKey") ?? ""
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "pageTranslationAPIKey")
+    }
+  }
+
+  static nonisolated var pageTranslationModel: String {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "pageTranslationModel") {
+        return stored
+      }
+      return "deepseek-chat"
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "pageTranslationModel")
+    }
+  }
+
+  static nonisolated var pageTranslationReasoningEffort: String {
+    get {
+      UserDefaults.standard.string(forKey: "pageTranslationReasoningEffort") ?? ""
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "pageTranslationReasoningEffort")
+    }
+  }
+
+  static nonisolated var pageTranslationConfig: PageTranslationConfig {
+    PageTranslationConfig(
+      isEnabled: pageTranslationEnabled,
+      targetLanguage: pageTranslationTargetLanguage,
+      apiBaseURL: pageTranslationAPIBaseURL,
+      apiKey: pageTranslationAPIKey,
+      model: pageTranslationModel,
+      reasoningEffort: pageTranslationReasoningEffort.isEmpty ? nil : pageTranslationReasoningEffort
+    )
+  }
+
   static nonisolated var divinaPageBorderCropMode: ReaderPageBorderCropMode {
     get {
       if let stored = UserDefaults.standard.string(forKey: "divinaPageBorderCropMode"),

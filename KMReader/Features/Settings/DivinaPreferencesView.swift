@@ -43,6 +43,18 @@ struct DivinaPreferencesView: View {
   private var showProgressBarWhileReading: Bool =
     AppConfig.showDivinaProgressBarWhileReading
   @AppStorage("shakeToOpenLiveText") private var shakeToOpenLiveText: Bool = false
+  @AppStorage("pageTranslationEnabled") private var pageTranslationEnabled: Bool =
+    AppConfig.pageTranslationEnabled
+  @AppStorage("pageTranslationTargetLanguage") private var pageTranslationTargetLanguage: String =
+    AppConfig.pageTranslationTargetLanguage
+  @AppStorage("pageTranslationAPIBaseURL") private var pageTranslationAPIBaseURL: String =
+    AppConfig.pageTranslationAPIBaseURL
+  @AppStorage("pageTranslationAPIKey") private var pageTranslationAPIKey: String =
+    AppConfig.pageTranslationAPIKey
+  @AppStorage("pageTranslationModel") private var pageTranslationModel: String =
+    AppConfig.pageTranslationModel
+  @AppStorage("pageTranslationReasoningEffort") private var pageTranslationReasoningEffort: String =
+    AppConfig.pageTranslationReasoningEffort
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
 
   private var forcedReadingDirection: ReadingDirection? {
@@ -435,6 +447,54 @@ struct DivinaPreferencesView: View {
               }
             }
           #endif
+        }
+      #endif
+
+      #if os(iOS) || os(macOS)
+        if #available(iOS 18.0, macOS 15.0, *) {
+          Section(header: Text("Page Translation")) {
+            Toggle(isOn: $pageTranslationEnabled) {
+              VStack(alignment: .leading, spacing: 4) {
+                Text("Enable Page Translation")
+                Text("Translate manga pages with an OpenAI-compatible LLM. Translated pages are cached on device.")
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+              }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+              Picker("Target Language", selection: $pageTranslationTargetLanguage) {
+                Text("简体中文").tag("zh-Hans")
+                Text("繁體中文").tag("zh-Hant")
+                Text("English").tag("en")
+                Text("日本語").tag("ja")
+                Text("한국어").tag("ko")
+              }
+              .pickerStyle(.menu)
+            }
+
+            TextField("API Base URL", text: $pageTranslationAPIBaseURL)
+              .textContentType(.URL)
+              #if os(iOS)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+              #endif
+              .autocorrectionDisabled()
+
+            SecureField("API Key", text: $pageTranslationAPIKey)
+
+            TextField("Model", text: $pageTranslationModel)
+              .autocorrectionDisabled()
+
+            Picker("Reasoning Effort", selection: $pageTranslationReasoningEffort) {
+              Text("Default").tag("")
+              Text("None").tag("none")
+              Text("Low").tag("low")
+              Text("Medium").tag("medium")
+              Text("High").tag("high")
+            }
+            .pickerStyle(.menu)
+          }
         }
       #endif
 

@@ -1705,8 +1705,16 @@ actor OfflineManager {
     guard await isBookDownloaded(bookId: bookId, instanceId: instanceId) else { return }
     let dir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
     let baseName = "page-\(pageNumber)@2x"
-    let candidates = ["png", "jpg", "jpeg"].map { fileExtension in
+    var candidates = ["png", "jpg", "jpeg"].map { fileExtension in
       dir.appendingPathComponent(baseName).appendingPathExtension(fileExtension)
+    }
+
+    let translatedPrefix = "page-\(pageNumber)\(PageTranslationCache.variantMarker)"
+    if let contents = try? FileManager.default.contentsOfDirectory(
+      at: dir,
+      includingPropertiesForKeys: nil
+    ) {
+      candidates += contents.filter { $0.lastPathComponent.hasPrefix(translatedPrefix) }
     }
 
     for fileURL in candidates where FileManager.default.fileExists(atPath: fileURL.path) {

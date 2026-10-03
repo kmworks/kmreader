@@ -35,6 +35,7 @@ final class ReaderPageLoadScheduler {
 
   private var downloadingTasks: [ReaderPageID: TrackedTaskRecord<(url: URL?, failure: ReaderPageLoadFailure?)>] = [:]
   private var upscalingTasks: [ReaderPageID: TrackedTaskRecord<URL?>] = [:]
+  private var translatingTasks: [ReaderPageID: TrackedTaskRecord<URL?>] = [:]
   private var preloadingImageTasks: [ReaderPageID: TrackedTaskRecord<PlatformImage?>] = [:]
   private var lastPreloadRequestTime: Date?
   private var preloadTask: Task<Void, Never>?
@@ -63,6 +64,7 @@ final class ReaderPageLoadScheduler {
     if !keepPageIDs.isEmpty {
       cancelTrackedTasksOutsideWindow(&downloadingTasks, keeping: keepPageIDs)
       cancelTrackedTasksOutsideWindow(&upscalingTasks, keeping: keepPageIDs)
+      cancelTrackedTasksOutsideWindow(&translatingTasks, keeping: keepPageIDs)
       cancelTrackedTasksOutsideWindow(&preloadingImageTasks, keeping: keepPageIDs)
     }
 
@@ -104,6 +106,7 @@ final class ReaderPageLoadScheduler {
     preloadingImageTasks[pageID] != nil
       || downloadingTasks[pageID] != nil
       || upscalingTasks[pageID] != nil
+      || translatingTasks[pageID] != nil
   }
 
   func hasFailedImageLoad(for pageID: ReaderPageID) -> Bool {
@@ -134,6 +137,7 @@ final class ReaderPageLoadScheduler {
 
     cancelTrackedTasksOutsideWindow(&downloadingTasks, keeping: keepPageIDs)
     cancelTrackedTasksOutsideWindow(&upscalingTasks, keeping: keepPageIDs)
+    cancelTrackedTasksOutsideWindow(&translatingTasks, keeping: keepPageIDs)
     cancelTrackedTasksOutsideWindow(&preloadingImageTasks, keeping: keepPageIDs)
   }
 
@@ -306,6 +310,11 @@ final class ReaderPageLoadScheduler {
     }
     upscalingTasks.removeAll()
 
+    for (_, taskRecord) in translatingTasks {
+      taskRecord.task.cancel()
+    }
+    translatingTasks.removeAll()
+
     for (_, taskRecord) in preloadingImageTasks {
       taskRecord.task.cancel()
     }
@@ -324,6 +333,7 @@ final class ReaderPageLoadScheduler {
     guard !pageIDs.isEmpty else { return }
 
     cancelTrackedTasks(&upscalingTasks, matching: pageIDs)
+    cancelTrackedTasks(&translatingTasks, matching: pageIDs)
     cancelTrackedTasks(&preloadingImageTasks, matching: pageIDs)
 
     var removedImageCount = 0
@@ -626,10 +636,16 @@ final class ReaderPageLoadScheduler {
       return (fallbackImage, animatedSourceFileURL, nil)
     }
 
+    let translatedFileURL = await translatedPageFileURL(
+      page: page,
+      pageID: readerPage.id,
+      sourceFileURL: sourceFileURL
+    )
+
     let preferredFileURL = await preferredDisplayImageFileURL(
       page: page,
       pageID: readerPage.id,
-      sourceFileURL: sourceFileURL,
+      sourceFileURL: translatedFileURL,
       isAnimated: isAnimated
     )
 
@@ -637,9 +653,25 @@ final class ReaderPageLoadScheduler {
       return (image, animatedSourceFileURL, nil)
     }
 
-    if preferredFileURL != sourceFileURL {
+    if preferredFileURL != translatedFileURL {
+      if translatedFileURL != sourceFileURL,
+        let translatedImage = await loadImageFromFile(fileURL: translatedFileURL)
+      {
+        logger.debug(
+          "⏭️ [Upscale] Fallback to translated file for page \(page.number + 1) because @2x decode failed"
+        )
+        return (translatedImage, animatedSourceFileURL, nil)
+      }
       logger.debug(
         "⏭️ [Upscale] Fallback to original file for page \(page.number + 1) because @2x decode failed"
+      )
+      let fallbackImage = await loadImageFromFile(fileURL: sourceFileURL)
+      return (fallbackImage, animatedSourceFileURL, nil)
+    }
+
+    if translatedFileURL != sourceFileURL {
+      logger.debug(
+        "⏭️ [Translation] Fallback to original file for page \(page.number + 1) because translated decode failed"
       )
       let fallbackImage = await loadImageFromFile(fileURL: sourceFileURL)
       return (fallbackImage, animatedSourceFileURL, nil)
@@ -794,6 +826,95 @@ final class ReaderPageLoadScheduler {
     return result ?? sourceFileURL
   }
 
+  private func translatedPageFileURL(page: BookPage, pageID: ReaderPageID, sourceFileURL: URL) async -> URL {
+    let config = AppConfig.pageTranslationConfig
+    guard config.isUsable else { return sourceFileURL }
+    guard !AppConfig.isOffline else { return sourceFileURL }
+
+    let variantFileURL = PageTranslationCache.variantFileURL(sourceFileURL: sourceFileURL, config: config)
+    if FileManager.default.fileExists(atPath: variantFileURL.path) {
+      logger.debug("✅ [Translation] Use cached variant page \(page.number + 1)")
+      return variantFileURL
+    }
+
+    if let existingTask = translatingTasks[pageID] {
+      logger.debug("⏳ [Translation] Await running translation task for page \(page.number + 1)")
+      if let cachedURL = await existingTask.task.value {
+        logger.debug("✅ [Translation] Reuse task result for page \(page.number + 1): \(cachedURL.lastPathComponent)")
+        return cachedURL
+      }
+      logger.debug("⏭️ [Translation] Running task failed for page \(page.number + 1), use source")
+      return sourceFileURL
+    }
+
+    let pageNumber = page.number
+    logger.debug("🚀 [Translation] Queue page \(pageNumber + 1) -> \(config.targetLanguage)")
+
+    let taskToken = UUID()
+    let translateTask = Task<URL?, Never>.detached(priority: .userInitiated) {
+      [sourceFileURL, variantFileURL, config, pageNumber] in
+      let logger = AppLogger(.reader)
+
+      guard !Task.isCancelled else { return nil }
+
+      if FileManager.default.fileExists(atPath: variantFileURL.path) {
+        logger.debug("✅ [Translation] Use cached variant page \(pageNumber + 1)")
+        return variantFileURL
+      }
+
+      guard let sourceCGImage = Self.readCGImage(from: sourceFileURL) else {
+        logger.debug("⏭️ [Translation] Skip page \(pageNumber + 1): failed to decode source CGImage")
+        return nil
+      }
+
+      let startedAt = Date()
+      guard
+        let output = await PageTranslationPipeline.shared.translatedCGImage(
+          from: sourceCGImage,
+          config: config
+        )
+      else {
+        logger.debug("⏭️ [Translation] Skip page \(pageNumber + 1): pipeline returned nil")
+        return nil
+      }
+      guard !Task.isCancelled else { return nil }
+
+      guard
+        let persistedURL = Self.persistTranslatedCGImage(
+          output,
+          to: variantFileURL,
+          logger: logger
+        )
+      else {
+        logger.error(
+          "❌ [Translation] Failed to save translated page \(pageNumber + 1): source=\(sourceFileURL.lastPathComponent)"
+        )
+        return nil
+      }
+
+      let duration = Date().timeIntervalSince(startedAt)
+      logger.debug(
+        String(
+          format: "💾 [Translation] Saved page %d in %.2fs -> %@",
+          pageNumber + 1,
+          duration,
+          persistedURL.lastPathComponent
+        )
+      )
+      return persistedURL
+    }
+
+    translatingTasks[pageID] = TrackedTaskRecord(token: taskToken, task: translateTask)
+    let result = await translateTask.value
+    removeTrackedTaskIfCurrent(for: pageID, token: taskToken, from: &translatingTasks)
+    if let result {
+      logger.debug("✅ [Translation] Ready page \(pageNumber + 1): \(result.lastPathComponent)")
+    } else {
+      logger.debug("⏭️ [Translation] Use source for page \(pageNumber + 1): translation unavailable")
+    }
+    return result ?? sourceFileURL
+  }
+
   nonisolated private static func sourcePixelSize(page: BookPage, fileURL: URL) -> CGSize? {
     if let width = page.width, let height = page.height, width > 0, height > 0 {
       return CGSize(width: width, height: height)
@@ -935,6 +1056,49 @@ final class ReaderPageLoadScheduler {
     }
 
     return nil
+  }
+
+  nonisolated private static func persistTranslatedCGImage(
+    _ image: CGImage,
+    to targetFileURL: URL,
+    logger: AppLogger
+  ) -> URL? {
+    let fileManager = FileManager.default
+    let targetDirectory = targetFileURL.deletingLastPathComponent()
+    do {
+      try fileManager.createDirectory(at: targetDirectory, withIntermediateDirectories: true)
+    } catch {
+      logger.error("❌ [Translation] Failed to create target directory: \(targetDirectory.path)")
+      return nil
+    }
+
+    guard let destinationType = destinationUTType(for: targetFileURL) else {
+      logger.error("❌ [Translation] Unsupported destination type for \(targetFileURL.lastPathComponent)")
+      return nil
+    }
+
+    guard
+      let destination = CGImageDestinationCreateWithURL(
+        targetFileURL as CFURL,
+        destinationType.identifier as CFString,
+        1,
+        nil
+      )
+    else {
+      logger.error(
+        "❌ [Translation] CGImageDestinationCreateWithURL failed: \(targetFileURL.lastPathComponent)"
+      )
+      return nil
+    }
+
+    CGImageDestinationAddImage(destination, image, nil)
+    guard CGImageDestinationFinalize(destination) else {
+      logger.error(
+        "❌ [Translation] CGImageDestinationFinalize failed: \(targetFileURL.lastPathComponent)"
+      )
+      return nil
+    }
+    return targetFileURL
   }
 
   private func updateAnimatedPresentation(
