@@ -12,6 +12,7 @@ struct ServerHistoryView: View {
   @State private var isLoading = false
   @State private var isLoadingMore = false
   @State private var lastTriggeredItemId: String?
+  @State private var hasLoaded = false
 
   @State private var isClearingLocal = false
 
@@ -200,8 +201,9 @@ struct ServerHistoryView: View {
       }
     }
     .task {
-      if current.isAdmin {
+      if current.isAdmin && !hasLoaded {
         await loadHistory(refresh: true)
+        hasLoaded = true
       }
     }
     .refreshable {
@@ -328,7 +330,9 @@ struct ServerHistoryView: View {
 
   private func navDestination(for event: HistoricalEvent) -> NavDestination? {
     switch event.type {
-    case HistoricalEventType.seriesFolderDeleted.rawValue:
+    case HistoricalEventType.seriesFolderDeleted.rawValue,
+      HistoricalEventType.bookPurged.rawValue,
+      HistoricalEventType.seriesPurged.rawValue:
       return nil
     case HistoricalEventType.bookFileDeleted.rawValue:
       guard let seriesId = event.seriesId, !seriesId.isEmpty else { return nil }
@@ -366,6 +370,9 @@ struct ServerHistoryView: View {
       .filter { $0.key != "name" }
       .sorted { $0.key < $1.key }
       .map { key, value in
+        if key == "reason" {
+          return value
+        }
         let displayValue: String
         if key.lowercased().contains("hash"), value.count > 12 {
           displayValue = String(value.prefix(12)) + "…"
@@ -401,18 +408,14 @@ struct ServerHistoryView: View {
 
   private func loadHistory(refresh: Bool) async {
     if refresh {
-      withAnimation {
-        pagination.reset()
-      }
+      pagination.reset()
       lastTriggeredItemId = nil
       bookNameById.removeAll()
       seriesNameById.removeAll()
       filterLoadHalted = false
     }
 
-    withAnimation {
-      isLoading = true
-    }
+    isLoading = true
 
     do {
       let page = try await HistoryService.getHistory(
@@ -420,10 +423,8 @@ struct ServerHistoryView: View {
         size: pagination.pageSize
       )
       let items = page.content ?? []
-      withAnimation {
-        _ = pagination.applyPage(items)
-        pagination.advance(moreAvailable: !(page.last ?? true))
-      }
+      _ = pagination.applyPage(items)
+      pagination.advance(moreAvailable: !(page.last ?? true))
       lastTriggeredItemId = nil
       await updateLocalReferences(for: pagination.items)
     } catch {
@@ -431,17 +432,13 @@ struct ServerHistoryView: View {
       ErrorManager.shared.alert(error: error)
     }
 
-    withAnimation {
-      isLoading = false
-    }
+    isLoading = false
   }
 
   private func loadMoreHistory() async {
     guard pagination.hasMorePages && !isLoadingMore else { return }
 
-    withAnimation {
-      isLoadingMore = true
-    }
+    isLoadingMore = true
 
     do {
       let page = try await HistoryService.getHistory(
@@ -449,10 +446,8 @@ struct ServerHistoryView: View {
         size: pagination.pageSize
       )
       let items = page.content ?? []
-      withAnimation {
-        _ = pagination.applyPage(items)
-        pagination.advance(moreAvailable: !(page.last ?? true))
-      }
+      _ = pagination.applyPage(items)
+      pagination.advance(moreAvailable: !(page.last ?? true))
       lastTriggeredItemId = nil
       await updateLocalReferences(for: pagination.items)
     } catch {
@@ -461,9 +456,7 @@ struct ServerHistoryView: View {
       ErrorManager.shared.alert(error: error)
     }
 
-    withAnimation {
-      isLoadingMore = false
-    }
+    isLoadingMore = false
   }
 
   private func updateLocalReferences(for events: [HistoricalEvent]) async {
@@ -581,7 +574,14 @@ private struct HistoryEventDetailView: View {
             .foregroundColor(.secondary)
         } else {
           ForEach(event.properties.keys.sorted(), id: \.self) { key in
-            LabeledContent(key, value: event.properties[key] ?? "")
+            HStack {
+              Text(key)
+              Spacer()
+              Text(event.properties[key] ?? "")
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            }
           }
         }
       }
