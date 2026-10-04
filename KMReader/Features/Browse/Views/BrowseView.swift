@@ -13,8 +13,8 @@ struct BrowseView: View {
   let metadataFilter: MetadataFilterConfig?
   let focusesSearchOnAppear: Bool
   /// iPhone Library tab root mode: no navigation title, no search field, and
-  /// no built-in toolbar library button (LibraryBrowseView adds its own with a
-  /// scope label). The library scope is the global dashboard selection.
+  /// no built-in toolbar library button (LibraryBrowseView adds its own). The
+  /// library scope is the global dashboard selection.
   let libraryTab: Bool
   /// Search-tab mode (iPhone): show a search placeholder until a query is
   /// entered instead of browsing all content.
@@ -25,6 +25,10 @@ struct BrowseView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
+  @AppStorage("seriesBrowseLayout") private var seriesBrowseLayout: BrowseLayoutMode = .grid
+  @AppStorage("bookBrowseLayout") private var bookBrowseLayout: BrowseLayoutMode = .grid
+  @AppStorage("collectionBrowseLayout") private var collectionBrowseLayout: BrowseLayoutMode = .grid
+  @AppStorage("readListBrowseLayout") private var readListBrowseLayout: BrowseLayoutMode = .grid
 
   @State private var refreshTrigger = UUID()
   @State private var initializedLibraryIdsKey: String?
@@ -108,11 +112,12 @@ struct BrowseView: View {
             }
           #endif
         }
-
-        ToolbarItemGroup(placement: .confirmationAction) {
-          BrowseFilterToolbarButtons(
-            showsSavedFilters: effectiveContent == .series || effectiveContent == .books,
-            onShowSavedFilters: { showSavedFilters = true },
+        ToolbarItem(placement: .confirmationAction) {
+          BrowseActionsMenu(
+            layoutMode: browseLayoutBinding,
+            showsPresets: effectiveContent == .series || effectiveContent == .books,
+            isFilterEnabled: !searchOnly || !activeSearchText.isEmpty,
+            onShowPresets: { showSavedFilters = true },
             onShowFilter: { showFilterSheet = true }
           )
         }
@@ -158,6 +163,15 @@ struct BrowseView: View {
 
   private var effectiveContent: BrowseContentType {
     .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
+  }
+
+  private var browseLayoutBinding: Binding<BrowseLayoutMode> {
+    switch effectiveContent {
+    case .series: return $seriesBrowseLayout
+    case .books: return $bookBrowseLayout
+    case .collections: return $collectionBrowseLayout
+    case .readlists: return $readListBrowseLayout
+    }
   }
 
   private func refreshBrowse() {
