@@ -145,6 +145,7 @@ import SwiftUI
         }
       }
       .formStyle(.grouped)
+      .settingsFormWidth()
       .platformNavigationTitle(SettingsSection.spotlight.title)
       .animation(.easeInOut(duration: 0.2), value: enableSpotlightIndexing)
       .animation(.easeInOut(duration: 0.2), value: enableSpotlightBookIndexing)

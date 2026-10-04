@@ -157,6 +157,7 @@
       }
       .animation(.easeInOut(duration: 0.2), value: useNativePdfReader)
       .formStyle(.grouped)
+      .settingsFormWidth()
       .platformNavigationTitle(SettingsSection.pdfReader.title)
     }
   }

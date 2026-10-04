@@ -245,6 +245,7 @@ struct SettingsDashboardView: View {
         }
       }
       .formStyle(.grouped)
+      .settingsFormWidth()
       .platformNavigationTitle(SettingsSection.dashboard.title)
     }
   }

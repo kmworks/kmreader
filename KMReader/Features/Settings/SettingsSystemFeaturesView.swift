@@ -36,6 +36,7 @@ struct SettingsSystemFeaturesView: View {
       #endif
     }
     .formStyle(.grouped)
+    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.systemFeatures.title)
   }
 }

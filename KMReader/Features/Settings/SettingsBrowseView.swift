@@ -138,6 +138,7 @@ struct SettingsBrowseView: View {
       }
     }
     .formStyle(.grouped)
+    .settingsFormWidth()
     .platformNavigationTitle(String(localized: "settings.browse.title"))
     .animation(.easeInOut(duration: 0.2), value: cardTextOverlayMode)
   }
