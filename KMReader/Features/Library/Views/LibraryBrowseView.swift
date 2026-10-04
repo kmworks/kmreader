@@ -7,8 +7,8 @@ import SwiftUI
 
 /// iPhone Library tab root: content-first browsing (Apple Books style) over the
 /// global library selection (dashboard.libraryIds, shared with Home). The
-/// leading toolbar button is the shared LibraryScopeToolbarButton, always shown;
-/// the sheet and the library list live here.
+/// leading toolbar button is the shared LibraryScopeToolbarButton, always
+/// shown; the sheet and the library list live here.
 /// Library management stays in Settings.
 struct LibraryBrowseView: View {
   let authViewModel: AuthViewModel
@@ -19,11 +19,13 @@ struct LibraryBrowseView: View {
 
   var body: some View {
     BrowseView(authViewModel: authViewModel, libraryTab: true)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          LibraryScopeToolbarButton(libraries: libraries, isPresented: $showLibraryPicker)
+      #if os(iOS)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            LibraryScopeToolbarButton(libraries: libraries, isPresented: $showLibraryPicker)
+          }
         }
-      }
+      #endif
       .sheet(isPresented: $showLibraryPicker) {
         LibraryPickerSheet()
       }

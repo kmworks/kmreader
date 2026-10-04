@@ -12,6 +12,8 @@ struct OfflineView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("offlineBrowseContent") private var offlineBrowseContent: BrowseContentType = .series
+  @AppStorage("seriesBrowseLayout") private var seriesBrowseLayout: BrowseLayoutMode = .grid
+  @AppStorage("bookBrowseLayout") private var bookBrowseLayout: BrowseLayoutMode = .grid
   @AppStorage("isOffline") private var isOffline: Bool = false
 
   @State private var seriesViewModel = SeriesViewModel()
@@ -68,6 +70,10 @@ struct OfflineView: View {
 
   private var savedFilterType: SavedFilterType {
     resolvedOfflineContent == .books ? .books : .series
+  }
+
+  private var browseLayoutBinding: Binding<BrowseLayoutMode> {
+    resolvedOfflineContent == .books ? $bookBrowseLayout : $seriesBrowseLayout
   }
 
   /// Pins the search bar only on iPhone: there it renders as a drawer row whose
@@ -149,10 +155,12 @@ struct OfflineView: View {
             }
           #endif
         }
-
-        ToolbarItemGroup(placement: .confirmationAction) {
-          BrowseFilterToolbarButtons(
-            onShowSavedFilters: { showSavedFilters = true },
+        ToolbarItem(placement: .confirmationAction) {
+          BrowseActionsMenu(
+            layoutMode: browseLayoutBinding,
+            showsPresets: true,
+            isFilterEnabled: true,
+            onShowPresets: { showSavedFilters = true },
             onShowFilter: { showFilterSheet = true }
           )
         }

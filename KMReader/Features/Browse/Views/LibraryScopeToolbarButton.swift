@@ -5,13 +5,14 @@
 
 import SwiftUI
 
-/// Labeled library scope button for leading toolbar placement (Home, Offline,
-/// iPhone Library tab): shows the library icon plus the current dashboard
-/// scope (single library name, or the "%lld Libraries" count). iPad keeps the
-/// icon only — a wide text button gets pushed into the toolbar's overflow
-/// menu when the bar is crowded, and the sidebar already lists the libraries.
-/// Parents own the library list, the >1-library visibility condition, and the
-/// LibraryPickerSheet presentation; this view is only the button label.
+/// Library scope filter button, icon-only on iOS and macOS, at the leading
+/// toolbar edge (`.navigation` on macOS, `.cancellationAction` on iOS). The
+/// icon is the lines glyph (Apple Books style, near-square so the glass
+/// capsule stays round); a subset selection switches it to the decrease
+/// variant. The scope name stays available through the accessibility label
+/// and hover tooltip. Parents own the library list, the visibility
+/// condition, and the LibraryPickerSheet presentation; this view is only the
+/// button label.
 struct LibraryScopeToolbarButton: View {
   let libraries: [SidebarLibraryItem]
   @Binding var isPresented: Bool
@@ -36,26 +37,17 @@ struct LibraryScopeToolbarButton: View {
       format, selectedIds.isEmpty ? libraries.count : selectedIds.count)
   }
 
-  private var showsScopeTitle: Bool {
-    #if os(iOS)
-      return !PlatformHelper.isPad
-    #else
-      return true
-    #endif
+  private var isFiltered: Bool {
+    let selectedIds = dashboard.libraryIds
+    return !selectedIds.isEmpty && selectedIds.count < libraries.count
   }
 
   var body: some View {
     Button {
       isPresented = true
     } label: {
-      // Label gets collapsed to icon-only in the iOS 26 glass toolbar;
-      // compose icon + text explicitly.
-      HStack(spacing: 4) {
-        Image(systemName: ContentIcon.library)
-        if showsScopeTitle {
-          Text(scopeTitle)
-        }
-      }
+      Image(systemName: isFiltered ? "line.3.horizontal.decrease" : "line.3.horizontal")
+        .contentTransition(.symbolEffect(.replace))
     }
     .accessibilityLabel(scopeTitle)
     .help(scopeTitle)
