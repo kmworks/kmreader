@@ -58,7 +58,7 @@ struct BookHorizontalCardView: View {
       },
       downloadIcon: item.downloadStatus.displayIcon,
       downloadSpinning: item.downloadStatus.isPending,
-      downloadColor: item.downloadStatus.displayColor
+      downloadColor: item.downloadStatus.failureColor
     ) { palette in
       Spacer(minLength: 0)
 

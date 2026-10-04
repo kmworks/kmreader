@@ -54,6 +54,11 @@ nonisolated enum SeriesDownloadStatus: Equatable, Sendable {
     }
   }
 
+  /// Red only on failure; tinted/overlay cards keep their palette color otherwise.
+  var failureColor: Color? {
+    self == .failed ? .red : nil
+  }
+
   var isDownloaded: Bool {
     if case .downloaded = self { return true }
     return false

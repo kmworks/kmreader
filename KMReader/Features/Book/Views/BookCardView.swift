@@ -65,7 +65,7 @@ struct BookCardView: View {
       subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       downloadIcon: item.downloadStatus.displayIcon,
       downloadSpinning: item.downloadStatus.isPending,
-      downloadColor: item.downloadStatus.displayColor,
+      downloadColor: item.downloadStatus.failureColor,
       progress: item.progress,
       isInProgress: item.isInProgress
     ) {

@@ -52,6 +52,12 @@ nonisolated enum DownloadStatus: Equatable, Sendable {
     }
   }
 
+  /// Red only on failure; tinted/overlay cards keep their palette color otherwise.
+  var failureColor: Color? {
+    if case .failed = self { return .red }
+    return nil
+  }
+
   // MARK: - Menu Display
 
   /// Label for context menu actions.

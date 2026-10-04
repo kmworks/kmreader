@@ -65,6 +65,13 @@ struct DashboardSectionDetailView: View {
     }
   }
 
+  private var emptyStateMessage: LocalizedStringKey {
+    if section.isLocalSection {
+      return LocalizedStringKey("Nothing here yet.")
+    }
+    return LocalizedStringKey("Try selecting a different library.")
+  }
+
   var body: some View {
     ScrollView {
       #if os(tvOS)
@@ -96,7 +103,7 @@ struct DashboardSectionDetailView: View {
         isEmpty: pagination.isEmpty,
         emptyIcon: emptyStateIcon,
         emptyTitle: emptyStateTitle,
-        emptyMessage: LocalizedStringKey("Try selecting a different library."),
+        emptyMessage: emptyStateMessage,
         onRetry: {
           Task {
             await loadItems(refresh: true)
