@@ -52,6 +52,8 @@ struct SeriesCardView: View {
           UnreadCountBadge(count: item.booksUnreadCount, size: badgeSize)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         }
+        .transition(.scale(scale: 0).combined(with: .opacity))
+        .animation(.appSpring, value: item.booksUnreadCount > 0)
       }
     } menu: {
       SeriesContextMenu(

@@ -15,6 +15,7 @@ struct BookHorizontalCardPlaceholder: View {
     HStack(alignment: .center, spacing: 12) {
       RoundedRectangle(cornerRadius: cornerRadius)
         .fill(Color.gray.opacity(0.2))
+        .shimmer(cornerRadius: cornerRadius)
         .aspectRatio(CoverAspectRatio.widthToHeight, contentMode: .fit)
         .frame(width: coverWidth)
 
@@ -54,6 +55,7 @@ struct BookHorizontalCardPlaceholder: View {
       .overlay(alignment: .leading) {
         RoundedRectangle(cornerRadius: cornerRadius)
           .fill(Color.gray.opacity(opacity))
+          .shimmer(cornerRadius: cornerRadius)
           .frame(maxWidth: .infinity, alignment: .leading)
           .scaleEffect(x: widthScale, anchor: .leading)
       }
