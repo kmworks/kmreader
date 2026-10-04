@@ -11,7 +11,7 @@ struct OfflineCoverSyncProgressView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       ProgressView(value: progress.progressFraction)
-        .animation(.easeInOut(duration: 0.2), value: progress.progressFraction)
+        .animation(.appCurve(0.2), value: progress.progressFraction)
       HStack(spacing: 8) {
         Text(
           String(
@@ -20,15 +20,15 @@ struct OfflineCoverSyncProgressView: View {
           )
         )
         .contentTransition(.numericText())
-        .animation(.default, value: progress.checkedCount)
-        .animation(.default, value: progress.totalCount)
+        .animation(.appCurve(), value: progress.checkedCount)
+        .animation(.appCurve(), value: progress.totalCount)
         Text(String(localized: "offline.coverSync.progressSynced \(progress.storedCount)"))
           .contentTransition(.numericText())
-          .animation(.default, value: progress.storedCount)
+          .animation(.appCurve(), value: progress.storedCount)
         if progress.failedCount > 0 {
           Text(String(localized: "offline.coverSync.progressFailed \(progress.failedCount)"))
             .contentTransition(.numericText())
-            .animation(.default, value: progress.failedCount)
+            .animation(.appCurve(), value: progress.failedCount)
         }
       }
       .lineLimit(1)

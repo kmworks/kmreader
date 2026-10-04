@@ -67,8 +67,8 @@ struct DownloadStatusIcon: View {
           .transition(.opacity)
       }
     }
-    .animation(.default, value: effectiveSpinning)
-    .animation(.default, value: isCompleting)
+    .animation(.appCurve(), value: effectiveSpinning)
+    .animation(.appCurve(), value: isCompleting)
     .onAppear {
       displayedSystemName = systemName
       displayedSpinning = spinning

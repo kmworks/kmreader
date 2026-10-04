@@ -89,7 +89,7 @@ struct ReadListDownloadActionsSection: View {
     }
     .frame(maxWidth: .infinity, alignment: heroCentered ? .center : .leading)
     .padding(.vertical, 4)
-    .animation(.default, value: status)
+    .animation(.appCurve(), value: status)
   }
 
   @ViewBuilder

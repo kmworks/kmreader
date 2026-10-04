@@ -157,7 +157,7 @@
                   }
                   .onChange(of: pageValue) { _, newValue in
                     if scrollPosition != newValue {
-                      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                      withAnimation(.appSpring) {
                         proxy.scrollTo(newValue, anchor: .center)
                       }
                     }
@@ -245,7 +245,7 @@
             y: 2
           )
           .scaleEffect(isSelected ? 1.0 : 0.9)
-          .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+          .animation(.appSpring, value: isSelected)
 
           Text("\(page)")
             .font(.caption)

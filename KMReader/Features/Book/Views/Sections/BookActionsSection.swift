@@ -103,7 +103,7 @@ struct BookActionsSection: View {
       .buttonBorderShape(.capsule)
     }
     .frame(maxWidth: .infinity, alignment: heroCentered ? .center : .leading)
-    .animation(.default, value: downloadStatus)
-    .animation(.default, value: book.readProgress)
+    .animation(.appCurve(), value: downloadStatus)
+    .animation(.appCurve(), value: book.readProgress)
   }
 }

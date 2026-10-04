@@ -92,8 +92,8 @@ struct SeriesDownloadActionsSection: View {
     }
     .frame(maxWidth: .infinity, alignment: heroCentered ? .center : .leading)
     .padding(.vertical, 4)
-    .animation(.default, value: status)
-    .animation(.default, value: policy)
+    .animation(.appCurve(), value: status)
+    .animation(.appCurve(), value: policy)
     .alert(
       pendingAction?.label(for: status) ?? "",
       isPresented: Binding(

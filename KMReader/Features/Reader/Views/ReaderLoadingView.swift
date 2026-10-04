@@ -98,14 +98,14 @@ struct ReaderLoadingView: View {
         .frame(width: 64, height: 64)
         .rotationEffect(.degrees(-90))
         .opacity(showsProgress ? 1 : 0)
-        .animation(.easeOut(duration: 0.16), value: numericProgress)
+        .animation(.appCurve(0.16), value: numericProgress)
 
       Text(progressText)
         .font(.system(.subheadline, design: .rounded).bold())
         .foregroundStyle(primaryContentColor)
         .monospacedDigit()
         .contentTransition(.numericText(value: numericProgress))
-        .animation(.easeOut(duration: 0.16), value: numericProgress)
+        .animation(.appCurve(0.16), value: numericProgress)
         .opacity(showsProgress ? 1 : 0)
         .accessibilityHidden(!showsProgress)
 

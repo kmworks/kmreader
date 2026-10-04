@@ -33,7 +33,7 @@
     private static let bottomBarHideOffset: CGFloat = 380
 
     private var animation: Animation {
-      .easeInOut(duration: 0.2)
+      .appCurve(0.2)
     }
 
     // Bar visibility: opacity rides a quick curve while the slide springs, so a

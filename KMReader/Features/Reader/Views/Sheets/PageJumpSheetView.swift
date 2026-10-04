@@ -45,7 +45,7 @@ private struct PagePreviewCard: View {
         radius: isSelected ? 8 : 4, x: 0, y: 2
       )
       .scaleEffect(isSelected ? 1.0 : 0.9)
-      .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+      .animation(.appSpring, value: isSelected)
 
       Text("\(displayPage)")
         .font(.caption)
@@ -245,7 +245,7 @@ struct PageJumpSheetView: View {
                 .onChange(of: pageValue) { oldValue, newValue in
                   // Slider changed - scroll to new page (only if different from scroll position)
                   if scrollPosition != newValue {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    withAnimation(.appSpring) {
                       proxy.scrollTo(newValue, anchor: .center)
                     }
                   }

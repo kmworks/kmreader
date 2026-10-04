@@ -38,7 +38,7 @@ struct ReadListBookBrowseOptionsSheet: View {
                 )
                 Image(systemName: icon(for: state))
                   .foregroundStyle(color(for: state))
-                  .animation(.default, value: state)
+                  .animation(.appCurve(), value: state)
               }
             }
           }
@@ -54,7 +54,7 @@ struct ReadListBookBrowseOptionsSheet: View {
               let state = tempOpts.oneshotFilter.state(for: .yes)
               Image(systemName: icon(for: state))
                 .foregroundStyle(color(for: state))
-                .animation(.default, value: state)
+                .animation(.appCurve(), value: state)
             }
           }
 
@@ -67,7 +67,7 @@ struct ReadListBookBrowseOptionsSheet: View {
               let state = tempOpts.deletedFilter.state(for: .yes)
               Image(systemName: icon(for: state))
                 .foregroundStyle(color(for: state))
-                .animation(.default, value: state)
+                .animation(.appCurve(), value: state)
             }
           }
         }

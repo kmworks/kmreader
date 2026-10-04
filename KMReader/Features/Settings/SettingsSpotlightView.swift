@@ -26,7 +26,7 @@ import SwiftUI
       Binding(
         get: { indexAllLibraries },
         set: { newValue in
-          withAnimation(.easeInOut(duration: 0.2)) {
+          withAnimation(.appCurve(0.2)) {
             indexAllLibraries = newValue
             if newValue {
               indexedLibraryIds = allLibraryIds
@@ -148,10 +148,10 @@ import SwiftUI
       .formStyle(.grouped)
       .settingsFormWidth()
       .platformNavigationTitle(SettingsSection.spotlight.title)
-      .animation(.easeInOut(duration: 0.2), value: enableSpotlightIndexing)
-      .animation(.easeInOut(duration: 0.2), value: enableSpotlightBookIndexing)
-      .animation(.easeInOut(duration: 0.2), value: enableSpotlightSeriesIndexing)
-      .animation(.easeInOut(duration: 0.2), value: indexAllLibraries)
+      .animation(.appCurve(0.2), value: enableSpotlightIndexing)
+      .animation(.appCurve(0.2), value: enableSpotlightBookIndexing)
+      .animation(.appCurve(0.2), value: enableSpotlightSeriesIndexing)
+      .animation(.appCurve(0.2), value: indexAllLibraries)
       .task {
         await loadLibrariesAndSelection()
       }

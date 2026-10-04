@@ -58,7 +58,30 @@ struct ReaderSettingsSheet: View {
   private var doubleTapZoomEnabled: Binding<Bool> {
     Binding(
       get: { doubleTapZoomMode.isEnabled },
-      set: { doubleTapZoomMode = $0 ? .enabled : .disabled }
+      set: { newValue in
+        withAnimation(.appCurve()) {
+          doubleTapZoomMode = newValue ? .enabled : .disabled
+        }
+      }
+    )
+  }
+
+  // Animated at the mutation point so only the dependent sections animate.
+  private var tapZoneModeSelection: Binding<TapZoneMode> {
+    Binding(
+      get: { tapZoneMode },
+      set: { newValue in
+        withAnimation(.appCurve()) { tapZoneMode = newValue }
+      }
+    )
+  }
+
+  private var imageUpscalingModeSelection: Binding<ReaderImageUpscalingMode> {
+    Binding(
+      get: { imageUpscalingMode },
+      set: { newValue in
+        withAnimation(.appCurve()) { imageUpscalingMode = newValue }
+      }
     )
   }
 
@@ -139,7 +162,7 @@ struct ReaderSettingsSheet: View {
 
           #if os(iOS) || os(macOS)
             TapZoneModePicker(
-              selection: $tapZoneMode,
+              selection: tapZoneModeSelection,
               tapZoneInversionMode: tapZoneInversionMode,
               readingDirection: readingDirection
             )
@@ -217,7 +240,7 @@ struct ReaderSettingsSheet: View {
             .pickerStyle(.menu)
 
             VStack(alignment: .leading, spacing: 8) {
-              Picker("Waifu2x Mode", selection: $imageUpscalingMode) {
+              Picker("Waifu2x Mode", selection: imageUpscalingModeSelection) {
                 ForEach(ReaderImageUpscalingMode.allCases, id: \.self) { mode in
                   Text(mode.displayName).tag(mode)
                 }
@@ -284,12 +307,6 @@ struct ReaderSettingsSheet: View {
         #endif
       }
     }
-    .animation(.default, value: tapZoneMode)
-    .animation(.default, value: doubleTapZoomMode)
-    .animation(.default, value: imageUpscalingMode)
-    .animation(.default, value: divinaPageBorderCropMode)
-    .animation(.default, value: pageTransitionStyle)
-    .animation(.default, value: readingDirection)
     .presentationDragIndicator(.visible)
   }
 }

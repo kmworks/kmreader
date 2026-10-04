@@ -25,7 +25,7 @@ struct SettingsBrowseCardPreview: View {
 
   private let cornerRadius: CGFloat = 8
   private let imageCornerRadius: CGFloat = 6
-  private let animation: Animation = .default
+  private let animation: Animation = .appCurve()
 
   private static let imageRatioExponentRange: ClosedRange<CGFloat> = -1...1
 

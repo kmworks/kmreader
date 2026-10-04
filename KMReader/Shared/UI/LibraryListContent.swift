@@ -349,7 +349,7 @@ struct LibraryListContent: View {
     Image(systemName: selectionIndicatorName(isSelected: isSelected))
       .foregroundStyle(isSelected ? Color.primary : .secondary)
       .font(.title3)
-      .animation(.default, value: isSelected)
+      .animation(.appCurve(), value: isSelected)
   }
 
   private func selectionIndicatorName(isSelected: Bool) -> String {

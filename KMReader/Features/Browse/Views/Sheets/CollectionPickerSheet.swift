@@ -83,7 +83,7 @@ struct CollectionPickerSheet: View {
                   }
                 }
                 .foregroundStyle(item.alreadyIn ? .secondary : .primary)
-                .animation(.default, value: selectedCollectionId == item.id)
+                .animation(.appCurve(), value: selectedCollectionId == item.id)
               }
               .disabled(item.alreadyIn)
             }

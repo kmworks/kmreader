@@ -772,7 +772,7 @@ extension SeriesDetailView {
       isResolvingReadingTarget = false
       return
     }
-    withAnimation(.easeInOut(duration: 0.25)) {
+    withAnimation(.appCurve(0.25)) {
       updateReadingTarget(book, instanceId: instanceId, isOffline: offline)
       isResolvingReadingTarget = false
     }

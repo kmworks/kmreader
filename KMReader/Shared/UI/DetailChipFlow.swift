@@ -63,7 +63,7 @@ struct DetailChipFlow: View {
     }
     if !isExpanded && items.count > collapsedLimit {
       Button {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.appCurve(0.2)) {
           isExpanded = true
         }
       } label: {

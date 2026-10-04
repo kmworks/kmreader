@@ -45,7 +45,7 @@
     private var settingsForm: some View {
       Form { settingsSections }
         .formStyle(.grouped)
-        .animation(.easeInOut(duration: 0.2), value: flowStyle)
+        .animation(.appCurve(0.2), value: flowStyle)
     }
 
     @ViewBuilder

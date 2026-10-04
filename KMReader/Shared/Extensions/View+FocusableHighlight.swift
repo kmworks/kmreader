@@ -14,7 +14,7 @@ import SwiftUI
     func body(content: Content) -> some View {
       content
         .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .animation(.easeInOut(duration: 0.15), value: isFocused)
+        .animation(.appCurve(0.15), value: isFocused)
         .focusable()
         .focused($isFocused)
         .listRowBackground(

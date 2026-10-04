@@ -341,8 +341,8 @@
       }
       .formStyle(.grouped)
       .settingsFormWidth()
-      .animation(.easeInOut(duration: 0.2), value: draft.advancedLayout)
-      .animation(.easeInOut(duration: 0.2), value: draft.fontWeight != nil)
+      .animation(.appCurve(0.2), value: draft.advancedLayout)
+      .animation(.appCurve(0.2), value: draft.fontWeight != nil)
       .onChange(of: draft.advancedLayout) {
         draft.fontSize = EpubConstants.defaultFontScale
         draft.wordSpacing = EpubConstants.defaultWordSpacing

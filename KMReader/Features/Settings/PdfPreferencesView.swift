@@ -155,7 +155,7 @@
           defaultReadingDirection = .vertical
         }
       }
-      .animation(.easeInOut(duration: 0.2), value: useNativePdfReader)
+      .animation(.appCurve(0.2), value: useNativePdfReader)
       .formStyle(.grouped)
       .settingsFormWidth()
       .platformNavigationTitle(SettingsSection.pdfReader.title)

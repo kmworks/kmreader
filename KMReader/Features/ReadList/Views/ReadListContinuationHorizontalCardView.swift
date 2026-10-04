@@ -89,7 +89,7 @@ struct ReadListContinuationHorizontalCardView: View {
         .fill(tint.color ?? Color.cardBackground)
         .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
     }
-    .animation(.easeInOut(duration: 0.18), value: isTinted)
+    .animation(.appCurve(0.18), value: isTinted)
     .contentShape(Rectangle())
     #if os(iOS)
       .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))

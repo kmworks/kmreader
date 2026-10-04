@@ -16,7 +16,7 @@ import SwiftUI
         )
         .scaleEffect(isHovering ? scale : 1.0)
         .offset(y: isHovering ? -2 : 0)
-        .animation(.easeOut(duration: 0.15), value: isHovering)
+        .animation(.appCurve(0.15), value: isHovering)
         .onHover { hovering in
           isHovering = hovering
         }

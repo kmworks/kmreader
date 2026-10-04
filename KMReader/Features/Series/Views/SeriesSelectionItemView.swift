@@ -32,7 +32,7 @@ struct SeriesSelectionItemView: View {
   var body: some View {
     selectionBody
       .allowsHitTesting(false)
-      .animation(.default, value: isSelected)
+      .animation(.appCurve(), value: isSelected)
       .contentShape(Rectangle())
       .highPriorityGesture(
         TapGesture().onEnded {

@@ -83,7 +83,7 @@ struct ReadListPickerSheet: View {
                   }
                 }
                 .foregroundStyle(item.alreadyIn ? .secondary : .primary)
-                .animation(.default, value: selectedReadListId == item.id)
+                .animation(.appCurve(), value: selectedReadListId == item.id)
               }
               .disabled(item.alreadyIn)
             }
