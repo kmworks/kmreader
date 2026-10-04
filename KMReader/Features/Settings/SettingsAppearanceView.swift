@@ -8,8 +8,6 @@ import SwiftUI
 
 struct SettingsAppearanceView: View {
   @AppStorage("appColorScheme") private var appColorScheme: AppColorScheme = .system
-  @AppStorage("showDashboardSectionGradientBackground") private var showDashboardSectionGradientBackground: Bool =
-    AppConfig.showDashboardSectionGradientBackground
   @AppStorage("privacyProtection") private var privacyProtection: Bool = false
   #if os(iOS)
     @State private var selectedAppIcon: AppIconOption = .primary
@@ -75,15 +73,6 @@ struct SettingsAppearanceView: View {
         ) {
           ForEach(AppColorScheme.allCases) { scheme in
             Text(scheme.label).tag(scheme)
-          }
-        }
-
-        Toggle(isOn: $showDashboardSectionGradientBackground) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(String(localized: "settings.appearance.dashboardSectionGradientBackground.title"))
-            Text(String(localized: "settings.appearance.dashboardSectionGradientBackground.caption"))
-              .font(.caption)
-              .foregroundColor(.secondary)
           }
         }
       }
