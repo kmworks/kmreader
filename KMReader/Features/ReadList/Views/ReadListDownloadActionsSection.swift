@@ -15,9 +15,6 @@ struct ReadListDownloadActionsSection: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   @Environment(\.detailHeroCentered) private var heroCentered
 
-  @State private var pendingAction: SeriesDownloadAction?
-  @State private var pendingUnreadLimit: Int?
-
   private var limitPresets: [Int] {
     [1, 3, 5, 10, 25, 50, 0]
   }
@@ -93,29 +90,6 @@ struct ReadListDownloadActionsSection: View {
     .frame(maxWidth: .infinity, alignment: heroCentered ? .center : .leading)
     .padding(.vertical, 4)
     .animation(.default, value: status)
-    .alert(
-      pendingAction?.label(for: status) ?? "",
-      isPresented: Binding(
-        get: { pendingAction != nil },
-        set: {
-          if !$0 {
-            pendingAction = nil
-            pendingUnreadLimit = nil
-          }
-        }
-      ),
-      presenting: pendingAction
-    ) { action in
-      Button(action.label(for: status), role: action.isDestructive ? .destructive : .none) {
-        performAction(action)
-      }
-      Button(String(localized: "Cancel"), role: .cancel) {}
-    } message: { action in
-      let message = action.confirmationMessage(for: status)
-      if !message.isEmpty {
-        Text(message)
-      }
-    }
   }
 
   @ViewBuilder
@@ -144,20 +118,11 @@ struct ReadListDownloadActionsSection: View {
   }
 
   private func handleActionTap(_ action: SeriesDownloadAction) {
-    if action.requiresConfirmation {
-      pendingAction = action
-    } else {
-      performAction(action)
-    }
+    performAction(action)
   }
 
   private func handleDownloadUnreadTap(limit: Int) {
-    if SeriesDownloadAction.downloadUnread.requiresConfirmation {
-      pendingUnreadLimit = limit
-      pendingAction = .downloadUnread
-    } else {
-      downloadUnread(limit: limit)
-    }
+    downloadUnread(limit: limit)
   }
 
   private func updatePolicy(_ newPolicy: OfflinePolicy) {
@@ -217,9 +182,7 @@ struct ReadListDownloadActionsSection: View {
     case .download:
       downloadAll()
     case .downloadUnread:
-      let limit = pendingUnreadLimit ?? 0
-      pendingUnreadLimit = nil
-      downloadUnread(limit: limit)
+      downloadUnread(limit: 0)
     case .removeRead:
       removeRead()
     case .remove:

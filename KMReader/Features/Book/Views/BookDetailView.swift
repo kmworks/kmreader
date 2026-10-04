@@ -60,12 +60,15 @@ struct BookDetailView: View {
             BookReadListsSection(readLists: readLists)
           }
         } else if hasError {
-          VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-              .font(.largeTitle)
-              .foregroundColor(.secondary)
-            Text("Failed to load book details")
-              .font(.headline)
+          ContentUnavailableView {
+            Label("Failed to load book details", systemImage: "exclamationmark.triangle")
+          } actions: {
+            Button(String(localized: "Retry")) {
+              Task {
+                await loadBook()
+              }
+            }
+            .adaptiveButtonStyle(.borderedProminent)
           }
           .frame(maxWidth: .infinity)
         } else {
@@ -237,6 +240,7 @@ struct BookDetailView: View {
 
   @MainActor
   private func loadBook() async {
+    hasError = false
     await loadLocalBook()
 
     do {

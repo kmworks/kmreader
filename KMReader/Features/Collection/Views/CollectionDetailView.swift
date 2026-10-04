@@ -15,6 +15,7 @@ struct CollectionDetailView: View {
 
   @State private var item: CollectionDisplayItem?
   @State private var loadedCollectionId: String?
+  @State private var hasError = false
   @State private var showDeleteConfirmation = false
   @State private var showEditSheet = false
   @State private var showFilterSheet = false
@@ -70,6 +71,8 @@ struct CollectionDetailView: View {
             showFilterSheet: $showFilterSheet,
             showSavedFilters: $showSavedFilters
           )
+        } else if hasError {
+          collectionLoadFailureView
         } else {
           ProgressView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -96,6 +99,8 @@ struct CollectionDetailView: View {
                   showSavedFilters: $showSavedFilters
                 )
               }
+            } else if hasError {
+              collectionLoadFailureView
             } else {
               ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -165,6 +170,7 @@ struct CollectionDetailView: View {
 // Helper functions for CollectionDetailView
 extension CollectionDetailView {
   private func loadCollectionDetails() async {
+    hasError = false
     await loadLocalCollection()
     do {
       _ = try await SyncService.syncCollection(id: collectionId)
@@ -172,10 +178,26 @@ extension CollectionDetailView {
       if case APIError.notFound = error {
         dismiss()
       } else if item == nil {
+        hasError = true
         ErrorManager.shared.alert(error: error)
       }
     }
     await loadLocalCollection()
+  }
+
+  @ViewBuilder
+  private var collectionLoadFailureView: some View {
+    ContentUnavailableView {
+      Label("Failed to load collection details", systemImage: "exclamationmark.triangle")
+    } actions: {
+      Button(String(localized: "Retry")) {
+        Task {
+          await loadCollectionDetails()
+        }
+      }
+      .adaptiveButtonStyle(.borderedProminent)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   private func loadLocalCollection() async {

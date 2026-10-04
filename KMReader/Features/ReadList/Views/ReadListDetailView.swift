@@ -16,6 +16,7 @@ struct ReadListDetailView: View {
 
   @State private var item: ReadListDisplayItem?
   @State private var loadedReadListId: String?
+  @State private var hasError = false
   @State private var showDeleteConfirmation = false
   @State private var showEditSheet = false
   @State private var showFilterSheet = false
@@ -93,6 +94,8 @@ struct ReadListDetailView: View {
           ) {
             readListActions
           }
+        } else if hasError {
+          readListLoadFailureView
         } else {
           ProgressView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -123,6 +126,8 @@ struct ReadListDetailView: View {
                   showSavedFilters: $showSavedFilters
                 )
               }
+            } else if hasError {
+              readListLoadFailureView
             } else {
               ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -192,6 +197,7 @@ struct ReadListDetailView: View {
 // Helper functions for ReadListDetailView
 extension ReadListDetailView {
   private func loadReadListDetails() async {
+    hasError = false
     await loadLocalReadList()
     do {
       _ = try await SyncService.syncReadList(id: readListId)
@@ -199,10 +205,26 @@ extension ReadListDetailView {
       if case APIError.notFound = error {
         dismiss()
       } else if item == nil {
+        hasError = true
         ErrorManager.shared.alert(error: error)
       }
     }
     await loadLocalReadList()
+  }
+
+  @ViewBuilder
+  private var readListLoadFailureView: some View {
+    ContentUnavailableView {
+      Label("Failed to load read list details", systemImage: "exclamationmark.triangle")
+    } actions: {
+      Button(String(localized: "Retry")) {
+        Task {
+          await loadReadListDetails()
+        }
+      }
+      .adaptiveButtonStyle(.borderedProminent)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   private func loadLocalReadList() async {

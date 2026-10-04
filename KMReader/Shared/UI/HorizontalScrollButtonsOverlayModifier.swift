@@ -9,6 +9,8 @@ import SwiftUI
   private struct HorizontalScrollButtonsOverlayModifier<ID: Hashable>: ViewModifier {
     let scrollProxy: ScrollViewProxy
     let itemIds: [ID]
+    let contentFrame: CGRect
+    let horizontalContentMargin: CGFloat
 
     @State private var areButtonsVisible = false
 
@@ -18,7 +20,9 @@ import SwiftUI
           HorizontalScrollButtons(
             scrollProxy: scrollProxy,
             itemIds: itemIds,
-            isVisible: areButtonsVisible
+            isVisible: areButtonsVisible,
+            contentFrame: contentFrame,
+            horizontalContentMargin: horizontalContentMargin
           )
         }
         .onHover { hovering in
@@ -31,12 +35,16 @@ import SwiftUI
   extension View {
     func macHorizontalScrollButtons<ID: Hashable>(
       scrollProxy: ScrollViewProxy,
-      itemIds: [ID]
+      itemIds: [ID],
+      contentFrame: CGRect,
+      horizontalContentMargin: CGFloat
     ) -> some View {
       modifier(
         HorizontalScrollButtonsOverlayModifier(
           scrollProxy: scrollProxy,
-          itemIds: itemIds
+          itemIds: itemIds,
+          contentFrame: contentFrame,
+          horizontalContentMargin: horizontalContentMargin
         )
       )
     }

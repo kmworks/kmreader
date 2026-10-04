@@ -39,36 +39,73 @@ struct DashboardSectionDetailView: View {
     )
   }
 
+  private var emptyStateIcon: String {
+    switch section.contentKind {
+    case .books:
+      return ContentIcon.book
+    case .series:
+      return ContentIcon.series
+    case .collections:
+      return ContentIcon.collection
+    case .readLists:
+      return ContentIcon.readList
+    }
+  }
+
+  private var emptyStateTitle: LocalizedStringKey {
+    switch section.contentKind {
+    case .books:
+      return LocalizedStringKey("No books found")
+    case .series:
+      return LocalizedStringKey("No series found")
+    case .collections:
+      return LocalizedStringKey("No collections found")
+    case .readLists:
+      return LocalizedStringKey("No read lists found")
+    }
+  }
+
   var body: some View {
-    GeometryReader { geometry in
-      ScrollView {
-        #if os(tvOS)
-          if !section.isLocalSection {
-            HStack {
-              LayoutModeMenu(selection: browseLayoutBinding)
-              Spacer()
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 4)
+    ScrollView {
+      #if os(tvOS)
+        if !section.isLocalSection {
+          HStack {
+            LayoutModeMenu(selection: browseLayoutBinding)
+            Spacer()
           }
+          .padding(.horizontal)
+          .padding(.vertical, 4)
+        }
 
-          if section.supportsDownloadLatest {
-            Menu {
-              downloadMenuItems
-            } label: {
-              Label(
-                String(localized: "Download"),
-                systemImage: "arrow.down.circle"
-              )
-            }
-            .disabled(isOffline || isQueueingOffline)
-            .padding(.horizontal)
+        if section.supportsDownloadLatest {
+          Menu {
+            downloadMenuItems
+          } label: {
+            Label(
+              String(localized: "Download"),
+              systemImage: "arrow.down.circle"
+            )
           }
-        #endif
+          .disabled(isOffline || isQueueingOffline)
+          .padding(.horizontal)
+        }
+      #endif
 
+      BrowseStateView(
+        isLoading: isLoading,
+        isEmpty: pagination.isEmpty,
+        emptyIcon: emptyStateIcon,
+        emptyTitle: emptyStateTitle,
+        emptyMessage: LocalizedStringKey("Try selecting a different library."),
+        onRetry: {
+          Task {
+            await loadItems(refresh: true)
+          }
+        }
+      ) {
         contentView
-          .padding()
       }
+      .padding()
     }
     .platformNavigationTitle(section.displayName)
     .task {

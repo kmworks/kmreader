@@ -13,7 +13,7 @@ struct RecentlyAddedEntry: TimelineEntry {
 
 struct RecentlyAddedProvider: TimelineProvider {
   func placeholder(in context: Context) -> RecentlyAddedEntry {
-    RecentlyAddedEntry(date: .now, books: [])
+    RecentlyAddedEntry(date: .now, books: WidgetSampleData.books)
   }
 
   func getSnapshot(in context: Context, completion: @escaping (RecentlyAddedEntry) -> Void) {

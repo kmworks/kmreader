@@ -44,9 +44,8 @@ import WidgetKit
                 .foregroundStyle(.blue)
                 .monospacedDigit()
             } else {
-              Image(systemName: "ellipsis")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.blue)
+              ProgressView()
+                .tint(.blue)
             }
           }
 
@@ -54,22 +53,24 @@ import WidgetKit
           progressBar(for: context.state)
 
           // Footer stats
-          HStack {
-            if context.state.pendingCount > 0 {
-              Label("\(context.state.pendingCount)", systemImage: "clock")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            }
+          if context.state.pendingCount > 0 || context.state.failedCount > 0 {
+            HStack {
+              if context.state.pendingCount > 0 {
+                Label("\(context.state.pendingCount)", systemImage: "clock")
+                  .font(.caption2)
+                  .foregroundStyle(.secondary)
+              }
 
-            Spacer()
+              Spacer()
 
-            if context.state.failedCount > 0 {
-              Label("\(context.state.failedCount)", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption2)
-                .foregroundStyle(.red)
+              if context.state.failedCount > 0 {
+                Label("\(context.state.failedCount)", systemImage: "exclamationmark.triangle.fill")
+                  .font(.caption2)
+                  .foregroundStyle(.red)
+              }
             }
+            .padding(.horizontal, 4)
           }
-          .padding(.horizontal, 4)
         }
         .padding(12)
         .activityBackgroundTint(Color(.systemBackground).opacity(0.95))
@@ -197,6 +198,7 @@ import WidgetKit
             }
           }
         }
+        .animation(.easeInOut(duration: 0.25), value: state.progressFraction)
     }
   }
 #endif
