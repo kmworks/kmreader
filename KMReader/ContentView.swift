@@ -215,7 +215,7 @@ struct ContentView: View {
               protectedAccessGate = .checking
             }
 
-            withAnimation(.easeInOut(duration: 0.2)) {
+            withAnimation(.appCurve(0.2)) {
               showPrivacyBlur = false
             }
 
@@ -258,7 +258,7 @@ struct ContentView: View {
             // reauthentication is due — content is only swapped for the
             // splash at .active.
             if oldPhase == .background && !shouldReauthenticateProtectedCurrentInstance {
-              withAnimation(.easeInOut(duration: 0.2)) {
+              withAnimation(.appCurve(0.2)) {
                 showPrivacyBlur = false
               }
             }

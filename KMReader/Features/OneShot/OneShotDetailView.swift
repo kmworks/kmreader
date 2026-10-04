@@ -68,11 +68,11 @@ struct OneshotDetailView: View {
           )
 
           if seriesItem != nil {
-            SeriesCollectionsSection(collections: collections)
+            DetailMembershipSection(collections: collections)
           }
 
           if bookItem != nil {
-            BookReadListsSection(readLists: readLists)
+            DetailMembershipSection(readLists: readLists)
           }
         } else if hasError {
           ContentUnavailableView {

@@ -162,8 +162,8 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
         }
       }
-      .animation(.easeInOut(duration: 0.18), value: image != nil)
-      .animation(.easeInOut(duration: 0.18), value: contentBlurRadius)
+      .animation(.appCurve(0.18), value: image != nil)
+      .animation(.appCurve(0.18), value: contentBlurRadius)
       .overlay {
         if isAbnormalSize, let overlay = overlay {
           overlay()

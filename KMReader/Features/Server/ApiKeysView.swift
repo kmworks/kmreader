@@ -94,7 +94,7 @@ struct ApiKeysView: View {
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
-                .animation(.default, value: showRelativeDate)
+                .animation(.appCurve(), value: showRelativeDate)
               } else {
                 HStack {
                   Image(systemName: "clock")

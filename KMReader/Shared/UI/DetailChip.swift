@@ -45,7 +45,7 @@ struct DetailChip: View {
         .contentShape(Capsule())
     } else {
       content
-        .background(Color.secondary.opacity(0.12), in: Capsule())
+        .background(LayoutConfig.neutralFillColor, in: Capsule())
         .contentShape(Capsule())
     }
   }

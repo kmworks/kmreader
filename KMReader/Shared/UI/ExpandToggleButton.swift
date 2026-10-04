@@ -11,7 +11,7 @@ struct ExpandToggleButton: View {
 
   var body: some View {
     Button {
-      withAnimation(.easeInOut(duration: 0.2)) {
+      withAnimation(.appCurve(0.2)) {
         isExpanded.toggle()
       }
     } label: {

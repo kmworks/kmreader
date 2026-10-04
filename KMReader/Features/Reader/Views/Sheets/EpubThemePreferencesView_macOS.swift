@@ -371,8 +371,8 @@
       } message: {
         Text("Enter a name for this theme preset")
       }
-      .animation(.easeInOut(duration: 0.2), value: draft.advancedLayout)
-      .animation(.easeInOut(duration: 0.2), value: draft.fontWeight != nil)
+      .animation(.appCurve(0.2), value: draft.advancedLayout)
+      .animation(.appCurve(0.2), value: draft.fontWeight != nil)
       .onChange(of: draft.advancedLayout) { _, newValue in
         guard !newValue else { return }
         draft.fontSize = EpubConstants.defaultFontScale

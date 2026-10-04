@@ -42,7 +42,7 @@ import SwiftUI
           }
         }
       }
-      .animation(.easeOut(duration: 0.15), value: isVisible)
+      .animation(.appCurve(0.15), value: isVisible)
       .allowsHitTesting(isVisible)
     }
 
@@ -96,7 +96,7 @@ import SwiftUI
           ? max(0, index - distance)
           : min(itemIds.count - 1, index + distance)
         if let itemId = itemIds[safe: target] {
-          withAnimation(.easeInOut(duration: 0.3)) {
+          withAnimation(.appCurve(0.3)) {
             scrollProxy.scrollTo(itemId, anchor: .center)
           }
         }

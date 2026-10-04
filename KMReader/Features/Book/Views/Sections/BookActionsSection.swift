@@ -44,31 +44,13 @@ struct BookActionsSection: View {
 
   var body: some View {
     VStack(alignment: heroCentered ? .center : .leading, spacing: 8) {
-      Button {
-        readerActions.open(book: book, incognito: false)
-      } label: {
-        HStack(spacing: 10) {
-          Image(systemName: "book.fill")
-            .font(.callout)
-
-          VStack(alignment: .leading, spacing: 1) {
-            Text(readLabel)
-              .font(.subheadline.weight(.semibold))
-              .lineLimit(1)
-              .contentTransition(.opacity)
-
-            readDetail
-              .font(.caption)
-              .opacity(0.85)
-              .lineLimit(1)
-              .contentTransition(.opacity)
-          }
+      ReadingActionButton(
+        label: readLabel,
+        detail: readDetail,
+        action: {
+          readerActions.open(book: book, incognito: false)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 12)
-      }
-      .adaptiveButtonStyle(.borderedProminent)
-      .buttonBorderShape(.capsule)
+      )
 
       HStack {
         Button {
@@ -103,7 +85,7 @@ struct BookActionsSection: View {
       .buttonBorderShape(.capsule)
     }
     .frame(maxWidth: .infinity, alignment: heroCentered ? .center : .leading)
-    .animation(.default, value: downloadStatus)
-    .animation(.default, value: book.readProgress)
+    .animation(.appCurve(), value: downloadStatus)
+    .animation(.appCurve(), value: book.readProgress)
   }
 }

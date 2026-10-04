@@ -13,8 +13,7 @@ struct DashboardView: View {
   @State private var showLibraryPicker = false
   @State private var showLibraryAddSheet = false
   @State private var isCheckingConnection = false
-  @State private var scopeLibraries: [SidebarLibraryItem] = []
-  @State private var hasLoadedScopeLibraries = false
+  @State private var scopeStore = LibraryScopeStore()
   @State private var searchQuery = ""
   // Results re-query only on submit, so the submitted text is stored apart
   // from the live field text.
@@ -32,7 +31,7 @@ struct DashboardView: View {
   private let logger = AppLogger(.dashboard)
 
   private var showsEmptyLibraryGuidance: Bool {
-    hasLoadedScopeLibraries && scopeLibraries.isEmpty && !isOffline
+    scopeStore.hasLoaded && scopeStore.libraries.isEmpty && !isOffline
   }
 
   private var showsDashboardSearchField: Bool {
@@ -222,19 +221,19 @@ struct DashboardView: View {
       DashboardRefreshCoordinator.shared.setAutoRefreshEnabled(newValue)
     }
     .task(id: current.instanceId) {
-      await refreshScopeLibraries()
+      await scopeStore.refresh(instanceId: current.instanceId)
     }
     .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
       guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
       Task {
-        await loadScopeLibraries()
+        await scopeStore.load(instanceId: current.instanceId)
       }
     }
     .sheet(
       isPresented: $showLibraryAddSheet,
       onDismiss: {
         Task {
-          await loadScopeLibraries()
+          await scopeStore.load(instanceId: current.instanceId)
         }
       }
     ) {
@@ -244,11 +243,11 @@ struct DashboardView: View {
       .toolbar {
         #if os(macOS)
           ToolbarItem(placement: .navigation) {
-            LibraryScopeToolbarButton(libraries: scopeLibraries, isPresented: $showLibraryPicker)
+            LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
           }
         #else
           ToolbarItem(placement: .cancellationAction) {
-            LibraryScopeToolbarButton(libraries: scopeLibraries, isPresented: $showLibraryPicker)
+            LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
           }
         #endif
 
@@ -316,32 +315,6 @@ struct DashboardView: View {
         LibraryPickerSheet()
       }
     #endif
-  }
-
-  private func refreshScopeLibraries() async {
-    // Reset so guidance for the previous instance never flashes during a switch
-    hasLoadedScopeLibraries = false
-    do {
-      let loaded = try await LibraryScopeLoader.refresh(instanceId: current.instanceId)
-      if scopeLibraries != loaded {
-        scopeLibraries = loaded
-      }
-      hasLoadedScopeLibraries = true
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
-  }
-
-  private func loadScopeLibraries() async {
-    do {
-      let loaded = try await LibraryScopeLoader.load(instanceId: current.instanceId)
-      if scopeLibraries != loaded {
-        scopeLibraries = loaded
-      }
-      hasLoadedScopeLibraries = true
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
   }
 
   private func tryReconnect() async {

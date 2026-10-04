@@ -513,7 +513,7 @@ struct SelectableRow: View {
             .foregroundStyle(.green)
         }
       }
-      .animation(.default, value: isSelected)
+      .animation(.appCurve(), value: isSelected)
     }
   }
 }

@@ -23,10 +23,6 @@ struct CollectionSortView: View {
           LayoutModeMenu(selection: layoutMode)
         }
 
-        Image(systemName: "arrow.up.arrow.down.circle")
-          .padding(.leading, 4)
-          .foregroundColor(.secondary)
-
         FilterChip(
           label: sortString,
           systemImage: "arrow.up.arrow.down",

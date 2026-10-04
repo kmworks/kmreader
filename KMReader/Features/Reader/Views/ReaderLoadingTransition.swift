@@ -6,7 +6,7 @@
 import SwiftUI
 
 enum ReaderLoadingTransition {
-  static let animation: Animation = .default
+  static let animation: Animation = .appCurve()
   static let content: AnyTransition = .opacity
   static let loading: AnyTransition = .opacity.combined(with: .scale(scale: 0.98))
 }

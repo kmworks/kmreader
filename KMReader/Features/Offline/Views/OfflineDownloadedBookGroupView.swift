@@ -134,7 +134,7 @@ struct OfflineDownloadedBookGroupView: View {
       .monospacedDigit()
       .padding(.horizontal, 6)
       .padding(.vertical, 2)
-      .background(Color.secondary.opacity(0.12), in: Capsule())
+      .background(LayoutConfig.neutralFillColor, in: Capsule())
       .foregroundColor(.secondary)
       .lineLimit(1)
   }

@@ -33,7 +33,7 @@
     private static let bottomBarHideOffset: CGFloat = 380
 
     private var animation: Animation {
-      .easeInOut(duration: 0.2)
+      .appCurve(0.2)
     }
 
     // Bar visibility: opacity rides a quick curve while the slide springs, so a
@@ -123,6 +123,7 @@
               Image(systemName: "xmark")
                 .contentShape(Circle())
             }
+            .accessibilityLabel(Text("Close"))
             .buttonBorderShape(.circle)
             .controlSize(.large)
             .readerControlButtonStyle()
@@ -174,6 +175,7 @@
                 .padding(4)
                 .contentShape(Circle())
             }
+            .accessibilityLabel(Text("Current Reading Options"))
             .buttonBorderShape(.circle)
             .controlSize(.large)
             .readerControlButtonStyle()

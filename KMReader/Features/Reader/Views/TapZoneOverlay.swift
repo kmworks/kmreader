@@ -25,7 +25,7 @@ struct TapZoneOverlay: View {
     )
     .opacity(showsOverlay ? 1.0 : 0.0)
     .allowsHitTesting(false)
-    .animation(.default, value: showsOverlay)
+    .animation(.appCurve(), value: showsOverlay)
   }
 }
 

@@ -20,6 +20,12 @@ struct LayoutConfig {
   /// the two-column layout).
   static let detailWideLayoutMinimumWidth: CGFloat = 960
 
+  /// Neutral fill for quiet chips, capsules, and row backgrounds (detail-page
+  /// chips, action cards, membership rows, count badges).
+  static var neutralFillColor: Color {
+    Color.secondary.opacity(0.12)
+  }
+
   /// Card width for the medium browse grid (library/series/books/read
   /// lists/collections): one notch below the large grid. The iOS value is
   /// calibrated so any full-size iPhone (>=390pt) fits 3 columns (3x108 +

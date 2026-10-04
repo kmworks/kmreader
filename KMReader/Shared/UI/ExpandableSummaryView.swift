@@ -83,7 +83,6 @@ struct ExpandableSummaryView: View {
       Text(summary)
         .foregroundColor(.primary)
         .lineLimit(isExpanded ? nil : collapsedLineLimit)
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
         .textSelectionIfAvailable()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(

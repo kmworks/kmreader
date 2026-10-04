@@ -198,9 +198,9 @@ struct LoginView: View {
           .transition(.opacity)
       }
     }
-    .animation(.default, value: authMethod)
-    .animation(.easeInOut(duration: 0.2), value: loginErrorMessage)
-    .animation(.easeInOut(duration: 0.2), value: probeState)
+    .animation(.appCurve(), value: authMethod)
+    .animation(.appCurve(0.2), value: loginErrorMessage)
+    .animation(.appCurve(0.2), value: probeState)
   }
 
   private var serverURLField: some View {
@@ -237,7 +237,7 @@ struct LoginView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(usesHTTPS ? "HTTPS" : "HTTP")
       }
-      .animation(.easeInOut(duration: 0.15), value: usesHTTPS)
+      .animation(.appCurve(0.15), value: usesHTTPS)
     }
   }
 
@@ -432,7 +432,7 @@ struct LoginView: View {
 
   private func setLoginErrorMessage(_ message: String?) {
     guard loginErrorMessage != message else { return }
-    withAnimation(.easeInOut(duration: 0.2)) {
+    withAnimation(.appCurve(0.2)) {
       loginErrorMessage = message
     }
   }

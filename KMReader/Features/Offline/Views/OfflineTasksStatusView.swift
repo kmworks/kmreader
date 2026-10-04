@@ -66,7 +66,7 @@ struct OfflineTasksStatusView: View {
     }
     .padding(.horizontal, 8)
     .padding(.vertical, 4)
-    .background(Color.secondary.opacity(0.15), in: Capsule())
+    .background(LayoutConfig.neutralFillColor, in: Capsule())
     .foregroundColor(.secondary)
   }
 

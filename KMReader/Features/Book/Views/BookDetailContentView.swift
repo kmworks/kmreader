@@ -185,58 +185,7 @@ struct BookDetailContentView: View {
 
       DetailChipFlow(items: linkItems, collapsedLimit: collapsedLinkLimit)
 
-      // book media info
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Media Information")
-          .font(.headline)
-
-        VStack(alignment: .leading, spacing: 6) {
-          HStack {
-            Image(systemName: "doc.text.magnifyingglass")
-              .font(.caption)
-              .foregroundColor(.secondary)
-              .frame(minWidth: 16)
-            Text(book.media.mediaType.uppercased())
-              .font(.caption)
-              .textSelectionIfAvailable()
-            Spacer()
-          }
-
-          HStack {
-            Image(systemName: "internaldrive")
-              .font(.caption)
-              .foregroundColor(.secondary)
-              .frame(minWidth: 16)
-            Text(book.size)
-              .font(.caption)
-              .textSelectionIfAvailable()
-            Spacer()
-          }
-
-          HStack(alignment: .top) {
-            Image(systemName: "folder")
-              .font(.caption)
-              .foregroundColor(.secondary)
-              .frame(minWidth: 16)
-            Text(book.url)
-              .font(.caption)
-              .textSelectionIfAvailable()
-            Spacer()
-          }
-
-          if let comment = book.media.localizedComment {
-            VStack(alignment: .leading, spacing: 2) {
-              Image(systemName: "exclamationmark.triangle")
-                .font(.caption)
-                .foregroundColor(.orange)
-              Text(comment)
-                .font(.caption)
-                .foregroundColor(.red)
-                .textSelectionIfAvailable()
-            }
-          }
-        }
-      }
+      BookMediaInfoSection(book: book)
     }
     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { contentWidth = $0 }
   }

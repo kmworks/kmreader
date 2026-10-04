@@ -14,7 +14,7 @@ struct LibraryBrowseView: View {
   let authViewModel: AuthViewModel
 
   @AppStorage("currentAccount") private var current: Current = .init()
-  @State private var libraries: [SidebarLibraryItem] = []
+  @State private var scopeStore = LibraryScopeStore()
   @State private var showLibraryPicker = false
 
   var body: some View {
@@ -22,7 +22,7 @@ struct LibraryBrowseView: View {
       #if os(iOS)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            LibraryScopeToolbarButton(libraries: libraries, isPresented: $showLibraryPicker)
+            LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
           }
         }
       #endif
@@ -30,35 +30,13 @@ struct LibraryBrowseView: View {
         LibraryPickerSheet()
       }
       .task(id: current.instanceId) {
-        await refreshLibraries()
+        await scopeStore.refresh(instanceId: current.instanceId)
       }
       .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
         guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
         Task {
-          await loadLibraries()
+          await scopeStore.load(instanceId: current.instanceId)
         }
       }
-  }
-
-  private func refreshLibraries() async {
-    do {
-      let loaded = try await LibraryScopeLoader.refresh(instanceId: current.instanceId)
-      if libraries != loaded {
-        libraries = loaded
-      }
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
-  }
-
-  private func loadLibraries() async {
-    do {
-      let loaded = try await LibraryScopeLoader.load(instanceId: current.instanceId)
-      if libraries != loaded {
-        libraries = loaded
-      }
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
   }
 }

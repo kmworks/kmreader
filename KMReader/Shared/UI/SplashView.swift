@@ -183,7 +183,7 @@ struct SplashView: View {
     }
     .onAppear {
       if !isVisible {
-        withAnimation(.spring(response: 0.8, dampingFraction: 0.7, blendDuration: 0)) {
+        withAnimation(.appSpring) {
           isVisible = true
         }
       }
@@ -198,7 +198,7 @@ struct SplashView: View {
       messageRotationTask = Task {
         while !Task.isCancelled {
           try? await Task.sleep(nanoseconds: 2_000_000_000)
-          withAnimation(.easeInOut(duration: 0.5)) {
+          withAnimation(.appCurve(0.5)) {
             loadingMessageIndex = (loadingMessageIndex + 1) % loadingMessages.count
           }
         }

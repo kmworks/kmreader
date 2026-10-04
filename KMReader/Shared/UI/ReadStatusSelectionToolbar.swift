@@ -15,31 +15,13 @@ struct ReadStatusSelectionToolbar: View {
   let onMarkUnread: () -> Void
   let onCancel: () -> Void
 
-  var selectAllLabel: String {
-    selectedCount == totalCount
-      ? String(localized: "Deselect All")
-      : String(localized: "Select All")
-  }
-
-  var selectAllImage: String {
-    selectedCount == totalCount ? "checkmark.circle.fill" : "checkmark.circle"
-  }
-
   var submitDisabled: Bool {
     isSubmitting || selectedCount == 0
   }
 
   var body: some View {
     HStack(spacing: 12) {
-      Button {
-        withAnimation {
-          onSelectAll()
-        }
-      } label: {
-        Label(selectAllLabel, systemImage: selectAllImage)
-          .font(.footnote)
-      }
-      .adaptiveButtonStyle(.bordered)
+      SelectAllButton(selectedCount: selectedCount, totalCount: totalCount, action: onSelectAll)
 
       Spacer()
 

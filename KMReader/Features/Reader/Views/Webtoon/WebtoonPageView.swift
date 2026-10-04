@@ -47,7 +47,7 @@
               renderConfig: renderConfig,
               onClose: {
                 viewModel.isZoomed = false
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.appCurve(0.2)) {
                   self.zoomTargetPageID = nil
                   self.zoomAnchor = nil
                   self.zoomRequestID = nil
@@ -65,7 +65,7 @@
       guard zoomTargetPageID == nil else { return }
       guard viewModel.page(for: pageID) != nil else { return }
 
-      withAnimation(.easeInOut(duration: 0.2)) {
+      withAnimation(.appCurve(0.2)) {
         zoomTargetPageID = pageID
         zoomAnchor = anchor
         zoomRequestID = UUID()

@@ -25,7 +25,7 @@ final class ShimmerClock {
   func retain() {
     retainCount += 1
     guard retainCount == 1 else { return }
-    withAnimation(.easeOut(duration: Self.period).repeatForever(autoreverses: false)) {
+    withAnimation(.appCurve(Self.period).repeatForever(autoreverses: false)) {
       phase = 1
     }
   }

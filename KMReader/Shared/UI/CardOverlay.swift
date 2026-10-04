@@ -51,6 +51,9 @@ struct UnreadCountBadge: View {
       .foregroundStyle(.white)
       .padding(.horizontal, size * 0.6)
       .padding(.vertical, size * 0.35)
+      .accessibilityLabel(
+        Text(String.localizedStringWithFormat(String(localized: "%lld unread"), count))
+      )
       .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
         measuredHeight = height
       }
@@ -107,6 +110,7 @@ struct CompletedIndicator: View {
         )
         .fill(Color(white: 0.12))
       )
+      .accessibilityLabel(Text("Completed"))
   }
 }
 

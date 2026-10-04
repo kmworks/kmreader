@@ -13,16 +13,6 @@ struct SelectionToolbar: View {
   let onDelete: () -> Void
   let onCancel: () -> Void
 
-  var selectAllLabel: String {
-    selectedCount == totalCount
-      ? String(localized: "Deselect All")
-      : String(localized: "Select All")
-  }
-
-  var selectAllImage: String {
-    selectedCount == totalCount ? "checkmark.circle.fill" : "checkmark.circle"
-  }
-
   var deleteLabel: String {
     selectedCount == 0
       ? String(localized: "Delete")
@@ -37,15 +27,7 @@ struct SelectionToolbar: View {
 
   var body: some View {
     HStack {
-      Button {
-        withAnimation {
-          onSelectAll()
-        }
-      } label: {
-        Label(selectAllLabel, systemImage: selectAllImage)
-          .font(.footnote)
-      }
-      .adaptiveButtonStyle(.bordered)
+      SelectAllButton(selectedCount: selectedCount, totalCount: totalCount, action: onSelectAll)
 
       Button(role: .destructive) {
         if selectedCount > 0 {

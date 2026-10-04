@@ -74,7 +74,7 @@ struct ServerRowView: View {
     }
     .adaptiveButtonStyle(.plain)
     .allowsHitTesting(!(isActive || isGlobalSwitching))
-    .animation(.default, value: isActive)
+    .animation(.appCurve(), value: isActive)
     #if os(iOS) || os(macOS)
       .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
       .listRowSeparator(.hidden)

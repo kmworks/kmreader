@@ -174,7 +174,7 @@ struct SeriesDetailView: View {
                 }
 
                 if item != nil {
-                  SeriesCollectionsSection(collections: collections)
+                  DetailMembershipSection(collections: collections)
                 }
               }
               .padding(.horizontal)
@@ -772,7 +772,7 @@ extension SeriesDetailView {
       isResolvingReadingTarget = false
       return
     }
-    withAnimation(.easeInOut(duration: 0.25)) {
+    withAnimation(.appCurve(0.25)) {
       updateReadingTarget(book, instanceId: instanceId, isOffline: offline)
       isResolvingReadingTarget = false
     }

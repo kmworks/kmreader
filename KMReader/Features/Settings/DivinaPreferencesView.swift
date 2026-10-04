@@ -70,7 +70,48 @@ struct DivinaPreferencesView: View {
   private var doubleTapZoomEnabled: Binding<Bool> {
     Binding(
       get: { doubleTapZoomMode.isEnabled },
-      set: { doubleTapZoomMode = $0 ? .enabled : .disabled }
+      set: { newValue in
+        withAnimation(.appCurve()) {
+          doubleTapZoomMode = newValue ? .enabled : .disabled
+        }
+      }
+    )
+  }
+
+  // Animated at the mutation point so only the dependent sections animate.
+  private var readDirectionSelection: Binding<ReadingDirection> {
+    Binding(
+      get: { readDirection },
+      set: { newValue in
+        withAnimation(.appCurve()) { readDirection = newValue }
+      }
+    )
+  }
+
+  private var forceDefaultReadingDirectionSelection: Binding<Bool> {
+    Binding(
+      get: { forceDefaultReadingDirection },
+      set: { newValue in
+        withAnimation(.appCurve()) { forceDefaultReadingDirection = newValue }
+      }
+    )
+  }
+
+  private var tapZoneModeSelection: Binding<TapZoneMode> {
+    Binding(
+      get: { tapZoneMode },
+      set: { newValue in
+        withAnimation(.appCurve()) { tapZoneMode = newValue }
+      }
+    )
+  }
+
+  private var imageUpscalingModeSelection: Binding<ReaderImageUpscalingMode> {
+    Binding(
+      get: { imageUpscalingMode },
+      set: { newValue in
+        withAnimation(.appCurve()) { imageUpscalingMode = newValue }
+      }
     )
   }
 
@@ -78,7 +119,7 @@ struct DivinaPreferencesView: View {
     Form {
       Section(header: Text("Default Reading Options")) {
         VStack(alignment: .leading, spacing: 8) {
-          Picker("Preferred Direction", selection: $readDirection) {
+          Picker("Preferred Direction", selection: readDirectionSelection) {
             ForEach(ReadingDirection.availableCases, id: \.self) { direction in
               Label(direction.displayName, systemImage: direction.icon)
                 .tag(direction)
@@ -90,7 +131,7 @@ struct DivinaPreferencesView: View {
             .foregroundColor(.secondary)
         }
 
-        Toggle(isOn: $forceDefaultReadingDirection) {
+        Toggle(isOn: forceDefaultReadingDirectionSelection) {
           VStack(alignment: .leading, spacing: 4) {
             Text("Force Default Reading Direction")
             Text("Ignore book and series metadata and always use the preferred direction")
@@ -252,7 +293,7 @@ struct DivinaPreferencesView: View {
         #if os(iOS) || os(macOS)
           VStack(alignment: .leading, spacing: 8) {
             TapZoneModePicker(
-              selection: $tapZoneMode,
+              selection: tapZoneModeSelection,
               tapZoneInversionMode: tapZoneInversionMode,
               readingDirection: readDirection
             )
@@ -360,7 +401,7 @@ struct DivinaPreferencesView: View {
           }
 
           VStack(alignment: .leading, spacing: 8) {
-            Picker("Waifu2x Mode", selection: $imageUpscalingMode) {
+            Picker("Waifu2x Mode", selection: imageUpscalingModeSelection) {
               ForEach(ReaderImageUpscalingMode.allCases, id: \.self) { mode in
                 Text(mode.displayName).tag(mode)
               }
@@ -454,13 +495,6 @@ struct DivinaPreferencesView: View {
       #endif
 
     }
-    .animation(.default, value: tapZoneMode)
-    .animation(.default, value: doubleTapZoomMode)
-    .animation(.default, value: imageUpscalingMode)
-    .animation(.default, value: divinaPageBorderCropMode)
-    .animation(.default, value: pageTransitionStyle)
-    .animation(.default, value: forceDefaultReadingDirection)
-    .animation(.default, value: readDirection)
     .formStyle(.grouped)
     .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.divinaReader.title)

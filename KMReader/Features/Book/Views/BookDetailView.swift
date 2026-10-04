@@ -57,7 +57,7 @@ struct BookDetailView: View {
           )
 
           if item != nil {
-            BookReadListsSection(readLists: readLists)
+            DetailMembershipSection(readLists: readLists)
           }
         } else if hasError {
           ContentUnavailableView {

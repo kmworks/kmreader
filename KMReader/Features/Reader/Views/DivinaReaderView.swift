@@ -1086,7 +1086,7 @@ struct DivinaReaderView: View {
     )
     .opacity(showKeyboardHelp ? 1.0 : 0.0)
     .allowsHitTesting(showKeyboardHelp && keyboardHelpOverlayIsInteractive)
-    .animation(.default, value: showKeyboardHelp)
+    .animation(.appCurve(), value: showKeyboardHelp)
   }
 
   private var keyboardHelpOverlayIsInteractive: Bool {

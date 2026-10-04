@@ -1035,7 +1035,7 @@
       )
       .opacity(showKeyboardHelp ? 1.0 : 0.0)
       .allowsHitTesting(showKeyboardHelp)
-      .animation(.default, value: showKeyboardHelp)
+      .animation(.appCurve(), value: showKeyboardHelp)
     }
 
     #if os(macOS)

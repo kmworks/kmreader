@@ -37,7 +37,7 @@ struct BrowseView: View {
   @State private var showLibraryPicker = false
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
-  @State private var scopeLibraries: [SidebarLibraryItem] = []
+  @State private var scopeStore = LibraryScopeStore()
   @FocusState private var isSearchFocused: Bool
 
   init(
@@ -103,11 +103,11 @@ struct BrowseView: View {
         if librarySelection == nil && !libraryTab {
           #if os(macOS)
             ToolbarItem(placement: .navigation) {
-              LibraryScopeToolbarButton(libraries: scopeLibraries, isPresented: $showLibraryPicker)
+              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
             }
           #else
             ToolbarItem(placement: .cancellationAction) {
-              LibraryScopeToolbarButton(libraries: scopeLibraries, isPresented: $showLibraryPicker)
+              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
             }
           #endif
         }
@@ -128,12 +128,12 @@ struct BrowseView: View {
         SavedFiltersView(filterType: effectiveContent == .series ? .series : .books)
       }
       .task(id: current.instanceId) {
-        await refreshScopeLibraries()
+        await scopeStore.refresh(instanceId: current.instanceId)
       }
       .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
         guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
         Task {
-          await loadScopeLibraries()
+          await scopeStore.load(instanceId: current.instanceId)
         }
       }
     #endif
@@ -175,27 +175,5 @@ struct BrowseView: View {
 
   private func refreshBrowse() {
     refreshTrigger = UUID()
-  }
-
-  private func refreshScopeLibraries() async {
-    do {
-      let loaded = try await LibraryScopeLoader.refresh(instanceId: current.instanceId)
-      if scopeLibraries != loaded {
-        scopeLibraries = loaded
-      }
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
-  }
-
-  private func loadScopeLibraries() async {
-    do {
-      let loaded = try await LibraryScopeLoader.load(instanceId: current.instanceId)
-      if scopeLibraries != loaded {
-        scopeLibraries = loaded
-      }
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
   }
 }
