@@ -128,6 +128,7 @@ struct OfflineView: View {
         browseContentView
       }
     }
+    .inlineLargeBarTitleStyle(enabled: librarySelection == nil)
     .platformNavigationTitle(title)
     .searchable(text: $searchQuery, placement: searchPlacement)
     #if os(iOS) || os(macOS)
@@ -144,17 +145,36 @@ struct OfflineView: View {
         }
       }
       .toolbar {
-        if librarySelection == nil {
-          #if os(macOS)
+        #if os(iOS)
+          if librarySelection == nil && !PlatformHelper.isPad, #available(iOS 26.0, *) {
+            ToolbarItem(placement: .largeTitle) {
+              InlineLargeBarTitle(title: title)
+            }
+          }
+        #endif
+        #if os(macOS)
+          if librarySelection == nil {
             ToolbarItem(placement: .navigation) {
               LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
             }
-          #else
-            ToolbarItem(placement: .cancellationAction) {
-              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+          }
+        #endif
+        #if os(iOS)
+          if librarySelection == nil {
+            if PlatformHelper.isPad {
+              ToolbarItem(placement: .cancellationAction) {
+                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              }
+            } else {
+              ToolbarItem(placement: .confirmationAction) {
+                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              }
+              if #available(iOS 26.0, *) {
+                ToolbarSpacer(.fixed, placement: .confirmationAction)
+              }
             }
-          #endif
-        }
+          }
+        #endif
         ToolbarItem(placement: .confirmationAction) {
           BrowseActionsMenu(
             layoutMode: browseLayoutBinding,
