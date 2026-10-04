@@ -9,17 +9,20 @@ struct ReaderUnavailableView: View {
   let icon: String
   let title: LocalizedStringKey
   let message: String?
+  let onRetry: (() -> Void)?
   let onClose: () -> Void
 
   init(
     icon: String,
     title: LocalizedStringKey,
     message: String? = nil,
+    onRetry: (() -> Void)? = nil,
     onClose: @escaping () -> Void
   ) {
     self.icon = icon
     self.title = title
     self.message = message
+    self.onRetry = onRetry
     self.onClose = onClose
   }
 
@@ -40,15 +43,29 @@ struct ReaderUnavailableView: View {
         }
       }
 
-      Button {
-        onClose()
-      } label: {
-        Label("Close", systemImage: "xmark.circle.fill")
-          .font(.headline)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 8)
+      HStack(spacing: 12) {
+        if let onRetry {
+          Button {
+            onRetry()
+          } label: {
+            Label("Retry", systemImage: "arrow.clockwise")
+              .font(.headline)
+              .padding(.horizontal, 16)
+              .padding(.vertical, 8)
+          }
+          .adaptiveButtonStyle(.borderedProminent)
+        }
+
+        Button {
+          onClose()
+        } label: {
+          Label("Close", systemImage: "xmark.circle.fill")
+            .font(.headline)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+        .adaptiveButtonStyle(onRetry == nil ? .borderedProminent : .bordered)
       }
-      .adaptiveButtonStyle(.borderedProminent)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .padding()

@@ -117,6 +117,7 @@ import SwiftUI
                         .foregroundStyle(.tertiary)
                     }
                   }
+                  .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
               }

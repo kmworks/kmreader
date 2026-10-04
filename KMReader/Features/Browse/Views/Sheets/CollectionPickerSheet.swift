@@ -58,9 +58,11 @@ struct CollectionPickerSheet: View {
         if isLoading && collections.isEmpty {
           LoadingIcon()
             .frame(maxWidth: .infinity)
-        } else if filteredCollections.isEmpty && searchText.isEmpty {
+        } else if collections.isEmpty {
           Text("No collections found")
             .foregroundColor(.secondary)
+        } else if filteredCollections.isEmpty {
+          ContentUnavailableView.search(text: searchText)
         } else {
           Section {
             ForEach(collectionItems) { item in

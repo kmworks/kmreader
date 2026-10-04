@@ -26,8 +26,24 @@
 
     @Namespace private var progressBarNamespace
 
+    private static let scrimExtensionHeight: CGFloat = 120
+    private static let topScrimPeakOpacity: Double = 0.65
+    private static let bottomScrimPeakOpacity: Double = 0.7
+    private static let topBarHideOffset: CGFloat = 300
+    private static let bottomBarHideOffset: CGFloat = 380
+
     private var animation: Animation {
       .easeInOut(duration: 0.2)
+    }
+
+    // Bar visibility: opacity rides a quick curve while the slide springs, so a
+    // gesture-driven toggle inherits velocity instead of easing uniformly.
+    private var visibilityAnimation: Animation {
+      .appCurve(0.3)
+    }
+
+    private var controlsOpacity: Double {
+      controlsVisible ? 1 : 0
     }
 
     private var progress: Double {
@@ -51,28 +67,20 @@
         hiddenProgressLayer
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .animation(animation, value: controlsVisible)
-      .animation(animation, value: showProgressBarWhileReading)
+      .animation(visibilityAnimation, value: controlsVisible)
+      .animation(visibilityAnimation, value: showProgressBarWhileReading)
       .allowsHitTesting(controlsVisible)
-    }
-
-    private var bottomControlsTransition: AnyTransition {
-      guard showProgressBarWhileReading else {
-        return .move(edge: .bottom).combined(with: .opacity)
-      }
-      return .opacity
     }
 
     @ViewBuilder
     private var topControlsLayer: some View {
       VStack(spacing: 0) {
-        if controlsVisible {
-          topBar
-            .transition(
-              .move(edge: .top)
-                .combined(with: .opacity)
-            )
-        }
+        topBar
+          .offset(y: controlsVisible ? 0 : -Self.topBarHideOffset)
+          .animation(.appSpring, value: controlsVisible)
+          .opacity(controlsOpacity)
+          .animation(visibilityAnimation, value: controlsOpacity)
+          .accessibilityHidden(!controlsVisible)
 
         Spacer(minLength: 0)
       }
@@ -80,9 +88,20 @@
 
     @ViewBuilder
     private var bottomControlsLayer: some View {
-      if controlsVisible {
+      if showProgressBarWhileReading {
+        // Kept conditional so the always-on mini progress bar keeps its
+        // matched-geometry morph against the full bar.
+        if controlsVisible {
+          visibleBottomOverlayBar
+            .transition(.opacity)
+        }
+      } else {
         visibleBottomOverlayBar
-          .transition(bottomControlsTransition)
+          .offset(y: controlsVisible ? 0 : Self.bottomBarHideOffset)
+          .animation(.appSpring, value: controlsVisible)
+          .opacity(controlsOpacity)
+          .animation(visibilityAnimation, value: controlsOpacity)
+          .accessibilityHidden(!controlsVisible)
       }
     }
 
@@ -95,86 +114,114 @@
     }
 
     private var topBar: some View {
-      HStack {
-        #if !os(macOS)
-          Button {
-            onDismiss()
-          } label: {
-            Image(systemName: "xmark")
-              .contentShape(Circle())
-          }
-          .buttonBorderShape(.circle)
-          .controlSize(.large)
-          .readerControlButtonStyle()
-        #endif
-
-        Spacer()
-
-        if !titleText.isEmpty {
-          Button {
-            guard currentBook != nil else { return }
-            showingDetailSheet = true
-          } label: {
-            HStack(spacing: 4) {
-              if incognito {
-                Image(systemName: "eye.slash.fill")
-                  .font(.callout)
-              }
-
-              if let subtitleText {
-                VStack(alignment: incognito ? .leading : .center, spacing: 4) {
-                  Text(titleText)
-                    .lineLimit(1)
-                  Text(subtitleText)
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                    .lineLimit(1)
-                }
-              } else {
-                Text(titleText)
-                  .lineLimit(2)
-              }
+      VStack(spacing: 0) {
+        HStack {
+          #if !os(macOS)
+            Button {
+              onDismiss()
+            } label: {
+              Image(systemName: "xmark")
+                .contentShape(Circle())
             }
-            .padding(.vertical, 2)
-            .padding(.horizontal)
-            .readerHeaderTitleControlFrame()
-            .contentShape(Capsule())
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .readerControlButtonStyle()
+          #endif
+
+          Spacer()
+
+          if !titleText.isEmpty {
+            Button {
+              guard currentBook != nil else { return }
+              showingDetailSheet = true
+            } label: {
+              HStack(spacing: 4) {
+                if incognito {
+                  Image(systemName: "eye.slash.fill")
+                    .font(.callout)
+                }
+
+                if let subtitleText {
+                  VStack(alignment: incognito ? .leading : .center, spacing: 4) {
+                    Text(titleText)
+                      .lineLimit(1)
+                    Text(subtitleText)
+                      .foregroundStyle(.secondary)
+                      .font(.caption)
+                      .lineLimit(1)
+                  }
+                } else {
+                  Text(titleText)
+                    .lineLimit(2)
+                }
+              }
+              .padding(.vertical, 2)
+              .padding(.horizontal)
+              .readerHeaderTitleControlFrame()
+              .contentShape(Capsule())
+            }
+            .optimizedControlSize()
+            .readerControlButtonStyle()
           }
-          .optimizedControlSize()
-          .readerControlButtonStyle()
+
+          Spacer()
+
+          #if !os(macOS)
+            Menu {
+              menuContent()
+            } label: {
+              Image(systemName: "ellipsis")
+                .padding(4)
+                .contentShape(Circle())
+            }
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .readerControlButtonStyle()
+          #endif
         }
+        .allowsHitTesting(true)
+        .padding()
+        .iPadIgnoresSafeArea(paddingTop: 24)
+        .contentShape(Rectangle())
 
-        Spacer()
-
-        #if !os(macOS)
-          Menu {
-            menuContent()
-          } label: {
-            Image(systemName: "ellipsis")
-              .padding(4)
-              .contentShape(Circle())
-          }
-          .buttonBorderShape(.circle)
-          .controlSize(.large)
-          .readerControlButtonStyle()
-        #endif
+        if showGradientBackground {
+          Color.clear
+            .frame(height: Self.scrimExtensionHeight)
+            .allowsHitTesting(false)
+        }
       }
-      .allowsHitTesting(true)
-      .padding()
-      .iPadIgnoresSafeArea(paddingTop: 24)
       .background {
-        gradientBackground(startPoint: .top, endPoint: .bottom)
-          .ignoresSafeArea(edges: .top)
+        gradientBackground(
+          startPoint: .top,
+          endPoint: .bottom,
+          peakOpacity: Self.topScrimPeakOpacity
+        )
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
       }
     }
 
     private var visibleBottomOverlayBar: some View {
-      bottomOverlayContent(showPageButton: true)
-        .padding()
-        .background {
-          gradientBackground(startPoint: .bottom, endPoint: .top)
-            .ignoresSafeArea(edges: .bottom)
+      VStack(spacing: 0) {
+        if showGradientBackground {
+          Color.clear
+            .frame(height: Self.scrimExtensionHeight)
+            .allowsHitTesting(false)
         }
+
+        bottomOverlayContent(showPageButton: true)
+          .padding()
+          .contentShape(Rectangle())
+      }
+      .background {
+        gradientBackground(
+          startPoint: .bottom,
+          endPoint: .top,
+          peakOpacity: Self.bottomScrimPeakOpacity
+        )
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+      }
     }
 
     private var hiddenProgressBar: some View {
@@ -208,11 +255,14 @@
                 Image(systemName: "bookmark")
                 Text("\(displayedCurrentPage) / \(pageCount)")
                   .monospacedDigit()
+                  .contentTransition(.numericText())
               }
               .contentShape(Capsule())
             }
             .readerControlButtonStyle()
             .disabled(pageCount <= 0)
+            .animation(animation, value: displayedCurrentPage)
+            .animation(animation, value: pageCount)
 
             Spacer(minLength: 0)
           }
@@ -317,14 +367,15 @@
     @ViewBuilder
     private func gradientBackground(
       startPoint: UnitPoint,
-      endPoint: UnitPoint
+      endPoint: UnitPoint,
+      peakOpacity: Double
     ) -> some View {
       if showGradientBackground {
         LinearGradient(
-          gradient: Gradient(colors: [
-            Color.black.opacity(0.72),
-            Color.black.opacity(0.44),
-            Color.clear,
+          gradient: Gradient(stops: [
+            .init(color: Color.black.opacity(peakOpacity), location: 0),
+            .init(color: Color.black.opacity(peakOpacity * 0.45), location: 0.55),
+            .init(color: Color.clear, location: 1),
           ]),
           startPoint: startPoint,
           endPoint: endPoint

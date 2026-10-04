@@ -35,7 +35,10 @@ struct DashboardCardKindMenu: View {
       } label: {
         Image(systemName: "rectangle.3.group")
           .foregroundStyle(.secondary)
+          .frame(minWidth: 28, minHeight: 28)
+          .contentShape(Rectangle())
       }
+      .accessibilityLabel(Text(String(localized: "settings.dashboard.cardKindMenu.title")))
     }
   }
 }

@@ -797,8 +797,14 @@ struct DivinaReaderView: View {
         loadedReaderContent(useDualPage: useDualPage, screenSize: screenSize)
           .readerLoadingContent(isVisible: showsLoadedContent)
       } else if !viewModel.isLoading {
-        NoPagesView(onDismiss: { closeReader() })
-          .transition(ReaderLoadingTransition.content)
+        ReaderUnavailableView(
+          icon: "exclamationmark.triangle",
+          title: "No Pages Available",
+          message: String(
+            localized: "Unable to load pages for this book. This format may not be supported."),
+          onClose: closeReader
+        )
+        .transition(ReaderLoadingTransition.content)
       }
 
       if viewModel.isLoading {

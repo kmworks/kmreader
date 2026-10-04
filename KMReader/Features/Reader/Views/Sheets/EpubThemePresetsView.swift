@@ -84,8 +84,11 @@ struct EpubThemePresetsView: View {
       } label: {
         Image(systemName: "arrowshape.turn.up.forward")
           .foregroundColor(.primary)
+          .frame(minWidth: 44, minHeight: 44)
+          .contentShape(Rectangle())
       }
       .adaptiveButtonStyle(.plain)
+      .accessibilityLabel(Text("Apply Preset"))
     }
     #if os(iOS) || os(macOS)
       .swipeActions(edge: .trailing, allowsFullSwipe: false) {

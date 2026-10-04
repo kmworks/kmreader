@@ -316,8 +316,11 @@ struct OfflineTaskRow: View {
             } label: {
               Image(systemName: "arrow.clockwise.circle")
                 .foregroundColor(.primary)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .adaptiveButtonStyle(.plain)
+            .accessibilityLabel(Text("Retry"))
           }
 
           Button(role: .destructive) {
@@ -330,8 +333,11 @@ struct OfflineTaskRow: View {
           } label: {
             Image(systemName: task.isFailed ? "trash" : "xmark.circle")
               .foregroundColor(.red)
+              .frame(minWidth: 44, minHeight: 44)
+              .contentShape(Rectangle())
           }
           .adaptiveButtonStyle(.plain)
+          .accessibilityLabel(Text(task.isFailed ? String(localized: "Delete") : String(localized: "Cancel Download")))
         }
       #endif
     }

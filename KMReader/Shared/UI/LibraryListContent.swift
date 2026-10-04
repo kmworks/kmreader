@@ -78,21 +78,17 @@ struct LibraryListContent: View {
         }
       } else if libraries.isEmpty {
         Section {
-          VStack(spacing: 12) {
-            Image(systemName: ContentIcon.library)
-              .font(.largeTitle)
-              .foregroundColor(.secondary)
-            Text(String(localized: "No libraries found"))
-              .font(.headline)
+          ContentUnavailableView {
+            Label(String(localized: "No libraries found"), systemImage: ContentIcon.library)
+          } description: {
             Text(String(localized: "Add a library from Komga's web interface to manage it here."))
-              .font(.caption)
-              .foregroundColor(.secondary)
-              .multilineTextAlignment(.center)
+          } actions: {
             Button(String(localized: "Retry")) {
               Task {
                 await refreshLibraries()
               }
             }
+            .adaptiveButtonStyle(.borderedProminent)
           }
           .frame(maxWidth: .infinity)
           .padding(.vertical, 16)

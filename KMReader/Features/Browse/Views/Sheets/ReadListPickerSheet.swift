@@ -58,9 +58,11 @@ struct ReadListPickerSheet: View {
         if isLoading && readLists.isEmpty {
           LoadingIcon()
             .frame(maxWidth: .infinity)
-        } else if filteredReadLists.isEmpty && searchText.isEmpty {
+        } else if readLists.isEmpty {
           Text("No read lists found")
             .foregroundColor(.secondary)
+        } else if filteredReadLists.isEmpty {
+          ContentUnavailableView.search(text: searchText)
         } else {
           Section {
             ForEach(readListItems) { item in

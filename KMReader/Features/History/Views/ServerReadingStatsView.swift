@@ -145,12 +145,9 @@ struct ServerReadingStatsView: View {
   }
 
   private var emptyState: some View {
-    VStack(spacing: 12) {
-      Image(systemName: "chart.bar.doc.horizontal")
-        .font(.system(size: 36))
-        .foregroundStyle(.secondary)
-      Text(String(localized: "No reading stats available"))
-        .font(.headline)
+    ContentUnavailableView {
+      Label(String(localized: "No reading stats available"), systemImage: "chart.bar.doc.horizontal")
+    } description: {
       Text(
         shouldShowInitialSyncHint
           ? String(
@@ -158,9 +155,7 @@ struct ServerReadingStatsView: View {
           )
           : String(localized: "Pull to refresh to recalculate reading stats from local data.")
       )
-      .font(.footnote)
-      .foregroundStyle(.secondary)
-      .multilineTextAlignment(.center)
+    } actions: {
       Button {
         Task {
           await reload(forceRefresh: true)
