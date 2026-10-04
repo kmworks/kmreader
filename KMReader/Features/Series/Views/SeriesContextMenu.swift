@@ -402,10 +402,8 @@ struct SeriesContextMenu: View {
 
   private func removeRead() {
     Task {
-      try? await DatabaseOperator.database().removeSeriesReadOffline(
-        seriesId: seriesId, instanceId: current.instanceId
-      )
-      ErrorManager.shared.notify(
+      await OfflineManager.shared.removeSeriesOfflineWithUndo(
+        seriesId: seriesId, instanceId: current.instanceId, readOnly: true,
         message: String(localized: "notification.series.offlineRemoved")
       )
       onMutationCompleted?()
@@ -414,10 +412,8 @@ struct SeriesContextMenu: View {
 
   private func removeAll() {
     Task {
-      try? await DatabaseOperator.database().removeSeriesOffline(
-        seriesId: seriesId, instanceId: current.instanceId
-      )
-      ErrorManager.shared.notify(
+      await OfflineManager.shared.removeSeriesOfflineWithUndo(
+        seriesId: seriesId, instanceId: current.instanceId, readOnly: false,
         message: String(localized: "notification.series.offlineRemoved")
       )
       onMutationCompleted?()

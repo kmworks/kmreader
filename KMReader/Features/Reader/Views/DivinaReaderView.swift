@@ -84,6 +84,7 @@ struct DivinaReaderView: View {
   @State private var webtoonScrollController = WebtoonScrollController()
   @State private var readerSafeAreaTop: CGFloat = 0
   @State private var readerViewHeight: CGFloat = 0
+  @State private var boundaryNudgeOffset: CGFloat = 0
 
   // UI Panels states
   @State private var showingPageJumpSheet = false
@@ -771,6 +772,7 @@ struct DivinaReaderView: View {
         screenSize: screenSize
       )
       .frame(width: screenSize.width, height: screenSize.height)
+      .offset(boundaryNudgeTranslation)
 
       #if os(tvOS)
         tvRemoteCommandOverlay
@@ -1615,6 +1617,7 @@ struct DivinaReaderView: View {
       return false
     }
     viewModel.requestNavigation(toViewItem: adjacentItem)
+    HapticFeedback.light()
     return true
   }
 
@@ -1854,7 +1857,45 @@ struct DivinaReaderView: View {
 
     if !viewModel.requestPagedStep(offset: offset) {
       Task { @MainActor in
-        _ = await navigateAcrossBoundaryIfNeeded(offset: offset)
+        if await !navigateAcrossBoundaryIfNeeded(offset: offset) {
+          performBoundaryNudge(for: step)
+        }
+      }
+    }
+  }
+
+  private var boundaryNudgeTranslation: CGSize {
+    switch readingDirection {
+    case .ltr, .rtl:
+      return CGSize(width: boundaryNudgeOffset, height: 0)
+    case .vertical, .webtoon:
+      return CGSize(width: 0, height: boundaryNudgeOffset)
+    }
+  }
+
+  /// Bump the page a few points along the attempted turn's travel direction
+  /// and back when the turn is denied at the first/last page with no adjacent
+  /// book to continue into.
+  private func performBoundaryNudge(for step: ReaderNavigationStep) {
+    HapticFeedback.light()
+    let sign: CGFloat
+    switch readingDirection {
+    case .ltr:
+      sign = step == .next ? -1 : 1
+    case .rtl:
+      sign = step == .next ? 1 : -1
+    case .vertical:
+      sign = step == .next ? -1 : 1
+    case .webtoon:
+      return
+    }
+    let target = 8 * sign
+    withAnimation(.appCurve(0.09)) {
+      boundaryNudgeOffset = target
+    } completion: {
+      guard boundaryNudgeOffset == target else { return }
+      withAnimation(.appCurve(0.09)) {
+        boundaryNudgeOffset = 0
       }
     }
   }

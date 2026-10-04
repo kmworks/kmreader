@@ -1130,6 +1130,8 @@
       }
 
       func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        scrollView.layer.removeAllAnimations()
+        scrollView.transform = .identity
         pendingUserInteractionTargetItem = nil
         cancelProgrammaticNavigationIfNeeded()
       }
@@ -1144,6 +1146,52 @@
           for: targetContentOffset.pointee,
           in: collectionView
         )
+        performBoundarySwipeFeedbackIfNeeded(velocity: velocity, in: collectionView)
+      }
+
+      /// With bouncing off, a flick past the first/last page has no visible
+      /// answer; nudge the pages a few points along the attempted direction
+      /// and back so the boundary reads as a wall.
+      private func performBoundarySwipeFeedbackIfNeeded(
+        velocity: CGPoint,
+        in collectionView: UICollectionView
+      ) {
+        let items = engine.renderedItems
+        let velocityThreshold: CGFloat = 200
+        let primaryVelocity = parent.mode.isVertical ? velocity.y : velocity.x
+        guard abs(primaryVelocity) > velocityThreshold else { return }
+        guard let currentItem = centeredItem(in: collectionView) ?? engine.committedItem,
+          let currentIndex = items.firstIndex(of: currentItem)
+        else { return }
+
+        let attemptedStep: Int
+        if parent.mode.isVertical {
+          attemptedStep = primaryVelocity < 0 ? 1 : -1
+        } else if parent.mode.isRTL {
+          attemptedStep = primaryVelocity > 0 ? 1 : -1
+        } else {
+          attemptedStep = primaryVelocity < 0 ? 1 : -1
+        }
+        let atBoundary =
+          (attemptedStep == 1 && currentIndex == items.count - 1)
+          || (attemptedStep == -1 && currentIndex == 0)
+        guard atBoundary else { return }
+
+        HapticFeedback.light()
+        let isVertical = parent.mode.isVertical
+        let forwardSign: CGFloat =
+          isVertical ? -1 : (parent.mode.isRTL ? 1 : -1)
+        let distance = 8 * (attemptedStep == 1 ? forwardSign : -forwardSign)
+        UIView.animate(withDuration: 0.09, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+          collectionView.transform =
+            isVertical
+            ? CGAffineTransform(translationX: 0, y: distance)
+            : CGAffineTransform(translationX: distance, y: 0)
+        } completion: { _ in
+          UIView.animate(withDuration: 0.09, delay: 0, options: [.curveEaseInOut, .allowUserInteraction]) {
+            collectionView.transform = .identity
+          }
+        }
       }
 
       func scrollViewDidScroll(_ scrollView: UIScrollView) {

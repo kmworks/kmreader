@@ -8,8 +8,6 @@ import SwiftUI
 struct OfflineBooksView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
 
-  @State private var showRemoveAllAlert = false
-  @State private var showRemoveReadAlert = false
   @State private var isScanning = false
   @State private var snapshot: OfflineDownloadedBooksSnapshot = .empty
   @State private var snapshotReloadToken = 0
@@ -67,7 +65,7 @@ struct OfflineBooksView: View {
                 titleStyle: .numbered,
                 reloadToken: snapshotReloadToken,
                 onDeleteBook: deleteBook,
-                onDeleteBooks: deleteSeries
+                onDeleteBooks: deleteSeriesBooks
               )
             }
 
@@ -79,7 +77,7 @@ struct OfflineBooksView: View {
                 titleStyle: .oneshot,
                 reloadToken: snapshotReloadToken,
                 onDeleteBook: deleteBook,
-                onDeleteBooks: deleteSeries
+                onDeleteBooks: deleteOneshotBooks
               )
             }
           }
@@ -97,28 +95,6 @@ struct OfflineBooksView: View {
         }
       }
     #endif
-    .alert(
-      String(localized: "settings.offline_books.remove_all"),
-      isPresented: $showRemoveAllAlert
-    ) {
-      Button(String(localized: "Cancel"), role: .cancel) {}
-      Button(String(localized: "Delete"), role: .destructive) {
-        removeAllBooks()
-      }
-    } message: {
-      Text(String(localized: "settings.offline_books.remove_all.message"))
-    }
-    .alert(
-      String(localized: "settings.offline_books.remove_read"),
-      isPresented: $showRemoveReadAlert
-    ) {
-      Button(String(localized: "Cancel"), role: .cancel) {}
-      Button(String(localized: "Delete"), role: .destructive) {
-        removeReadBooks()
-      }
-    } message: {
-      Text(String(localized: "settings.offline_books.remove_read.message"))
-    }
     .task(id: current.instanceId) {
       await loadSnapshot()
     }
@@ -133,13 +109,9 @@ struct OfflineBooksView: View {
     OfflineBooksManagementMenu(
       canRemoveReadBooks: canRemoveReadBooks,
       isScanning: isScanning,
-      onRemoveRead: {
-        showRemoveReadAlert = true
-      },
+      onRemoveRead: removeReadBooks,
       onCleanupOrphanedFiles: cleanupOrphanedFiles,
-      onRemoveAll: {
-        showRemoveAllAlert = true
-      }
+      onRemoveAll: removeAllBooks
     )
   }
 
@@ -170,19 +142,32 @@ struct OfflineBooksView: View {
 
   private func deleteBook(_ book: OfflineDownloadedBookItem) {
     Task {
-      await OfflineManager.shared.deleteBookManually(
-        instanceId: book.instanceId, bookId: book.bookId)
+      await OfflineManager.shared.deleteBooksWithUndo(
+        seriesIds: [book.seriesId],
+        instanceId: book.instanceId,
+        bookIds: [book.bookId],
+        message: String(localized: "notification.book.offlineRemoved")
+      )
       await loadSnapshot()
     }
   }
 
-  private func deleteSeries(_ books: [OfflineDownloadedBookItem]) {
+  private func deleteSeriesBooks(_ books: [OfflineDownloadedBookItem]) {
+    deleteBookGroup(books, message: String(localized: "notification.series.offlineRemoved"))
+  }
+
+  private func deleteOneshotBooks(_ books: [OfflineDownloadedBookItem]) {
+    deleteBookGroup(books, message: String(localized: "notification.book.offlineRemoved"))
+  }
+
+  private func deleteBookGroup(_ books: [OfflineDownloadedBookItem], message: String) {
     guard let firstBook = books.first else { return }
     Task {
-      await OfflineManager.shared.deleteBooksManually(
+      await OfflineManager.shared.deleteBooksWithUndo(
         seriesIds: Set(books.map(\.seriesId)),
         instanceId: firstBook.instanceId,
-        bookIds: books.map { $0.bookId }
+        bookIds: books.map { $0.bookId },
+        message: message
       )
       await loadSnapshot()
     }
@@ -190,8 +175,7 @@ struct OfflineBooksView: View {
 
   private func removeAllBooks() {
     Task {
-      await OfflineManager.shared.deleteAllDownloadedBooks()
-      ErrorManager.shared.notify(
+      await OfflineManager.shared.deleteAllDownloadedBooksWithUndo(
         message: String(localized: "notification.offline.booksRemovedAll")
       )
       await loadSnapshot()
@@ -200,8 +184,7 @@ struct OfflineBooksView: View {
 
   private func removeReadBooks() {
     Task {
-      await OfflineManager.shared.deleteReadBooks()
-      ErrorManager.shared.notify(
+      await OfflineManager.shared.deleteReadBooksWithUndo(
         message: String(localized: "notification.offline.booksRemovedRead")
       )
       await loadSnapshot()
@@ -247,13 +230,16 @@ struct OfflineBooksView: View {
       let loadedSnapshot = try await database.fetchOfflineDownloadedBooksSnapshot(
         instanceId: instanceId
       )
-      if snapshot != loadedSnapshot {
+      let pendingBookIds = await OfflineManager.shared.pendingDeletionBookIds(
+        instanceId: instanceId)
+      let visibleSnapshot = loadedSnapshot.filtered(excludingBookIds: pendingBookIds)
+      if snapshot != visibleSnapshot {
         withAnimation {
-          snapshot = loadedSnapshot
+          snapshot = visibleSnapshot
           snapshotReloadToken &+= 1
         }
       }
-      if loadedSnapshot.hasReadBooks {
+      if visibleSnapshot.hasReadBooks {
         await loadReadRemovalAvailability(instanceId: instanceId)
       } else {
         canRemoveReadBooks = false

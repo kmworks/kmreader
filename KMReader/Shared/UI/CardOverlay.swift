@@ -19,18 +19,42 @@ struct UnreadCountBadge: View {
     static let defaultSize: CGFloat = 12
   #endif
 
+  @State private var measuredHeight: CGFloat = 0
+  @State private var bounceScale: CGFloat = 1
+
   init(count: Int, size: CGFloat = defaultSize, cornerRadius: CGFloat = 8) {
     self.count = count
     self.size = size
     self.cornerRadius = cornerRadius
   }
 
+  private var badgeFont: Font {
+    .system(size: size, weight: .semibold, design: .rounded)
+  }
+
+  /// Width is measured with the last digit replaced by the wide digit "8", so
+  /// a change between same-length counts never resizes the badge.
+  private var sizingText: String {
+    String(String(max(count, 0)).dropLast()) + "8"
+  }
+
   var body: some View {
-    Text("\(count)")
-      .font(.system(size: size, weight: .semibold, design: .rounded))
+    Text(sizingText)
+      .font(badgeFont)
+      .opacity(0)
+      .accessibilityHidden(true)
+      .overlay {
+        Text("\(count)")
+          .font(badgeFont)
+          .contentTransition(.numericText())
+      }
       .foregroundStyle(.white)
       .padding(.horizontal, size * 0.6)
       .padding(.vertical, size * 0.35)
+      .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+        measuredHeight = height
+      }
+      .frame(minWidth: measuredHeight)
       .background(
         UnevenRoundedRectangle(
           bottomLeadingRadius: size * 0.65,
@@ -39,6 +63,18 @@ struct UnreadCountBadge: View {
         )
         .fill(Color(white: 0.12))
       )
+      .scaleEffect(bounceScale)
+      .animation(.appCurve(0.2), value: count)
+      .onChange(of: count) { oldValue, newValue in
+        guard newValue > oldValue else { return }
+        withAnimation(.appCurve(0.12), completionCriteria: .removed) {
+          bounceScale = 1.2
+        } completion: {
+          withAnimation(.appCurve(0.12)) {
+            bounceScale = 1
+          }
+        }
+      }
   }
 }
 

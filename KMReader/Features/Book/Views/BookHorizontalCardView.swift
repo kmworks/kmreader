@@ -176,7 +176,8 @@ struct BookHorizontalCardView: View {
         DownloadStatusIcon(
           systemName: icon,
           spinning: item.downloadStatus.isPending,
-          color: metaColor
+          color: metaColor,
+          bookId: item.bookId
         )
         .font(.system(size: accessoryIconSize))
       }

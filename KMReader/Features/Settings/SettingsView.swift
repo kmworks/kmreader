@@ -154,6 +154,7 @@ struct SettingsView: View {
       }
     }
     .formStyle(.grouped)
+    .settingsFormWidth()
     .platformNavigationTitle(String(localized: "title.settings"))
   }
 }

@@ -113,7 +113,8 @@ struct ReadListContinuationHorizontalCardView: View {
         DownloadStatusIcon(
           systemName: icon,
           spinning: continuation.downloadStatus.isPending,
-          color: metaColor
+          color: metaColor,
+          bookId: continuation.bookId
         )
         .font(.system(size: LayoutConfig.horizontalCardAccessoryIconSize))
       }

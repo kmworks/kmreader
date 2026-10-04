@@ -90,6 +90,7 @@ struct SettingsAppearanceView: View {
 
     }
     .formStyle(.grouped)
+    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.appearance.title)
     #if os(iOS)
       .onAppear {

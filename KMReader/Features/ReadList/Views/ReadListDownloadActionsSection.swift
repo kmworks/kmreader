@@ -260,11 +260,8 @@ struct ReadListDownloadActionsSection: View {
 
   private func removeRead() {
     Task {
-      try? await DatabaseOperator.database().removeReadListReadOffline(
-        readListId: readListId,
-        instanceId: current.instanceId
-      )
-      ErrorManager.shared.notify(
+      await OfflineManager.shared.removeReadListOfflineWithUndo(
+        readListId: readListId, instanceId: current.instanceId, readOnly: true,
         message: String(localized: "notification.readList.offlineRemoved")
       )
       onMutationCompleted?()
@@ -284,10 +281,8 @@ struct ReadListDownloadActionsSection: View {
 
   private func removeAll() {
     Task {
-      try? await DatabaseOperator.database().removeReadListOffline(
-        readListId: readListId, instanceId: current.instanceId
-      )
-      ErrorManager.shared.notify(
+      await OfflineManager.shared.removeReadListOfflineWithUndo(
+        readListId: readListId, instanceId: current.instanceId, readOnly: false,
         message: String(localized: "notification.readList.offlineRemoved")
       )
       onMutationCompleted?()

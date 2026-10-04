@@ -12,17 +12,8 @@ import SwiftUI
     var body: some View {
       VStack(alignment: .center) {
         Spacer()
-        ForEach(errorManager.notifications) { notification in
-          Text(notification.message)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 16)
-            .foregroundStyle(.primary)
-            .background(.regularMaterial)
-            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 10)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
+        NotificationToastStack()
       }
-      .animation(.snappy, value: errorManager.notifications)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .padding(.horizontal, 8)
       .padding(.bottom, 64)
@@ -54,17 +45,8 @@ import SwiftUI
     var body: some View {
       VStack(alignment: .center) {
         Spacer()
-        ForEach(errorManager.notifications) { notification in
-          Text(notification.message)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 16)
-            .foregroundStyle(.primary)
-            .background(.regularMaterial)
-            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 10)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
+        NotificationToastStack()
       }
-      .animation(.snappy, value: errorManager.notifications)
       .padding(.horizontal, 8)
       .padding(.bottom, 64)
       .alert(String(localized: "error.title"), isPresented: $errorManager.hasAlert) {
@@ -93,17 +75,8 @@ import SwiftUI
     var body: some View {
       VStack(alignment: .center) {
         Spacer()
-        ForEach(errorManager.notifications) { notification in
-          Text(notification.message)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 16)
-            .foregroundStyle(.primary)
-            .background(.regularMaterial)
-            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 10)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
+        NotificationToastStack()
       }
-      .animation(.default, value: errorManager.notifications)
       .padding(.horizontal, 8)
       .padding(.bottom, 64)
       .alert(String(localized: "error.title"), isPresented: $errorManager.hasAlert) {

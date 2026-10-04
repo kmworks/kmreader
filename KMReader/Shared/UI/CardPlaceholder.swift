@@ -99,6 +99,7 @@ struct CardPlaceholder: View {
     ZStack {
       RoundedRectangle(cornerRadius: cornerRadius)
         .fill(Color.gray.opacity(0.2))
+        .shimmer(cornerRadius: cornerRadius)
 
       if showsTextOverlay {
         CardTextOverlay(cornerRadius: cornerRadius) {
@@ -121,6 +122,7 @@ struct CardPlaceholder: View {
     HStack(alignment: .top, spacing: 12) {
       RoundedRectangle(cornerRadius: cornerRadius)
         .fill(Color.gray.opacity(0.2))
+        .shimmer(cornerRadius: cornerRadius)
         .frame(width: listThumbnailWidth)
         .frame(height: listThumbnailHeight)
 
@@ -215,6 +217,7 @@ struct CardPlaceholder: View {
       .overlay(alignment: .leading) {
         RoundedRectangle(cornerRadius: cornerRadius)
           .fill(Color.gray.opacity(opacity))
+          .shimmer(cornerRadius: cornerRadius)
           .frame(maxWidth: .infinity, alignment: .leading)
           .scaleEffect(x: widthScale, anchor: .leading)
       }

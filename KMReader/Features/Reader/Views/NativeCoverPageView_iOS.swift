@@ -27,6 +27,7 @@
       static let commitDistanceRatio: CGFloat = 0.18
       static let commitVelocityThreshold: CGFloat = 700
       static let gestureAnimationDuration: Double = 0.3
+      static let boundaryFeedbackMinimumOffset: CGFloat = 8
       static let movingShadowOpacity: Double = 0.12
       static let idleShadowOpacity: Double = 0.05
       static let movingShadowRadius: CGFloat = 5
@@ -485,7 +486,11 @@
         }
 
         guard pendingTargetItem != nil else {
-          if abs(dragOffset) > TransitionMetrics.cancelThreshold {
+          if abs(dragOffset) > TransitionMetrics.boundaryFeedbackMinimumOffset {
+            // A rubber-banded drag with no page to land on is a boundary hit.
+            HapticFeedback.light()
+            cancelDragWithAnimation()
+          } else if abs(dragOffset) > TransitionMetrics.cancelThreshold {
             cancelDragWithAnimation()
           } else {
             resetDragStateImmediately()

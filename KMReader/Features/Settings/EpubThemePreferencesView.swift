@@ -340,6 +340,7 @@
 
       }
       .formStyle(.grouped)
+      .settingsFormWidth()
       .animation(.easeInOut(duration: 0.2), value: draft.advancedLayout)
       .animation(.easeInOut(duration: 0.2), value: draft.fontWeight != nil)
       .onChange(of: draft.advancedLayout) {

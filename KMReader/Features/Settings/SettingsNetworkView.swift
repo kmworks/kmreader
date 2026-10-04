@@ -61,6 +61,7 @@ struct SettingsNetworkView: View {
       }
     }
     .formStyle(.grouped)
+    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.network.title)
   }
 

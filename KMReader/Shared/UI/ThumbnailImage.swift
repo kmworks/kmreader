@@ -39,10 +39,6 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     preserveAspectRatioOverride ?? thumbnailPreserveAspectRatio
   }
 
-  private var shouldShowPlaceholder: Bool {
-    !isLoading && image == nil
-  }
-
   @ViewBuilder
   private func interactiveThumbnailBase<Content: View>(
     @ViewBuilder content: () -> Content
@@ -167,7 +163,6 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
         }
       }
       .animation(.easeInOut(duration: 0.18), value: image != nil)
-      .animation(.easeInOut(duration: 0.18), value: shouldShowPlaceholder)
       .animation(.easeInOut(duration: 0.18), value: contentBlurRadius)
       .overlay {
         if isAbnormalSize, let overlay = overlay {
@@ -192,9 +187,9 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
           .frame(width: displaySize.width, height: displaySize.height)
       }
       .transition(.opacity.combined(with: .scale(scale: 0.98)))
-    } else if shouldShowPlaceholder {
+    } else {
       interactiveThumbnailBase {
-        placeholderCard
+        placeholderCard(shimmering: isLoading)
           .frame(width: displaySize.width, height: displaySize.height)
       }
       .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -277,10 +272,22 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
       .overlay { borderOverlay }
   }
 
-  private var placeholderCard: some View {
+  /// A failed load stays static: shimmer reads as a load still in flight.
+  @ViewBuilder
+  private func placeholderCard(shimmering: Bool) -> some View {
+    if shimmering {
+      placeholderBase
+        .shimmer(cornerRadius: cornerRadius)
+        .overlay { borderOverlay }
+    } else {
+      placeholderBase
+        .overlay { borderOverlay }
+    }
+  }
+
+  private var placeholderBase: some View {
     RoundedRectangle(cornerRadius: cornerRadius)
       .fill(.secondary)
-      .overlay { borderOverlay }
   }
 }
 

@@ -51,6 +51,16 @@ struct DivinaControlsOverlayView: View {
     .easeInOut(duration: 0.2)
   }
 
+  // Bar visibility: opacity rides a quick curve while the slide springs, so a
+  // gesture-driven toggle inherits velocity instead of easing uniformly.
+  private var visibilityAnimation: Animation {
+    .appCurve(0.3)
+  }
+
+  private var controlsOpacity: Double {
+    controlsVisible ? 1 : 0
+  }
+
   private var currentSegmentBookId: String? {
     currentBook?.id
   }
@@ -58,6 +68,22 @@ struct DivinaControlsOverlayView: View {
   private var currentPageID: ReaderPageID? {
     viewModel.currentReaderPage?.id
   }
+
+  #if !os(tvOS)
+    private var showsPageFilmstrip: Bool {
+      readingDirection != .webtoon && filmstripPages.count > 1
+    }
+
+    private var filmstripPages: [ReaderPage] {
+      guard let currentSegmentBookId else { return [] }
+      return viewModel.segmentReaderPages(forSegmentBookId: currentSegmentBookId)
+    }
+
+    private func selectFilmstripPage(_ pageID: ReaderPageID) {
+      guard pageID != viewModel.currentReaderPage?.id else { return }
+      viewModel.requestNavigation(toPageID: pageID)
+    }
+  #endif
 
   private var currentSegmentPageCount: Int {
     guard let currentSegmentBookId else {
@@ -151,6 +177,12 @@ struct DivinaControlsOverlayView: View {
 
   #endif
 
+  private static let scrimExtensionHeight: CGFloat = 120
+  private static let topScrimPeakOpacity: Double = 0.65
+  private static let bottomScrimPeakOpacity: Double = 0.7
+  private static let topBarHideOffset: CGFloat = 300
+  private static let bottomBarHideOffset: CGFloat = 380
+
   var body: some View {
     ZStack(alignment: .bottom) {
       topControlsLayer
@@ -158,8 +190,8 @@ struct DivinaControlsOverlayView: View {
       hiddenProgressLayer
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .animation(animation, value: controlsVisible)
-    .animation(animation, value: showProgressBarWhileReading)
+    .animation(visibilityAnimation, value: controlsVisible)
+    .animation(visibilityAnimation, value: showProgressBarWhileReading)
     .allowsHitTesting(controlsVisible)
     .alert(
       "reader.pageDimensions.warning.title",
@@ -199,13 +231,22 @@ struct DivinaControlsOverlayView: View {
   @ViewBuilder
   private var topControlsLayer: some View {
     VStack(spacing: 0) {
-      if controlsVisible {
+      #if os(tvOS)
+        if controlsVisible {
+          topBar
+            .transition(
+              .move(edge: .top)
+                .combined(with: .opacity)
+            )
+        }
+      #else
         topBar
-          .transition(
-            .move(edge: .top)
-              .combined(with: .opacity)
-          )
-      }
+          .offset(y: controlsVisible ? 0 : -Self.topBarHideOffset)
+          .animation(.appSpring, value: controlsVisible)
+          .opacity(controlsOpacity)
+          .animation(visibilityAnimation, value: controlsOpacity)
+          .accessibilityHidden(!controlsVisible)
+      #endif
 
       Spacer(minLength: 0)
     }
@@ -213,10 +254,28 @@ struct DivinaControlsOverlayView: View {
 
   @ViewBuilder
   private var bottomControlsLayer: some View {
-    if controlsVisible {
-      visibleBottomOverlayBar
-        .transition(bottomControlsTransition)
-    }
+    #if os(tvOS)
+      if controlsVisible {
+        visibleBottomOverlayBar
+          .transition(bottomControlsTransition)
+      }
+    #else
+      if showProgressBarWhileReading {
+        // Kept conditional so the always-on mini progress bar keeps its
+        // matched-geometry morph against the full bar.
+        if controlsVisible {
+          visibleBottomOverlayBar
+            .transition(.opacity)
+        }
+      } else {
+        visibleBottomOverlayBar
+          .offset(y: controlsVisible ? 0 : Self.bottomBarHideOffset)
+          .animation(.appSpring, value: controlsVisible)
+          .opacity(controlsOpacity)
+          .animation(visibilityAnimation, value: controlsOpacity)
+          .accessibilityHidden(!controlsVisible)
+      }
+    #endif
   }
 
   @ViewBuilder
@@ -228,112 +287,140 @@ struct DivinaControlsOverlayView: View {
   }
 
   private var topBar: some View {
-    HStack {
-      #if !os(macOS)
-        Button {
-          onDismiss()
-        } label: {
-          Image(systemName: "xmark")
-            .contentShape(Circle())
-        }
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
-        .readerControlButtonStyle()
-        #if os(tvOS)
-          .focused($focusedControl, equals: .close)
-          .id("closeButton")
+    VStack(spacing: 0) {
+      HStack {
+        #if !os(macOS)
+          Button {
+            onDismiss()
+          } label: {
+            Image(systemName: "xmark")
+              .contentShape(Circle())
+          }
+          .buttonBorderShape(.circle)
+          .controlSize(.large)
+          .readerControlButtonStyle()
+          #if os(tvOS)
+            .focused($focusedControl, equals: .close)
+            .id("closeButton")
+          #endif
         #endif
-      #endif
 
-      Spacer()
+        Spacer()
 
-      if let book = currentBook {
-        Button {
-          showingDetailSheet = true
-        } label: {
-          HStack(spacing: 4) {
-            if incognito {
-              Image(systemName: "eye.slash.fill")
-                .font(.callout)
-            }
-            VStack(alignment: incognito ? .leading : .center, spacing: 4) {
-              if book.oneshot {
-                Text(book.metadata.title)
-                  .lineLimit(2)
-              } else {
-                Text("#\(book.metadata.number) - \(book.metadata.title)")
-                  .lineLimit(1)
-                Text(book.seriesTitle)
-                  .foregroundStyle(.secondary)
-                  .font(.caption)
-                  .lineLimit(1)
+        if let book = currentBook {
+          Button {
+            showingDetailSheet = true
+          } label: {
+            HStack(spacing: 4) {
+              if incognito {
+                Image(systemName: "eye.slash.fill")
+                  .font(.callout)
+              }
+              VStack(alignment: incognito ? .leading : .center, spacing: 4) {
+                if book.oneshot {
+                  Text(book.metadata.title)
+                    .lineLimit(2)
+                } else {
+                  Text("#\(book.metadata.number) - \(book.metadata.title)")
+                    .lineLimit(1)
+                  Text(book.seriesTitle)
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+                    .lineLimit(1)
+                }
               }
             }
+            .padding(.vertical, 2)
+            .padding(.horizontal)
+            .readerHeaderTitleControlFrame()
+            .contentShape(Capsule())
           }
-          .padding(.vertical, 2)
-          .padding(.horizontal)
-          .readerHeaderTitleControlFrame()
-          .contentShape(Capsule())
+          .optimizedControlSize()
+          .readerControlButtonStyle()
+          #if os(tvOS)
+            .focused($focusedControl, equals: .title)
+            .id("titleLabel")
+          #endif
         }
-        .optimizedControlSize()
-        .readerControlButtonStyle()
-        #if os(tvOS)
-          .focused($focusedControl, equals: .title)
-          .id("titleLabel")
+
+        if showPageDimensionWarning && !pageDimensionWarningDismissed {
+          Button {
+            showingPageDimensionWarning = true
+          } label: {
+            Image(systemName: "exclamationmark.triangle.fill")
+              .foregroundStyle(.yellow)
+              .contentShape(Circle())
+          }
+          .accessibilityLabel(Text("reader.pageDimensions.warning.title"))
+          .buttonBorderShape(.circle)
+          .controlSize(.large)
+          .readerControlButtonStyle()
+          #if os(tvOS)
+            .focused($focusedControl, equals: .pageDimensionWarning)
+          #endif
+        }
+
+        Spacer()
+
+        #if !os(macOS)
+          Menu {
+            menuContent()
+          } label: {
+            Image(systemName: "ellipsis")
+              .padding(4)
+              .contentShape(Circle())
+          }
+          .buttonBorderShape(.circle)
+          .controlSize(.large)
+          .readerControlButtonStyle()
+          #if os(tvOS)
+            .focused($focusedControl, equals: .settings)
+          #endif
         #endif
       }
+      .allowsHitTesting(true)
+      .padding()
+      .iPadIgnoresSafeArea(paddingTop: 24)
+      .contentShape(Rectangle())
 
-      if showPageDimensionWarning && !pageDimensionWarningDismissed {
-        Button {
-          showingPageDimensionWarning = true
-        } label: {
-          Image(systemName: "exclamationmark.triangle.fill")
-            .foregroundStyle(.yellow)
-            .contentShape(Circle())
-        }
-        .accessibilityLabel(Text("reader.pageDimensions.warning.title"))
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
-        .readerControlButtonStyle()
-        #if os(tvOS)
-          .focused($focusedControl, equals: .pageDimensionWarning)
-        #endif
+      if showGradientBackground {
+        Color.clear
+          .frame(height: Self.scrimExtensionHeight)
+          .allowsHitTesting(false)
       }
-
-      Spacer()
-
-      #if !os(macOS)
-        Menu {
-          menuContent()
-        } label: {
-          Image(systemName: "ellipsis")
-            .padding(4)
-            .contentShape(Circle())
-        }
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
-        .readerControlButtonStyle()
-        #if os(tvOS)
-          .focused($focusedControl, equals: .settings)
-        #endif
-      #endif
     }
-    .allowsHitTesting(true)
-    .padding()
-    .iPadIgnoresSafeArea(paddingTop: 24)
     .background {
-      gradientBackground(startPoint: .top, endPoint: .bottom)
-        .ignoresSafeArea(edges: .top)
+      gradientBackground(
+        startPoint: .top,
+        endPoint: .bottom,
+        peakOpacity: Self.topScrimPeakOpacity
+      )
+      .ignoresSafeArea(edges: .top)
+      .allowsHitTesting(false)
     }
   }
 
   private var visibleBottomOverlayBar: some View {
-    bottomOverlayContent(showPageButton: true)
-      .padding()
-      .background {
-        gradientBackground(startPoint: .bottom, endPoint: .top)
-          .ignoresSafeArea(edges: .bottom)
+    VStack(spacing: 0) {
+      if showGradientBackground {
+        Color.clear
+          .frame(height: Self.scrimExtensionHeight)
+          .allowsHitTesting(false)
       }
+
+      bottomOverlayContent(showPageButton: true)
+        .padding()
+        .contentShape(Rectangle())
+    }
+    .background {
+      gradientBackground(
+        startPoint: .bottom,
+        endPoint: .top,
+        peakOpacity: Self.bottomScrimPeakOpacity
+      )
+      .ignoresSafeArea(edges: .bottom)
+      .allowsHitTesting(false)
+    }
   }
 
   private var hiddenProgressBar: some View {
@@ -355,6 +442,18 @@ struct DivinaControlsOverlayView: View {
     progressHorizontalPadding: CGFloat = 0
   ) -> some View {
     VStack(spacing: 12) {
+      #if !os(tvOS)
+        if showPageButton && showsPageFilmstrip {
+          PageFilmstripView(
+            pages: filmstripPages,
+            currentPageID: currentPageID,
+            readingDirection: readingDirection,
+            displayPageNumber: displayPageNumber(for:),
+            onSelect: selectFilmstripPage
+          )
+        }
+      #endif
+
       if showPageButton {
         HStack {
           Spacer(minLength: 0)
@@ -375,6 +474,8 @@ struct DivinaControlsOverlayView: View {
           #if os(tvOS)
             .focused($focusedControl, equals: .pageNumber)
           #endif
+          .animation(animation, value: displayedCurrentPage)
+          .animation(animation, value: currentSegmentPageCount)
 
           Spacer(minLength: 0)
         }
@@ -384,12 +485,9 @@ struct DivinaControlsOverlayView: View {
 
       progressBar
         .padding(.horizontal, progressHorizontalPadding)
+        .animation(animation, value: progress)
+        .animation(animation, value: progressHorizontalPadding)
     }
-    .animation(animation, value: currentBook?.id)
-    .animation(animation, value: displayedCurrentPage)
-    .animation(animation, value: currentSegmentPageCount)
-    .animation(animation, value: progress)
-    .animation(animation, value: progressHorizontalPadding)
   }
 
   @ViewBuilder
@@ -493,14 +591,15 @@ struct DivinaControlsOverlayView: View {
   @ViewBuilder
   private func gradientBackground(
     startPoint: UnitPoint,
-    endPoint: UnitPoint
+    endPoint: UnitPoint,
+    peakOpacity: Double
   ) -> some View {
     if showGradientBackground {
       LinearGradient(
-        gradient: Gradient(colors: [
-          Color.black.opacity(0.72),
-          Color.black.opacity(0.44),
-          Color.clear,
+        gradient: Gradient(stops: [
+          .init(color: Color.black.opacity(peakOpacity), location: 0),
+          .init(color: Color.black.opacity(peakOpacity * 0.45), location: 0.55),
+          .init(color: Color.clear, location: 1),
         ]),
         startPoint: startPoint,
         endPoint: endPoint

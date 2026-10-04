@@ -363,12 +363,16 @@ extension DatabaseOperator {
     updateSeriesBooksOffline(seriesId: seriesId, instanceId: instanceId, mode: .unread(limit: limit))
   }
 
-  func removeSeriesOffline(seriesId: String, instanceId: String) {
-    removeSeriesBooksOffline(seriesId: seriesId, instanceId: instanceId, readOnly: false)
+  func removeSeriesOffline(seriesId: String, instanceId: String, onlyBookIds: Set<String>? = nil) {
+    removeSeriesBooksOffline(
+      seriesId: seriesId, instanceId: instanceId, readOnly: false, onlyBookIds: onlyBookIds)
   }
 
-  func removeSeriesReadOffline(seriesId: String, instanceId: String) {
-    removeSeriesBooksOffline(seriesId: seriesId, instanceId: instanceId, readOnly: true)
+  func removeSeriesReadOffline(
+    seriesId: String, instanceId: String, onlyBookIds: Set<String>? = nil
+  ) {
+    removeSeriesBooksOffline(
+      seriesId: seriesId, instanceId: instanceId, readOnly: true, onlyBookIds: onlyBookIds)
   }
 
   func toggleSeriesDownload(seriesId: String, instanceId: String) {
@@ -442,12 +446,16 @@ extension DatabaseOperator {
     updateReadListBooksOffline(readListId: readListId, instanceId: instanceId, mode: .unread(limit: limit))
   }
 
-  func removeReadListOffline(readListId: String, instanceId: String) {
-    removeReadListBooksOffline(readListId: readListId, instanceId: instanceId, readOnly: false)
+  func removeReadListOffline(readListId: String, instanceId: String, onlyBookIds: Set<String>? = nil) {
+    removeReadListBooksOffline(
+      readListId: readListId, instanceId: instanceId, readOnly: false, onlyBookIds: onlyBookIds)
   }
 
-  func removeReadListReadOffline(readListId: String, instanceId: String) {
-    removeReadListBooksOffline(readListId: readListId, instanceId: instanceId, readOnly: true)
+  func removeReadListReadOffline(
+    readListId: String, instanceId: String, onlyBookIds: Set<String>? = nil
+  ) {
+    removeReadListBooksOffline(
+      readListId: readListId, instanceId: instanceId, readOnly: true, onlyBookIds: onlyBookIds)
   }
 
   func updateReadListOfflinePolicy(
@@ -961,7 +969,40 @@ extension DatabaseOperator {
     }
   }
 
-  func removeSeriesBooksOffline(seriesId: String, instanceId: String, readOnly: Bool) {
+  /// Ids of a series' downloaded books, mirroring the removal candidate set
+  /// (minus other-policy protection); `readOnly` keeps only completed ones.
+  func fetchSeriesDownloadedBookIds(seriesId: String, instanceId: String, readOnly: Bool) -> [String] {
+    (try? read { db in
+      var books = try fetchBooks(db: db, instanceId: instanceId, seriesId: seriesId)
+        .filter { $0.downloadStatusRaw == "downloaded" }
+      if readOnly {
+        books = books.filter { $0.progressCompleted == true }
+      }
+      return books.map(\.bookId)
+    }) ?? []
+  }
+
+  /// Ids of a read list's downloaded books, mirroring the removal candidate set
+  /// (minus other-policy protection); `readOnly` keeps only completed ones.
+  func fetchReadListDownloadedBookIds(readListId: String, instanceId: String, readOnly: Bool) -> [String] {
+    (try? read { db in
+      guard let readList = try fetchReadListRecord(db: db, id: readListId, instanceId: instanceId) else {
+        return []
+      }
+      var books = try fetchBooksByIds(db: db, ids: readList.bookIds, instanceId: instanceId)
+        .filter { $0.downloadStatusRaw == "downloaded" }
+      if readOnly {
+        books = books.filter { $0.progressCompleted == true }
+      }
+      return books.map(\.bookId)
+    }) ?? []
+  }
+
+  /// `onlyBookIds` bounds the removal to a staged set (undoable deletions): books
+  /// downloaded after staging are left alone.
+  func removeSeriesBooksOffline(
+    seriesId: String, instanceId: String, readOnly: Bool, onlyBookIds: Set<String>? = nil
+  ) {
     do {
       var bookIdsToRemove: [String] = []
       var affectedBookIds: [String] = []
@@ -984,6 +1025,9 @@ extension DatabaseOperator {
         )
         for index in books.indices {
           if readOnly && books[index].progressCompleted != true {
+            continue
+          }
+          if let onlyBookIds, !onlyBookIds.contains(books[index].bookId) {
             continue
           }
           if shouldKeepBookDueToOtherPolicies(
@@ -1078,7 +1122,11 @@ extension DatabaseOperator {
     }
   }
 
-  func removeReadListBooksOffline(readListId: String, instanceId: String, readOnly: Bool) {
+  /// `onlyBookIds` bounds the removal to a staged set (undoable deletions): books
+  /// downloaded after staging are left alone.
+  func removeReadListBooksOffline(
+    readListId: String, instanceId: String, readOnly: Bool, onlyBookIds: Set<String>? = nil
+  ) {
     do {
       var bookIdsToRemove: [String] = []
       var affectedBookIds: [String] = []
@@ -1106,6 +1154,9 @@ extension DatabaseOperator {
         )
         for index in books.indices {
           if readOnly && books[index].progressCompleted != true {
+            continue
+          }
+          if let onlyBookIds, !onlyBookIds.contains(books[index].bookId) {
             continue
           }
           if shouldKeepBookDueToOtherPolicies(

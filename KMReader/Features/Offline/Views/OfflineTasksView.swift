@@ -227,9 +227,12 @@ struct OfflineTasksView: View {
     do {
       let database = try await DatabaseOperator.database()
       let loadedTasks = try await database.fetchOfflineTaskItems(instanceId: instanceId)
-      if tasks != loadedTasks {
+      let pendingBookIds = await OfflineManager.shared.pendingDeletionBookIds(
+        instanceId: instanceId)
+      let visibleTasks = loadedTasks.filter { !pendingBookIds.contains($0.bookId) }
+      if tasks != visibleTasks {
         withAnimation {
-          tasks = loadedTasks
+          tasks = visibleTasks
         }
       }
     } catch {
@@ -319,8 +322,9 @@ struct OfflineTaskRow: View {
 
           Button(role: .destructive) {
             Task {
-              await OfflineManager.shared.cancelDownload(bookId: task.bookId)
-              OfflineManager.shared.triggerSync(instanceId: instanceId)
+              await OfflineManager.shared.cancelDownloadWithUndo(
+                instanceId: instanceId, bookId: task.bookId,
+                message: String(localized: "notification.book.downloadCancelled"))
               onChanged()
             }
           } label: {
