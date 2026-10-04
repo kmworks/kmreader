@@ -113,7 +113,7 @@ struct SidebarView: View {
   private var listContent: some View {
     Section {
       NavigationLink(value: NavDestination.home) {
-        Label(String(localized: "tab.home"), systemImage: "house")
+        Label(TabItem.home.title, systemImage: "house")
       }
       NavigationLink(value: NavDestination.offline) {
         Label(TabItem.offline.title, systemImage: TabItem.offline.icon)

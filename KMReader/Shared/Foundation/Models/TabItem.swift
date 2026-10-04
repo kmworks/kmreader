@@ -27,7 +27,7 @@ enum TabItem: Hashable, Identifiable {
   var title: String {
     switch self {
     case .home:
-      return String(localized: "tab.home")
+      return String(localized: "title.dashboard")
     case .library:
       return String(localized: "tab.library", defaultValue: "Library")
     case .browse:

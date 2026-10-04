@@ -12,9 +12,8 @@ struct BrowseView: View {
   let fixedContent: BrowseContentType?
   let metadataFilter: MetadataFilterConfig?
   let focusesSearchOnAppear: Bool
-  /// iPhone Library tab root mode: no navigation title, no search field, and
-  /// no built-in toolbar library button (LibraryBrowseView adds its own). The
-  /// library scope is the global dashboard selection.
+  /// iPhone Library tab root mode: no search field, and the library scope is
+  /// the global dashboard selection.
   let libraryTab: Bool
   /// Search-tab mode (iPhone): show a search placeholder until a query is
   /// entered instead of browsing all content.
@@ -88,6 +87,7 @@ struct BrowseView: View {
       showFilterSheet: $showFilterSheet,
       showSavedFilters: $showSavedFilters
     )
+    .inlineLargeBarTitleStyle(enabled: libraryTab || searchOnly)
     .platformNavigationTitle(title)
     .searchableIfNeeded(text: $searchQuery, enabled: !libraryTab)
     .browseSearchFocus($isSearchFocused, when: focusesSearchOnAppear)
@@ -100,17 +100,36 @@ struct BrowseView: View {
     }
     #if os(iOS) || os(macOS)
       .toolbar {
-        if librarySelection == nil && !libraryTab {
-          #if os(macOS)
+        #if os(iOS)
+          if (libraryTab || searchOnly) && !PlatformHelper.isPad, #available(iOS 26.0, *) {
+            ToolbarItem(placement: .largeTitle) {
+              InlineLargeBarTitle(title: title)
+            }
+          }
+        #endif
+        #if os(macOS)
+          if librarySelection == nil {
             ToolbarItem(placement: .navigation) {
               LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
             }
-          #else
-            ToolbarItem(placement: .cancellationAction) {
-              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+          }
+        #endif
+        #if os(iOS)
+          if librarySelection == nil {
+            if PlatformHelper.isPad {
+              ToolbarItem(placement: .cancellationAction) {
+                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              }
+            } else {
+              ToolbarItem(placement: .confirmationAction) {
+                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              }
+              if #available(iOS 26.0, *) {
+                ToolbarSpacer(.fixed, placement: .confirmationAction)
+              }
             }
-          #endif
-        }
+          }
+        #endif
         ToolbarItem(placement: .confirmationAction) {
           BrowseActionsMenu(
             layoutMode: browseLayoutBinding,

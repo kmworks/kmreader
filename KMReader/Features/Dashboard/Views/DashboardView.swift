@@ -153,8 +153,8 @@ struct DashboardView: View {
           }
         }
       }
-      .padding(.vertical)
     }
+    .inlineLargeBarTitleStyle()
     .platformNavigationTitle(String(localized: "title.dashboard"))
     .overlay {
       // The dashboard stays mounted underneath, so cancelling a search never
@@ -241,17 +241,36 @@ struct DashboardView: View {
     }
     #if os(iOS) || os(macOS)
       .toolbar {
+        #if os(iOS)
+          if #available(iOS 26.0, *), !PlatformHelper.isPad {
+            ToolbarItem(placement: .largeTitle) {
+              InlineLargeBarTitle(title: String(localized: "title.dashboard"))
+            }
+          }
+        #endif
+
         #if os(macOS)
           ToolbarItem(placement: .navigation) {
             LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
           }
-        #else
-          ToolbarItem(placement: .cancellationAction) {
-            LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+        #endif
+
+        #if os(iOS)
+          if PlatformHelper.isPad {
+            ToolbarItem(placement: .cancellationAction) {
+              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+            }
+          } else {
+            ToolbarItem(placement: .confirmationAction) {
+              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+            }
+            if #available(iOS 26.0, *) {
+              ToolbarSpacer(.fixed, placement: .confirmationAction)
+            }
           }
         #endif
 
-        ToolbarItemGroup(placement: .confirmationAction) {
+        ToolbarItem(placement: .confirmationAction) {
           if isOffline {
             Button {
               Task {
