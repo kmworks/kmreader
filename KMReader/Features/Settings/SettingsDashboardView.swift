@@ -39,6 +39,7 @@ struct SettingsDashboardView: View {
       List {
         Section {
           SettingsDashboardCardKindMenuToggle()
+          SettingsDashboardSectionBackgroundToggle()
         }
 
         Section {
@@ -133,6 +134,7 @@ struct SettingsDashboardView: View {
       Form {
         Section {
           SettingsDashboardCardKindMenuToggle()
+          SettingsDashboardSectionBackgroundToggle()
         }
 
         Section {
@@ -328,6 +330,7 @@ struct SettingsDashboardView: View {
 
         Section {
           SettingsDashboardCardKindMenuToggle()
+          SettingsDashboardSectionBackgroundToggle()
         }
 
         // Active Sections
