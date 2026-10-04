@@ -474,6 +474,8 @@ struct DivinaControlsOverlayView: View {
           #if os(tvOS)
             .focused($focusedControl, equals: .pageNumber)
           #endif
+          .animation(animation, value: displayedCurrentPage)
+          .animation(animation, value: currentSegmentPageCount)
 
           Spacer(minLength: 0)
         }
@@ -483,12 +485,9 @@ struct DivinaControlsOverlayView: View {
 
       progressBar
         .padding(.horizontal, progressHorizontalPadding)
+        .animation(animation, value: progress)
+        .animation(animation, value: progressHorizontalPadding)
     }
-    .animation(animation, value: currentBook?.id)
-    .animation(animation, value: displayedCurrentPage)
-    .animation(animation, value: currentSegmentPageCount)
-    .animation(animation, value: progress)
-    .animation(animation, value: progressHorizontalPadding)
   }
 
   @ViewBuilder
