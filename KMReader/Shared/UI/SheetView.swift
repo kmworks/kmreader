@@ -199,17 +199,8 @@ extension View {
   @ViewBuilder
   fileprivate func applyFormStyleIfNeeded(_ apply: Bool) -> some View {
     if apply {
-      #if os(iOS)
-        self
-          .formStyle(.grouped)
-          .scrollContentBackground(.hidden)
-      #elseif os(macOS)
-        self
-          .formStyle(.grouped)
-      #elseif os(tvOS)
-        self
-          .formStyle(.grouped)
-      #endif
+      self
+        .formStyle(.grouped)
     } else {
       self
     }
