@@ -73,7 +73,11 @@ import SwiftUI
 
     private func currentIndex(viewportFrame: CGRect) -> Int {
       guard isMeasured, itemStride > 0 else { return 0 }
-      return min(itemIds.count - 1, max(0, Int((offsetX(viewportFrame: viewportFrame) / itemStride).rounded())))
+      // Anchor the index to the viewport center: clicks scrollTo(.center), so a
+      // leading-edge index would only advance half a page from the second click
+      // on. Truncation maps the centered item exactly.
+      let centerX = offsetX(viewportFrame: viewportFrame) + viewportFrame.width / 2
+      return min(itemIds.count - 1, max(0, Int(centerX / itemStride)))
     }
 
     private func step(viewportFrame: CGRect) -> Int {

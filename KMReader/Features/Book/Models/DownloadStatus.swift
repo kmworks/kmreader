@@ -67,8 +67,10 @@ nonisolated enum DownloadStatus: Equatable, Sendable {
       return String(localized: "Remove Offline")
     case .pending:
       return String(localized: "Cancel Download")
-    case .notDownloaded, .failed:
+    case .notDownloaded:
       return String(localized: "Make Offline")
+    case .failed:
+      return String(localized: "Retry Download")
     }
   }
 
