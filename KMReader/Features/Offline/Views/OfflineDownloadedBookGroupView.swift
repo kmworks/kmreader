@@ -75,6 +75,7 @@ struct OfflineDownloadedBookGroupView: View {
       }
       .swipeActions(edge: .trailing) {
         Button(role: .destructive) {
+          HapticFeedback.medium()
           onDeleteBooks(books)
         } label: {
           Label(String(localized: "Delete All"), systemImage: "trash")
@@ -112,6 +113,7 @@ struct OfflineDownloadedBookGroupView: View {
       #if !os(tvOS)
         .swipeActions(edge: .trailing) {
           Button(role: .destructive) {
+            HapticFeedback.medium()
             onDeleteBook(book)
           } label: {
             Label(String(localized: "Delete"), systemImage: "trash")

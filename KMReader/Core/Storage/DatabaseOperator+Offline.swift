@@ -961,6 +961,35 @@ extension DatabaseOperator {
     }
   }
 
+  /// Ids of a series' downloaded books, mirroring the removal candidate set
+  /// (minus other-policy protection); `readOnly` keeps only completed ones.
+  func fetchSeriesDownloadedBookIds(seriesId: String, instanceId: String, readOnly: Bool) -> [String] {
+    (try? read { db in
+      var books = try fetchBooks(db: db, instanceId: instanceId, seriesId: seriesId)
+        .filter { $0.downloadStatusRaw == "downloaded" }
+      if readOnly {
+        books = books.filter { $0.progressCompleted == true }
+      }
+      return books.map(\.bookId)
+    }) ?? []
+  }
+
+  /// Ids of a read list's downloaded books, mirroring the removal candidate set
+  /// (minus other-policy protection); `readOnly` keeps only completed ones.
+  func fetchReadListDownloadedBookIds(readListId: String, instanceId: String, readOnly: Bool) -> [String] {
+    (try? read { db in
+      guard let readList = try fetchReadListRecord(db: db, id: readListId, instanceId: instanceId) else {
+        return []
+      }
+      var books = try fetchBooksByIds(db: db, ids: readList.bookIds, instanceId: instanceId)
+        .filter { $0.downloadStatusRaw == "downloaded" }
+      if readOnly {
+        books = books.filter { $0.progressCompleted == true }
+      }
+      return books.map(\.bookId)
+    }) ?? []
+  }
+
   func removeSeriesBooksOffline(seriesId: String, instanceId: String, readOnly: Bool) {
     do {
       var bookIdsToRemove: [String] = []

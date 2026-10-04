@@ -85,4 +85,23 @@ nonisolated struct OfflineDownloadedBooksSnapshot: Equatable, Sendable {
         }
     }
   }
+
+  /// Snapshot without the given books (e.g. staged for deletion); empty groups drop out.
+  func filtered(excludingBookIds: Set<String>) -> OfflineDownloadedBooksSnapshot {
+    guard !excludingBookIds.isEmpty else { return self }
+    let groups = libraryGroups.compactMap { libraryGroup -> OfflineDownloadedLibraryGroup? in
+      let seriesGroups = libraryGroup.seriesGroups.compactMap {
+        seriesGroup -> OfflineDownloadedSeriesGroup? in
+        let books = seriesGroup.books.filter { !excludingBookIds.contains($0.bookId) }
+        guard !books.isEmpty else { return nil }
+        return OfflineDownloadedSeriesGroup(id: seriesGroup.id, name: seriesGroup.name, books: books)
+      }
+      let oneshotBooks = libraryGroup.oneshotBooks.filter { !excludingBookIds.contains($0.bookId) }
+      guard !seriesGroups.isEmpty || !oneshotBooks.isEmpty else { return nil }
+      return OfflineDownloadedLibraryGroup(
+        id: libraryGroup.id, name: libraryGroup.name, seriesGroups: seriesGroups,
+        oneshotBooks: oneshotBooks)
+    }
+    return OfflineDownloadedBooksSnapshot(libraryGroups: groups)
+  }
 }

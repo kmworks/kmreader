@@ -15,6 +15,7 @@ struct OfflineTasksView: View {
   @State private var pendingBulkAction: BulkAction?
   @State private var tasks: [OfflineTaskItem] = []
   @State private var progressTracker = DownloadProgressTracker.shared
+  @State private var errorManager = ErrorManager.shared
 
   private var coverSyncViewModel: OfflineCoverSyncViewModel {
     OfflineCoverSyncViewModel.shared
@@ -212,6 +213,19 @@ struct OfflineTasksView: View {
         await loadTasks()
       }
     }
+    .onChange(of: errorManager.notifications) { _, _ in
+      Task {
+        await settlePendingDeletions()
+      }
+    }
+  }
+
+  private func settlePendingDeletions() async {
+    let notifications = errorManager.notifications
+    await OfflineManager.shared.settlePendingDeletions(
+      visibleNotificationIds: Set(notifications.map(\.id)),
+      replacedNotificationIds: Set(notifications.filter { $0.dismissal == .replaced }.map(\.id))
+    )
   }
 
   private func loadTasks() async {
@@ -225,11 +239,15 @@ struct OfflineTasksView: View {
     }
 
     do {
+      await settlePendingDeletions()
       let database = try await DatabaseOperator.database()
       let loadedTasks = try await database.fetchOfflineTaskItems(instanceId: instanceId)
-      if tasks != loadedTasks {
+      let pendingBookIds = await OfflineManager.shared.pendingDeletionBookIds(
+        instanceId: instanceId)
+      let visibleTasks = loadedTasks.filter { !pendingBookIds.contains($0.bookId) }
+      if tasks != visibleTasks {
         withAnimation {
-          tasks = loadedTasks
+          tasks = visibleTasks
         }
       }
     } catch {
@@ -319,8 +337,9 @@ struct OfflineTaskRow: View {
 
           Button(role: .destructive) {
             Task {
-              await OfflineManager.shared.cancelDownload(bookId: task.bookId)
-              OfflineManager.shared.triggerSync(instanceId: instanceId)
+              await OfflineManager.shared.cancelDownloadWithUndo(
+                instanceId: instanceId, bookId: task.bookId,
+                message: String(localized: "notification.book.downloadCancelled"))
               onChanged()
             }
           } label: {

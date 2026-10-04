@@ -79,6 +79,12 @@ actor OfflineManager {
   private var syncTaskID: UUID?
   private var isProcessingQueue = false
   private var completedDownloadsSinceLastNotification = 0
+  /// Deletions staged behind an undo toast stay fully intact until the toast settles;
+  /// the Offline pages filter these books out so rows look removed immediately.
+  private var pendingDeletions: [UUID: PendingDownloadDeletion] = [:]
+  /// Toasts superseded by a newer one still run their commit at the original deadline,
+  /// so settlement must not read their disappearance as an undo.
+  private var supersededNotificationIds: Set<UUID> = []
   #if os(iOS)
     private var foregroundDownloadInfoByBookId: [String: (instanceId: String, info: DownloadInfo)] = [:]
     private var liveActivityProgressSnapshots: [String: (progress: Double, updatedAt: Date)] = [:]
@@ -397,13 +403,21 @@ actor OfflineManager {
   }
 
   func toggleDownload(instanceId: String, info: DownloadInfo) async {
+    // Toggling a book whose removal is still staged cancels the removal instead.
+    if await isPendingDeletion(bookId: info.bookId) {
+      await cancelPendingDeletion(forBookId: info.bookId)
+      return
+    }
     let status = await getDownloadStatus(bookId: info.bookId)
     switch status {
     case .downloaded:
-      await deleteBook(instanceId: instanceId, bookId: info.bookId)
+      await deleteBookWithUndo(
+        instanceId: instanceId, bookId: info.bookId,
+        message: String(localized: "notification.book.offlineRemoved"))
     case .pending:
       await cancelDownload(bookId: info.bookId, instanceId: instanceId)
     case .notDownloaded, .failed:
+      await cancelPendingDeletion(forBookId: info.bookId)
       await ensureSeriesRow(instanceId: instanceId, bookId: info.bookId)
       try? await DatabaseOperator.database().updateBookDownloadStatus(
         bookId: info.bookId,
@@ -433,6 +447,7 @@ actor OfflineManager {
   }
 
   func retryDownload(instanceId: String, bookId: String) async {
+    await cancelPendingDeletion(forBookId: bookId)
     await ensureSeriesRow(instanceId: instanceId, bookId: bookId)
     try? await DatabaseOperator.database().updateBookDownloadStatus(
       bookId: bookId,
@@ -473,6 +488,7 @@ actor OfflineManager {
   func deleteBook(
     instanceId: String, bookId: String, commit: Bool = true, syncSeriesStatus: Bool = true
   ) async {
+    dropPendingDeletions(forBookIds: [bookId])
     await cancelDownload(
       bookId: bookId, instanceId: instanceId, commit: false, syncSeriesStatus: syncSeriesStatus)
 
@@ -492,15 +508,6 @@ actor OfflineManager {
     #if os(iOS) || os(macOS)
       SpotlightIndexService.removeBook(bookId: bookId, instanceId: instanceId)
     #endif
-  }
-
-  /// Delete a book manually, setting active protection sources to manual first to prevent automatic re-download.
-  func deleteBookManually(instanceId: String, bookId: String) async {
-    try? await DatabaseOperator.database().updateOfflineProtectionSourcesToManual(
-      bookIds: [bookId],
-      instanceId: instanceId
-    )
-    await deleteBook(instanceId: instanceId, bookId: bookId)
   }
 
   /// Delete multiple books manually, setting active protection sources to manual first to prevent automatic re-download.
@@ -592,6 +599,197 @@ actor OfflineManager {
       instanceId: instanceId
     )
     await refreshQueueStatus(instanceId: instanceId)
+  }
+
+  // MARK: - Pending Deletions (Undo)
+
+  /// Book ids staged for deletion on one instance; Offline pages filter these out.
+  func pendingDeletionBookIds(instanceId: String) -> Set<String> {
+    Set(pendingDeletions.values.lazy.filter { $0.instanceId == instanceId }.flatMap(\.bookIds))
+  }
+
+  /// Stage downloaded books for deletion behind an undo toast. The real delete runs
+  /// only when the toast settles; undo just drops the staged record.
+  func deleteBooksWithUndo(
+    seriesIds: Set<String>, instanceId: String, bookIds: [String], message: String
+  ) async {
+    await stagePendingDeletion(
+      seriesIds: seriesIds, instanceId: instanceId, bookIds: bookIds, message: message,
+      kind: .manualBooks)
+  }
+
+  func deleteAllDownloadedBooksWithUndo(message: String) async {
+    let instanceId = AppConfig.current.instanceId
+    let books =
+      (try? await DatabaseOperator.database().fetchDownloadedBooks(instanceId: instanceId)) ?? []
+    guard !books.isEmpty else { return }
+    await stagePendingDeletion(
+      seriesIds: Set(books.map(\.seriesId)), instanceId: instanceId, bookIds: books.map(\.id),
+      message: message, kind: .allDownloaded)
+  }
+
+  func deleteReadBooksWithUndo(message: String) async {
+    let instanceId = AppConfig.current.instanceId
+    let books =
+      (try? await DatabaseOperator.database().fetchReadBooksEligibleForAutoDelete(
+        instanceId: instanceId
+      )) ?? []
+    guard !books.isEmpty else { return }
+    await stagePendingDeletion(
+      seriesIds: Set(books.map(\.seriesId)), instanceId: instanceId, bookIds: books.map(\.id),
+      message: message, kind: .readBooks)
+  }
+
+  /// Stage a queue-task cancellation (pending/failed download) behind an undo toast.
+  func cancelDownloadWithUndo(instanceId: String, bookId: String, message: String) async {
+    await stagePendingDeletion(
+      seriesIds: [], instanceId: instanceId, bookIds: [bookId], message: message,
+      kind: .cancelDownload)
+  }
+
+  /// Stage a single downloaded book's removal behind an undo toast (plain delete on
+  /// commit, mirroring toggle-off semantics — no protection-source flip).
+  func deleteBookWithUndo(instanceId: String, bookId: String, message: String) async {
+    await stagePendingDeletion(
+      seriesIds: [], instanceId: instanceId, bookIds: [bookId], message: message,
+      kind: .singleBook)
+  }
+
+  /// Stage a series' downloaded books for removal behind an undo toast.
+  func removeSeriesOfflineWithUndo(
+    seriesId: String, instanceId: String, readOnly: Bool, message: String
+  ) async {
+    let bookIds =
+      (try? await DatabaseOperator.database().fetchSeriesDownloadedBookIds(
+        seriesId: seriesId, instanceId: instanceId, readOnly: readOnly)) ?? []
+    guard !bookIds.isEmpty else { return }
+    await stagePendingDeletion(
+      seriesIds: [seriesId], instanceId: instanceId, bookIds: bookIds, message: message,
+      kind: readOnly ? .seriesRead(seriesId: seriesId) : .seriesAll(seriesId: seriesId))
+  }
+
+  /// Stage a read list's downloaded books for removal behind an undo toast.
+  func removeReadListOfflineWithUndo(
+    readListId: String, instanceId: String, readOnly: Bool, message: String
+  ) async {
+    let bookIds =
+      (try? await DatabaseOperator.database().fetchReadListDownloadedBookIds(
+        readListId: readListId, instanceId: instanceId, readOnly: readOnly)) ?? []
+    guard !bookIds.isEmpty else { return }
+    await stagePendingDeletion(
+      seriesIds: [], instanceId: instanceId, bookIds: bookIds, message: message,
+      kind: readOnly ? .readListRead(readListId: readListId) : .readListAll(readListId: readListId))
+  }
+
+  /// Reconcile staged deletions with the live toast list: a staged toast that vanished
+  /// without being superseded was undone, so its record is dropped and the rows return.
+  /// Takes id sets instead of AppNotification, which is not Sendable.
+  func settlePendingDeletions(
+    visibleNotificationIds: Set<UUID>, replacedNotificationIds: Set<UUID>
+  ) async {
+    supersededNotificationIds.formUnion(replacedNotificationIds)
+    var restored: [PendingDownloadDeletion] = []
+    for entry in pendingDeletions.values {
+      guard let notificationId = entry.notificationId,
+        !visibleNotificationIds.contains(notificationId),
+        !supersededNotificationIds.contains(notificationId)
+      else { continue }
+      restored.append(entry)
+    }
+    for entry in restored {
+      pendingDeletions.removeValue(forKey: entry.id)
+    }
+    supersededNotificationIds.formIntersection(
+      visibleNotificationIds.union(pendingDeletions.values.compactMap(\.notificationId)))
+    for instanceId in Set(restored.map(\.instanceId)) {
+      await refreshQueueStatus(instanceId: instanceId)
+    }
+  }
+
+  private func stagePendingDeletion(
+    seriesIds: Set<String>, instanceId: String, bookIds: [String], message: String,
+    kind: PendingDownloadDeletion.CommitKind
+  ) async {
+    let alreadyStaged = Set(pendingDeletions.values.flatMap(\.bookIds))
+    let bookIds = bookIds.filter { !alreadyStaged.contains($0) }
+    guard !bookIds.isEmpty else { return }
+    let entryId = UUID()
+    pendingDeletions[entryId] = PendingDownloadDeletion(
+      id: entryId, instanceId: instanceId, seriesIds: seriesIds, bookIds: bookIds, kind: kind)
+    let notificationId = await ErrorManager.shared.notifyUndo(message: message) { [weak self] in
+      await self?.commitPendingDeletion(id: entryId)
+    }
+    pendingDeletions[entryId]?.notificationId = notificationId
+  }
+
+  private func commitPendingDeletion(id: UUID) async {
+    guard let entry = pendingDeletions.removeValue(forKey: id) else { return }
+    if let notificationId = entry.notificationId {
+      supersededNotificationIds.remove(notificationId)
+    }
+    switch entry.kind {
+    case .manualBooks:
+      await deleteBooksManually(
+        seriesIds: entry.seriesIds, instanceId: entry.instanceId, bookIds: entry.bookIds)
+    case .allDownloaded:
+      // These recompute their target set from the current instance, so they are only
+      // valid while the staged instance is still current.
+      guard entry.instanceId == AppConfig.current.instanceId else { return }
+      await deleteAllDownloadedBooks()
+    case .readBooks:
+      guard entry.instanceId == AppConfig.current.instanceId else { return }
+      await deleteReadBooks()
+    case .cancelDownload:
+      for bookId in entry.bookIds {
+        await cancelDownload(bookId: bookId, instanceId: entry.instanceId)
+      }
+      triggerSync(instanceId: entry.instanceId)
+    case .singleBook:
+      for bookId in entry.bookIds {
+        await deleteBook(instanceId: entry.instanceId, bookId: bookId)
+      }
+    case .seriesAll(let seriesId):
+      guard entry.instanceId == AppConfig.current.instanceId else { return }
+      try? await DatabaseOperator.database().removeSeriesOffline(
+        seriesId: seriesId, instanceId: entry.instanceId)
+    case .seriesRead(let seriesId):
+      guard entry.instanceId == AppConfig.current.instanceId else { return }
+      try? await DatabaseOperator.database().removeSeriesReadOffline(
+        seriesId: seriesId, instanceId: entry.instanceId)
+    case .readListAll(let readListId):
+      guard entry.instanceId == AppConfig.current.instanceId else { return }
+      try? await DatabaseOperator.database().removeReadListOffline(
+        readListId: readListId, instanceId: entry.instanceId)
+    case .readListRead(let readListId):
+      guard entry.instanceId == AppConfig.current.instanceId else { return }
+      try? await DatabaseOperator.database().removeReadListReadOffline(
+        readListId: readListId, instanceId: entry.instanceId)
+    }
+  }
+
+  private func isPendingDeletion(bookId: String) -> Bool {
+    pendingDeletions.values.contains { $0.bookIds.contains(bookId) }
+  }
+
+  /// An explicit (re)download supersedes a staged deletion of the same book: dismiss
+  /// its toast like tapping Undo and keep the book.
+  private func cancelPendingDeletion(forBookId bookId: String) async {
+    guard let entry = pendingDeletions.values.first(where: { $0.bookIds.contains(bookId) })
+    else { return }
+    pendingDeletions.removeValue(forKey: entry.id)
+    if let notificationId = entry.notificationId {
+      await ErrorManager.shared.performAction(id: notificationId)
+    }
+  }
+
+  /// A delete that already ran makes any staged record for the same books redundant.
+  private func dropPendingDeletions(forBookIds bookIds: [String]) {
+    let staleIds = pendingDeletions.values.filter { entry in
+      entry.bookIds.contains(where: bookIds.contains)
+    }.map(\.id)
+    for id in staleIds {
+      pendingDeletions.removeValue(forKey: id)
+    }
   }
 
   /// Cleanup orphaned offline files that no longer have corresponding local database entries.
