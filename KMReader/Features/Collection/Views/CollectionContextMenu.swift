@@ -39,6 +39,15 @@ struct CollectionContextMenu: View {
           } label: {
             Label("Edit", systemImage: "pencil")
           }
+
+          if onDeleteRequested != nil {
+            Divider()
+            Button(role: .destructive) {
+              deferMenuActionPresentation { onDeleteRequested?() }
+            } label: {
+              Label("Delete Collection", systemImage: "trash")
+            }
+          }
         }
 
         Divider()

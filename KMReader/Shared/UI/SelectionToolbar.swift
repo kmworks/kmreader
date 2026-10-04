@@ -30,6 +30,8 @@ struct SelectionToolbar: View {
   }
 
   var submitDisabled: Bool {
+    // Full selection stays disabled to intentionally prevent emptying the
+    // collection/readlist through the selection UI.
     isDeleting || selectedCount == 0 || selectedCount == totalCount
   }
 

@@ -14,6 +14,7 @@ struct CircularThumbnailImage: View {
   var diameter: CGFloat = 28
 
   @State private var image: PlatformImage?
+  @State private var refreshTrigger = UUID()
 
   var body: some View {
     Group {
@@ -33,7 +34,18 @@ struct CircularThumbnailImage: View {
     }
     .frame(width: diameter, height: diameter)
     .clipShape(Circle())
-    .task(id: "\(type.rawValue)|\(id)") {
+    .onReceive(NotificationCenter.default.publisher(for: .thumbnailDidRefresh)) { notification in
+      guard let userInfo = notification.userInfo,
+        let notificationId = userInfo["id"] as? String,
+        let notificationType = userInfo["type"] as? String,
+        notificationId == id,
+        notificationType == type.rawValue
+      else {
+        return
+      }
+      refreshTrigger = UUID()
+    }
+    .task(id: "\(type.rawValue)|\(id)|\(refreshTrigger)") {
       image = await Self.load(id: id, type: type)
     }
   }

@@ -13,7 +13,7 @@ struct KeepReadingEntry: TimelineEntry {
 
 struct KeepReadingProvider: TimelineProvider {
   func placeholder(in context: Context) -> KeepReadingEntry {
-    KeepReadingEntry(date: .now, books: [])
+    KeepReadingEntry(date: .now, books: WidgetSampleData.books)
   }
 
   func getSnapshot(in context: Context, completion: @escaping (KeepReadingEntry) -> Void) {

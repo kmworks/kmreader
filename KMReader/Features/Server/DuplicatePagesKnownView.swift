@@ -17,6 +17,22 @@ struct DuplicatePagesKnownView: View {
   @State private var filterActions: Set<PageHashAction> = [.deleteAuto, .deleteManual]
   @State private var selectedMatchHash: String = ""
   @State private var showingMatchSheet = false
+  @State private var hashPendingDeleteMatches: PageHashKnown?
+  @State private var hashPendingDeleteAuto: PageHashKnown?
+
+  private var isDeleteMatchesAlertPresented: Binding<Bool> {
+    Binding(
+      get: { hashPendingDeleteMatches != nil },
+      set: { if !$0 { hashPendingDeleteMatches = nil } }
+    )
+  }
+
+  private var isDeleteAutoAlertPresented: Binding<Bool> {
+    Binding(
+      get: { hashPendingDeleteAuto != nil },
+      set: { if !$0 { hashPendingDeleteAuto = nil } }
+    )
+  }
 
   var body: some View {
     List {
@@ -44,6 +60,32 @@ struct DuplicatePagesKnownView: View {
       SheetView(title: String(localized: "Matches"), size: .large, applyFormStyle: true) {
         PageHashMatchesView(hash: selectedMatchHash)
       }
+    }
+    .alert(String(localized: "Delete Matches?"), isPresented: isDeleteMatchesAlertPresented) {
+      if let hashPendingDeleteMatches {
+        Button(String(localized: "Delete"), role: .destructive) {
+          Task { await deleteMatches(hash: hashPendingDeleteMatches) }
+        }
+        Button(String(localized: "Cancel"), role: .cancel) {}
+      }
+    } message: {
+      if let hashPendingDeleteMatches {
+        Text(
+          "This will permanently delete \(hashPendingDeleteMatches.matchCount) matched pages from Komga. This action cannot be undone."
+        )
+      }
+    }
+    .alert(String(localized: "Auto Delete?"), isPresented: isDeleteAutoAlertPresented) {
+      if let hashPendingDeleteAuto {
+        Button(String(localized: "Delete"), role: .destructive) {
+          Task { await updateAction(hash: hashPendingDeleteAuto, action: .deleteAuto) }
+        }
+        Button(String(localized: "Cancel"), role: .cancel) {}
+      }
+    } message: {
+      Text(
+        "The server will automatically delete all pages matching this hash. This action cannot be undone."
+      )
     }
   }
 
@@ -224,7 +266,7 @@ struct DuplicatePagesKnownView: View {
 
         if hash.action == .deleteManual, hash.matchCount > 0 {
           Button {
-            Task { await deleteMatches(hash: hash) }
+            hashPendingDeleteMatches = hash
           } label: {
             Label(String(localized: "Delete Matches"), systemImage: "trash")
               .font(.caption)
@@ -261,7 +303,7 @@ struct DuplicatePagesKnownView: View {
 
         if hash.action != .deleteAuto, hash.size != nil {
           Button {
-            Task { await updateAction(hash: hash, action: .deleteAuto) }
+            hashPendingDeleteAuto = hash
           } label: {
             Text(PageHashAction.deleteAuto.label)
               .font(.caption)

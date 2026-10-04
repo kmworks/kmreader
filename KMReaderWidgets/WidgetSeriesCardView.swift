@@ -28,6 +28,7 @@ struct WidgetSeriesCardView: View {
               Text("\(unreadCount)")
                 .font(.caption2.weight(.semibold))
                 .monospacedDigit()
+                .foregroundStyle(.white)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(.black.opacity(0.52))

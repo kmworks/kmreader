@@ -15,6 +15,7 @@ struct ServerHistoryView: View {
   @State private var hasLoaded = false
 
   @State private var isClearingLocal = false
+  @State private var showClearLocalConfirmation = false
 
   @State private var bookNameById: [String: String] = [:]
   @State private var seriesNameById: [String: String] = [:]
@@ -76,9 +77,7 @@ struct ServerHistoryView: View {
               }
 
               Button(role: .destructive) {
-                Task {
-                  await clearLocalReferencedEntities()
-                }
+                showClearLocalConfirmation = true
               } label: {
                 HStack {
                   Spacer()
@@ -172,6 +171,15 @@ struct ServerHistoryView: View {
         ToolbarItem(placement: .primaryAction) {
           Menu {
             filterMenuItems
+
+            Divider()
+
+            Button(role: .destructive) {
+              deferMenuActionPresentation { showClearLocalConfirmation = true }
+            } label: {
+              Label(String(localized: "Clear Local Entries"), systemImage: "trash")
+            }
+            .disabled(isClearingLocal)
           } label: {
             Image(
               systemName: typeFilter == nil
@@ -183,18 +191,23 @@ struct ServerHistoryView: View {
           .help(String(localized: "history.filter", defaultValue: "Filter by Type"))
           .accessibilityLabel(String(localized: "history.filter", defaultValue: "Filter by Type"))
         }
-        ToolbarItem(placement: .primaryAction) {
-          Button(role: .destructive) {
-            Task {
-              await clearLocalReferencedEntities()
-            }
-          } label: {
-            Label(String(localized: "Clear Local Entries"), systemImage: "trash")
-          }
-          .disabled(isClearingLocal || !current.isAdmin)
-        }
       }
     #endif
+    .alert(String(localized: "Clear Local Entries?"), isPresented: $showClearLocalConfirmation) {
+      Button(String(localized: "Clear"), role: .destructive) {
+        Task {
+          await clearLocalReferencedEntities()
+        }
+      }
+      Button(String(localized: "Cancel"), role: .cancel) {}
+    } message: {
+      Text(
+        String(
+          localized:
+            "This removes local entries for books and series whose files were deleted on the server."
+        )
+      )
+    }
     .sheet(item: $selectedEvent) { event in
       SheetView(title: String(localized: "History Details"), size: .large, applyFormStyle: true) {
         HistoryEventDetailView(event: event)

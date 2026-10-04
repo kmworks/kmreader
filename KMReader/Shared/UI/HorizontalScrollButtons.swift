@@ -12,27 +12,34 @@ import SwiftUI
     let scrollProxy: ScrollViewProxy
     let itemIds: [ID]
     let isVisible: Bool
+    /// Scroll-content frame in global coordinates; `.zero` until measured.
+    let contentFrame: CGRect
+    /// The scroll view's horizontal content margin. The buttons can only tell
+    /// the rest and end positions from the content frame when the margin is
+    /// known, since the frame never crosses into it.
+    let horizontalContentMargin: CGFloat
 
-    @State private var currentIndex: Int = 0
-
-    private var canScrollLeft: Bool {
-      currentIndex > 0
+    private var isMeasured: Bool {
+      contentFrame.width > 0
     }
 
-    private var canScrollRight: Bool {
-      currentIndex < itemIds.count - 1
+    private var itemStride: CGFloat {
+      contentFrame.width / CGFloat(max(itemIds.count, 1))
     }
 
     var body: some View {
-      ZStack {
-        if isVisible {
-          scrollButton(direction: .left)
-            .transition(.opacity)
-            .frame(maxWidth: .infinity, alignment: .leading)
+      GeometryReader { geometry in
+        let viewportFrame = geometry.frame(in: .global)
+        ZStack {
+          if isVisible {
+            scrollButton(direction: .left, viewportFrame: viewportFrame)
+              .transition(.opacity)
+              .frame(maxWidth: .infinity, alignment: .leading)
 
-          scrollButton(direction: .right)
-            .transition(.opacity)
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            scrollButton(direction: .right, viewportFrame: viewportFrame)
+              .transition(.opacity)
+              .frame(maxWidth: .infinity, alignment: .trailing)
+          }
         }
       }
       .animation(.easeOut(duration: 0.15), value: isVisible)
@@ -51,20 +58,45 @@ import SwiftUI
       }
     }
 
+    private func canScrollLeft(viewportFrame: CGRect) -> Bool {
+      isMeasured && contentFrame.minX < viewportFrame.minX + horizontalContentMargin - 2
+    }
+
+    private func canScrollRight(viewportFrame: CGRect) -> Bool {
+      guard isMeasured else { return itemIds.count > 1 }
+      return contentFrame.maxX > viewportFrame.maxX - horizontalContentMargin + 2
+    }
+
+    private func offsetX(viewportFrame: CGRect) -> CGFloat {
+      max(0, viewportFrame.minX + horizontalContentMargin - contentFrame.minX)
+    }
+
+    private func currentIndex(viewportFrame: CGRect) -> Int {
+      guard isMeasured, itemStride > 0 else { return 0 }
+      return min(itemIds.count - 1, max(0, Int((offsetX(viewportFrame: viewportFrame) / itemStride).rounded())))
+    }
+
+    private func step(viewportFrame: CGRect) -> Int {
+      guard isMeasured, itemStride > 0 else { return 5 }
+      return max(1, Int(viewportFrame.width / itemStride))
+    }
+
     @ViewBuilder
-    private func scrollButton(direction: ScrollDirection) -> some View {
-      let canScroll = direction == .left ? canScrollLeft : canScrollRight
+    private func scrollButton(direction: ScrollDirection, viewportFrame: CGRect) -> some View {
+      let canScroll =
+        direction == .left
+        ? canScrollLeft(viewportFrame: viewportFrame)
+        : canScrollRight(viewportFrame: viewportFrame)
 
       Button {
-        withAnimation(.easeInOut(duration: 0.3)) {
-          let step = 5  // scroll by 5 items at a time
-          switch direction {
-          case .left:
-            currentIndex = max(0, currentIndex - step)
-          case .right:
-            currentIndex = min(itemIds.count - 1, currentIndex + step)
-          }
-          if let itemId = itemIds[safe: currentIndex] {
+        let index = currentIndex(viewportFrame: viewportFrame)
+        let distance = step(viewportFrame: viewportFrame)
+        let target =
+          direction == .left
+          ? max(0, index - distance)
+          : min(itemIds.count - 1, index + distance)
+        if let itemId = itemIds[safe: target] {
+          withAnimation(.easeInOut(duration: 0.3)) {
             scrollProxy.scrollTo(itemId, anchor: .center)
           }
         }

@@ -18,6 +18,7 @@ struct SeriesDetailView: View {
 
   @State private var item: SeriesDisplayItem?
   @State private var loadedSeriesId: String?
+  @State private var hasError = false
   @State private var collections: [SidebarCollectionItem] = []
   @State private var bookViewModel = BookViewModel()
   @State private var showDeleteConfirmation = false
@@ -152,6 +153,8 @@ struct SeriesDetailView: View {
           ) {
             seriesActions
           }
+        } else if hasError {
+          seriesLoadFailureView
         } else {
           ProgressView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -184,6 +187,8 @@ struct SeriesDetailView: View {
                   showSavedFilters: $showSavedFilters
                 )
               }
+            } else if hasError {
+              seriesLoadFailureView
             } else {
               ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -329,6 +334,7 @@ struct SeriesDetailView: View {
 
 extension SeriesDetailView {
   private func refreshSeriesData() async {
+    hasError = false
     await loadLocalSeries()
     await refreshReadingTargetBook(localOnly: true)
     do {
@@ -338,11 +344,27 @@ extension SeriesDetailView {
       if case APIError.notFound = error {
         dismiss()
       } else if item == nil {
+        hasError = true
         ErrorManager.shared.alert(error: error)
       }
     }
     await loadLocalSeries()
     await refreshReadingTargetBook()
+  }
+
+  @ViewBuilder
+  private var seriesLoadFailureView: some View {
+    ContentUnavailableView {
+      Label("Failed to load series details", systemImage: "exclamationmark.triangle")
+    } actions: {
+      Button(String(localized: "Retry")) {
+        Task {
+          await refreshSeriesData()
+        }
+      }
+      .adaptiveButtonStyle(.borderedProminent)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   private func refreshLocalSeriesData() async {

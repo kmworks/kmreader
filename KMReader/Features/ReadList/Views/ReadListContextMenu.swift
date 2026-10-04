@@ -89,6 +89,15 @@ struct ReadListContextMenu: View {
           } label: {
             Label("Edit", systemImage: "pencil")
           }
+
+          if onDeleteRequested != nil {
+            Divider()
+            Button(role: .destructive) {
+              deferMenuActionPresentation { onDeleteRequested?() }
+            } label: {
+              Label("Delete Read List", systemImage: "trash")
+            }
+          }
         }
 
         Divider()

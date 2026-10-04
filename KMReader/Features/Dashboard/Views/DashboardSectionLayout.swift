@@ -21,6 +21,12 @@ struct DashboardSectionLayout<Content: View>: View {
   private var showGradientBackground: Bool =
     AppConfig.showDashboardSectionGradientBackground
 
+  #if os(macOS)
+    /// Scroll-content frame in global coordinates; the macOS scroll arrows
+    /// derive the real scroll position from it.
+    @State private var stripContentFrame: CGRect = .zero
+  #endif
+
   private var verticalPadding: CGFloat {
     showGradientBackground
       ? LayoutConfig.dashboardSectionVerticalPadding
@@ -74,6 +80,9 @@ struct DashboardSectionLayout<Content: View>: View {
               .padding(.bottom, verticalPadding)
               #if os(macOS)
                 .padding(.leading, 16)
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                  stripContentFrame = $0
+                }
               #endif
           }
           .contentMargins(.horizontal, LayoutConfig.defaultSpacing, for: .scrollContent)
@@ -81,7 +90,9 @@ struct DashboardSectionLayout<Content: View>: View {
           #if os(macOS)
             .macHorizontalScrollButtons(
               scrollProxy: proxy,
-              itemIds: itemIds
+              itemIds: itemIds,
+              contentFrame: stripContentFrame,
+              horizontalContentMargin: LayoutConfig.defaultSpacing
             )
           #endif
         }

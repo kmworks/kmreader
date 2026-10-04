@@ -32,7 +32,6 @@ struct BrowseView: View {
 
   @State private var refreshTrigger = UUID()
   @State private var initializedLibraryIdsKey: String?
-  @State private var isRefreshDisabled = false
   @State private var searchQuery: String = ""
   @State private var activeSearchText: String = ""
   @State private var showLibraryPicker = false
@@ -176,11 +175,6 @@ struct BrowseView: View {
 
   private func refreshBrowse() {
     refreshTrigger = UUID()
-    isRefreshDisabled = true
-    Task {
-      try? await Task.sleep(nanoseconds: 2_000_000_000)  // 2 seconds
-      isRefreshDisabled = false
-    }
   }
 
   private func refreshScopeLibraries() async {
