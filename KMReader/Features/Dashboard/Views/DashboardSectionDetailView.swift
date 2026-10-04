@@ -42,16 +42,16 @@ struct DashboardSectionDetailView: View {
   var body: some View {
     GeometryReader { geometry in
       ScrollView {
-        if !section.isLocalSection {
-          HStack {
-            LayoutModeMenu(selection: browseLayoutBinding)
-            Spacer()
-          }
-          .padding(.horizontal)
-          .padding(.vertical, 4)
-        }
-
         #if os(tvOS)
+          if !section.isLocalSection {
+            HStack {
+              LayoutModeMenu(selection: browseLayoutBinding)
+              Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+          }
+
           if section.supportsDownloadLatest {
             Menu {
               downloadMenuItems
@@ -67,7 +67,7 @@ struct DashboardSectionDetailView: View {
         #endif
 
         contentView
-          .padding(.horizontal)
+          .padding()
       }
     }
     .platformNavigationTitle(section.displayName)
@@ -88,20 +88,33 @@ struct DashboardSectionDetailView: View {
     }
     #if os(iOS) || os(macOS)
       .toolbar {
-        if section.supportsDownloadLatest {
-          ToolbarItem(placement: .automatic) {
+        if !section.isLocalSection || section.supportsDownloadLatest {
+          ToolbarItem(placement: .confirmationAction) {
             Menu {
-              downloadMenuItems
+              if !section.isLocalSection {
+                Picker(selection: browseLayoutBinding) {
+                  ForEach(BrowseLayoutMode.allCases) { mode in
+                    Label(mode.displayName, systemImage: mode.iconName).tag(mode)
+                  }
+                } label: {
+                  EmptyView()
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+              }
+              if section.supportsDownloadLatest {
+                if !section.isLocalSection {
+                  Divider()
+                }
+                downloadMenuItems
+              }
             } label: {
               if isQueueingOffline {
                 LoadingIcon()
               } else {
-                Image(systemName: "arrow.down.circle")
+                Image(systemName: "ellipsis")
               }
             }
-            .disabled(isOffline || isQueueingOffline)
-            .help(String(localized: "Download"))
-            .accessibilityLabel(String(localized: "Download"))
           }
         }
       }
@@ -118,7 +131,7 @@ struct DashboardSectionDetailView: View {
         systemImage: "arrow.down.circle"
       )
     }
-    .disabled(isQueueingOffline)
+    .disabled(isOffline || isQueueingOffline)
 
     if section.supportsDownloadAll {
       Button {
@@ -129,7 +142,7 @@ struct DashboardSectionDetailView: View {
           systemImage: "arrow.down.circle.fill"
         )
       }
-      .disabled(isQueueingOffline)
+      .disabled(isOffline || isQueueingOffline)
     }
   }
 
