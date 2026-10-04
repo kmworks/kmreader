@@ -70,17 +70,6 @@
       renderPie()
     }
 
-    /// Small steps advance quickly; larger jumps stretch towards ~0.65s so they read
-    /// smooth instead of twitching.
-    private static func tweenDuration(forDelta delta: Double) -> TimeInterval {
-      guard delta > 0.25 else { return 0.2 }
-      return 0.2 + min(0.45, 0.45 * (delta - 0.25) * 5)
-    }
-
-    private static func easeOutCubic(_ t: Double) -> Double {
-      1 - pow(1 - t, 3)
-    }
-
     private func progressDidChange() {
       let target = min(max(progress, Self.minimumProgress), 1)
       guard target != tweenTo || displayLink == nil else { return }
@@ -89,7 +78,7 @@
       tweenFrom = displayedProgress
       tweenTo = target
       tweenStart = CACurrentMediaTime()
-      tweenDuration = Self.tweenDuration(forDelta: delta)
+      tweenDuration = ProgressTween.duration(forDelta: delta)
       if displayLink == nil {
         let link = CADisplayLink(target: self, selector: #selector(tick(_:)))
         link.add(to: .main, forMode: .common)
@@ -100,7 +89,7 @@
     @objc private func tick(_ link: CADisplayLink) {
       let elapsed = CACurrentMediaTime() - tweenStart
       let raw = tweenDuration > 0 ? min(elapsed / tweenDuration, 1) : 1
-      let eased = tweenDuration > 0.2 ? Self.easeOutCubic(raw) : raw
+      let eased = tweenDuration > 0.2 ? ProgressTween.easeOutCubic(raw) : raw
       displayedProgress = tweenFrom + (tweenTo - tweenFrom) * eased
       renderPie()
       if raw >= 1 {
@@ -213,17 +202,6 @@
       renderPie()
     }
 
-    /// Small steps advance quickly; larger jumps stretch towards ~0.65s so they read
-    /// smooth instead of twitching.
-    private static func tweenDuration(forDelta delta: Double) -> TimeInterval {
-      guard delta > 0.25 else { return 0.2 }
-      return 0.2 + min(0.45, 0.45 * (delta - 0.25) * 5)
-    }
-
-    private static func easeOutCubic(_ t: Double) -> Double {
-      1 - pow(1 - t, 3)
-    }
-
     private func progressDidChange() {
       let target = min(max(progress, Self.minimumProgress), 1)
       guard target != tweenTo || tweenLink == nil else { return }
@@ -232,7 +210,7 @@
       tweenFrom = displayedProgress
       tweenTo = target
       tweenStart = CACurrentMediaTime()
-      tweenDuration = Self.tweenDuration(forDelta: delta)
+      tweenDuration = ProgressTween.duration(forDelta: delta)
       if tweenLink == nil {
         let link = displayLink(target: self, selector: #selector(tick(_:)))
         link.add(to: .main, forMode: .common)
@@ -243,7 +221,7 @@
     @objc private func tick(_ link: CADisplayLink) {
       let elapsed = CACurrentMediaTime() - tweenStart
       let raw = tweenDuration > 0 ? min(elapsed / tweenDuration, 1) : 1
-      let eased = tweenDuration > 0.2 ? Self.easeOutCubic(raw) : raw
+      let eased = tweenDuration > 0.2 ? ProgressTween.easeOutCubic(raw) : raw
       displayedProgress = tweenFrom + (tweenTo - tweenFrom) * eased
       renderPie()
       if raw >= 1 {

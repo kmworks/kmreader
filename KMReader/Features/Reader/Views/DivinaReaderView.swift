@@ -1890,11 +1890,11 @@ struct DivinaReaderView: View {
       return
     }
     let target = 8 * sign
-    withAnimation(.easeOut(duration: 0.09)) {
+    withAnimation(.appCurve(0.09)) {
       boundaryNudgeOffset = target
     } completion: {
       guard boundaryNudgeOffset == target else { return }
-      withAnimation(.easeInOut(duration: 0.09)) {
+      withAnimation(.appCurve(0.09)) {
         boundaryNudgeOffset = 0
       }
     }

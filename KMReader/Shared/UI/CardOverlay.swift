@@ -64,13 +64,13 @@ struct UnreadCountBadge: View {
         .fill(Color(white: 0.12))
       )
       .scaleEffect(bounceScale)
-      .animation(.easeInOut(duration: 0.2), value: count)
+      .animation(.appCurve(0.2), value: count)
       .onChange(of: count) { oldValue, newValue in
         guard newValue > oldValue else { return }
-        withAnimation(.easeOut(duration: 0.12), completionCriteria: .removed) {
+        withAnimation(.appCurve(0.12), completionCriteria: .removed) {
           bounceScale = 1.2
         } completion: {
-          withAnimation(.easeInOut(duration: 0.12)) {
+          withAnimation(.appCurve(0.12)) {
             bounceScale = 1
           }
         }
