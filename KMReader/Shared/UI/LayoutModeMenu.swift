@@ -10,9 +10,23 @@ import SwiftUI
 struct LayoutModeMenu: View {
   @Binding var selection: BrowseLayoutMode
 
+  /// Layout switches are content changes, so the write goes through
+  /// withAnimation for every page instead of each page wrapping its own
+  /// binding.
+  private var animatedSelection: Binding<BrowseLayoutMode> {
+    Binding(
+      get: { selection },
+      set: { newValue in
+        withAnimation {
+          selection = newValue
+        }
+      }
+    )
+  }
+
   var body: some View {
     Menu {
-      Picker(selection: $selection) {
+      Picker(selection: animatedSelection) {
         ForEach(BrowseLayoutMode.allCases) { mode in
           Label(mode.displayName, systemImage: mode.iconName).tag(mode)
         }
