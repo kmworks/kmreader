@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-/// Library scope filter button, icon-only on iOS and macOS. iPhone tab roots
-/// place it at the trailing toolbar edge, left of the actions menu; macOS
-/// places it at the leading edge (`.navigation`). The
+/// Library scope filter button, icon-only on iOS and macOS. iPhone places it
+/// at the trailing toolbar edge, left of the actions menu; iPad and macOS
+/// place it at the leading edge (`.cancellationAction` / `.navigation`). The
 /// icon is the lines glyph (Apple Books style, near-square so the glass
 /// capsule stays round): plain for all libraries, `decrease` for a single
 /// library, `checklist` for a multi-library subset (the picker's own
