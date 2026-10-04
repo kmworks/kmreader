@@ -61,22 +61,28 @@ struct DetailChipFlow: View {
     ForEach(displayedItems, id: \.self) { item in
       chipView(for: item)
     }
-    if !isExpanded && items.count > collapsedLimit {
+    if items.count > collapsedLimit {
       Button {
         withAnimation(.appCurve(0.2)) {
-          isExpanded = true
+          isExpanded.toggle()
         }
       } label: {
-        Text("+\(items.count - collapsedLimit)")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .padding(.horizontal, 10)
-          .padding(.vertical, 5)
-          .background {
-            Capsule()
-              .strokeBorder(Color.secondary.opacity(0.3))
+        Group {
+          if isExpanded {
+            Text("Show Less")
+          } else {
+            Text("+\(items.count - collapsedLimit)")
           }
-          .contentShape(Capsule())
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background {
+          Capsule()
+            .strokeBorder(Color.secondary.opacity(0.3))
+        }
+        .contentShape(Capsule())
       }
       .adaptiveButtonStyle(.plain)
     }

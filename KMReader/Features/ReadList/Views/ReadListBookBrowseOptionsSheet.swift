@@ -36,8 +36,8 @@ struct ReadListBookBrowseOptionsSheet: View {
                   include: tempOpts.includeReadStatuses,
                   exclude: tempOpts.excludeReadStatuses
                 )
-                Image(systemName: icon(for: state))
-                  .foregroundStyle(color(for: state))
+                Image(systemName: state.iconName)
+                  .foregroundStyle(state.color)
                   .animation(.appCurve(), value: state)
               }
             }
@@ -52,8 +52,8 @@ struct ReadListBookBrowseOptionsSheet: View {
               Text(FilterStrings.oneshot)
               Spacer()
               let state = tempOpts.oneshotFilter.state(for: .yes)
-              Image(systemName: icon(for: state))
-                .foregroundStyle(color(for: state))
+              Image(systemName: state.iconName)
+                .foregroundStyle(state.color)
                 .animation(.appCurve(), value: state)
             }
           }
@@ -65,8 +65,8 @@ struct ReadListBookBrowseOptionsSheet: View {
               Text(FilterStrings.deleted)
               Spacer()
               let state = tempOpts.deletedFilter.state(for: .yes)
-              Image(systemName: icon(for: state))
-                .foregroundStyle(color(for: state))
+              Image(systemName: state.iconName)
+                .foregroundStyle(state.color)
                 .animation(.appCurve(), value: state)
             }
           }
@@ -111,28 +111,6 @@ struct ReadListBookBrowseOptionsSheet: View {
       browseOpts = tempOpts
     }
     dismiss()
-  }
-
-  private func icon(for state: TriStateSelection) -> String {
-    switch state {
-    case .off:
-      return "circle"
-    case .include:
-      return "checkmark.circle.fill"
-    case .exclude:
-      return "xmark.circle.fill"
-    }
-  }
-
-  private func color(for state: TriStateSelection) -> Color {
-    switch state {
-    case .off:
-      return .secondary
-    case .include:
-      return .primary
-    case .exclude:
-      return .red
-    }
   }
 
   private func state(for status: ReadStatus) -> TriStateSelection {

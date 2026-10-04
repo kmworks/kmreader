@@ -174,7 +174,7 @@ struct SeriesDetailView: View {
                 }
 
                 if item != nil {
-                  SeriesCollectionsSection(collections: collections)
+                  DetailMembershipSection(collections: collections)
                 }
               }
               .padding(.horizontal)

@@ -18,38 +18,6 @@ struct BookHorizontalCardView: View {
   @AppStorage("thumbnailBlurUnreadCovers") private var thumbnailBlurUnreadCovers: Bool = false
   @State private var showReadListPicker = false
   @State private var showEditSheet = false
-  @State private var tint = ThumbnailTint()
-
-  private var isTinted: Bool { tint.color != nil }
-
-  private var titleColor: Color {
-    if isTinted { return item.isCompleted ? .white.opacity(0.7) : .white }
-    return item.isCompleted ? .secondary : .primary
-  }
-
-  private var seriesColor: Color {
-    isTinted ? .white.opacity(0.85) : .primary
-  }
-
-  private var metaColor: Color {
-    isTinted ? .white.opacity(0.7) : .secondary
-  }
-
-  private var titleSize: CGFloat {
-    LayoutConfig.horizontalCardFontSize
-  }
-
-  private var seriesSize: CGFloat {
-    LayoutConfig.horizontalCardSeriesFontSize
-  }
-
-  private var metaSize: CGFloat {
-    LayoutConfig.horizontalCardMetaFontSize
-  }
-
-  private var accessoryIconSize: CGFloat {
-    LayoutConfig.horizontalCardAccessoryIconSize
-  }
 
   private var coverBlurRadius: CGFloat {
     thumbnailBlurUnreadCovers && item.isUnread ? CoverBlurStyle.unreadRadius : 0
@@ -79,82 +47,47 @@ struct BookHorizontalCardView: View {
   }
 
   var body: some View {
-    // Cover and text form a single button so they highlight together and form
-    // one focus target on tvOS; the trailing accessories stay separate
-    // targets, like Apple Books' cloud and ellipsis buttons.
-    HStack(alignment: .center, spacing: 12) {
-      Button {
+    HorizontalCardSkeleton(
+      thumbnailId: item.bookId,
+      thumbnailType: .book,
+      coverWidth: coverWidth,
+      shadowStyle: .platform,
+      contentBlurRadius: coverBlurRadius,
+      onAction: {
         onReadBook?(false)
-      } label: {
-        HStack(alignment: .center, spacing: LayoutConfig.horizontalCardCoverSpacing) {
-          ThumbnailImage(
-            id: item.bookId,
-            type: .book,
-            shadowStyle: .platform,
-            contentBlurRadius: coverBlurRadius,
-            width: coverWidth,
-            preserveAspectRatioOverride: false
-          )
-          .frame(width: coverWidth)
+      },
+      downloadIcon: item.downloadStatus.displayIcon,
+      downloadSpinning: item.downloadStatus.isPending
+    ) { palette in
+      Spacer(minLength: 0)
 
-          VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
+      Text(item.bookTitleLine)
+        .font(.system(size: LayoutConfig.horizontalCardFontSize, weight: .semibold))
+        .foregroundColor(titleColor(palette: palette))
+        .lineLimit(2)
+        .multilineTextAlignment(.leading)
+        .padding(.bottom, 4)
 
-            Text(item.bookTitleLine)
-              .font(.system(size: titleSize, weight: .semibold))
-              .foregroundColor(titleColor)
-              .lineLimit(2)
-              .multilineTextAlignment(.leading)
-              .padding(.bottom, 4)
-
-            if item.oneshot {
-              Label(item.oneshotLine, systemImage: "book.closed")
-                .labelStyle(.compact)
-                .font(.system(size: seriesSize))
-                .foregroundColor(seriesColor)
-                .lineLimit(1)
-            } else if !item.seriesTitle.isEmpty {
-              Text(item.seriesTitle)
-                .font(.system(size: seriesSize))
-                .foregroundColor(seriesColor)
-                .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-
-            bottomBar
-
-            Spacer(minLength: 0)
-          }
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        }
-        .contentShape(Rectangle())
+      if item.oneshot {
+        Label(item.oneshotLine, systemImage: "book.closed")
+          .labelStyle(.compact)
+          .font(.system(size: LayoutConfig.horizontalCardSeriesFontSize))
+          .foregroundColor(palette.seriesColor)
+          .lineLimit(1)
+      } else if !item.seriesTitle.isEmpty {
+        Text(item.seriesTitle)
+          .font(.system(size: LayoutConfig.horizontalCardSeriesFontSize))
+          .foregroundColor(palette.seriesColor)
+          .lineLimit(1)
       }
-      .adaptiveButtonStyle(.plain, hoverEffect: false)
 
-      accessories
-    }
-    .padding(LayoutConfig.horizontalCardPadding)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background {
-      RoundedRectangle(cornerRadius: 12)
-        .fill(tint.color ?? Color.cardBackground)
-        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-    }
-    .animation(.appCurve(0.18), value: isTinted)
-    .contentShape(Rectangle())
-    #if os(iOS)
-      .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))
-    #endif
-    .cardHoverEffect()
-    .contextMenu {
+      Spacer(minLength: 0)
+
+      bottomBar(palette: palette)
+
+      Spacer(minLength: 0)
+    } menu: {
       bookContextMenu
-    }
-    .task {
-      tint.load(id: item.bookId, type: .book)
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .thumbnailDidRefresh)) { notification in
-      tint.reloadIfMatches(notification)
     }
     .sheet(isPresented: $showReadListPicker) {
       ReadListPickerSheet(
@@ -169,29 +102,13 @@ struct BookHorizontalCardView: View {
     }
   }
 
-  @ViewBuilder
-  private var accessories: some View {
-    HStack(spacing: 6) {
-      if let icon = item.downloadStatus.displayIcon {
-        DownloadStatusIcon(
-          systemName: icon,
-          spinning: item.downloadStatus.isPending,
-          color: metaColor,
-          bookId: item.bookId
-        )
-        .font(.system(size: accessoryIconSize))
-      }
-
-      EllipsisMenuButton(color: metaColor, hoverEffect: false) {
-        bookContextMenu
-      }
-      .font(.system(size: accessoryIconSize, weight: .medium))
-    }
-    .padding(.trailing, 2)
+  private func titleColor(palette: HorizontalCardPalette) -> Color {
+    if palette.isTinted { return item.isCompleted ? .white.opacity(0.7) : .white }
+    return item.isCompleted ? .secondary : .primary
   }
 
   @ViewBuilder
-  private var bottomBar: some View {
+  private func bottomBar(palette: HorizontalCardPalette) -> some View {
     HStack(spacing: 4) {
       let mediaStatus = item.media.statusValue
       if item.isUnavailable {
@@ -207,14 +124,14 @@ struct BookHorizontalCardView: View {
         }
         if item.progress == 1 {
           Image(systemName: "checkmark.circle")
-            .foregroundColor(metaColor)
-            .font(.system(size: metaSize))
+            .foregroundColor(palette.metaColor)
+            .font(.system(size: LayoutConfig.horizontalCardMetaFontSize))
         }
         Text(item.progress == 1 ? item.completedMetaText : "\(item.mediaPagesCount) pages")
       }
     }
-    .font(.system(size: metaSize))
-    .foregroundColor(metaColor)
+    .font(.system(size: LayoutConfig.horizontalCardMetaFontSize))
+    .foregroundColor(palette.metaColor)
     .lineLimit(1)
   }
 

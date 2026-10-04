@@ -20,6 +20,8 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
   var navigationLink: NavDestination? = nil
   var onAction: (() -> Void)? = nil
   var titleLineLimit: Int = 1
+  /// Leading icon for the title line (pinned collections/read lists carry a pin).
+  var titleLeadingSystemImage: String? = nil
   var subtitle: String? = nil
   /// Leading icon for the subtitle line (oneshot cards mark the author line with a book).
   var subtitleLeadingSystemImage: String? = nil
@@ -48,6 +50,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     navigationLink: NavDestination? = nil,
     onAction: (() -> Void)? = nil,
     titleLineLimit: Int = 1,
+    titleLeadingSystemImage: String? = nil,
     subtitle: String? = nil,
     subtitleLeadingSystemImage: String? = nil,
     downloadIcon: String? = nil,
@@ -68,6 +71,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     self.navigationLink = navigationLink
     self.onAction = onAction
     self.titleLineLimit = titleLineLimit
+    self.titleLeadingSystemImage = titleLeadingSystemImage
     self.subtitle = subtitle
     self.subtitleLeadingSystemImage = subtitleLeadingSystemImage
     self.downloadIcon = downloadIcon
@@ -148,8 +152,16 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
             .lineLimit(1)
           }
 
-          Text(title)
-            .lineLimit(titleLineLimit)
+          if let titleLeadingSystemImage {
+            HStack(spacing: 4) {
+              Image(systemName: titleLeadingSystemImage)
+              Text(title)
+                .lineLimit(titleLineLimit)
+            }
+          } else {
+            Text(title)
+              .lineLimit(titleLineLimit)
+          }
 
           HStack(spacing: 4) {
             detail
@@ -179,6 +191,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
 
     CardOverlayTextStack(
       title: title,
+      titleLeadingSystemImage: titleLeadingSystemImage,
       subtitle: subtitle,
       subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       titleLineLimit: titleLineLimit,
@@ -212,6 +225,7 @@ extension GridCardView where Badge == EmptyView {
     navigationLink: NavDestination? = nil,
     onAction: (() -> Void)? = nil,
     titleLineLimit: Int = 1,
+    titleLeadingSystemImage: String? = nil,
     subtitle: String? = nil,
     subtitleLeadingSystemImage: String? = nil,
     downloadIcon: String? = nil,
@@ -232,6 +246,7 @@ extension GridCardView where Badge == EmptyView {
       navigationLink: navigationLink,
       onAction: onAction,
       titleLineLimit: titleLineLimit,
+      titleLeadingSystemImage: titleLeadingSystemImage,
       subtitle: subtitle,
       subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       downloadIcon: downloadIcon,

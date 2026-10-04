@@ -9,80 +9,41 @@ struct CollectionCardView: View {
   let item: CollectionDisplayItem
   var onMutationCompleted: (() -> Void)? = nil
   let onDeleteRequested: () -> Void
+  /// Text styles scale with this width.
+  var cardWidth: CGFloat = LayoutConfig.gridCardWidth
 
-  @AppStorage("coverOnlyCards") private var coverOnlyCards: Bool = false
-  @AppStorage("cardTextOverlayMode") private var cardTextOverlayMode: Bool = false
   @State private var showEditSheet = false
 
-  private var contentSpacing: CGFloat {
-    cardTextOverlayMode ? 0 : 12
-  }
-
   var body: some View {
-    VStack(alignment: .leading, spacing: contentSpacing) {
-      ThumbnailImage(
-        id: item.collectionId,
-        type: .collection,
-        shadowStyle: .platform,
-        alignment: .bottom,
-        navigationLink: NavDestination.collectionDetail(collectionId: item.collectionId),
-        preserveAspectRatioOverride: cardTextOverlayMode ? false : nil
-      ) {
-        if cardTextOverlayMode {
-          CardTextOverlay(cornerRadius: 8) {
-            overlayTextContent
-          }
-        }
-      } menu: {
-        CollectionContextMenu(
-          collectionId: item.collectionId,
-          isPinned: item.isPinned,
-          onDeleteRequested: {
-            onDeleteRequested()
-          },
-          onEditRequested: {
-            showEditSheet = true
-          },
-          onPinToggleRequested: {
-            togglePinned()
-          }
-        )
-      }
-
-      if !cardTextOverlayMode && !coverOnlyCards {
-        VStack(alignment: .leading) {
-          HStack(spacing: 4) {
-            if item.isPinned {
-              Image(systemName: "pin.fill")
-            }
-            Text(item.name)
-              .lineLimit(1)
-          }
-
-          HStack(spacing: 4) {
-            Text("\(item.seriesCount) series")
-            Spacer()
-          }.foregroundColor(.secondary)
-        }.font(.footnote)
-          .padding(.horizontal, PlatformHelper.progressBarHeight)
-      }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .frame(maxHeight: .infinity, alignment: .top)
-    .sheet(isPresented: $showEditSheet) {
-      CollectionEditSheet(collection: item.collection)
-    }
-  }
-
-  @ViewBuilder
-  private var overlayTextContent: some View {
-    CardOverlayTextStack(
+    GridCardView(
+      thumbnailId: item.collectionId,
+      thumbnailType: .collection,
       title: item.name,
+      cardWidth: cardWidth,
+      navigationLink: NavDestination.collectionDetail(collectionId: item.collectionId),
       titleLeadingSystemImage: item.isPinned ? "pin.fill" : nil
     ) {
-      HStack(spacing: 4) {
-        Text("\(item.seriesCount) series")
-      }
+      CollectionContextMenu(
+        collectionId: item.collectionId,
+        isPinned: item.isPinned,
+        onDeleteRequested: {
+          onDeleteRequested()
+        },
+        onEditRequested: {
+          showEditSheet = true
+        },
+        onPinToggleRequested: {
+          togglePinned()
+        }
+      )
+    } detail: {
+      Text("\(item.seriesCount) series")
+    } overlayDetail: {
+      Text("\(item.seriesCount) series")
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .sheet(isPresented: $showEditSheet) {
+      CollectionEditSheet(collection: item.collection)
     }
   }
 

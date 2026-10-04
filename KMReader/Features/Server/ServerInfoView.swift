@@ -26,49 +26,19 @@ struct ServerInfoView: View {
         if let build = serverInfo.build {
           Section(header: Text("Build Information")) {
             if let version = build.version {
-              HStack {
-                Label("Version", systemImage: "number")
-                Spacer()
-                Text(version)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Version", value: version, icon: "number")
             }
             if let artifact = build.artifact {
-              HStack {
-                Label("Artifact", systemImage: "cube.box")
-                Spacer()
-                Text(artifact)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Artifact", value: artifact, icon: "cube.box")
             }
             if let name = build.name {
-              HStack {
-                Label("Name", systemImage: "tag")
-                Spacer()
-                Text(name)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Name", value: name, icon: "tag")
             }
             if let group = build.group {
-              HStack {
-                Label("Group", systemImage: "folder")
-                Spacer()
-                Text(group)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Group", value: group, icon: "folder")
             }
             if let time = build.time {
-              HStack {
-                Label("Build Time", systemImage: "clock")
-                Spacer()
-                Text(time)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Build Time", value: time, icon: "clock")
             }
           }
         }
@@ -76,43 +46,19 @@ struct ServerInfoView: View {
         if let git = serverInfo.git {
           Section(header: Text("Git Information")) {
             if let branch = git.branch {
-              HStack {
-                Label("Branch", systemImage: "arrow.branch")
-                Spacer()
-                Text(branch)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Branch", value: branch, icon: "arrow.branch")
             }
             if let commit = git.commit {
               if let id = commit.id {
-                HStack {
-                  Label("Commit ID", systemImage: "number.square")
-                  Spacer()
-                  Text(id)
-                    .foregroundColor(.secondary)
-                    .font(.system(.body, design: .monospaced))
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "Commit ID", value: id, icon: "number.square", monospaced: true)
               }
               if let idAbbrev = commit.idAbbrev {
-                HStack {
-                  Label("Commit ID (Short)", systemImage: "number.square.fill")
-                  Spacer()
-                  Text(idAbbrev)
-                    .foregroundColor(.secondary)
-                    .font(.system(.body, design: .monospaced))
-                }
-                .tvFocusableHighlight()
+                infoRow(
+                  label: "Commit ID (Short)", value: idAbbrev, icon: "number.square.fill",
+                  monospaced: true)
               }
               if let time = commit.time {
-                HStack {
-                  Label("Commit Time", systemImage: "clock")
-                  Spacer()
-                  Text(time)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "Commit Time", value: time, icon: "clock")
               }
             }
           }
@@ -121,81 +67,33 @@ struct ServerInfoView: View {
         if let java = serverInfo.java {
           Section(header: Text("Java Information")) {
             if let version = java.version {
-              HStack {
-                Label("Version", systemImage: "number")
-                Spacer()
-                Text(version)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Version", value: version, icon: "number")
             }
             if let vendor = java.vendor {
               if let name = vendor.name {
-                HStack {
-                  Label("Vendor", systemImage: "building.2")
-                  Spacer()
-                  Text(name)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "Vendor", value: name, icon: "building.2")
               }
               if let version = vendor.version {
-                HStack {
-                  Label("Vendor Version", systemImage: "tag")
-                  Spacer()
-                  Text(version)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "Vendor Version", value: version, icon: "tag")
               }
             }
             if let runtime = java.runtime {
               if let name = runtime.name {
-                HStack {
-                  Label("Runtime", systemImage: "gearshape")
-                  Spacer()
-                  Text(name)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "Runtime", value: name, icon: "gearshape")
               }
               if let version = runtime.version {
-                HStack {
-                  Label("Runtime Version", systemImage: "number.square")
-                  Spacer()
-                  Text(version)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "Runtime Version", value: version, icon: "number.square")
               }
             }
             if let jvm = java.jvm {
               if let name = jvm.name {
-                HStack {
-                  Label("JVM", systemImage: "cpu")
-                  Spacer()
-                  Text(name)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "JVM", value: name, icon: "cpu")
               }
               if let vendor = jvm.vendor {
-                HStack {
-                  Label("JVM Vendor", systemImage: "building.2")
-                  Spacer()
-                  Text(vendor)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "JVM Vendor", value: vendor, icon: "building.2")
               }
               if let version = jvm.version {
-                HStack {
-                  Label("JVM Version", systemImage: "number.square")
-                  Spacer()
-                  Text(version)
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
+                infoRow(label: "JVM Version", value: version, icon: "number.square")
               }
             }
           }
@@ -204,31 +102,13 @@ struct ServerInfoView: View {
         if let os = serverInfo.os {
           Section(header: Text("Operating System")) {
             if let name = os.name {
-              HStack {
-                Label("Name", systemImage: "desktopcomputer")
-                Spacer()
-                Text(name)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Name", value: name, icon: "desktopcomputer")
             }
             if let version = os.version {
-              HStack {
-                Label("Version", systemImage: "number")
-                Spacer()
-                Text(version)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Version", value: version, icon: "number")
             }
             if let arch = os.arch {
-              HStack {
-                Label("Architecture", systemImage: "cpu")
-                Spacer()
-                Text(arch)
-                  .foregroundColor(.secondary)
-              }
-              .tvFocusableHighlight()
+              infoRow(label: "Architecture", value: arch, icon: "cpu")
             }
           }
         }
@@ -260,6 +140,13 @@ struct ServerInfoView: View {
         await loadServerInfo()
       }
     }
+  }
+
+  private func infoRow(
+    label: String.LocalizationValue, value: String, icon: String, monospaced: Bool = false
+  ) -> some View {
+    InfoRow(label: String(localized: label), value: value, icon: icon, monospaced: monospaced)
+      .tvFocusableHighlight()
   }
 
   private func loadServerInfo() async {

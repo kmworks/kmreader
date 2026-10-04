@@ -13,17 +13,6 @@ struct ReadListHorizontalCardView: View {
   let onDeleteRequested: () -> Void
 
   @State private var showEditSheet = false
-  @State private var tint = ThumbnailTint()
-
-  private var isTinted: Bool { tint.color != nil }
-
-  private var titleColor: Color {
-    isTinted ? .white : .primary
-  }
-
-  private var metaColor: Color {
-    isTinted ? .white.opacity(0.7) : .secondary
-  }
 
   private var readListContextMenu: some View {
     ReadListContextMenu(
@@ -46,71 +35,34 @@ struct ReadListHorizontalCardView: View {
   }
 
   var body: some View {
-    HStack(alignment: .center, spacing: 12) {
-      NavigationLink(value: NavDestination.readListDetail(readListId: item.readListId)) {
-        HStack(alignment: .center, spacing: LayoutConfig.horizontalCardCoverSpacing) {
-          ThumbnailImage(
-            id: item.readListId, type: .readlist, width: coverWidth,
-            preserveAspectRatioOverride: false
-          )
-          .frame(width: coverWidth)
-          .allowsHitTesting(false)
+    HorizontalCardSkeleton(
+      thumbnailId: item.readListId,
+      thumbnailType: .readlist,
+      coverWidth: coverWidth,
+      navigationLink: NavDestination.readListDetail(readListId: item.readListId)
+    ) { palette in
+      Spacer(minLength: 0)
 
-          VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
+      Text(item.name)
+        .font(.system(size: LayoutConfig.horizontalCardFontSize, weight: .semibold))
+        .foregroundColor(palette.titleColor)
+        .lineLimit(2)
+        .multilineTextAlignment(.leading)
 
-            Text(item.name)
-              .font(.system(size: LayoutConfig.horizontalCardFontSize, weight: .semibold))
-              .foregroundColor(titleColor)
-              .lineLimit(2)
-              .multilineTextAlignment(.leading)
+      Spacer(minLength: 0)
 
-            Spacer(minLength: 0)
+      VStack(alignment: .leading, spacing: 4) {
+        Text("\(item.bookCount) books")
+          .font(.system(size: LayoutConfig.horizontalCardSeriesFontSize))
 
-            VStack(alignment: .leading, spacing: 4) {
-              Text("\(item.bookCount) books")
-                .font(.system(size: LayoutConfig.horizontalCardSeriesFontSize))
-
-              Text(item.lastModifiedDate.formattedMediumDate)
-                .font(.system(size: LayoutConfig.horizontalCardMetaFontSize))
-            }
-            .foregroundColor(metaColor)
-
-            Spacer(minLength: 0)
-          }
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        }
-        .contentShape(Rectangle())
+        Text(item.lastModifiedDate.formattedMediumDate)
+          .font(.system(size: LayoutConfig.horizontalCardMetaFontSize))
       }
-      .adaptiveButtonStyle(.plain, hoverEffect: false)
+      .foregroundColor(palette.metaColor)
 
-      EllipsisMenuButton(color: metaColor, hoverEffect: false) {
-        readListContextMenu
-      }
-      .font(.system(size: LayoutConfig.horizontalCardAccessoryIconSize, weight: .medium))
-      .padding(.trailing, 2)
-    }
-    .padding(LayoutConfig.horizontalCardPadding)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .background {
-      RoundedRectangle(cornerRadius: 12)
-        .fill(tint.color ?? Color.cardBackground)
-        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-    }
-    .animation(.appCurve(0.18), value: isTinted)
-    .contentShape(Rectangle())
-    #if os(iOS)
-      .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 12))
-    #endif
-    .cardHoverEffect()
-    .contextMenu {
+      Spacer(minLength: 0)
+    } menu: {
       readListContextMenu
-    }
-    .task {
-      tint.load(id: item.readListId, type: .readlist)
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .thumbnailDidRefresh)) { notification in
-      tint.reloadIfMatches(notification)
     }
     .sheet(isPresented: $showEditSheet, onDismiss: onChanged) {
       ReadListEditSheet(readList: item.readList)

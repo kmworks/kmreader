@@ -36,7 +36,8 @@ struct CollectionQueryItemView: View {
             onMutationCompleted: reloadItem,
             onDeleteRequested: {
               showDeleteConfirmation = true
-            }
+            },
+            cardWidth: layout.cardWidth
           )
         case .list:
           CollectionRowView(

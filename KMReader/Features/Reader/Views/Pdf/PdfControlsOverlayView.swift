@@ -123,6 +123,7 @@
               Image(systemName: "xmark")
                 .contentShape(Circle())
             }
+            .accessibilityLabel(Text("Close"))
             .buttonBorderShape(.circle)
             .controlSize(.large)
             .readerControlButtonStyle()
@@ -174,6 +175,7 @@
                 .padding(4)
                 .contentShape(Circle())
             }
+            .accessibilityLabel(Text("Current Reading Options"))
             .buttonBorderShape(.circle)
             .controlSize(.large)
             .readerControlButtonStyle()

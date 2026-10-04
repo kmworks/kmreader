@@ -296,6 +296,7 @@ struct DivinaControlsOverlayView: View {
             Image(systemName: "xmark")
               .contentShape(Circle())
           }
+          .accessibilityLabel(Text("Close"))
           .buttonBorderShape(.circle)
           .controlSize(.large)
           .readerControlButtonStyle()
@@ -370,6 +371,7 @@ struct DivinaControlsOverlayView: View {
               .padding(4)
               .contentShape(Circle())
           }
+          .accessibilityLabel(Text("Current Reading Options"))
           .buttonBorderShape(.circle)
           .controlSize(.large)
           .readerControlButtonStyle()

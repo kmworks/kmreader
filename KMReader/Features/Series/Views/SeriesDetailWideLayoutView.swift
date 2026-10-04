@@ -89,7 +89,7 @@ struct SeriesDetailWideLayoutView<Actions: View>: View {
     } column: {
       if item != nil {
         VStack(alignment: .leading, spacing: 20) {
-          SeriesCollectionsSection(collections: collections)
+          DetailMembershipSection(collections: collections)
             .padding(.horizontal)
 
           BooksListViewForSeries(

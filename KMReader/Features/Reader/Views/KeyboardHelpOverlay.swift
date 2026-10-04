@@ -60,7 +60,7 @@ struct KeyboardHelpOverlay: View {
           .fontWeight(.bold)
           .foregroundColor(.white)
 
-        VStack(alignment: .leading, spacing: 12) {
+        Grid(alignment: .leading, verticalSpacing: 12) {
           HelpRow(key: "ESC", description: "Close reader")
           HelpRow(key: "? / H", description: "Show this help")
 
@@ -144,7 +144,7 @@ private struct HelpRow: View {
   let description: String
 
   var body: some View {
-    HStack {
+    GridRow {
       Text(key)
         .font(.system(.body, design: .monospaced))
         .fontWeight(.semibold)
@@ -153,7 +153,10 @@ private struct HelpRow: View {
         .padding(.vertical, 6)
         .background(Color.white.opacity(0.2))
         .cornerRadius(6)
-        .frame(width: 130, alignment: .leading)
+        // The Grid column tracks the widest key, so larger dynamic type sizes
+        // widen the column instead of overflowing it; 130 keeps the default
+        // layout unchanged.
+        .frame(minWidth: 130, alignment: .leading)
 
       Text(description)
         .foregroundColor(.white.opacity(0.9))

@@ -259,21 +259,22 @@ struct LibraryListContent: View {
   @ViewBuilder
   private func allLibrariesRowView() -> some View {
     let isSelected = selectedLibraryIds.isEmpty
-    let entry = allLibrariesEntry
-    let metricsView = allLibrariesMetricsView(entry)
-    let fileSizeText = entry?.fileSize.map { formatFileSize($0) } ?? ""
 
     let rowContent = HStack(spacing: 12) {
-      rowTextContent(
+      LibraryRowTextContent(
         name: String(localized: "All Libraries"),
-        fileSizeText: fileSizeText,
-        metricsView: current.isAdmin ? metricsView : nil
+        fileSize: allLibrariesEntry?.fileSize,
+        metricsText: current.isAdmin
+          ? allLibrariesEntry.flatMap { LibraryMetricsText.allLibrariesMetrics(for: $0) } : nil
       )
 
       Spacer()
 
       if selectionEnabled {
-        selectionIndicator(isSelected: isSelected)
+        LibrarySelectionIndicator(
+          isSelected: isSelected,
+          isSingleSelectionMode: isSingleSelectionMode
+        )
       }
     }
     .contentShape(Rectangle())
@@ -322,43 +323,6 @@ struct LibraryListContent: View {
     onLibrarySelected?("")
   }
 
-  private func rowTextContent(
-    name: String,
-    fileSizeText: String,
-    metricsView: Text?
-  ) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
-      HStack(spacing: 6) {
-        Text(name)
-          .font(.headline)
-        if !fileSizeText.isEmpty {
-          Text(fileSizeText)
-            .font(.caption)
-            .foregroundColor(.secondary)
-        }
-      }
-      if let metricsView {
-        metricsView
-          .font(.caption)
-          .foregroundColor(.secondary)
-      }
-    }
-  }
-
-  private func selectionIndicator(isSelected: Bool) -> some View {
-    Image(systemName: selectionIndicatorName(isSelected: isSelected))
-      .foregroundStyle(isSelected ? Color.primary : .secondary)
-      .font(.title3)
-      .animation(.appCurve(), value: isSelected)
-  }
-
-  private func selectionIndicatorName(isSelected: Bool) -> String {
-    if isSingleSelectionMode {
-      return isSelected ? "largecircle.fill.circle" : "circle"
-    }
-    return isSelected ? "checkmark.circle.fill" : "circle"
-  }
-
   @ViewBuilder
   private func allLibrariesContextMenu() -> some View {
     Button {
@@ -402,76 +366,11 @@ struct LibraryListContent: View {
       || library.sidecarsCount != nil
   }
 
-  private func joinText(_ parts: [Text], separator: String) -> Text? {
-    guard let first = parts.first else { return nil }
-    return parts.dropFirst().reduce(first) { result, part in
-      result + Text(separator) + part
-    }
-  }
-
-  private func formatFileSize(_ bytes: Double) -> String {
-    return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .binary)
-  }
-
   private func hasAllLibrariesMetrics(_ entry: SidebarLibraryItem?) -> Bool {
     guard let entry else { return false }
     return entry.seriesCount != nil || entry.booksCount != nil || entry.fileSize != nil
       || entry.sidecarsCount != nil || entry.collectionsCount != nil
       || entry.readlistsCount != nil
-  }
-
-  private func allLibrariesMetricsView(_ entry: SidebarLibraryItem?) -> Text? {
-    guard let entry else { return nil }
-    var lines: [Text] = []
-
-    // First line: series, books, sidecars
-    var firstLineParts: [Text] = []
-    if let seriesCount = entry.seriesCount {
-      firstLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.series", defaultValue: "%lld series"),
-            Int(seriesCount))))
-    }
-    if let booksCount = entry.booksCount {
-      firstLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.books", defaultValue: "%lld books"),
-            Int(booksCount))))
-    }
-    if let sidecarsCount = entry.sidecarsCount {
-      firstLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.sidecars", defaultValue: "%lld sidecars"),
-            Int(sidecarsCount))))
-    }
-    if let firstLine = joinText(firstLineParts, separator: " · ") {
-      lines.append(firstLine)
-    }
-
-    // Second line: collections, readlists
-    var secondLineParts: [Text] = []
-    if let collectionsCount = entry.collectionsCount {
-      secondLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.collections", defaultValue: "%lld collections"),
-            Int(collectionsCount))))
-    }
-    if let readlistsCount = entry.readlistsCount {
-      secondLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.readlists", defaultValue: "%lld read lists"),
-            Int(readlistsCount))))
-    }
-    if let secondLine = joinText(secondLineParts, separator: " · ") {
-      lines.append(secondLine)
-    }
-
-    return joinText(lines, separator: "\n")
   }
 
   // MARK: - Library Actions

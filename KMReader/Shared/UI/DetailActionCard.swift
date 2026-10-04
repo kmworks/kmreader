@@ -16,7 +16,7 @@ struct DetailActionCard<Content: View>: View {
     }
     .padding(12)
     .background(
-      Color.secondary.opacity(0.12),
+      LayoutConfig.neutralFillColor,
       in: RoundedRectangle(cornerRadius: 16, style: .continuous)
     )
   }
