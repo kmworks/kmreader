@@ -69,22 +69,6 @@ struct DivinaControlsOverlayView: View {
     viewModel.currentReaderPage?.id
   }
 
-  #if !os(tvOS)
-    private var showsPageFilmstrip: Bool {
-      readingDirection != .webtoon && filmstripPages.count > 1
-    }
-
-    private var filmstripPages: [ReaderPage] {
-      guard let currentSegmentBookId else { return [] }
-      return viewModel.segmentReaderPages(forSegmentBookId: currentSegmentBookId)
-    }
-
-    private func selectFilmstripPage(_ pageID: ReaderPageID) {
-      guard pageID != viewModel.currentReaderPage?.id else { return }
-      viewModel.requestNavigation(toPageID: pageID)
-    }
-  #endif
-
   private var currentSegmentPageCount: Int {
     guard let currentSegmentBookId else {
       return viewModel.pageCount
@@ -444,18 +428,6 @@ struct DivinaControlsOverlayView: View {
     progressHorizontalPadding: CGFloat = 0
   ) -> some View {
     VStack(spacing: 12) {
-      #if !os(tvOS)
-        if showPageButton && showsPageFilmstrip {
-          PageFilmstripView(
-            pages: filmstripPages,
-            currentPageID: currentPageID,
-            readingDirection: readingDirection,
-            displayPageNumber: displayPageNumber(for:),
-            onSelect: selectFilmstripPage
-          )
-        }
-      #endif
-
       if showPageButton {
         HStack {
           Spacer(minLength: 0)
