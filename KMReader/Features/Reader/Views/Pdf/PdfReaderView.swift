@@ -382,28 +382,17 @@
         }
 
         if let errorMessage = viewModel.errorMessage, !viewModel.isLoading {
-          VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-              .font(.largeTitle)
-
-            Text(errorMessage)
-              .multilineTextAlignment(.center)
-
-            HStack(spacing: 12) {
-              Button("Retry") {
-                Task {
-                  await loadBook()
-                }
+          ReaderUnavailableView(
+            icon: "exclamationmark.triangle",
+            title: "Failed to load media",
+            message: errorMessage,
+            onRetry: {
+              Task {
+                await loadBook()
               }
-              .adaptiveButtonStyle(.borderedProminent)
-
-              Button("Close") {
-                closeReader()
-              }
-              .adaptiveButtonStyle(.bordered)
-            }
-          }
-          .padding()
+            },
+            onClose: closeReader
+          )
           .transition(ReaderLoadingTransition.content)
         }
 

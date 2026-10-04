@@ -29,6 +29,7 @@ struct SettingsAboutView: View {
                 .foregroundColor(.secondary)
             }
           }
+          .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
         .sheet(isPresented: $showSubscription) {
@@ -44,6 +45,7 @@ struct SettingsAboutView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+            .contentShape(Rectangle())
           }
         }
 
@@ -58,6 +60,7 @@ struct SettingsAboutView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+            .contentShape(Rectangle())
           }
         }
 
@@ -70,6 +73,7 @@ struct SettingsAboutView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+            .contentShape(Rectangle())
           }
         }
 
@@ -82,6 +86,7 @@ struct SettingsAboutView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+            .contentShape(Rectangle())
           }
         }
 
@@ -97,6 +102,7 @@ struct SettingsAboutView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+            .contentShape(Rectangle())
           }
         }
 

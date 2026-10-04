@@ -21,6 +21,8 @@ struct ExpandToggleButton: View {
         Text(isExpanded ? "Show Less" : "Show More")
           .font(.caption)
       }
+      .frame(minHeight: 44)
+      .contentShape(Rectangle())
     }
   }
 }

@@ -20,9 +20,11 @@ struct DetailTitleView: View {
         } label: {
           Image(systemName: "doc.on.doc")
             .font(.subheadline)
+            .contentShape(Rectangle())
         }
         .adaptiveButtonStyle(.plain)
         .foregroundStyle(.secondary)
+        .accessibilityLabel(Text("Copy"))
       #endif
     }
   }

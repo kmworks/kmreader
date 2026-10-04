@@ -19,48 +19,27 @@
         List {
           if isSearching {
             Section {
-              HStack {
-                Spacer()
+              ContentUnavailableView {
                 VStack(spacing: 8) {
                   ProgressView()
                   Text(String(localized: "Searching..."))
                     .foregroundStyle(.secondary)
                 }
-                Spacer()
               }
-              .padding(.vertical, 20)
               .listRowBackground(Color.clear)
             }
           } else if trimmedQuery.isEmpty {
             Section {
-              HStack {
-                Spacer()
-                VStack(spacing: 8) {
-                  Image(systemName: "magnifyingglass")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                  Text(String(localized: "Search in PDF"))
-                    .foregroundStyle(.secondary)
-                }
-                Spacer()
+              ContentUnavailableView {
+                Label(String(localized: "Search in PDF"), systemImage: "magnifyingglass")
               }
-              .padding(.vertical, 20)
               .listRowBackground(Color.clear)
             }
           } else if results.isEmpty {
             Section {
-              HStack {
-                Spacer()
-                VStack(spacing: 8) {
-                  Image(systemName: "text.magnifyingglass")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
-                  Text(String(localized: "No matches found"))
-                    .foregroundStyle(.secondary)
-                }
-                Spacer()
+              ContentUnavailableView {
+                Label(String(localized: "No matches found"), systemImage: "text.magnifyingglass")
               }
-              .padding(.vertical, 20)
               .listRowBackground(Color.clear)
             }
           } else {
@@ -81,6 +60,7 @@
                       .lineLimit(3)
                   }
                   .frame(maxWidth: .infinity, alignment: .leading)
+                  .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .listRowBackground(Color.clear)

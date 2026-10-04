@@ -75,10 +75,15 @@ struct OneshotDetailView: View {
             BookReadListsSection(readLists: readLists)
           }
         } else if hasError {
-          VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-              .font(.largeTitle)
-              .foregroundColor(.secondary)
+          ContentUnavailableView {
+            Label("Failed to load oneshot details", systemImage: "exclamationmark.triangle")
+          } actions: {
+            Button(String(localized: "Retry")) {
+              Task {
+                await refreshOneshotData()
+              }
+            }
+            .adaptiveButtonStyle(.borderedProminent)
           }
           .frame(maxWidth: .infinity)
         } else {
@@ -176,6 +181,7 @@ struct OneshotDetailView: View {
 
   private func refreshOneshotData() async {
     isLoading = true
+    hasError = false
     await loadLocalOneshot()
     do {
       _ = try await SyncService.syncSeriesDetail(seriesId: seriesId)

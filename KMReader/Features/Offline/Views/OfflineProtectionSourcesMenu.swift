@@ -19,9 +19,12 @@ struct OfflineProtectionSourcesMenu: View {
       } label: {
         Image(systemName: "lock.fill")
           .font(.caption)
+          .padding(4)
+          .contentShape(Rectangle())
       }
       .foregroundColor(.secondary)
       .lineLimit(1)
+      .accessibilityLabel(Text("Protected"))
     }
   }
 

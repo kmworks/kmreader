@@ -217,7 +217,10 @@ struct OneshotEditSheet: View {
             }
           } label: {
             Image(systemName: "trash")
+              .padding(8)
+              .contentShape(Rectangle())
           }
+          .accessibilityLabel(Text("Delete"))
         }
       }
       HStack {
@@ -289,7 +292,10 @@ struct OneshotEditSheet: View {
             }
           } label: {
             Image(systemName: "trash")
+              .padding(8)
+              .contentShape(Rectangle())
           }
+          .accessibilityLabel(Text("Delete"))
         }
       }
       HStack {
@@ -334,7 +340,10 @@ struct OneshotEditSheet: View {
             }
           } label: {
             Image(systemName: "trash")
+              .padding(8)
+              .contentShape(Rectangle())
           }
+          .accessibilityLabel(Text("Delete"))
         }
       }
       HStack {
@@ -379,7 +388,10 @@ struct OneshotEditSheet: View {
             }
           } label: {
             Image(systemName: "trash")
+              .padding(8)
+              .contentShape(Rectangle())
           }
+          .accessibilityLabel(Text("Delete"))
         }
       }
       HStack {
@@ -425,7 +437,10 @@ struct OneshotEditSheet: View {
               }
             } label: {
               Image(systemName: "trash")
+                .padding(8)
+                .contentShape(Rectangle())
             }
+            .accessibilityLabel(Text("Delete"))
           }
           Text(bookMetadataUpdate.links[index].url)
             .font(.caption)

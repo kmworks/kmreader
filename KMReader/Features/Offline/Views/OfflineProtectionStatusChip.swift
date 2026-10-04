@@ -30,6 +30,8 @@ struct OfflineProtectionStatusChip: View {
         }
         .font(.caption)
         .foregroundColor(.secondary)
+        .padding(4)
+        .contentShape(Rectangle())
         .accessibilityLabel(label)
       }
       .buttonStyle(.plain)

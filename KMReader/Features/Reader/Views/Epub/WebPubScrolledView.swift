@@ -566,6 +566,7 @@
         currentPageIndex: currentSubPageIndex,
         totalPagesInChapter: totalPagesInChapter,
         showingControls: showingControls,
+        isRTL: publicationReadingProgression == .rtl,
         overlayPreferences: overlayPreferences
       )
       infoOverlay?.update(content: content, animated: true)

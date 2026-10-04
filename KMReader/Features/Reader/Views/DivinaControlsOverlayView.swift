@@ -459,7 +459,6 @@ struct DivinaControlsOverlayView: View {
           Spacer(minLength: 0)
 
           Button {
-            guard viewModel.hasPages else { return }
             showingPageJumpSheet = true
           } label: {
             HStack(spacing: 6) {
@@ -471,6 +470,7 @@ struct DivinaControlsOverlayView: View {
             .contentShape(Capsule())
           }
           .readerControlButtonStyle()
+          .disabled(!viewModel.hasPages)
           #if os(tvOS)
             .focused($focusedControl, equals: .pageNumber)
           #endif

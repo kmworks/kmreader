@@ -66,6 +66,7 @@ struct SettingsAccountView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+            .contentShape(Rectangle())
           }
           .adaptiveButtonStyle(.plain)
         }

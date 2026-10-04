@@ -23,74 +23,77 @@ struct CollectionSeriesQueryView: View {
   }
 
   var body: some View {
-    Group {
-      if seriesViewModel.isLoading && seriesViewModel.pagination.isEmpty {
-        ProgressView()
-          .frame(maxWidth: .infinity)
-          .padding()
-      } else {
-        switch browseLayout {
-        case .grid, .largeGrid:
-          LazyVGrid(columns: columns, spacing: spacing) {
-            ForEach(seriesViewModel.pagination.items) { series in
-              Group {
-                if isSelectionMode && isAdmin {
-                  SeriesSelectionItemView(
-                    seriesId: series.id,
-                    layout: browseLayout,
-                    selectedSeriesIds: $selectedSeriesIds
-                  )
-                } else {
-                  SeriesQueryItemView(
-                    seriesId: series.id,
-                    layout: browseLayout,
-                    cardWidth: browseLayout.cardWidth,
-                    onItemMissing: {
-                      seriesViewModel.removeSeries(id: series.id)
-                    }
-                  )
-                }
+    BrowseStateView(
+      isLoading: seriesViewModel.isLoading,
+      isEmpty: seriesViewModel.pagination.isEmpty,
+      emptyIcon: ContentIcon.series,
+      emptyTitle: LocalizedStringKey("No series found"),
+      emptyMessage: LocalizedStringKey("Try adjusting the filters."),
+      onRetry: {
+        Task { await loadMore(refresh: true) }
+      }
+    ) {
+      switch browseLayout {
+      case .grid, .largeGrid:
+        LazyVGrid(columns: columns, spacing: spacing) {
+          ForEach(seriesViewModel.pagination.items) { series in
+            Group {
+              if isSelectionMode && isAdmin {
+                SeriesSelectionItemView(
+                  seriesId: series.id,
+                  layout: browseLayout,
+                  selectedSeriesIds: $selectedSeriesIds
+                )
+              } else {
+                SeriesQueryItemView(
+                  seriesId: series.id,
+                  layout: browseLayout,
+                  cardWidth: browseLayout.cardWidth,
+                  onItemMissing: {
+                    seriesViewModel.removeSeries(id: series.id)
+                  }
+                )
               }
-              .onAppear {
-                if seriesViewModel.pagination.shouldLoadMore(after: series) {
-                  Task { await loadMore(refresh: false) }
-                }
+            }
+            .onAppear {
+              if seriesViewModel.pagination.shouldLoadMore(after: series) {
+                Task { await loadMore(refresh: false) }
               }
             }
           }
-          .padding(.horizontal)
-        case .list:
-          LazyVStack {
-            ForEach(seriesViewModel.pagination.items) { series in
-              Group {
-                if isSelectionMode && isAdmin {
-                  SeriesSelectionItemView(
-                    seriesId: series.id,
-                    layout: .list,
-                    selectedSeriesIds: $selectedSeriesIds
-                  )
-                } else {
-                  SeriesQueryItemView(
-                    seriesId: series.id,
-                    layout: .list,
-                    onItemMissing: {
-                      seriesViewModel.removeSeries(id: series.id)
-                    }
-                  )
-                }
-              }
-              .onAppear {
-                if seriesViewModel.pagination.shouldLoadMore(after: series) {
-                  Task { await loadMore(refresh: false) }
-                }
-              }
-              if !seriesViewModel.pagination.isLast(series) {
-                Divider()
-              }
-            }
-          }
-          .padding(.horizontal)
         }
+        .padding(.horizontal)
+      case .list:
+        LazyVStack {
+          ForEach(seriesViewModel.pagination.items) { series in
+            Group {
+              if isSelectionMode && isAdmin {
+                SeriesSelectionItemView(
+                  seriesId: series.id,
+                  layout: .list,
+                  selectedSeriesIds: $selectedSeriesIds
+                )
+              } else {
+                SeriesQueryItemView(
+                  seriesId: series.id,
+                  layout: .list,
+                  onItemMissing: {
+                    seriesViewModel.removeSeries(id: series.id)
+                  }
+                )
+              }
+            }
+            .onAppear {
+              if seriesViewModel.pagination.shouldLoadMore(after: series) {
+                Task { await loadMore(refresh: false) }
+              }
+            }
+            if !seriesViewModel.pagination.isLast(series) {
+              Divider()
+            }
+          }
+        }
+        .padding(.horizontal)
       }
     }
   }

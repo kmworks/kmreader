@@ -11,6 +11,13 @@ struct ReadingPagesHeatmapView: View {
 
   private let tileSize: CGFloat = 13
   private let tileSpacing: CGFloat = 4
+  private let tileHitSize: CGFloat = 28
+
+  // Hit containers exceed the visual tiles; the compensation keeps the dense
+  // grid pitch unchanged instead of spreading the tiles apart.
+  private var gridSpacing: CGFloat {
+    tileSpacing - (tileHitSize - tileSize)
+  }
 
   private var maxValue: Double {
     weeks
@@ -31,23 +38,28 @@ struct ReadingPagesHeatmapView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       ScrollView(.horizontal, showsIndicators: false) {
-        LazyHStack(alignment: .top, spacing: tileSpacing) {
+        LazyHStack(alignment: .top, spacing: gridSpacing) {
           ForEach(weeks) { week in
-            VStack(spacing: tileSpacing) {
+            VStack(spacing: gridSpacing) {
               ForEach(0..<week.days.count, id: \.self) { index in
                 if let point = week.days[index] {
                   Button {
                     selectedPointId = point.id
                   } label: {
-                    RoundedRectangle(cornerRadius: 3)
-                      .fill(tileColor(for: point.value))
+                    Color.clear
+                      .frame(width: tileHitSize, height: tileHitSize)
                       .overlay {
-                        if selectedPointId == point.id {
-                          RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color.primary, lineWidth: 2)
-                        }
+                        RoundedRectangle(cornerRadius: 3)
+                          .fill(tileColor(for: point.value))
+                          .overlay {
+                            if selectedPointId == point.id {
+                              RoundedRectangle(cornerRadius: 3)
+                                .stroke(Color.primary, lineWidth: 2)
+                            }
+                          }
+                          .frame(width: tileSize, height: tileSize)
                       }
-                      .frame(width: tileSize, height: tileSize)
+                      .contentShape(Rectangle())
                   }
                   .buttonStyle(.plain)
                   .accessibilityLabel(displayDate(for: point))
@@ -59,7 +71,7 @@ struct ReadingPagesHeatmapView: View {
                   #endif
                 } else {
                   Color.clear
-                    .frame(width: tileSize, height: tileSize)
+                    .frame(width: tileHitSize, height: tileHitSize)
                     .accessibilityHidden(true)
                 }
               }

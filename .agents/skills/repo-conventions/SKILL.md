@@ -44,6 +44,10 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - DIVINA page image load failures are recorded in `ReaderPageLoadScheduler` as a typed `ReaderPageLoadFailure` per page (cancellation never counts as failure), cleared on success and surfaced through the page-presentation invalidation channel; `NativePageData.failure` (paged/scroll/curl) and the Webtoon cell error state render `failure.title` / `failure.detail` with a retry button. Retry goes through `ReaderViewModel.retryImageLoad(for:)` — never re-enter the load pipeline from view code directly.
 - The failure value comes from the load pipeline itself: a server/HTTP status from the remote page fetch, a network error description, a local read failure from archive materialization (`OfflineManager.getOfflinePageImageURL` throws; the `try?` callers treat it as plain absence), or offline unavailability. View code never invents its own reason text.
 
+### Book-Level Unavailable State
+
+- Book-level reader failures (deleted or unsupported media, missing offline file, load error, no pages, no content) all render through the shared `ReaderUnavailableView`: icon, title, optional message, an optional prominent Retry, and Close. Engines never hand-draw their own error layout or hardcode reader-context colors — the view's adaptive colors already handle the dark reader context.
+
 ### Next-Book Offline State
 
 - In offline-first reading, `ReaderViewModel.nextBookOfflineState` is the single observable for the next book's offline readiness, rendered by end-page/footer UIs.
@@ -129,6 +133,10 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - `.task`/`.task(id:)` re-runs when a view re-appears after a pushed navigation child pops back to it, so initial-load tasks (detail pages and their book/series list views) guard on a `loadedXxxId` state key and skip re-fires for the same id; returning from a child must not re-sync or reset pagination.
 - User-facing metadata lists (authors, publishers, genres, tags, languages) sort with `Collection.localizedSorted()`; authors via `Author.sortedByRole()`. Never revert to raw `.sorted()`. (`MetadataIndex` encode keys and SQL clause ordering intentionally keep plain `.sorted()`.)
 - Online ordering is server-side; the app-local pinned flag is invisible to the server, so online pages prepend pinned items and filter them out of the server stream.
+
+### Empty & Error States
+
+- Empty and error states render through `ContentUnavailableView` (icon label, description, actions) — never hand-drawn icon + text stacks. Browse lists go through the shared `BrowseStateView` (loading/empty/content wrapper), which owns the `ContentUnavailableView` empty state internally; retry actions use `.adaptiveButtonStyle(.borderedProminent)`. Search-with-no-results uses `ContentUnavailableView.search(text:)`.
 
 ### Dashboard Rows
 

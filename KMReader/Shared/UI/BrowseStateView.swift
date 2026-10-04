@@ -22,18 +22,15 @@ struct BrowseStateView<Content: View>: View {
           .frame(maxWidth: .infinity)
           .padding()
       } else if isEmpty {
-        VStack(spacing: 16) {
-          Image(systemName: emptyIcon)
-            .font(.system(size: 40))
-            .foregroundColor(.secondary)
-          Text(emptyTitle)
-            .font(.headline)
+        ContentUnavailableView {
+          Label(emptyTitle, systemImage: emptyIcon)
+        } description: {
           Text(emptyMessage)
-            .font(.subheadline)
-            .foregroundColor(.secondary)
+        } actions: {
           Button(String(localized: "Retry")) {
             onRetry()
           }
+          .adaptiveButtonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity)
         .padding()

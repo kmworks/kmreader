@@ -90,8 +90,11 @@ struct SettingsDashboardView: View {
                   Image(systemName: "plus.circle.fill")
                     .foregroundStyle(.green)
                     .imageScale(.large)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(section.displayName))
               }
             }
           } header: {
@@ -218,8 +221,11 @@ struct SettingsDashboardView: View {
                   } label: {
                     Image(systemName: "plus.circle.fill")
                       .foregroundStyle(.green)
+                      .frame(minWidth: 44, minHeight: 44)
+                      .contentShape(Rectangle())
                   }
                   .buttonStyle(.plain)
+                  .accessibilityLabel(Text(section.displayName))
                 }
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)

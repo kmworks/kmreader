@@ -8,22 +8,12 @@ import SwiftUI
 struct AdminRequiredView: View {
   var body: some View {
     Section {
-      HStack {
-        Spacer()
-        VStack(spacing: 8) {
-          Image(systemName: "lock.shield")
-            .font(.system(size: 40))
-            .foregroundColor(.secondary)
-          Text("Admin access required")
-            .font(.headline)
-            .foregroundColor(.secondary)
-          Text("This feature is only available to administrators")
-            .font(.caption)
-            .foregroundColor(.secondary)
-            .multilineTextAlignment(.center)
-        }
-        Spacer()
+      ContentUnavailableView {
+        Label("Admin access required", systemImage: "lock.shield")
+      } description: {
+        Text("This feature is only available to administrators")
       }
+      .frame(maxWidth: .infinity)
       .padding(.vertical)
       .tvFocusableHighlight()
     }

@@ -30,6 +30,7 @@
       let bottomCenter: Entry
       let bottomTrailing: Entry
       let bottomProgress: Double?
+      let isRTL: Bool
     }
 
     static func containerInsets(topOffset: CGFloat, bottomOffset: CGFloat) -> ReaderContainerInsets {
@@ -44,6 +45,7 @@
       currentPageIndex: Int,
       totalPagesInChapter: Int,
       showingControls: Bool,
+      isRTL: Bool,
       overlayPreferences: EpubOverlayPreferences = AppConfig.epubOverlayPreferences
     ) -> Content {
       if showingControls {
@@ -71,7 +73,8 @@
             totalPagesInChapter: totalPagesInChapter
           ),
           bottomTrailing: .hidden,
-          bottomProgress: nil
+          bottomProgress: nil,
+          isRTL: isRTL
         )
       }
 
@@ -131,7 +134,8 @@
           currentPageIndex: currentPageIndex,
           totalPagesInChapter: totalPagesInChapter
         ),
-        bottomProgress: overlayPreferences.showsReaderProgressBar ? totalProgression.map(clampedProgress) : nil
+        bottomProgress: overlayPreferences.showsReaderProgressBar ? totalProgression.map(clampedProgress) : nil,
+        isRTL: isRTL
       )
     }
 
@@ -278,7 +282,8 @@
           bottomLeading: .hidden,
           bottomCenter: .hidden,
           bottomTrailing: .hidden,
-          bottomProgress: nil
+          bottomProgress: nil,
+          isRTL: false
         )
 
         init(
@@ -401,6 +406,10 @@
           currentContent = content
           contentUpdateToken += 1
           let token = contentUpdateToken
+
+          // The track is symmetric, so mirroring it moves the leading-anchored
+          // fill to the trailing edge for RTL publications.
+          bottomProgressTrackView.transform = CGAffineTransform(scaleX: content.isRTL ? -1 : 1, y: 1)
 
           apply(
             entry: content.topLeading,
@@ -581,7 +590,8 @@
           bottomLeading: .hidden,
           bottomCenter: .hidden,
           bottomTrailing: .hidden,
-          bottomProgress: nil
+          bottomProgress: nil,
+          isRTL: false
         )
 
         init(
@@ -700,6 +710,11 @@
           currentContent = content
           contentUpdateToken += 1
           let token = contentUpdateToken
+
+          // The track is symmetric, so mirroring it moves the leading-anchored
+          // fill to the trailing edge for RTL publications.
+          bottomProgressTrackView.layer?.setAffineTransform(
+            CGAffineTransform(scaleX: content.isRTL ? -1 : 1, y: 1))
 
           apply(
             entry: content.topLeading,

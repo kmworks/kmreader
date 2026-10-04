@@ -98,6 +98,7 @@ private struct TOCEntryRow: View {
             onSelect(entry)
           } label: {
             TOCEntryLabel(entry: entry, isCurrent: isCurrent, level: level)
+              .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
         }

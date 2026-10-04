@@ -481,23 +481,25 @@
             #endif
 
             if let error = viewModel.errorMessage, !viewModel.isLoading {
-              VStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle")
-                  .font(.largeTitle)
-                Text(error)
-                  .multilineTextAlignment(.center)
-                Button("Retry") {
+              ReaderUnavailableView(
+                icon: "exclamationmark.triangle",
+                title: "Failed to load media",
+                message: error,
+                onRetry: {
                   Task {
                     await loadBook()
                   }
-                }
-              }
-              .padding()
+                },
+                onClose: closeReader
+              )
               .transition(ReaderLoadingTransition.content)
             } else if !viewModel.isLoading && !viewModel.hasContent {
-              Text("No content available.")
-                .foregroundStyle(.secondary)
-                .transition(ReaderLoadingTransition.content)
+              ReaderUnavailableView(
+                icon: "doc.questionmark",
+                title: "No content available.",
+                onClose: closeReader
+              )
+              .transition(ReaderLoadingTransition.content)
             }
 
             if viewModel.isLoading {
@@ -709,17 +711,17 @@
       case .fetchingMetadata:
         return String(localized: "Fetching book metadata")
       case .downloading:
+        guard viewModel.downloadBytesReceived > 0 else {
+          return String(localized: "Downloading book content")
+        }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        let received = formatter.string(fromByteCount: viewModel.downloadBytesReceived)
         if let expectedBytes = viewModel.downloadBytesExpected, expectedBytes > 0 {
-          let received = Double(viewModel.downloadBytesReceived)
-          let expected = Double(expectedBytes)
-          return
-            "\(String(format: "%.1f", received / 1024 / 1024)) / \(String(format: "%.1f", expected / 1024 / 1024)) MB"
+          let total = formatter.string(fromByteCount: expectedBytes)
+          return "\(received) / \(total)"
         }
-        if viewModel.downloadBytesReceived > 0 {
-          let received = Double(viewModel.downloadBytesReceived)
-          return "\(String(format: "%.1f", received / 1024 / 1024)) MB"
-        }
-        return String(localized: "Downloading book content")
+        return received
       case .finalizingOfflineDownload:
         return String(localized: "Saving downloaded EPUB for offline reading")
       case .preparingOfflineResources:
