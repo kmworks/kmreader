@@ -8,6 +8,9 @@ import SwiftUI
 /// Filmstrip for paged DIVINA modes: page thumbnails centered
 /// on the current page. The strip is not independently scrollable — it follows
 /// the committed page, taps jump, and dragging scrubs pages in real time.
+/// The current page's lens grows in both dimensions with its width derived
+/// from the page's own aspect, so the full page stays visible instead of a
+/// fill-cropped slice.
 struct PageFilmstripView: View {
   let pages: [ReaderPage]
   let currentPageID: ReaderPageID?
@@ -22,7 +25,11 @@ struct PageFilmstripView: View {
 
   private static let itemWidth: CGFloat = 20
   private static let itemHeight: CGFloat = 30
-  private static let currentItemWidth: CGFloat = 75
+  /// The lens grows in both dimensions so a full page is always visible: width
+  /// follows the page's own aspect, only ultra-wide pages get center-cropped.
+  private static let lensHeight: CGFloat = 44
+  private static let lensMaxWidth: CGFloat = 75
+  private static let fallbackAspect: CGFloat = 2.0 / 3.0
   private static let spacing: CGFloat = 2
   private static let currentSpacing: CGFloat = 8
 
@@ -35,8 +42,19 @@ struct PageFilmstripView: View {
     return pages.firstIndex(where: { $0.id == currentPageID })
   }
 
-  private func itemWidth(for pageID: ReaderPageID) -> CGFloat {
-    pageID == currentPageID ? Self.currentItemWidth : Self.itemWidth
+  private func aspect(for page: ReaderPage) -> CGFloat {
+    guard let width = page.page.width, let height = page.page.height, width > 0, height > 0
+    else { return Self.fallbackAspect }
+    return CGFloat(width) / CGFloat(height)
+  }
+
+  private func itemWidth(for page: ReaderPage) -> CGFloat {
+    guard page.id == currentPageID else { return Self.itemWidth }
+    return min(Self.lensMaxWidth, Self.lensHeight * aspect(for: page))
+  }
+
+  private func itemHeight(for page: ReaderPage) -> CGFloat {
+    page.id == currentPageID ? Self.lensHeight : Self.itemHeight
   }
 
   private func itemHorizontalPadding(for pageID: ReaderPageID) -> CGFloat {
@@ -52,8 +70,8 @@ struct PageFilmstripView: View {
               bookId: page.bookId,
               pageNumber: page.pageNumber,
               isCurrent: page.id == currentPageID,
-              width: itemWidth(for: page.id),
-              height: Self.itemHeight,
+              width: itemWidth(for: page),
+              height: itemHeight(for: page),
               horizontalPadding: itemHorizontalPadding(for: page.id),
               onTap: { onSelect(page.id) }
             )
@@ -97,7 +115,7 @@ struct PageFilmstripView: View {
         }
       }
     }
-    .frame(height: Self.itemHeight)
+    .frame(height: Self.lensHeight)
   }
 
   #if !os(tvOS)
