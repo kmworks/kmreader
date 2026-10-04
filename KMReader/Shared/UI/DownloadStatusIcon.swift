@@ -15,7 +15,7 @@ struct DownloadStatusIcon: View {
 
   /// Downloaded-state glyph, shared with DownloadStatus.displayIcon.
   private static let downloadedSystemName = "checkmark.icloud.fill"
-  /// Drawn check (0.25s) plus settle bounce (0.31s).
+  /// Drawn check and settle bounce, overlapping; total 0.31s.
   private static let completionDuration: TimeInterval = 0.31
 
   /// Status changes are held back while the completion check plays, so the full

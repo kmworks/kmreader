@@ -24,7 +24,8 @@ struct PendingDownloadDeletion: Sendable {
   }
 
   let id: UUID
-  /// Assigned after the toast is enqueued; settlement ignores records without it.
+  /// Assigned after the toast is enqueued; a record without it has no toast to
+  /// cancel and is dropped directly.
   var notificationId: UUID?
   let instanceId: String
   let seriesIds: Set<String>
