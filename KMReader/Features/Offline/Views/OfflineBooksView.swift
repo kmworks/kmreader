@@ -13,7 +13,6 @@ struct OfflineBooksView: View {
   @State private var snapshotReloadToken = 0
   @State private var canRemoveReadBooks = false
   @State private var progressTracker = DownloadProgressTracker.shared
-  @State private var errorManager = ErrorManager.shared
 
   private let formatter: ByteCountFormatter = {
     let f = ByteCountFormatter()
@@ -104,11 +103,6 @@ struct OfflineBooksView: View {
         await loadSnapshot()
       }
     }
-    .onChange(of: errorManager.notifications) { _, _ in
-      Task {
-        await settlePendingDeletions()
-      }
-    }
   }
 
   private var managementMenu: some View {
@@ -118,14 +112,6 @@ struct OfflineBooksView: View {
       onRemoveRead: removeReadBooks,
       onCleanupOrphanedFiles: cleanupOrphanedFiles,
       onRemoveAll: removeAllBooks
-    )
-  }
-
-  private func settlePendingDeletions() async {
-    let notifications = errorManager.notifications
-    await OfflineManager.shared.settlePendingDeletions(
-      visibleNotificationIds: Set(notifications.map(\.id)),
-      replacedNotificationIds: Set(notifications.filter { $0.dismissal == .replaced }.map(\.id))
     )
   }
 
@@ -240,7 +226,6 @@ struct OfflineBooksView: View {
     }
 
     do {
-      await settlePendingDeletions()
       let database = try await DatabaseOperator.database()
       let loadedSnapshot = try await database.fetchOfflineDownloadedBooksSnapshot(
         instanceId: instanceId

@@ -15,7 +15,6 @@ struct OfflineTasksView: View {
   @State private var pendingBulkAction: BulkAction?
   @State private var tasks: [OfflineTaskItem] = []
   @State private var progressTracker = DownloadProgressTracker.shared
-  @State private var errorManager = ErrorManager.shared
 
   private var coverSyncViewModel: OfflineCoverSyncViewModel {
     OfflineCoverSyncViewModel.shared
@@ -213,19 +212,6 @@ struct OfflineTasksView: View {
         await loadTasks()
       }
     }
-    .onChange(of: errorManager.notifications) { _, _ in
-      Task {
-        await settlePendingDeletions()
-      }
-    }
-  }
-
-  private func settlePendingDeletions() async {
-    let notifications = errorManager.notifications
-    await OfflineManager.shared.settlePendingDeletions(
-      visibleNotificationIds: Set(notifications.map(\.id)),
-      replacedNotificationIds: Set(notifications.filter { $0.dismissal == .replaced }.map(\.id))
-    )
   }
 
   private func loadTasks() async {
@@ -239,7 +225,6 @@ struct OfflineTasksView: View {
     }
 
     do {
-      await settlePendingDeletions()
       let database = try await DatabaseOperator.database()
       let loadedTasks = try await database.fetchOfflineTaskItems(instanceId: instanceId)
       let pendingBookIds = await OfflineManager.shared.pendingDeletionBookIds(

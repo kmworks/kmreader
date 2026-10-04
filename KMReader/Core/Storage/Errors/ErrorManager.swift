@@ -24,7 +24,7 @@ class ErrorManager {
 
   @ObservationIgnored private var lifetimeTasks: [UUID: Task<Void, Never>] = [:]
   @ObservationIgnored private var removalTasks: [UUID: Task<Void, Never>] = [:]
-  @ObservationIgnored private var pendingCommits: [UUID: @MainActor () async -> Void] = [:]
+  @ObservationIgnored private var pendingActions: [UUID: PendingAction] = [:]
   /// Plain toasts arriving while an action toast is visible wait here, so a
   /// background event can never hide a pending Undo and let its commit run unseen.
   @ObservationIgnored private var queuedMessages: [(message: String, duration: TimeInterval?)] = []
@@ -73,15 +73,18 @@ class ErrorManager {
 
   /// Show a notification with an action button (e.g. Undo). `commit` is deferred work
   /// executed when the toast times out, is superseded, or is swiped away; tapping the
-  /// action button cancels it. Default lifetime is 5s.
+  /// action button runs `cancel` instead. Default lifetime is 5s.
   @discardableResult
   func notify(
     message: String,
     actionTitle: String,
     duration: TimeInterval? = nil,
-    commit: @escaping @MainActor () async -> Void
+    commit: @escaping @MainActor () async -> Void,
+    cancel: (@MainActor () async -> Void)? = nil
   ) -> UUID {
-    enqueue(message: message, actionTitle: actionTitle, duration: duration, commit: commit)
+    enqueue(
+      message: message, actionTitle: actionTitle, duration: duration, commit: commit,
+      cancel: cancel)
   }
 
   /// Convenience for the common undo pattern.
@@ -89,16 +92,19 @@ class ErrorManager {
   func notifyUndo(
     message: String,
     duration: TimeInterval? = nil,
-    commit: @escaping @MainActor () async -> Void
+    commit: @escaping @MainActor () async -> Void,
+    cancel: (@MainActor () async -> Void)? = nil
   ) -> UUID {
     notify(
       message: message, actionTitle: String(localized: "Undo"), duration: duration,
-      commit: commit)
+      commit: commit, cancel: cancel)
   }
 
-  /// Action button tapped: cancel the pending commit and dismiss.
+  /// Action button tapped: run the cancel closure and dismiss.
   func performAction(id: UUID) {
-    pendingCommits.removeValue(forKey: id)
+    if let action = pendingActions.removeValue(forKey: id) {
+      Task { await action.cancel() }
+    }
     beginExit(id: id, style: .expired)
   }
 
@@ -116,7 +122,8 @@ class ErrorManager {
     message: String,
     actionTitle: String?,
     duration: TimeInterval?,
-    commit: (@MainActor () async -> Void)?
+    commit: (@MainActor () async -> Void)?,
+    cancel: (@MainActor () async -> Void)? = nil
   ) -> UUID {
     logger.info("📢 Notify: \(message)")
     if actionTitle == nil,
@@ -134,16 +141,13 @@ class ErrorManager {
       deadline: Date().addingTimeInterval(delay),
       lifetime: delay
     )
-    // A newer toast supersedes the visible one; its own timer still settles its commit.
+    // A newer toast supersedes the visible one, which settles its action immediately.
     if let index = notifications.lastIndex(where: { $0.dismissal == nil }) {
-      withAnimation(.appCurve(0.3)) {
-        notifications[index].dismissal = .replaced
-      }
-      scheduleRemoval(id: notifications[index].id)
+      beginExit(id: notifications[index].id, style: .replaced)
     }
     notifications.append(notification)
     if let commit {
-      pendingCommits[notification.id] = commit
+      pendingActions[notification.id] = PendingAction(commit: commit, cancel: cancel)
     }
     let task = Task { [weak self] in
       try? await Task.sleep(for: .seconds(delay))
@@ -189,8 +193,8 @@ class ErrorManager {
   }
 
   private func runPendingCommit(id: UUID) {
-    guard let commit = pendingCommits.removeValue(forKey: id) else { return }
-    Task { await commit() }
+    guard let action = pendingActions.removeValue(forKey: id) else { return }
+    Task { await action.commit() }
   }
 
   private static func defaultDuration(for message: String, hasAction: Bool) -> TimeInterval {
@@ -297,6 +301,19 @@ struct AppNotification: Identifiable, Equatable {
     self.deadline = deadline
     self.lifetime = lifetime
     self.dismissal = dismissal
+  }
+}
+
+/// Deferred work behind an action toast: `commit` runs when the toast settles
+/// without action (timeout, superseded, swiped away), `cancel` when the user
+/// taps the action button.
+private struct PendingAction {
+  let commit: @MainActor () async -> Void
+  let cancel: @MainActor () async -> Void
+
+  init(commit: @escaping @MainActor () async -> Void, cancel: (@MainActor () async -> Void)?) {
+    self.commit = commit
+    self.cancel = cancel ?? {}
   }
 }
 
