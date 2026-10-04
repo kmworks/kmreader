@@ -27,6 +27,8 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
   var subtitleLeadingSystemImage: String? = nil
   var downloadIcon: String? = nil
   var downloadSpinning: Bool = false
+  /// nil keeps the default quiet color; failures pass red through here.
+  var downloadColor: Color? = nil
   /// nil drops the progress bar row and the overlay progress slot entirely.
   var progress: Double? = nil
   var isInProgress: Bool = false
@@ -55,6 +57,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     subtitleLeadingSystemImage: String? = nil,
     downloadIcon: String? = nil,
     downloadSpinning: Bool = false,
+    downloadColor: Color? = nil,
     progress: Double? = nil,
     isInProgress: Bool = false,
     @ViewBuilder badge: () -> Badge,
@@ -76,6 +79,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
     self.subtitleLeadingSystemImage = subtitleLeadingSystemImage
     self.downloadIcon = downloadIcon
     self.downloadSpinning = downloadSpinning
+    self.downloadColor = downloadColor
     self.progress = progress
     self.isInProgress = isInProgress
     self.badge = badge()
@@ -169,6 +173,7 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
               Spacer()
               DownloadStatusIcon(
                 systemName: downloadIcon, spinning: downloadSpinning,
+                color: downloadColor ?? .secondary,
                 bookId: thumbnailType == .book ? thumbnailId : nil
               )
               .font(.system(textStyle.tertiary))
@@ -201,10 +206,11 @@ struct GridCardView<Badge: View, Menu: View, Detail: View, OverlayDetail: View>:
         overlayDetail
         if let downloadIcon {
           Spacer()
-          // Overlay mode renders the icon in white over the cover, which
-          // calls for the filled variant.
+          // Overlay mode sits over the cover, so status glyphs use the filled
+          // variant and default to the overlay's white.
           DownloadStatusIcon(
-            systemName: downloadIcon, spinning: downloadSpinning, color: style.secondaryColor,
+            systemName: downloadIcon, spinning: downloadSpinning,
+            color: downloadColor ?? style.secondaryColor,
             bookId: thumbnailType == .book ? thumbnailId : nil
           )
           .font(.caption2)
@@ -230,6 +236,7 @@ extension GridCardView where Badge == EmptyView {
     subtitleLeadingSystemImage: String? = nil,
     downloadIcon: String? = nil,
     downloadSpinning: Bool = false,
+    downloadColor: Color? = nil,
     progress: Double? = nil,
     isInProgress: Bool = false,
     @ViewBuilder menu: () -> Menu,
@@ -251,6 +258,7 @@ extension GridCardView where Badge == EmptyView {
       subtitleLeadingSystemImage: subtitleLeadingSystemImage,
       downloadIcon: downloadIcon,
       downloadSpinning: downloadSpinning,
+      downloadColor: downloadColor,
       progress: progress,
       isInProgress: isInProgress,
       badge: { EmptyView() },

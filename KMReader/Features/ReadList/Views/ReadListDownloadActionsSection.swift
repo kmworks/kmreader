@@ -64,7 +64,7 @@ struct ReadListDownloadActionsSection: View {
       }
 
       if let icon = status.icon {
-        DownloadStatusIcon(systemName: icon, spinning: status.isPending)
+        DownloadStatusIcon(systemName: icon, spinning: status.isPending, color: status.displayColor)
           .font(.caption)
           .accessibilityLabel(status.label)
       }

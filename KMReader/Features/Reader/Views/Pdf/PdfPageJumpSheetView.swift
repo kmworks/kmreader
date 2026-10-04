@@ -89,7 +89,7 @@
       guard let document else { return }
       guard let pdfPage = document.page(at: page - 1) else { return }
 
-      let targetWidth = max(48, targetHeight * 0.72)
+      let targetWidth = max(48, targetHeight * PageJumpPreviewCard.widthRatio)
       let thumbnail = pdfPage.thumbnail(
         of: CGSize(width: targetWidth, height: targetHeight),
         for: .mediaBox
@@ -107,14 +107,14 @@
             VStack(spacing: 16) {
               GeometryReader { geometry in
                 let imageHeight = min(geometry.size.height - 40, 250)
-                let imageWidth = max(48, imageHeight * 0.72)
+                let imageWidth = max(48, imageHeight * PageJumpPreviewCard.widthRatio)
 
                 ScrollViewReader { proxy in
                   ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 8) {
                       ForEach(1...maxPage, id: \.self) { page in
-                        PreviewCard(
-                          page: page,
+                        PageJumpPreviewCard(
+                          displayPage: page,
                           image: thumbnails[page],
                           isSelected: page == pageValue,
                           imageHeight: imageHeight
@@ -205,54 +205,6 @@
         .padding()
       }
       .presentationDragIndicator(.visible)
-    }
-
-    private struct PreviewCard: View {
-      let page: Int
-      let image: PlatformImage?
-      let isSelected: Bool
-      let imageHeight: CGFloat
-
-      private var imageWidth: CGFloat {
-        imageHeight * 0.72
-      }
-
-      var body: some View {
-        VStack(spacing: 8) {
-          Group {
-            if let image {
-              Image(platformImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-            } else {
-              RoundedRectangle(cornerRadius: 8)
-                .fill(Color.gray.opacity(0.3))
-                .overlay {
-                  ProgressView()
-                }
-            }
-          }
-          .frame(width: imageWidth, height: imageHeight)
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-          .overlay(
-            RoundedRectangle(cornerRadius: 8)
-              .stroke(isSelected ? Color.primary : Color.clear, lineWidth: 3)
-          )
-          .shadow(
-            color: Color.black.opacity(isSelected ? 0.3 : 0.15),
-            radius: isSelected ? 8 : 4,
-            x: 0,
-            y: 2
-          )
-          .scaleEffect(isSelected ? 1.0 : 0.9)
-          .animation(.appSpring, value: isSelected)
-
-          Text("\(page)")
-            .font(.caption)
-            .fontWeight(isSelected ? .semibold : .regular)
-            .foregroundStyle(isSelected ? Color.primary : .secondary)
-        }
-      }
     }
   }
 #endif

@@ -751,24 +751,14 @@
             .readerControlButtonStyle()
             .padding(.top, 24)
             .padding(.trailing, 12)
-            .transition(
-              .asymmetric(
-                insertion: .scale(scale: 0).combined(with: .opacity),
-                removal: .scale(scale: 0).combined(with: .opacity)
-              )
-            )
+            .transition(.scale(scale: 0).combined(with: .opacity))
           }
         }
         .overlay(alignment: .bottomTrailing) {
           VStack(alignment: .trailing) {
             if supportsOverlayControls && shouldShowControls && showingQuickActions {
               quickActionsPanel
-                .transition(
-                  .asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .trailing).combined(with: .opacity)
-                  )
-                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
             if supportsOverlayControls && shouldShowControls {
               Button {
@@ -786,12 +776,7 @@
               .readerControlButtonStyle()
               .padding(.bottom, 24)
               .padding(.trailing, 12)
-              .transition(
-                .asymmetric(
-                  insertion: .scale(scale: 0).combined(with: .opacity),
-                  removal: .scale(scale: 0).combined(with: .opacity)
-                )
-              )
+              .transition(.scale(scale: 0).combined(with: .opacity))
             }
           }
         }
@@ -899,12 +884,7 @@
         .buttonBorderShape(.capsule)
         .controlSize(.large)
       }
-      .transition(
-        .asymmetric(
-          insertion: .move(edge: .trailing).combined(with: .opacity),
-          removal: .move(edge: .trailing).combined(with: .opacity)
-        )
-      )
+      .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
     private func toggleControls() {

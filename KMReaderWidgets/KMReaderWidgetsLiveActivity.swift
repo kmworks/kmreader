@@ -97,9 +97,8 @@ import WidgetKit
                   .foregroundStyle(.blue)
                   .monospacedDigit()
               } else {
-                Image(systemName: "ellipsis")
-                  .font(.headline.weight(.bold))
-                  .foregroundStyle(.blue)
+                ProgressView()
+                  .tint(.blue)
               }
             }
             .padding(.trailing, 12)
@@ -131,9 +130,8 @@ import WidgetKit
               .foregroundStyle(.blue)
               .monospacedDigit()
           } else {
-            Image(systemName: "ellipsis")
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(.blue)
+            ProgressView()
+              .tint(.blue)
           }
         } minimal: {
           Image(systemName: "arrow.down.circle.fill")

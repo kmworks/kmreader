@@ -52,11 +52,12 @@ struct SettingsAppearanceView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             } else {
-              Picker(String(localized: "App Icon"), selection: $selectedAppIcon) {
+              HStack(spacing: 12) {
                 ForEach(AppIconOption.allCases) { option in
-                  Text(option.title).tag(option)
+                  appIconButton(for: option)
                 }
               }
+              .padding(.vertical, 4)
               .disabled(isUpdatingAppIcon)
               .onChange(of: selectedAppIcon) { _, newValue in
                 updateAppIcon(to: newValue)
@@ -100,6 +101,39 @@ struct SettingsAppearanceView: View {
   }
 
   #if os(iOS)
+    private func appIconButton(for option: AppIconOption) -> some View {
+      let isSelected = selectedAppIcon == option
+
+      return Button {
+        selectedAppIcon = option
+      } label: {
+        VStack(spacing: 4) {
+          Image(option.logoAssetName)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+          Text(option.title)
+            .font(.caption2)
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .padding(8)
+        .background(Color.secondary.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+          RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(
+              isSelected ? Color.primary : Color.secondary.opacity(0.2),
+              lineWidth: isSelected ? 2 : 1
+            )
+        )
+      }
+      .buttonStyle(.plain)
+      .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
     private func updateAppIcon(to option: AppIconOption) {
       guard UIApplication.shared.supportsAlternateIcons else {
         return

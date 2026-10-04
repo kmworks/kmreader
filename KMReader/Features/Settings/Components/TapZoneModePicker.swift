@@ -5,18 +5,16 @@
 
 import SwiftUI
 
-#if os(iOS) || os(tvOS)
-  import UIKit
-#elseif os(macOS)
-  import AppKit
-#endif
-
 struct TapZoneModePicker: View {
   @Binding var selection: TapZoneMode
   let tapZoneInversionMode: TapZoneInversionMode
   let readingDirection: ReadingDirection
 
   private let columnCount = 3
+
+  /// nil until the container is measured; the device orientation stands in so
+  /// full-screen platforms don't flip after the first layout.
+  @State private var isPortraitContainer: Bool?
 
   private var rows: [[TapZoneMode]] {
     let modes = TapZoneMode.allCases
@@ -26,7 +24,14 @@ struct TapZoneModePicker: View {
   }
 
   private var previewAspectRatio: CGFloat {
-    isPortraitScreen ? CoverAspectRatio.widthToHeight : CoverAspectRatio.heightToWidth
+    isPortrait ? CoverAspectRatio.widthToHeight : CoverAspectRatio.heightToWidth
+  }
+
+  private var isPortrait: Bool {
+    if let isPortraitContainer {
+      return isPortraitContainer
+    }
+    return PlatformHelper.deviceOrientation != .landscape
   }
 
   /// Eager rows rather than a LazyVGrid: inside a self-sizing List/Form row,
@@ -46,6 +51,11 @@ struct TapZoneModePicker: View {
       }
     }
     .padding(.vertical, 4)
+    .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in
+      // The preview mirrors the surface the reader runs in; the screen bounds
+      // are wrong for split windows, so the container's own aspect decides.
+      isPortraitContainer = size.width < size.height
+    }
   }
 
   private func modeButton(for mode: TapZoneMode) -> some View {
@@ -73,17 +83,5 @@ struct TapZoneModePicker: View {
     }
     .buttonStyle(.plain)
     .accessibilityAddTraits(isSelected ? .isSelected : [])
-  }
-
-  private var isPortraitScreen: Bool {
-    #if os(iOS) || os(tvOS)
-      let size = UIScreen.main.bounds.size
-    #elseif os(macOS)
-      let size = NSScreen.main?.visibleFrame.size ?? CGSize(width: 16, height: 10)
-    #else
-      let size = CGSize(width: 16, height: 10)
-    #endif
-
-    return size.width < size.height
   }
 }

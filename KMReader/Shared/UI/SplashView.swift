@@ -88,7 +88,8 @@ struct SplashView: View {
 
         // App Name
         Text("KMReader")
-          .font(.system(size: 48, weight: .bold, design: .rounded))
+          .font(.largeTitle.weight(.bold))
+          .fontDesign(.rounded)
           .foregroundStyle(.primary)
           .tracking(1.2)
           .offset(y: isVisible ? 0 : 20)

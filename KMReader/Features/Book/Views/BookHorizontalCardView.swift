@@ -57,7 +57,8 @@ struct BookHorizontalCardView: View {
         onReadBook?(false)
       },
       downloadIcon: item.downloadStatus.displayIcon,
-      downloadSpinning: item.downloadStatus.isPending
+      downloadSpinning: item.downloadStatus.isPending,
+      downloadColor: item.downloadStatus.displayColor
     ) { palette in
       Spacer(minLength: 0)
 

@@ -12,6 +12,7 @@ nonisolated enum SeriesDownloadStatus: Equatable, Sendable {
   case partiallyDownloaded(downloaded: Int, total: Int)
   case downloaded
   case pending(downloaded: Int, pending: Int, total: Int)
+  case failed
 
   var label: String {
     switch self {
@@ -23,6 +24,8 @@ nonisolated enum SeriesDownloadStatus: Equatable, Sendable {
       return String(localized: "status.downloaded")
     case .pending(let downloaded, let pending, let total):
       return String(localized: "status.pending \(downloaded)+\(pending)/\(total)")
+    case .failed:
+      return String(localized: "Failed")
     }
   }
 
@@ -36,6 +39,18 @@ nonisolated enum SeriesDownloadStatus: Equatable, Sendable {
       return "checkmark.icloud.fill"
     case .pending:
       return "arrow.clockwise"
+    case .failed:
+      return "exclamationmark.circle.fill"
+    }
+  }
+
+  /// Status-icon color: failures stand out in red, everything else stays quiet.
+  var displayColor: Color {
+    switch self {
+    case .failed:
+      return .red
+    case .notDownloaded, .partiallyDownloaded, .downloaded, .pending:
+      return .secondary
     }
   }
 

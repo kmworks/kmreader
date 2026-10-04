@@ -21,7 +21,7 @@ struct LandingView: View {
 
       // App Name
       Text("KMReader")
-        .font(.system(size: 42, weight: .bold))
+        .font(.largeTitle.weight(.bold))
         .foregroundStyle(.primary)
 
       // Tagline

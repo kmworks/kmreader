@@ -71,7 +71,7 @@ struct SettingsBrowseCardPreview: View {
 
   private var imageFill: LinearGradient {
     LinearGradient(
-      colors: [Color(white: 0.88), Color(white: 0.78)],
+      colors: [Color.secondary.opacity(0.12), Color.secondary.opacity(0.24)],
       startPoint: .topLeading,
       endPoint: .bottomTrailing
     )

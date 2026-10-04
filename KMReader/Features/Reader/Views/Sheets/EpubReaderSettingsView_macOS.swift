@@ -57,9 +57,11 @@
         Toggle(isOn: $animateEpubTapTurns) {
           VStack(alignment: .leading, spacing: 4) {
             Text("Animate Page Turns")
-            Text("Use animation when tapping zones to turn pages")
-              .font(.caption)
-              .foregroundStyle(.secondary)
+            if !inSheet {
+              Text("Use animation when tapping zones to turn pages")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
           }
         }
 
@@ -70,9 +72,11 @@
               }
             }
             .pickerStyle(.menu)
-            Text(epubPageTransitionStyle.description)
-              .font(.caption)
-              .foregroundStyle(.secondary)
+            if !inSheet {
+              Text(epubPageTransitionStyle.description)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
           }
         }
 
@@ -85,9 +89,11 @@
                 .foregroundStyle(.secondary)
             }
             Slider(value: $tapScrollPercentage, in: 25...100, step: 5)
-            Text(String(localized: "epub.scrolled.tap_scroll_height.description"))
-              .font(.caption)
-              .foregroundStyle(.secondary)
+            if !inSheet {
+              Text(String(localized: "epub.scrolled.tap_scroll_height.description"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
           }
         }
       }
@@ -99,9 +105,11 @@
             tapZoneInversionMode: epubTapZoneInversionMode,
             readingDirection: flowStyle.isPaged ? .ltr : .vertical
           )
-          Text("Choose how tap zones are laid out")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+          if !inSheet {
+            Text("Choose how tap zones are laid out")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
         }
 
         if !epubTapZoneMode.isDisabled {
@@ -110,9 +118,11 @@
               ForEach(TapZoneInversionMode.allCases, id: \.self) { mode in Text(mode.displayName).tag(mode) }
             }
             .pickerStyle(.menu)
-            Text("Mirror left and right tap zones manually or automatically for RTL reading")
-              .font(.caption)
-              .foregroundStyle(.secondary)
+            if !inSheet {
+              Text("Mirror left and right tap zones manually or automatically for RTL reading")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
           }
         }
       }
@@ -121,9 +131,11 @@
         Toggle(isOn: $showKeyboardHelpOverlay) {
           VStack(alignment: .leading, spacing: 4) {
             Text("Auto-Show Keyboard Help")
-            Text("Briefly show keyboard shortcuts when opening the reader")
-              .font(.caption)
-              .foregroundStyle(.secondary)
+            if !inSheet {
+              Text("Briefly show keyboard shortcuts when opening the reader")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
           }
         }
       }

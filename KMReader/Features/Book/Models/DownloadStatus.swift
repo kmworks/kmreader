@@ -42,6 +42,16 @@ nonisolated enum DownloadStatus: Equatable, Sendable {
     }
   }
 
+  /// Status-icon color: failures stand out in red, everything else stays quiet.
+  var displayColor: Color {
+    switch self {
+    case .failed:
+      return .red
+    case .notDownloaded, .pending, .downloaded:
+      return .secondary
+    }
+  }
+
   // MARK: - Menu Display
 
   /// Label for context menu actions.

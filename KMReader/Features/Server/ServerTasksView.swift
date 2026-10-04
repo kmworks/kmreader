@@ -14,6 +14,7 @@ struct ServerTasksView: View {
   @State private var isCancelling = false
   @State private var showCancelAllConfirmation = false
   @State private var hasLoadedMetrics = false
+  @State private var isLiveDotPulsing = false
 
   // Tasks metrics
   @State private var tasks: Metric?
@@ -110,7 +111,12 @@ struct ServerTasksView: View {
                 Circle()
                   .fill(Color.primary)
                   .frame(width: 8, height: 8)
-                  .opacity(1.0)
+                  .opacity(isLiveDotPulsing ? 0.25 : 1.0)
+                  .onAppear {
+                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                      isLiveDotPulsing = true
+                    }
+                  }
               }
             }
           }

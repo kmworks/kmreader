@@ -31623,66 +31623,66 @@
         }
       }
     },
-    "Font Size: %@x" : {
+    "Font Size" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schriftgröße: %@x"
+            "value" : "Schriftgröße"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Font Size: %@x"
+            "value" : "Font Size"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamano de fuente: %@x"
+            "value" : "Tamano de fuente"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taille de la police: %@x"
+            "value" : "Taille de la police"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dimensione font: %@x"
+            "value" : "Dimensione font"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "フォントサイズ: %@x"
+            "value" : "フォントサイズ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "글꼴 크기: %@x"
+            "value" : "글꼴 크기"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Размер шрифта: %@x"
+            "value" : "Размер шрифта"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "字体大小: %@x"
+            "value" : "字体大小"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "字體大小: %@x"
+            "value" : "字體大小"
           }
         }
       }
@@ -38291,66 +38291,66 @@
         }
       }
     },
-    "Letter Spacing: %@" : {
+    "Letter Spacing" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeichenabstand: %@"
+            "value" : "Zeichenabstand"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letter Spacing: %@"
+            "value" : "Letter Spacing"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espaciado entre letras: %@"
+            "value" : "Espaciado entre letras"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espacement des lettres : %@"
+            "value" : "Espacement des lettres"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaziatura lettere: %@"
+            "value" : "Spaziatura lettere"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "字間 : %@"
+            "value" : "字間"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "글자 간격: %@"
+            "value" : "글자 간격"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Межбуквенный интервал: %@"
+            "value" : "Межбуквенный интервал"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "字间距: %@"
+            "value" : "字间距"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "字元間距: %@"
+            "value" : "字元間距"
           }
         }
       }
@@ -42451,66 +42451,66 @@
         }
       }
     },
-    "Line Height: %@" : {
+    "Line Height" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeilenhöhe: %@"
+            "value" : "Zeilenhöhe"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Line Height: %@"
+            "value" : "Line Height"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Altura de linea: %@"
+            "value" : "Altura de linea"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hauteur de ligne : %@"
+            "value" : "Hauteur de ligne"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Altezza riga: %@"
+            "value" : "Altezza riga"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "行の高さ : %@"
+            "value" : "行の高さ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "줄 높이: %@"
+            "value" : "줄 높이"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Высота строки: %@"
+            "value" : "Высота строки"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "行高: %@"
+            "value" : "行高"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "行高: %@"
+            "value" : "行高"
           }
         }
       }
@@ -56469,66 +56469,66 @@
         }
       }
     },
-    "Page Margins: %@x" : {
+    "Page Margins" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seitenränder: %@x"
+            "value" : "Seitenränder"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Page Margins: %@x"
+            "value" : "Page Margins"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Margenes de pagina: %@x"
+            "value" : "Margenes de pagina"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Marges de page : %@x"
+            "value" : "Marges de page"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Margini pagina: %@x"
+            "value" : "Margini pagina"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ページ余白: %@x"
+            "value" : "ページ余白"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "페이지 여백: %@x"
+            "value" : "페이지 여백"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поля страницы: %@x"
+            "value" : "Поля страницы"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "页面边距: %@x"
+            "value" : "页面边距"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "頁面邊距: %@x"
+            "value" : "頁面邊距"
           }
         }
       }
@@ -57045,130 +57045,130 @@
         }
       }
     },
-    "Paragraph Indent: %@" : {
+    "Paragraph Indent" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Absatzeinzug: %@"
+            "value" : "Absatzeinzug"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paragraph Indent: %@"
+            "value" : "Paragraph Indent"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sangria de parrafo: %@"
+            "value" : "Sangria de parrafo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retrait de paragraphe : %@"
+            "value" : "Retrait de paragraphe"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rientro paragrafo: %@"
+            "value" : "Rientro paragrafo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "段落インデント : %@"
+            "value" : "段落インデント"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "단락 들여쓰기: %@"
+            "value" : "단락 들여쓰기"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отступ абзаца: %@"
+            "value" : "Отступ абзаца"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "段落缩进: %@"
+            "value" : "段落缩进"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "段落縮排: %@"
+            "value" : "段落縮排"
           }
         }
       }
     },
-    "Paragraph Spacing: %@" : {
+    "Paragraph Spacing" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Absatzabstand: %@"
+            "value" : "Absatzabstand"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paragraph Spacing: %@"
+            "value" : "Paragraph Spacing"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espaciado de parrafo: %@"
+            "value" : "Espaciado de parrafo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espacement des paragraphes : %@"
+            "value" : "Espacement des paragraphes"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaziatura paragrafo: %@"
+            "value" : "Spaziatura paragrafo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "段落間隔 : %@"
+            "value" : "段落間隔"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "단락 간격: %@"
+            "value" : "단락 간격"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Интервал абзаца: %@"
+            "value" : "Интервал абзаца"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "段落间距: %@"
+            "value" : "段落间距"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "段落間距: %@"
+            "value" : "段落間距"
           }
         }
       }
@@ -87125,66 +87125,66 @@
         }
       }
     },
-    "Word Spacing: %@" : {
+    "Word Spacing" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wortabstand: %@"
+            "value" : "Wortabstand"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Word Spacing: %@"
+            "value" : "Word Spacing"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espaciado de palabras: %@"
+            "value" : "Espaciado de palabras"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espacement des mots : %@"
+            "value" : "Espacement des mots"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spaziatura parole: %@"
+            "value" : "Spaziatura parole"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "単語間隔 : %@"
+            "value" : "単語間隔"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "단어 간격: %@"
+            "value" : "단어 간격"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Интервал между словами: %@"
+            "value" : "Интервал между словами"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "词间距: %@"
+            "value" : "词间距"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "詞間距: %@"
+            "value" : "詞間距"
           }
         }
       }

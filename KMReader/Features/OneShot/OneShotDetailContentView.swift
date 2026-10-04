@@ -142,6 +142,7 @@ struct OneShotDetailContentView: View {
                   label: downloadStatus.displayLabel,
                   systemImage: icon,
                   spinning: downloadStatus.isPending,
+                  color: downloadStatus.displayColor,
                   sources: protectionSources
                 )
               }

@@ -101,7 +101,7 @@
                 HStack {
                   VStack(alignment: .leading, spacing: 4) {
                     Text(font.name)
-                      .font(.system(size: 14, design: .monospaced))
+                      .font(.subheadline.monospaced())
                     if font.path != nil {
                       HStack(spacing: 4) {
                         Image(systemName: "arrow.down.doc.fill")
