@@ -121,7 +121,8 @@ struct BookRowView: View {
           Spacer()
 
           if let icon = item.downloadStatus.displayIcon {
-            DownloadStatusIcon(systemName: icon, spinning: item.downloadStatus.isPending)
+            DownloadStatusIcon(
+              systemName: icon, spinning: item.downloadStatus.isPending, bookId: item.bookId)
           }
           EllipsisMenuButton {
             BookContextMenu(

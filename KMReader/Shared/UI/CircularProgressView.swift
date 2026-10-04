@@ -9,8 +9,11 @@
   /// Apple Books-style download progress: a thin track ring with a solid pie
   /// sector growing clockwise from the top.
   final class CircularProgressView: UIView {
+    /// The pie never renders empty: a sliver keeps the ring visibly alive.
+    private static let minimumProgress: Double = 0.027
+
     var progress: Double = 0 {
-      didSet { updatePie() }
+      didSet { progressDidChange() }
     }
 
     var color: UIColor = .label {
@@ -19,6 +22,13 @@
 
     private let trackLayer = CAShapeLayer()
     private let pieLayer = CAShapeLayer()
+
+    private var displayedProgress: Double = 0
+    private var tweenFrom: Double = 0
+    private var tweenTo: Double = 0
+    private var tweenStart: CFTimeInterval = 0
+    private var tweenDuration: TimeInterval = 0
+    private var displayLink: CADisplayLink?
 
     override init(frame: CGRect) {
       super.init(frame: frame)
@@ -32,6 +42,14 @@
 
     required init?(coder: NSCoder) {
       fatalError("init(coder:) has not been implemented")
+    }
+
+    override func willMove(toSuperview newSuperview: UIView?) {
+      super.willMove(toSuperview: newSuperview)
+      // CADisplayLink retains its target; dropping the link on detach breaks the cycle.
+      if newSuperview == nil {
+        stopTween()
+      }
     }
 
     override func layoutSubviews() {
@@ -49,12 +67,57 @@
       trackLayer.path = UIBezierPath(ovalIn: ringRect).cgPath
       trackLayer.lineWidth = lineWidth
       pieLayer.frame = bounds
-      updatePie()
+      renderPie()
     }
 
-    private func updatePie() {
-      let clamped = min(max(progress, 0), 1)
-      guard clamped > 0, bounds.width > 0 else {
+    /// Small steps advance quickly; larger jumps stretch towards ~0.65s so they read
+    /// smooth instead of twitching.
+    private static func tweenDuration(forDelta delta: Double) -> TimeInterval {
+      guard delta > 0.25 else { return 0.2 }
+      return 0.2 + min(0.45, 0.45 * (delta - 0.25) * 5)
+    }
+
+    private static func easeOutCubic(_ t: Double) -> Double {
+      1 - pow(1 - t, 3)
+    }
+
+    private func progressDidChange() {
+      let target = min(max(progress, Self.minimumProgress), 1)
+      guard target != tweenTo || displayLink == nil else { return }
+      let delta = abs(target - displayedProgress)
+      guard delta > 0 else { return }
+      tweenFrom = displayedProgress
+      tweenTo = target
+      tweenStart = CACurrentMediaTime()
+      tweenDuration = Self.tweenDuration(forDelta: delta)
+      if displayLink == nil {
+        let link = CADisplayLink(target: self, selector: #selector(tick(_:)))
+        link.add(to: .main, forMode: .common)
+        displayLink = link
+      }
+    }
+
+    @objc private func tick(_ link: CADisplayLink) {
+      let elapsed = CACurrentMediaTime() - tweenStart
+      let raw = tweenDuration > 0 ? min(elapsed / tweenDuration, 1) : 1
+      let eased = tweenDuration > 0.2 ? Self.easeOutCubic(raw) : raw
+      displayedProgress = tweenFrom + (tweenTo - tweenFrom) * eased
+      renderPie()
+      if raw >= 1 {
+        stopTween()
+      }
+    }
+
+    private func stopTween() {
+      displayLink?.invalidate()
+      displayLink = nil
+      displayedProgress = tweenTo
+      renderPie()
+    }
+
+    private func renderPie() {
+      let clamped = min(max(displayedProgress, Self.minimumProgress), 1)
+      guard bounds.width > 0 else {
         pieLayer.path = nil
         return
       }
@@ -84,8 +147,11 @@
   /// Apple Books-style download progress: a thin track ring with a solid pie
   /// sector growing clockwise from the top.
   final class CircularProgressView: NSView {
+    /// The pie never renders empty: a sliver keeps the ring visibly alive.
+    private static let minimumProgress: Double = 0.027
+
     var progress: Double = 0 {
-      didSet { updatePie() }
+      didSet { progressDidChange() }
     }
 
     var color: NSColor = .labelColor {
@@ -94,6 +160,13 @@
 
     private let trackLayer = CAShapeLayer()
     private let pieLayer = CAShapeLayer()
+
+    private var displayedProgress: Double = 0
+    private var tweenFrom: Double = 0
+    private var tweenTo: Double = 0
+    private var tweenStart: CFTimeInterval = 0
+    private var tweenDuration: TimeInterval = 0
+    private var tweenLink: CADisplayLink?
 
     override init(frame frameRect: NSRect) {
       super.init(frame: frameRect)
@@ -114,6 +187,14 @@
       true
     }
 
+    override func viewWillMove(toSuperview newSuperview: NSView?) {
+      super.viewWillMove(toSuperview: newSuperview)
+      // CADisplayLink retains its target; dropping the link on detach breaks the cycle.
+      if newSuperview == nil {
+        stopTween()
+      }
+    }
+
     override func layout() {
       super.layout()
       guard bounds.width > 0, bounds.height > 0 else { return }
@@ -129,12 +210,57 @@
       trackLayer.path = CGPath(ellipseIn: ringRect, transform: nil)
       trackLayer.lineWidth = lineWidth
       pieLayer.frame = bounds
-      updatePie()
+      renderPie()
     }
 
-    private func updatePie() {
-      let clamped = min(max(progress, 0), 1)
-      guard clamped > 0, bounds.width > 0 else {
+    /// Small steps advance quickly; larger jumps stretch towards ~0.65s so they read
+    /// smooth instead of twitching.
+    private static func tweenDuration(forDelta delta: Double) -> TimeInterval {
+      guard delta > 0.25 else { return 0.2 }
+      return 0.2 + min(0.45, 0.45 * (delta - 0.25) * 5)
+    }
+
+    private static func easeOutCubic(_ t: Double) -> Double {
+      1 - pow(1 - t, 3)
+    }
+
+    private func progressDidChange() {
+      let target = min(max(progress, Self.minimumProgress), 1)
+      guard target != tweenTo || tweenLink == nil else { return }
+      let delta = abs(target - displayedProgress)
+      guard delta > 0 else { return }
+      tweenFrom = displayedProgress
+      tweenTo = target
+      tweenStart = CACurrentMediaTime()
+      tweenDuration = Self.tweenDuration(forDelta: delta)
+      if tweenLink == nil {
+        let link = displayLink(target: self, selector: #selector(tick(_:)))
+        link.add(to: .main, forMode: .common)
+        tweenLink = link
+      }
+    }
+
+    @objc private func tick(_ link: CADisplayLink) {
+      let elapsed = CACurrentMediaTime() - tweenStart
+      let raw = tweenDuration > 0 ? min(elapsed / tweenDuration, 1) : 1
+      let eased = tweenDuration > 0.2 ? Self.easeOutCubic(raw) : raw
+      displayedProgress = tweenFrom + (tweenTo - tweenFrom) * eased
+      renderPie()
+      if raw >= 1 {
+        stopTween()
+      }
+    }
+
+    private func stopTween() {
+      tweenLink?.invalidate()
+      tweenLink = nil
+      displayedProgress = tweenTo
+      renderPie()
+    }
+
+    private func renderPie() {
+      let clamped = min(max(displayedProgress, Self.minimumProgress), 1)
+      guard bounds.width > 0 else {
         pieLayer.path = nil
         return
       }
