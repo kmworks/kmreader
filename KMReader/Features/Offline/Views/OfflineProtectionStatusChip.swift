@@ -9,11 +9,12 @@ struct OfflineProtectionStatusChip: View {
   let label: String
   let systemImage: String
   let spinning: Bool
+  var color: Color = .secondary
   let sources: [OfflineProtectionSource]
 
   var body: some View {
     if sources.isEmpty {
-      DownloadStatusIcon(systemName: systemImage, spinning: spinning)
+      DownloadStatusIcon(systemName: systemImage, spinning: spinning, color: color)
         .font(.caption)
         .accessibilityLabel(label)
     } else {
@@ -25,7 +26,7 @@ struct OfflineProtectionStatusChip: View {
         }
       } label: {
         HStack(spacing: 3) {
-          DownloadStatusIcon(systemName: systemImage, spinning: spinning)
+          DownloadStatusIcon(systemName: systemImage, spinning: spinning, color: color)
           Image(systemName: "lock.fill")
         }
         .font(.caption)

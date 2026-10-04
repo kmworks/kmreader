@@ -21,12 +21,10 @@ import SwiftUI
         Button(String(localized: "OK")) {
           ErrorManager.shared.vanishError()
         }
-        #if os(iOS)
-          Button(String(localized: "Copy")) {
-            PlatformHelper.generalPasteboard.string = errorManager.currentError?.description
-            ErrorManager.shared.notify(message: String(localized: "notification.copied"))
-          }
-        #endif
+        Button(String(localized: "Copy")) {
+          PlatformHelper.generalPasteboard.string = errorManager.currentError?.description
+          ErrorManager.shared.notify(message: String(localized: "notification.copied"))
+        }
       } message: {
         if let error = errorManager.currentError {
           Text(verbatim: error.description)

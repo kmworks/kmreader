@@ -34,6 +34,7 @@ struct UpdatePasswordSheet: View {
             if isUpdating {
               ProgressView()
                 .progressViewStyle(.circular)
+                .frame(maxWidth: .infinity)
             } else {
               Text(String(localized: "account.details.updatePassword"))
                 .frame(maxWidth: .infinity)

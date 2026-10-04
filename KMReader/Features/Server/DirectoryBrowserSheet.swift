@@ -43,7 +43,7 @@ struct DirectoryBrowserSheet: View {
             Image(systemName: "exclamationmark.triangle")
               .font(.largeTitle)
               .foregroundColor(.orange)
-            Text(error.localizedDescription)
+            Text(formattedErrorMessage)
               .font(.caption)
               .foregroundColor(.secondary)
               .multilineTextAlignment(.center)
@@ -105,6 +105,17 @@ struct DirectoryBrowserSheet: View {
     .task {
       loadDirectory(path: selectedPath.isEmpty ? "" : selectedPath)
     }
+  }
+
+  private var formattedErrorMessage: String {
+    guard let error else { return "" }
+    if let apiError = error as? APIError {
+      return apiError.description
+    }
+    if let localizedError = error as? LocalizedError, let message = localizedError.errorDescription {
+      return message
+    }
+    return error.localizedDescription
   }
 
   private func navigateTo(_ path: String) {

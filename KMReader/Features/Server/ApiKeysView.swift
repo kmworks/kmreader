@@ -27,21 +27,19 @@ struct ApiKeysView: View {
             .foregroundColor(.secondary)
         } else {
           #if os(tvOS) || os(macOS)
-            Section {
-              Button {
-                withAnimation {
-                  showingAddSheet = true
-                }
-              } label: {
-                HStack {
-                  Spacer()
-                  Image(systemName: "plus")
-                  Spacer()
-                }
+            Button {
+              withAnimation {
+                showingAddSheet = true
               }
-              .adaptiveButtonStyle(.borderedProminent)
-              .listRowBackground(Color.clear)
+            } label: {
+              HStack {
+                Spacer()
+                Image(systemName: "plus")
+                Spacer()
+              }
             }
+            .adaptiveButtonStyle(.borderedProminent)
+            .listRowBackground(Color.clear)
           #endif
 
           ForEach(apiKeys) { apiKey in
@@ -50,7 +48,7 @@ struct ApiKeysView: View {
               HStack {
                 Image(systemName: isCurrentDeviceKey ? "lock.fill" : "key")
                   .font(.footnote)
-                Text(apiKey.comment.isEmpty ? "No comment" : apiKey.comment)
+                Text(apiKey.comment.isEmpty ? String(localized: "No comment") : apiKey.comment)
                   .bold()
                 if isCurrentDeviceKey {
                   Text("This device")
@@ -76,21 +74,12 @@ struct ApiKeysView: View {
                   Image(systemName: "clock")
                   Text("Recent activity")
                     .foregroundColor(.secondary.opacity(0.6))
-                  if showRelativeDate {
-                    Button {
-                      showRelativeDate = false
-                    } label: {
-                      Text(lastActivity.formatted(.relative(presentation: .named)))
-                        .monospacedDigit()
-                    }.adaptiveButtonStyle(.plain)
-                  } else {
-                    Button {
-                      showRelativeDate = true
-                    } label: {
-                      Text(formatTime(lastActivity))
-                        .monospacedDigit()
-                    }.adaptiveButtonStyle(.plain)
-                  }
+                  Text(
+                    showRelativeDate
+                      ? lastActivity.formatted(.relative(presentation: .named))
+                      : formatTime(lastActivity)
+                  )
+                  .monospacedDigit()
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -119,6 +108,22 @@ struct ApiKeysView: View {
                 }
               #endif
           }
+        }
+      } header: {
+        HStack {
+          Text(ServerSection.apiKeys.title)
+          Spacer()
+          Button {
+            showRelativeDate.toggle()
+          } label: {
+            Text(
+              showRelativeDate
+                ? String(localized: "Relative") : String(localized: "Absolute")
+            )
+            .font(.caption)
+            .contentShape(Rectangle())
+          }
+          .adaptiveButtonStyle(.plain)
         }
       }
     }

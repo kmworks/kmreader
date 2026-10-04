@@ -1018,8 +1018,8 @@ struct DivinaReaderView: View {
       onDismiss: { closeReader() },
       previousBook: currentSegmentPreviousBook,
       nextBook: currentSegmentNextBook,
-      onPreviousBook: { openPreviousBook(previousBookId: $0) },
-      onNextBook: { openNextBook(nextBookId: $0) },
+      onPreviousBook: { openAdjacentBook(bookId: $0) },
+      onNextBook: { openAdjacentBook(bookId: $0) },
       controlsVisible: shouldShowControls,
       showingControls: showingControls,
       showGradientBackground: showControlsGradientBackground,
@@ -1166,7 +1166,7 @@ struct DivinaReaderView: View {
 
     if event.matches(.n) {
       if let nextBook = currentSegmentNextBook {
-        openNextBook(nextBookId: nextBook.id)
+        openAdjacentBook(bookId: nextBook.id)
       }
       return true
     }
@@ -1767,12 +1767,12 @@ struct DivinaReaderView: View {
           showSearch: {},
           openPreviousBook: {
             if let previousBook = currentSegmentPreviousBook {
-              openPreviousBook(previousBookId: previousBook.id)
+              openAdjacentBook(bookId: previousBook.id)
             }
           },
           openNextBook: {
             if let nextBook = currentSegmentNextBook {
-              openNextBook(nextBookId: nextBook.id)
+              openAdjacentBook(bookId: nextBook.id)
             }
           },
           setReadingDirection: { direction in
@@ -1906,22 +1906,12 @@ struct DivinaReaderView: View {
     }
   }
 
-  #if os(tvOS)
-    private func toggleControls() {
-      // On tvOS, allow toggling controls even at endpage to enable navigation back
-      cancelAutoHideAfterResume()
-      withAnimation {
-        showingControls.toggle()
-      }
+  private func toggleControls() {
+    cancelAutoHideAfterResume()
+    withAnimation {
+      showingControls.toggle()
     }
-  #else
-    private func toggleControls() {
-      cancelAutoHideAfterResume()
-      withAnimation {
-        showingControls.toggle()
-      }
-    }
-  #endif
+  }
 
   private func toggleFullscreenIfSupported() -> Bool {
     #if os(macOS)
@@ -2033,16 +2023,14 @@ struct DivinaReaderView: View {
     }
   }
 
-  private func openNextBook(nextBookId: String) {
+  private func openAdjacentBook(bookId: String) {
     logger.debug(
-      "➡️ Opening next book from \(currentBookId) to \(nextBookId), flush current progress first"
+      "Opening adjacent book from \(currentBookId) to \(bookId), flush current progress first"
     )
     viewModel.flushProgress()
-    // Switch to next book by updating currentBookId
-    // This will trigger the .task(id: currentBookId) to reload
+    // Updating currentBookId triggers the .task(id: currentBookId) reload.
     preserveReaderOptions = true
-    currentBookId = nextBookId
-    // Reset viewModel state for new book
+    currentBookId = bookId
     viewModel = ReaderViewModel(
       isolateCoverPage: isolateCoverPage,
       pageLayout: pageLayout,
@@ -2051,30 +2039,6 @@ struct DivinaReaderView: View {
       preloadWindow: divinaPreloadProfile.window,
       incognitoMode: incognito
     )
-    // Reset overlay state
-    hideTapZoneOverlay()
-    hideKeyboardHelp()
-  }
-
-  private func openPreviousBook(previousBookId: String) {
-    logger.debug(
-      "⬅️ Opening previous book from \(currentBookId) to \(previousBookId), flush current progress first"
-    )
-    viewModel.flushProgress()
-    // Switch to previous book by updating currentBookId
-    // This will trigger the .task(id: currentBookId) to reload
-    preserveReaderOptions = true
-    currentBookId = previousBookId
-    // Reset viewModel state for new book
-    viewModel = ReaderViewModel(
-      isolateCoverPage: isolateCoverPage,
-      pageLayout: pageLayout,
-      splitWidePageMode: splitWidePageMode,
-      rotation: rotation,
-      preloadWindow: divinaPreloadProfile.window,
-      incognitoMode: incognito
-    )
-    // Reset overlay state
     hideTapZoneOverlay()
     hideKeyboardHelp()
   }

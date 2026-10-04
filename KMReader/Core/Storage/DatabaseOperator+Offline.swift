@@ -382,7 +382,7 @@ extension DatabaseOperator {
     switch series.downloadStatus {
     case .downloaded, .partiallyDownloaded, .pending:
       removeSeriesOffline(seriesId: seriesId, instanceId: instanceId)
-    case .notDownloaded:
+    case .notDownloaded, .failed:
       downloadSeriesOffline(seriesId: seriesId, instanceId: instanceId)
     }
   }
@@ -579,6 +579,7 @@ extension DatabaseOperator {
     let totalCount = series.booksCount
     let downloadedCount = books.filter { $0.downloadStatusRaw == "downloaded" }.count
     let pendingCount = books.filter { $0.downloadStatusRaw == "pending" }.count
+    let failedCount = books.filter { $0.downloadStatusRaw == "failed" }.count
 
     series.downloadedBooks = downloadedCount
     series.pendingBooks = pendingCount
@@ -589,6 +590,8 @@ extension DatabaseOperator {
       series.downloadStatusRaw = "downloaded"
     } else if pendingCount > 0 {
       series.downloadStatusRaw = "pending"
+    } else if failedCount > 0 {
+      series.downloadStatusRaw = "failed"
     } else {
       series.downloadStatusRaw = "notDownloaded"
     }
@@ -735,6 +738,15 @@ extension DatabaseOperator {
     oldDownloadAt: Date?,
     newDownloadAt: Date?
   ) {
+    // The delta tracks only downloaded/pending counts; a failure anywhere
+    // needs a full recount.
+    if oldStatusRaw == "failed" || newStatusRaw == "failed"
+      || series.downloadStatusRaw == "failed"
+    {
+      syncSeriesDownloadStatus(db: db, series: &series)
+      return
+    }
+
     let wasDownloaded = oldStatusRaw == "downloaded"
     let isDownloaded = newStatusRaw == "downloaded"
     let wasPending = oldStatusRaw == "pending"
@@ -813,6 +825,7 @@ extension DatabaseOperator {
   func applyReadListDownloadSummary(readList: inout KomgaReadList, books: [KomgaBook], totalCount: Int) {
     let downloadedBooks = books.filter { $0.downloadStatusRaw == "downloaded" }
     let pendingCount = books.filter { $0.downloadStatusRaw == "pending" || $0.downloadStatusRaw == "downloading" }.count
+    let failedCount = books.filter { $0.downloadStatusRaw == "failed" }.count
 
     readList.downloadedBooks = downloadedBooks.count
     readList.pendingBooks = pendingCount
@@ -823,6 +836,8 @@ extension DatabaseOperator {
       readList.downloadStatusRaw = "downloaded"
     } else if pendingCount > 0 {
       readList.downloadStatusRaw = "pending"
+    } else if failedCount > 0 {
+      readList.downloadStatusRaw = "failed"
     } else if readList.downloadedBooks > 0 {
       readList.downloadStatusRaw = "partiallyDownloaded"
     } else {
@@ -840,6 +855,15 @@ extension DatabaseOperator {
     oldDownloadAt: Date?,
     newDownloadAt: Date?
   ) {
+    // The delta tracks only downloaded/pending counts; a failure anywhere
+    // needs a full recount.
+    if oldStatusRaw == "failed" || newStatusRaw == "failed"
+      || readList.downloadStatusRaw == "failed"
+    {
+      syncReadListDownloadStatus(db: db, readList: &readList)
+      return
+    }
+
     let wasDownloaded = oldStatusRaw == "downloaded"
     let isDownloaded = newStatusRaw == "downloaded"
     let wasPending = oldStatusRaw == "pending"

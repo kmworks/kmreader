@@ -19,6 +19,30 @@ struct MediaAnalysisView: View {
   @State private var libraries: [LibraryInfo] = []
   @State private var selectedLibraryIds: Set<String> = []
 
+  private var allLibrariesBinding: Binding<Bool> {
+    Binding(
+      get: { selectedLibraryIds.isEmpty },
+      set: { newValue in
+        if newValue {
+          selectedLibraryIds.removeAll()
+        }
+      }
+    )
+  }
+
+  private func libraryBinding(_ libraryId: String) -> Binding<Bool> {
+    Binding(
+      get: { selectedLibraryIds.contains(libraryId) },
+      set: { isOn in
+        if isOn {
+          selectedLibraryIds.insert(libraryId)
+        } else {
+          selectedLibraryIds.remove(libraryId)
+        }
+      }
+    )
+  }
+
   var body: some View {
     List {
       if !current.isAdmin {
@@ -67,29 +91,13 @@ struct MediaAnalysisView: View {
       Section(String(localized: "Libraries")) {
         Toggle(
           String(localized: "All Libraries"),
-          isOn: Binding(
-            get: { selectedLibraryIds.isEmpty },
-            set: { newValue in
-              if newValue {
-                selectedLibraryIds.removeAll()
-              }
-            }
-          )
+          isOn: allLibrariesBinding
         )
 
         ForEach(libraries) { library in
           Toggle(
             library.name,
-            isOn: Binding(
-              get: { selectedLibraryIds.contains(library.id) },
-              set: { isOn in
-                if isOn {
-                  selectedLibraryIds.insert(library.id)
-                } else {
-                  selectedLibraryIds.remove(library.id)
-                }
-              }
-            )
+            isOn: libraryBinding(library.id)
           )
         }
       }

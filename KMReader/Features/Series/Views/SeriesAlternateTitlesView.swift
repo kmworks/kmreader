@@ -28,13 +28,12 @@ struct SeriesAlternateTitlesView: View {
       VStack(alignment: .leading, spacing: 8) {
         Text("Alternate Titles")
           .font(.headline)
-        VStack(alignment: .leading, spacing: 6) {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 4, verticalSpacing: 6) {
           ForEach(Array(displayedTitles.enumerated()), id: \.offset) { index, altTitle in
-            HStack(alignment: .top, spacing: 4) {
+            GridRow {
               Text("\(altTitle.label):")
                 .font(.caption)
                 .foregroundColor(.secondary)
-                .frame(width: 60, alignment: .leading)
               Text(altTitle.title)
                 .font(.caption)
                 .foregroundColor(.primary)

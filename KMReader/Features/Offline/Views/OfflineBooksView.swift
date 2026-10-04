@@ -35,7 +35,7 @@ struct OfflineBooksView: View {
           HStack {
             Text(String(localized: "settings.offline_books.total"))
               .fontWeight(.semibold)
-            countBadge(snapshot.totalDownloadedBooksCount)
+            OfflineCountBadge(count: snapshot.totalDownloadedBooksCount)
             Spacer()
             totalMetrics(size: snapshot.totalDownloadedSize)
           }
@@ -52,7 +52,7 @@ struct OfflineBooksView: View {
           Section(
             header: HStack {
               Text(lGroup.name ?? String(localized: "Unknown"))
-              countBadge(lGroup.downloadedBooksCount)
+              OfflineCountBadge(count: lGroup.downloadedBooksCount)
               Spacer()
               downloadedMetrics(size: lGroup.downloadedSize)
             }
@@ -113,18 +113,6 @@ struct OfflineBooksView: View {
       onCleanupOrphanedFiles: cleanupOrphanedFiles,
       onRemoveAll: removeAllBooks
     )
-  }
-
-  private func countBadge(_ count: Int) -> some View {
-    Text(count, format: .number)
-      .font(.caption2)
-      .fontWeight(.semibold)
-      .monospacedDigit()
-      .padding(.horizontal, 6)
-      .padding(.vertical, 2)
-      .background(LayoutConfig.neutralFillColor, in: Capsule())
-      .foregroundColor(.secondary)
-      .lineLimit(1)
   }
 
   private func totalMetrics(size: Int64) -> some View {

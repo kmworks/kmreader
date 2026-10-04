@@ -129,6 +129,10 @@ nonisolated extension KomgaSeries {
       return .pending(downloaded: downloaded, pending: pending, total: total)
     }
 
+    if raw == "failed" {
+      return .failed
+    }
+
     if downloaded > 0 {
       return .partiallyDownloaded(downloaded: downloaded, total: total)
     }

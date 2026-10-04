@@ -137,10 +137,6 @@ struct ServerView: View {
             Text(current.username)
               .font(.headline)
               .lineLimit(2)
-          } else if let accountDisplayValue {
-            Text(accountDisplayValue)
-              .font(.headline)
-              .lineLimit(2)
           }
         }
       }
@@ -198,12 +194,5 @@ struct ServerView: View {
     #else
       return [GridItem(.adaptive(minimum: 160), spacing: actionGridSpacing)]
     #endif
-  }
-
-  private var accountDisplayValue: String? {
-    if !current.username.isEmpty {
-      return current.username
-    }
-    return nil
   }
 }

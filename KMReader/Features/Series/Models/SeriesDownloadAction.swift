@@ -81,7 +81,7 @@ enum SeriesDownloadAction: String, Identifiable, CaseIterable {
     switch status {
     case .notDownloaded:
       return [.download, .downloadUnread]
-    case .partiallyDownloaded:
+    case .partiallyDownloaded, .failed:
       return [.download, .downloadUnread, .removeRead, .remove]
     case .downloaded:
       return [.removeRead, .remove]

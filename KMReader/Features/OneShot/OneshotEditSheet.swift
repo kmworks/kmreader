@@ -15,6 +15,16 @@ struct OneshotEditSheet: View {
 
   @State private var selectedTab = 0
 
+  private var releaseDatePickerBinding: Binding<Date> {
+    Binding(
+      get: { bookMetadataUpdate.releaseDate ?? Date(timeIntervalSince1970: 0) },
+      set: {
+        bookMetadataUpdate.releaseDate = $0
+        bookMetadataUpdate.releaseDateLock = true
+      }
+    )
+  }
+
   // Input fields for adding new items
   @State private var newAuthorName: String = ""
   @State private var newAuthorRole: AuthorRole = .writer
@@ -137,13 +147,7 @@ struct OneshotEditSheet: View {
         HStack {
           DatePicker(
             "Release Date",
-            selection: Binding(
-              get: { bookMetadataUpdate.releaseDate ?? Date(timeIntervalSince1970: 0) },
-              set: {
-                bookMetadataUpdate.releaseDate = $0
-                bookMetadataUpdate.releaseDateLock = true
-              }
-            ),
+            selection: releaseDatePickerBinding,
             displayedComponents: .date
           )
           .datePickerStyle(.compact)

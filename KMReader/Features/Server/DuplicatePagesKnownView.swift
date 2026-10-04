@@ -34,6 +34,19 @@ struct DuplicatePagesKnownView: View {
     )
   }
 
+  private func filterActionBinding(_ action: PageHashAction) -> Binding<Bool> {
+    Binding(
+      get: { filterActions.contains(action) },
+      set: { isOn in
+        if isOn {
+          filterActions.insert(action)
+        } else {
+          filterActions.remove(action)
+        }
+      }
+    )
+  }
+
   var body: some View {
     List {
       if !current.isAdmin {
@@ -55,6 +68,9 @@ struct DuplicatePagesKnownView: View {
       if current.isAdmin {
         await loadData(refresh: true)
       }
+    }
+    .onChange(of: filterActions) {
+      Task { await loadData(refresh: true) }
     }
     .sheet(isPresented: $showingMatchSheet) {
       SheetView(title: String(localized: "Matches"), size: .large, applyFormStyle: true) {
@@ -94,17 +110,8 @@ struct DuplicatePagesKnownView: View {
       ForEach(PageHashAction.allCases, id: \.self) { action in
         Toggle(
           action.label,
-          isOn: Binding(
-            get: { filterActions.contains(action) },
-            set: { isOn in
-              if isOn {
-                filterActions.insert(action)
-              } else {
-                filterActions.remove(action)
-              }
-              Task { await loadData(refresh: true) }
-            }
-          ))
+          isOn: filterActionBinding(action)
+        )
       }
     }
   }

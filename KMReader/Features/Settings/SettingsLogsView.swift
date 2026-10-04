@@ -67,7 +67,7 @@ struct SettingsLogsView: View {
       }
     }
     .optimizedListStyle(alternatesRowBackgrounds: true)
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
       .searchable(text: $searchText, prompt: String(localized: "settings.logs.search"))
     #endif
     .onSubmit(of: .search) {
@@ -151,6 +151,14 @@ struct SettingsLogsView: View {
             setSelectedCategory(category.category)
           }
         }
+
+        #if os(tvOS)
+          Button(role: .destructive) {
+            Task { await clearLogs() }
+          } label: {
+            LogFilterChip(icon: "trash", text: String(localized: "Clear All"), color: .red)
+          }
+        #endif
       }
       .adaptiveButtonStyle(.bordered)
     }

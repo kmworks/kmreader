@@ -88,6 +88,20 @@ struct SettingsCacheView: View {
         }
       )
     }
+
+    private var isCacheSizeTextValid: Bool {
+      cacheSizeText.isEmpty || (Int(cacheSizeText).map { (1...20).contains($0) } ?? false)
+    }
+
+    private var isCoverCacheSizeTextValid: Bool {
+      coverCacheSizeText.isEmpty
+        || (Int(coverCacheSizeText).map { (128...8192).contains($0) } ?? false)
+    }
+
+    private var isCoverCacheExpirationDaysTextValid: Bool {
+      coverCacheExpirationDaysText.isEmpty
+        || (Int(coverCacheExpirationDaysText).map { (1...90).contains($0) } ?? false)
+    }
   #endif
 
   var body: some View {
@@ -115,6 +129,7 @@ struct SettingsCacheView: View {
               TextField("GB", text: cacheSizeTextFieldBinding)
                 .frame(maxWidth: 240)
                 .multilineTextAlignment(.trailing)
+                .foregroundStyle(isCacheSizeTextValid ? Color.primary : Color.red)
                 .onAppear {
                   cacheSizeText = "\(maxPageCacheSize)"
                 }
@@ -196,6 +211,7 @@ struct SettingsCacheView: View {
               TextField("MB", text: coverCacheSizeTextFieldBinding)
                 .frame(maxWidth: 240)
                 .multilineTextAlignment(.trailing)
+                .foregroundStyle(isCoverCacheSizeTextValid ? Color.primary : Color.red)
                 .onAppear {
                   coverCacheSizeText = "\(maxCoverCacheSize)"
                 }
@@ -233,6 +249,7 @@ struct SettingsCacheView: View {
               TextField("Days", text: coverCacheExpirationDaysTextFieldBinding)
                 .frame(maxWidth: 240)
                 .multilineTextAlignment(.trailing)
+                .foregroundStyle(isCoverCacheExpirationDaysTextValid ? Color.primary : Color.red)
                 .onAppear {
                   coverCacheExpirationDaysText = "\(coverCacheExpirationDays)"
                 }

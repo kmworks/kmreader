@@ -44,15 +44,15 @@ struct ApiKeyAddSheet: View {
                 .cornerRadius(8)
                 .textSelectionIfAvailable()
 
-              Button {
-                #if os(iOS) || os(macOS)
+              #if os(iOS) || os(macOS)
+                Button {
                   PlatformHelper.generalPasteboard.string = key.key
                   ErrorManager.shared.notify(
                     message: String(localized: "API key copied to clipboard"))
-                #endif
-              } label: {
-                Label(String(localized: "Copy to Clipboard"), systemImage: "doc.on.doc")
-              }
+                } label: {
+                  Label(String(localized: "Copy to Clipboard"), systemImage: "doc.on.doc")
+                }
+              #endif
             }
           }
         } else {

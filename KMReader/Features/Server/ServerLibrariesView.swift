@@ -69,16 +69,25 @@ struct ServerLibrariesView: View {
     }
     .alert(String(localized: "settings.libraries.alert.title"), isPresented: isDeleteAlertPresented) {
       if let libraryPendingDelete {
-        TextField(
-          String(localized: "settings.libraries.alert.placeholder"),
-          text: $deleteConfirmationText)
-        Button(String(localized: "settings.libraries.alert.delete"), role: .destructive) {
-          deleteConfirmedLibrary(libraryPendingDelete)
-        }
-        .disabled(deleteConfirmationText != libraryPendingDelete.name)
-        Button(String(localized: "Cancel"), role: .cancel) {
-          deleteConfirmationText = ""
-        }
+        #if os(tvOS)
+          // tvOS alerts cannot host text input, so the type-to-confirm gate
+          // degrades to a plain confirmation.
+          Button(String(localized: "settings.libraries.alert.delete"), role: .destructive) {
+            deleteConfirmedLibrary(libraryPendingDelete)
+          }
+          Button(String(localized: "Cancel"), role: .cancel) {}
+        #else
+          TextField(
+            String(localized: "settings.libraries.alert.placeholder"),
+            text: $deleteConfirmationText)
+          Button(String(localized: "settings.libraries.alert.delete"), role: .destructive) {
+            deleteConfirmedLibrary(libraryPendingDelete)
+          }
+          .disabled(deleteConfirmationText != libraryPendingDelete.name)
+          Button(String(localized: "Cancel"), role: .cancel) {
+            deleteConfirmationText = ""
+          }
+        #endif
       }
     } message: {
       if let libraryPendingDelete {
@@ -122,10 +131,18 @@ struct ServerLibrariesView: View {
 }
 
 private func deleteLibraryConfirmationMessage(for library: LibrarySelection) -> String {
-  let format = String(
-    localized: "settings.libraries.alert.message",
-    defaultValue:
-      "This will permanently delete %1$@ from Komga.\n\nTo confirm, please type the library name: %2$@"
-  )
-  return String(format: format, locale: Locale.current, library.name, library.name)
+  #if os(tvOS)
+    let format = String(
+      localized: "settings.libraries.alert.message.simple",
+      defaultValue: "This will permanently delete %1$@ from Komga."
+    )
+    return String(format: format, locale: Locale.current, library.name)
+  #else
+    let format = String(
+      localized: "settings.libraries.alert.message",
+      defaultValue:
+        "This will permanently delete %1$@ from Komga.\n\nTo confirm, please type the library name: %2$@"
+    )
+    return String(format: format, locale: Locale.current, library.name, library.name)
+  #endif
 }

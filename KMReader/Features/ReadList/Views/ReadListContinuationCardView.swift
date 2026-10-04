@@ -37,6 +37,7 @@ struct ReadListContinuationCardView: View {
       subtitle: continuation.readListName,
       downloadIcon: continuation.downloadStatus.displayIcon,
       downloadSpinning: continuation.downloadStatus.isPending,
+      downloadColor: continuation.downloadStatus.displayColor,
       progress: continuation.bookProgress ?? 0,
       isInProgress: isInProgress
     ) {

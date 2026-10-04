@@ -35,6 +35,7 @@ struct NotificationToastView: View {
         NotificationCountdownRing(deadline: notification.deadline, lifetime: notification.lifetime)
       }
       Text(notification.message)
+        .lineLimit(2)
       if let actionTitle = notification.actionTitle {
         Button {
           ErrorManager.shared.performAction(id: notification.id)

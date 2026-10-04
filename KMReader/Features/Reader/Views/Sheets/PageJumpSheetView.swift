@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-// Simple page preview card for native scroll
-private struct PagePreviewCard: View {
+// Loads the page thumbnail, then renders the shared preview card.
+private struct LoadedPagePreviewCard: View {
 
   let readerPage: ReaderPage
   let displayPage: Int
@@ -15,43 +15,13 @@ private struct PagePreviewCard: View {
 
   @State private var loadedImage: PlatformImage?
 
-  private var imageWidth: CGFloat {
-    imageHeight * 0.72
-  }
-
   var body: some View {
-    VStack(spacing: 8) {
-      Group {
-        if let platformImage = loadedImage {
-          Image(platformImage: platformImage)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-        } else {
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color.gray.opacity(0.3))
-            .overlay {
-              ProgressView()
-            }
-        }
-      }
-      .frame(width: imageWidth, height: imageHeight)
-      .clipShape(RoundedRectangle(cornerRadius: 8))
-      .overlay(
-        RoundedRectangle(cornerRadius: 8)
-          .stroke(isSelected ? Color.primary : Color.clear, lineWidth: 3)
-      )
-      .shadow(
-        color: Color.black.opacity(isSelected ? 0.3 : 0.15),
-        radius: isSelected ? 8 : 4, x: 0, y: 2
-      )
-      .scaleEffect(isSelected ? 1.0 : 0.9)
-      .animation(.appSpring, value: isSelected)
-
-      Text("\(displayPage)")
-        .font(.caption)
-        .fontWeight(isSelected ? .semibold : .regular)
-        .foregroundStyle(isSelected ? Color.primary : .secondary)
-    }
+    PageJumpPreviewCard(
+      displayPage: displayPage,
+      image: loadedImage,
+      isSelected: isSelected,
+      imageHeight: imageHeight
+    )
     .task(id: "\(readerPage.id.description)-\(Int(imageHeight))") {
       loadedImage = nil
       if let url = try? await ThumbnailCache.shared.ensureThumbnail(
@@ -212,19 +182,25 @@ struct PageJumpSheetView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                   LazyHStack(spacing: 8) {
                     ForEach(pagePreviews) { preview in
-                      PagePreviewCard(
+                      LoadedPagePreviewCard(
                         readerPage: preview.readerPage,
                         displayPage: preview.id,
                         isSelected: preview.id == pageValue,
                         imageHeight: imageHeight
                       )
                       .id(preview.id)
+                      .onTapGesture {
+                        pageValue = preview.id
+                        scrollPosition = preview.id
+                      }
                     }
                   }
                   .scrollTargetLayout()
                 }
                 .contentMargins(
-                  .horizontal, (geometry.size.width - imageHeight * 0.72) / 2, for: .scrollContent
+                  .horizontal,
+                  (geometry.size.width - imageHeight * PageJumpPreviewCard.widthRatio) / 2,
+                  for: .scrollContent
                 )
                 .scrollClipDisabled()
                 .scrollTargetBehavior(.viewAligned)

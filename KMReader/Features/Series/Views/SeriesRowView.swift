@@ -123,7 +123,9 @@ struct SeriesRowView: View {
           Spacer()
 
           if let icon = downloadStatus.icon {
-            DownloadStatusIcon(systemName: icon, spinning: downloadStatus.isPending)
+            DownloadStatusIcon(
+              systemName: icon, spinning: downloadStatus.isPending,
+              color: downloadStatus.displayColor)
           }
           EllipsisMenuButton {
             SeriesContextMenu(

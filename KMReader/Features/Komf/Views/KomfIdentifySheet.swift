@@ -13,7 +13,6 @@ struct KomfIdentifySheet: View {
   @State private var isSearching = false
   @State private var searchFailed = false
   @State private var pendingKey: String?
-  @State private var submitError: String?
 
   let series: Series
   let book: Book?
@@ -165,11 +164,6 @@ struct KomfIdentifySheet: View {
           resultRow(result)
         }
       }
-    } header: {
-      if let submitError {
-        Text(submitError)
-          .foregroundStyle(.red)
-      }
     }
   }
 
@@ -181,13 +175,19 @@ struct KomfIdentifySheet: View {
       }
     } label: {
       HStack(spacing: 12) {
-        AsyncImage(url: result.imageUrl.flatMap { URL(string: $0) }) { image in
-          image
-            .resizable()
-            .aspectRatio(contentMode: .fill)
-        } placeholder: {
-          Image(systemName: "book.closed")
-            .foregroundStyle(.secondary)
+        AsyncImage(url: result.imageUrl.flatMap { URL(string: $0) }) { phase in
+          switch phase {
+          case .success(let image):
+            image
+              .resizable()
+              .aspectRatio(contentMode: .fill)
+          case .failure:
+            Image(systemName: "exclamationmark.circle")
+              .foregroundStyle(.secondary)
+          default:
+            Image(systemName: "book.closed")
+              .foregroundStyle(.secondary)
+          }
         }
         .frame(width: 40, height: 60)
         .clipped()
@@ -246,7 +246,6 @@ struct KomfIdentifySheet: View {
   private func submit(provider: String, providerSeriesId: String) async {
     let key = "\(provider):\(providerSeriesId)"
     pendingKey = key
-    submitError = nil
     do {
       let response = try await KomfService.identify(
         libraryId: series.libraryId,
@@ -262,7 +261,7 @@ struct KomfIdentifySheet: View {
       dismiss()
     } catch {
       await KomfIntegrationStore.shared.handleConflictIfNeeded(error)
-      submitError = error.localizedDescription
+      ErrorManager.shared.alert(error: error)
       pendingKey = nil
     }
   }

@@ -94,6 +94,10 @@ nonisolated extension KomgaReadList {
       return .pending(downloaded: downloaded, pending: pending, total: total)
     }
 
+    if downloadStatusRaw == "failed" {
+      return .failed
+    }
+
     if downloaded > 0 {
       return .partiallyDownloaded(downloaded: downloaded, total: total)
     }

@@ -44,7 +44,6 @@ import SwiftUI
           }
         }
         .listStyle(.sidebar)
-        .toolbar(removing: .sidebarToggle)
         .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 300)
         .navigationTitle("Settings")
       } detail: {
@@ -57,13 +56,6 @@ import SwiftUI
           Text("Select a setting")
             .foregroundColor(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-      }
-      .onChange(of: columnVisibility) { _, newValue in
-        if newValue != .all {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            columnVisibility = .all
-          }
         }
       }
     }

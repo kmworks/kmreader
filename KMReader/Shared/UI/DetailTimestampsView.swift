@@ -17,12 +17,16 @@ struct DetailTimestampsView: View {
         "Created: \(created.formattedMediumDate)",
         systemImage: "calendar.badge.plus"
       )
+      .lineLimit(2)
       Label(
         "Modified: \(lastModified.formattedMediumDate)",
         systemImage: "clock"
       )
+      .lineLimit(2)
     }
     .font(.caption)
     .foregroundStyle(.secondary)
+    // Large dynamic type wraps to a second line instead of overflowing.
+    .fixedSize(horizontal: false, vertical: true)
   }
 }

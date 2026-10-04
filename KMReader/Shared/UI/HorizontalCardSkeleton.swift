@@ -19,6 +19,8 @@ struct HorizontalCardSkeleton<TextColumn: View, Menu: View>: View {
   var onAction: (() -> Void)? = nil
   var downloadIcon: String? = nil
   var downloadSpinning: Bool = false
+  /// nil keeps the palette's meta color; failures pass red through here.
+  var downloadColor: Color? = nil
   let textColumn: (HorizontalCardPalette) -> TextColumn
   let menu: () -> Menu
 
@@ -34,6 +36,7 @@ struct HorizontalCardSkeleton<TextColumn: View, Menu: View>: View {
     onAction: (() -> Void)? = nil,
     downloadIcon: String? = nil,
     downloadSpinning: Bool = false,
+    downloadColor: Color? = nil,
     @ViewBuilder textColumn: @escaping (HorizontalCardPalette) -> TextColumn,
     @ViewBuilder menu: @escaping () -> Menu
   ) {
@@ -46,6 +49,7 @@ struct HorizontalCardSkeleton<TextColumn: View, Menu: View>: View {
     self.onAction = onAction
     self.downloadIcon = downloadIcon
     self.downloadSpinning = downloadSpinning
+    self.downloadColor = downloadColor
     self.textColumn = textColumn
     self.menu = menu
   }
@@ -128,7 +132,7 @@ struct HorizontalCardSkeleton<TextColumn: View, Menu: View>: View {
         DownloadStatusIcon(
           systemName: downloadIcon,
           spinning: downloadSpinning,
-          color: palette.metaColor,
+          color: downloadColor ?? palette.metaColor,
           bookId: thumbnailType == .book ? thumbnailId : nil
         )
         .font(.system(size: LayoutConfig.horizontalCardAccessoryIconSize))

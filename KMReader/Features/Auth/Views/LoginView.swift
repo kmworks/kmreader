@@ -22,6 +22,7 @@ struct LoginView: View {
   @State private var loginErrorMessage: String?
   @State private var authMethod: AuthenticationMethod = .basicAuth
   @State private var probeState: ProbeState = .idle
+  @FocusState private var focusedField: LoginField?
 
   var body: some View {
     ScrollView {
@@ -160,7 +161,7 @@ struct LoginView: View {
         .frame(height: 72)
 
       Text(String(localized: "Sign in to Komga"))
-        .font(.system(size: 32, weight: .bold))
+        .font(.largeTitle.weight(.bold))
         .foregroundStyle(.primary)
 
       Text(String(localized: "Enter the credentials you use to access your Komga server."))
@@ -221,6 +222,8 @@ struct LoginView: View {
             .keyboardType(.URL)
           #endif
           .autocorrectionDisabled()
+          .focused($focusedField, equals: .serverURL)
+          .onSubmit { advanceFocus(from: .serverURL) }
           .onChange(of: serverURLText) { _, newValue in
             setLoginErrorMessage(nil)
             absorbSchemePrefix(from: newValue)
@@ -231,7 +234,7 @@ struct LoginView: View {
           Image(systemName: usesHTTPS ? "lock.fill" : "lock.open.fill")
             .foregroundStyle(usesHTTPS ? .green : .orange)
             .contentTransition(.symbolEffect(.replace))
-            .padding(4)
+            .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -250,6 +253,8 @@ struct LoginView: View {
       ) {
         TextField(String(localized: "e.g. \"Home\" or \"Work\""), text: $instanceName)
           .autocorrectionDisabled()
+          .focused($focusedField, equals: .instanceName)
+          .onSubmit { advanceFocus(from: .instanceName) }
       }
 
       if probeState == .unclaimed {
@@ -275,6 +280,8 @@ struct LoginView: View {
               .keyboardType(.emailAddress)
             #endif
             .autocorrectionDisabled()
+            .focused($focusedField, equals: .email)
+            .onSubmit { advanceFocus(from: .email) }
             .onChange(of: usernameText) { _, _ in
               setLoginErrorMessage(nil)
             }
@@ -287,6 +294,8 @@ struct LoginView: View {
         ) {
           SecureField(String(localized: "Enter your password"), text: $password)
             .textContentType(.newPassword)
+            .focused($focusedField, equals: .password)
+            .onSubmit { advanceFocus(from: .password) }
             .onChange(of: password) { _, _ in
               setLoginErrorMessage(nil)
             }
@@ -299,6 +308,8 @@ struct LoginView: View {
         ) {
           SecureField(String(localized: "Confirm your password"), text: $confirmPassword)
             .textContentType(.newPassword)
+            .focused($focusedField, equals: .confirmPassword)
+            .onSubmit { advanceFocus(from: .confirmPassword) }
             .onChange(of: confirmPassword) { _, _ in
               setLoginErrorMessage(nil)
             }
@@ -332,6 +343,8 @@ struct LoginView: View {
                 .autocapitalization(.none)
               #endif
               .autocorrectionDisabled()
+              .focused($focusedField, equals: .username)
+              .onSubmit { advanceFocus(from: .username) }
               .onChange(of: usernameText) { _, _ in
                 setLoginErrorMessage(nil)
               }
@@ -344,6 +357,8 @@ struct LoginView: View {
           ) {
             SecureField(String(localized: "Enter your password"), text: $password)
               .textContentType(.password)
+              .focused($focusedField, equals: .password)
+              .onSubmit { advanceFocus(from: .password) }
               .onChange(of: password) { _, _ in
                 setLoginErrorMessage(nil)
               }
@@ -361,6 +376,8 @@ struct LoginView: View {
                 .autocapitalization(.none)
               #endif
               .autocorrectionDisabled()
+              .focused($focusedField, equals: .apiKey)
+              .onSubmit { advanceFocus(from: .apiKey) }
               .onChange(of: apiKey) { _, _ in
                 setLoginErrorMessage(nil)
               }
@@ -456,6 +473,34 @@ struct LoginView: View {
     }
     return error.localizedDescription
   }
+
+  private func advanceFocus(from field: LoginField) {
+    switch field {
+    case .serverURL:
+      focusedField = .instanceName
+    case .instanceName:
+      if probeState == .unclaimed {
+        focusedField = .email
+      } else {
+        focusedField = authMethod == .apiKey ? .apiKey : .username
+      }
+    case .email, .username:
+      focusedField = .password
+    case .password:
+      if probeState == .unclaimed {
+        focusedField = .confirmPassword
+      } else {
+        submitIfValid()
+      }
+    case .confirmPassword, .apiKey:
+      submitIfValid()
+    }
+  }
+
+  private func submitIfValid() {
+    guard isFormValid, !authViewModel.isLoading else { return }
+    login()
+  }
 }
 
 private struct FieldContainer<Content: View>: View {
@@ -504,4 +549,14 @@ private enum ProbeState {
   case claimed
   case unclaimed
   case failed
+}
+
+private enum LoginField: Hashable {
+  case serverURL
+  case instanceName
+  case email
+  case username
+  case password
+  case confirmPassword
+  case apiKey
 }

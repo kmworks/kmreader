@@ -171,8 +171,8 @@ struct ServerRowView: View {
     let gradientColors: [Color]
     if isActive {
       gradientColors = [
-        Color.serverGreen.opacity(0.85),
-        Color.serverGreen.opacity(0.55),
+        Color.serverGreenGradientStart,
+        Color.serverGreenGradientEnd,
       ]
     } else if colorScheme == .dark {
       gradientColors = [

@@ -8,9 +8,13 @@ import SwiftUI
 struct AgeRatingBadge: View {
   let ageRating: Int
 
+  private var isAdult: Bool {
+    ageRating >= 18
+  }
+
   private var backgroundColor: Color {
-    if ageRating >= 18 {
-      return .black
+    if isAdult {
+      return .ageRatingAdultBackground
     } else if ageRating >= 16 {
       return .red
     } else if ageRating >= 12 {
@@ -23,7 +27,7 @@ struct AgeRatingBadge: View {
   var body: some View {
     Text("\(ageRating)+")
       .font(.caption2.weight(.heavy))
-      .foregroundColor(.white)
+      .foregroundColor(isAdult ? .ageRatingAdultForeground : .white)
       .padding(.horizontal, 6)
       .padding(.vertical, 2)
       .background {

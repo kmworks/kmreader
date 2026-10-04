@@ -111,15 +111,25 @@
       return String.localizedStringWithFormat(String(localized: "Weight: %@"), valueText)
     }
 
+    /// Eager rows rather than a LazyVGrid: inside a self-sizing Form row, the
+    /// lazy grid can report two heights for the same width, which UIKit ends
+    /// as a recursive layout loop crash.
     private var themePicker: some View {
-      let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-      ]
+      let choices = ThemeChoice.allCases
+      let rows = stride(from: 0, to: choices.count, by: 2).map {
+        Array(choices[$0..<min($0 + 2, choices.count)])
+      }
 
-      return LazyVGrid(columns: columns, spacing: 12) {
-        ForEach(ThemeChoice.allCases) { choice in
-          themePreviewButton(for: choice)
+      return VStack(spacing: 12) {
+        ForEach(rows, id: \.self) { row in
+          HStack(spacing: 12) {
+            ForEach(row) { choice in
+              themePreviewButton(for: choice)
+            }
+            ForEach(row.count..<2, id: \.self) { _ in
+              Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+            }
+          }
         }
       }
       .padding(.vertical, 4)
@@ -147,6 +157,26 @@
       }
       .buttonStyle(.plain)
       .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// Label + trailing value on top, slider below, matching the DIVINA
+    /// settings rows so the current value stays visible while dragging.
+    private func sliderRow(
+      label: String,
+      value: String,
+      binding: Binding<Double>,
+      in range: ClosedRange<Double>,
+      step: Double
+    ) -> some View {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          Text(label)
+          Spacer()
+          Text(value)
+            .foregroundColor(.secondary)
+        }
+        Slider(value: binding, in: range, step: step)
+      }
     }
 
     var body: some View {
@@ -242,14 +272,13 @@
           }
           .pickerStyle(.segmented)
 
-          VStack(alignment: .leading) {
-            Slider(value: $draft.pageMargins, in: 0.25...2.0, step: 0.05)
-            Text(
-              String(localized: "Page Margins: \(String(format: "%.2f", draft.pageMargins))x")
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-          }
+          sliderRow(
+            label: String(localized: "Page Margins"),
+            value: "\(String(format: "%.2f", draft.pageMargins))x",
+            binding: $draft.pageMargins,
+            in: 0.25...2.0,
+            step: 0.05
+          )
         }
 
         Section {
@@ -258,31 +287,29 @@
 
         if draft.advancedLayout {
           Section(String(localized: "Character & Word")) {
-            VStack(alignment: .leading) {
-              Slider(value: $draft.fontSize, in: 0.25...4.0, step: 0.05)
-              Text(String(localized: "Font Size: \(String(format: "%.2f", draft.fontSize))x"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            sliderRow(
+              label: String(localized: "Font Size"),
+              value: "\(String(format: "%.2f", draft.fontSize))x",
+              binding: $draft.fontSize,
+              in: 0.25...4.0,
+              step: 0.05
+            )
 
-            VStack(alignment: .leading) {
-              Slider(value: $draft.letterSpacing, in: 0.00...1.0, step: 0.01)
-              Text(
-                String(
-                  localized: "Letter Spacing: \(String(format: "%.2f", draft.letterSpacing))")
-              )
-              .font(.caption)
-              .foregroundStyle(.secondary)
-            }
+            sliderRow(
+              label: String(localized: "Letter Spacing"),
+              value: String(format: "%.2f", draft.letterSpacing),
+              binding: $draft.letterSpacing,
+              in: 0.00...1.0,
+              step: 0.01
+            )
 
-            VStack(alignment: .leading) {
-              Slider(value: $draft.wordSpacing, in: 0.0...1.0, step: 0.01)
-              Text(
-                String(localized: "Word Spacing: \(String(format: "%.2f", draft.wordSpacing))")
-              )
-              .font(.caption)
-              .foregroundStyle(.secondary)
-            }
+            sliderRow(
+              label: String(localized: "Word Spacing"),
+              value: String(format: "%.2f", draft.wordSpacing),
+              binding: $draft.wordSpacing,
+              in: 0.0...1.0,
+              step: 0.01
+            )
           }
 
           Section(String(localized: "Line & Paragraph")) {
@@ -308,33 +335,29 @@
               .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .leading) {
-              Slider(value: $draft.lineHeight, in: 0.5...2.5, step: 0.1)
-              Text(String(localized: "Line Height: \(String(format: "%.1f", draft.lineHeight))"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
+            sliderRow(
+              label: String(localized: "Line Height"),
+              value: String(format: "%.1f", draft.lineHeight),
+              binding: $draft.lineHeight,
+              in: 0.5...2.5,
+              step: 0.1
+            )
 
-            VStack(alignment: .leading) {
-              Slider(value: $draft.paragraphSpacing, in: 0.0...3.0, step: 0.1)
-              Text(
-                String(
-                  localized:
-                    "Paragraph Spacing: \(String(format: "%.1f", draft.paragraphSpacing))")
-              )
-              .font(.caption)
-              .foregroundStyle(.secondary)
-            }
+            sliderRow(
+              label: String(localized: "Paragraph Spacing"),
+              value: String(format: "%.1f", draft.paragraphSpacing),
+              binding: $draft.paragraphSpacing,
+              in: 0.0...3.0,
+              step: 0.1
+            )
 
-            VStack(alignment: .leading) {
-              Slider(value: $draft.paragraphIndent, in: 0.0...8.0, step: 0.5)
-              Text(
-                String(
-                  localized: "Paragraph Indent: \(String(format: "%.1f", draft.paragraphIndent))")
-              )
-              .font(.caption)
-              .foregroundStyle(.secondary)
-            }
+            sliderRow(
+              label: String(localized: "Paragraph Indent"),
+              value: String(format: "%.1f", draft.paragraphIndent),
+              binding: $draft.paragraphIndent,
+              in: 0.0...8.0,
+              step: 0.5
+            )
           }
         }
 

@@ -177,7 +177,21 @@ struct ServerEditView: View {
           .disabled(isValidating || !canValidate)
         }
 
-        Section(header: Text(String(localized: "Privacy"))) {
+        Section(
+          header: Text(String(localized: "Privacy")),
+          footer: Group {
+            if !LocalDeviceAuthenticationService.shared.canAuthenticate && !protected {
+              Text(
+                String(
+                  localized:
+                    "Protected servers require device authentication, which is not available on this device."
+                )
+              )
+              .font(.caption)
+              .foregroundStyle(.secondary)
+            }
+          }
+        ) {
           Toggle(isOn: $protected) {
             VStack(alignment: .leading, spacing: 4) {
               Text(String(localized: "Protected Server"))
