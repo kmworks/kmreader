@@ -50,7 +50,8 @@ struct PageFilmstripView: View {
 
   private func itemWidth(for page: ReaderPage) -> CGFloat {
     guard page.id == currentPageID else { return Self.itemWidth }
-    return min(Self.lensMaxWidth, Self.lensHeight * aspect(for: page))
+    // Never narrower than a plain item, even for unusually tall pages.
+    return max(Self.itemWidth, min(Self.lensMaxWidth, Self.lensHeight * aspect(for: page)))
   }
 
   private func itemHeight(for page: ReaderPage) -> CGFloat {
