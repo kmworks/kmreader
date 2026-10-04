@@ -13,6 +13,19 @@ struct SavedFiltersView: View {
   @State private var filterToRename: SavedFilterDisplayItem?
   @State private var newName: String = ""
 
+  private var isRenameAlertPresented: Binding<Bool> {
+    Binding(
+      get: { filterToRename != nil },
+      set: {
+        if !$0 {
+          withAnimation {
+            filterToRename = nil
+          }
+        }
+      }
+    )
+  }
+
   var body: some View {
     SheetView(
       title: String(localized: "Saved Filters"),
@@ -39,16 +52,7 @@ struct SavedFiltersView: View {
     }
     .alert(
       "Rename Filter",
-      isPresented: .init(
-        get: { filterToRename != nil },
-        set: {
-          if !$0 {
-            withAnimation {
-              filterToRename = nil
-            }
-          }
-        }
-      )
+      isPresented: isRenameAlertPresented
     ) {
       TextField("Filter Name", text: $newName)
       Button("Cancel", role: .cancel) {

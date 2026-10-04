@@ -32,6 +32,19 @@ struct ServerListView: View {
   @State private var protectedServerCount = 0
   @State private var isAuthenticatingProtectedServers = false
 
+  private var isDeleteAlertPresented: Binding<Bool> {
+    Binding(
+      get: { instancePendingDeletion != nil },
+      set: { isPresented in
+        if !isPresented {
+          withAnimation {
+            instancePendingDeletion = nil
+          }
+        }
+      }
+    )
+  }
+
   private var activeInstanceId: String? {
     current.instanceId.isEmpty ? nil : current.instanceId
   }
@@ -102,7 +115,6 @@ struct ServerListView: View {
                 confirmDelete(instance)
               }
             )
-            // .tvFocusableHighlight()
           }
         }
       }
@@ -159,16 +171,7 @@ struct ServerListView: View {
     }
     .alert(
       String(localized: "Delete Server"),
-      isPresented: Binding(
-        get: { instancePendingDeletion != nil },
-        set: { isPresented in
-          if !isPresented {
-            withAnimation {
-              instancePendingDeletion = nil
-            }
-          }
-        }
-      ),
+      isPresented: isDeleteAlertPresented,
       presenting: instancePendingDeletion
     ) { instance in
       Button(String(localized: "Delete"), role: .destructive) {
@@ -256,18 +259,6 @@ struct ServerListView: View {
   private var footerText: some View {
     Text("Credentials are stored locally so you can switch servers without re-entering them.")
       .foregroundStyle(.secondary)
-  }
-
-  private var addServerSection: some View {
-    Section {
-      Button {
-        withAnimation {
-          showLogin = true
-        }
-      } label: {
-        Label(addButtonTitle, systemImage: "plus.circle")
-      }
-    }
   }
 
   private var addButtonTitle: LocalizedStringKey {

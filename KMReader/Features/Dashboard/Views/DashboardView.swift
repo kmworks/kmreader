@@ -262,7 +262,7 @@ struct DashboardView: View {
                 LoadingIcon()
               } else {
                 Image(systemName: "wifi.slash")
-                .foregroundStyle(.red)
+                .foregroundStyle(.orange)
               }
             }
             .disabled(isCheckingConnection)

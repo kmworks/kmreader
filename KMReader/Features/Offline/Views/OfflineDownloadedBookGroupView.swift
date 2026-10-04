@@ -87,7 +87,7 @@ struct OfflineDownloadedBookGroupView: View {
   private var header: some View {
     HStack {
       Text(title)
-      countBadge(books.count)
+      OfflineCountBadge(count: books.count)
       Spacer()
       downloadedMetrics(size: downloadedSize)
     }
@@ -125,18 +125,6 @@ struct OfflineDownloadedBookGroupView: View {
 
   private var downloadedSize: Int64 {
     books.reduce(0) { $0 + $1.downloadedSize }
-  }
-
-  private func countBadge(_ count: Int) -> some View {
-    Text(count, format: .number)
-      .font(.caption2)
-      .fontWeight(.semibold)
-      .monospacedDigit()
-      .padding(.horizontal, 6)
-      .padding(.vertical, 2)
-      .background(LayoutConfig.neutralFillColor, in: Capsule())
-      .foregroundColor(.secondary)
-      .lineLimit(1)
   }
 
   private func downloadedMetrics(size: Int64) -> some View {

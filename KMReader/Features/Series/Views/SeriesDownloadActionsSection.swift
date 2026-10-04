@@ -26,6 +26,18 @@ struct SeriesDownloadActionsSection: View {
   @State private var pendingAction: SeriesDownloadAction?
   @State private var pendingUnreadLimit: Int?
 
+  private var isActionAlertPresented: Binding<Bool> {
+    Binding(
+      get: { pendingAction != nil },
+      set: {
+        if !$0 {
+          pendingAction = nil
+          pendingUnreadLimit = nil
+        }
+      }
+    )
+  }
+
   var body: some View {
     HStack(spacing: 12) {
       Menu {
@@ -96,15 +108,7 @@ struct SeriesDownloadActionsSection: View {
     .animation(.appCurve(), value: policy)
     .alert(
       pendingAction?.label(for: status) ?? "",
-      isPresented: Binding(
-        get: { pendingAction != nil },
-        set: {
-          if !$0 {
-            pendingAction = nil
-            pendingUnreadLimit = nil
-          }
-        }
-      ),
+      isPresented: isActionAlertPresented,
       presenting: pendingAction
     ) { action in
       Button(action.label(for: status), role: action.isDestructive ? .destructive : .none) {

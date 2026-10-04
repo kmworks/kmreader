@@ -8,7 +8,6 @@ import SwiftUI
 #if os(iOS) || os(macOS)
   struct MainSplitView: View {
     let context: AppViewContext
-    @State private var deepLinkRouter = DeepLinkRouter.shared
     @State private var nav: NavDestination? = .home
     @State private var detailPath = NavigationPath()
     #if os(macOS)
@@ -47,15 +46,13 @@ import SwiftUI
           }
         }
       }
-      .onAppear {
-        if let link = deepLinkRouter.pendingDeepLink {
-          handleDeepLink(link)
-        }
-      }
-      .onChange(of: deepLinkRouter.pendingDeepLink) { _, link in
-        guard let link else { return }
-        handleDeepLink(link)
-      }
+      .deepLinkRouting(
+        selection: $nav,
+        path: $detailPath,
+        home: .home,
+        downloads: .offline,
+        search: .browseSearch
+      )
     }
 
     @ViewBuilder
@@ -64,28 +61,6 @@ import SwiftUI
         .environment(\.browseLibrarySelection, librarySelection)
         .environment(\.readerActions, context.readerActions)
         .handleNavigation(context: context)
-    }
-
-    private func handleDeepLink(_ link: DeepLink) {
-      deepLinkRouter.pendingDeepLink = nil
-      switch link {
-      case .book(let bookId):
-        nav = .home
-        detailPath = NavigationPath()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-          detailPath.append(NavDestination.bookDetail(bookId: bookId))
-        }
-      case .series(let seriesId):
-        nav = .home
-        detailPath = NavigationPath()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-          detailPath.append(NavDestination.seriesDetail(seriesId: seriesId))
-        }
-      case .search:
-        nav = .browseSearch
-      case .downloads:
-        nav = .offline
-      }
     }
   }
 #endif

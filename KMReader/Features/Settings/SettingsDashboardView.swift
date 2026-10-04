@@ -553,15 +553,4 @@ private struct DashboardSectionsController {
     )
   }
 
-  func hiddenSectionToggleBinding(for section: DashboardSection) -> Binding<Bool> {
-    Binding(
-      get: { isSectionVisible(section) },
-      set: { _ in
-        withAnimation {
-          showSection(section)
-        }
-      }
-    )
-  }
-
 }

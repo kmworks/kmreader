@@ -14,6 +14,13 @@ struct EpubThemePresetsView: View {
   @State private var presetToRename: EpubThemePresetDisplayItem?
   @State private var newName: String = ""
 
+  private var isRenameAlertPresented: Binding<Bool> {
+    Binding(
+      get: { presetToRename != nil },
+      set: { if !$0 { presetToRename = nil } }
+    )
+  }
+
   init(onApply: ((EpubThemePreferences) -> Void)? = nil) {
     self.onApply = onApply
   }
@@ -47,10 +54,7 @@ struct EpubThemePresetsView: View {
     }
     .alert(
       "Rename Preset",
-      isPresented: .init(
-        get: { presetToRename != nil },
-        set: { if !$0 { presetToRename = nil } }
-      )
+      isPresented: isRenameAlertPresented
     ) {
       TextField("Preset Name", text: $newName)
       Button("Cancel", role: .cancel) {

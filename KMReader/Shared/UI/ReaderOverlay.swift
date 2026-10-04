@@ -11,15 +11,17 @@ import SwiftUI
     let namespace: Namespace.ID
     let readerPresentation: ReaderPresentationManager
 
+    private var isReaderPresented: Binding<Bool> {
+      Binding(
+        get: { readerPresentation.currentSession != nil },
+        set: { if !$0 { readerPresentation.closeReader() } }
+      )
+    }
+
     var body: some View {
       Color.clear
         .frame(width: 0, height: 0)
-        .fullScreenCover(
-          isPresented: Binding(
-            get: { readerPresentation.currentSession != nil },
-            set: { if !$0 { readerPresentation.closeReader() } }
-          )
-        ) {
+        .fullScreenCover(isPresented: isReaderPresented) {
           ReaderContentView(readerPresentation: readerPresentation)
             .navigationTransitionZoomIfAvailable(
               sourceID: readerPresentation.sourceBookId,

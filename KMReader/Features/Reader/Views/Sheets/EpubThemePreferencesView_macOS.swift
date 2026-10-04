@@ -341,6 +341,7 @@
         }
       }
       .formStyle(.grouped)
+      .settingsFormWidth()
       .safeAreaInset(edge: .bottom, spacing: 0) {
         controlsBar
       }
