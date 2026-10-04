@@ -68,8 +68,8 @@ struct PageFilmstripView: View {
             .id(page.id)
           }
         }
-        .offset(x: dragOffset)
         .animation(.appCurve(0.25), value: currentPageID)
+        .offset(x: dragOffset)
       }
       .scrollDisabled(true)
       .environment(
@@ -85,7 +85,11 @@ struct PageFilmstripView: View {
       .onChange(of: currentPageID) { _, newValue in
         guard let newValue else { return }
         if isDragging {
-          proxy.scrollTo(newValue, anchor: .center)
+          // Scrub re-centering must be instant — animating it makes the strip
+          // glide behind the finger instead of tracking 1:1.
+          withTransaction(Transaction(animation: nil)) {
+            proxy.scrollTo(newValue, anchor: .center)
+          }
         } else {
           withAnimation(.appSpring) {
             proxy.scrollTo(newValue, anchor: .center)
