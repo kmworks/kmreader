@@ -9,9 +9,12 @@ extension View {
   /// Set the navigation title on platforms that show one. Only macOS renders
   /// it (as the window title); iOS and tvOS leave the navigation bar untitled
   /// because tab labels, detail heroes, and section headers already carry page
-  /// identity.
+  /// identity. iOS still pins the inline display mode: `.automatic` reserves
+  /// an empty large-title area on stack roots.
   func platformNavigationTitle(_ title: String) -> some View {
-    #if os(macOS)
+    #if os(iOS)
+      return self.navigationBarTitleDisplayMode(.inline)
+    #elseif os(macOS)
       return self.navigationTitle(title)
     #else
       return self
