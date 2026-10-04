@@ -159,26 +159,6 @@
       .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    /// Label + trailing value on top, slider below, matching the DIVINA
-    /// settings rows so the current value stays visible while dragging.
-    private func sliderRow(
-      label: String,
-      value: String,
-      binding: Binding<Double>,
-      in range: ClosedRange<Double>,
-      step: Double
-    ) -> some View {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Text(label)
-          Spacer()
-          Text(value)
-            .foregroundColor(.secondary)
-        }
-        Slider(value: binding, in: range, step: step)
-      }
-    }
-
     var body: some View {
       Form {
         Section(String(localized: "Presets")) {
@@ -272,7 +252,7 @@
           }
           .pickerStyle(.segmented)
 
-          sliderRow(
+          LabeledSliderRow(
             label: String(localized: "Page Margins"),
             value: "\(String(format: "%.2f", draft.pageMargins))x",
             binding: $draft.pageMargins,
@@ -287,7 +267,7 @@
 
         if draft.advancedLayout {
           Section(String(localized: "Character & Word")) {
-            sliderRow(
+            LabeledSliderRow(
               label: String(localized: "Font Size"),
               value: "\(String(format: "%.2f", draft.fontSize))x",
               binding: $draft.fontSize,
@@ -295,7 +275,7 @@
               step: 0.05
             )
 
-            sliderRow(
+            LabeledSliderRow(
               label: String(localized: "Letter Spacing"),
               value: String(format: "%.2f", draft.letterSpacing),
               binding: $draft.letterSpacing,
@@ -303,7 +283,7 @@
               step: 0.01
             )
 
-            sliderRow(
+            LabeledSliderRow(
               label: String(localized: "Word Spacing"),
               value: String(format: "%.2f", draft.wordSpacing),
               binding: $draft.wordSpacing,
@@ -335,7 +315,7 @@
               .foregroundStyle(.secondary)
             }
 
-            sliderRow(
+            LabeledSliderRow(
               label: String(localized: "Line Height"),
               value: String(format: "%.1f", draft.lineHeight),
               binding: $draft.lineHeight,
@@ -343,7 +323,7 @@
               step: 0.1
             )
 
-            sliderRow(
+            LabeledSliderRow(
               label: String(localized: "Paragraph Spacing"),
               value: String(format: "%.1f", draft.paragraphSpacing),
               binding: $draft.paragraphSpacing,
@@ -351,7 +331,7 @@
               step: 0.1
             )
 
-            sliderRow(
+            LabeledSliderRow(
               label: String(localized: "Paragraph Indent"),
               value: String(format: "%.1f", draft.paragraphIndent),
               binding: $draft.paragraphIndent,

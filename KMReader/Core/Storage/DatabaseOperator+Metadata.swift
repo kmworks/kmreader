@@ -142,6 +142,7 @@ extension DatabaseOperator {
         books[index].downloadAt = Date.now
         try save(books[index], db: db)
       }
+      recountDownloadAggregates(db: db, books: books, instanceId: instanceId)
     }
   }
 
@@ -157,7 +158,17 @@ extension DatabaseOperator {
         books[index].downloadAt = nil
         try save(books[index], db: db)
       }
+      recountDownloadAggregates(db: db, books: books, instanceId: instanceId)
     }
+  }
+
+  /// Bulk status writes bypass the per-book delta path, so the series/read-list
+  /// rollups are recounted explicitly.
+  private func recountDownloadAggregates(db: Database, books: [KomgaBook], instanceId: String) {
+    for seriesId in Set(books.map(\.seriesId)) {
+      syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+    }
+    syncReadListsContainingBooksInTransaction(db: db, bookIds: books.map(\.bookId), instanceId: instanceId)
   }
 }
 

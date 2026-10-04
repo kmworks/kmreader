@@ -46,7 +46,7 @@ struct SeriesCardView: View {
       navigationLink: item.navDestination,
       downloadIcon: item.downloadStatus.icon,
       downloadSpinning: item.downloadStatus.isPending,
-      downloadColor: item.downloadStatus.displayColor
+      downloadColor: item.downloadStatus.failureColor
     ) {
       if thumbnailShowUnreadIndicator && showUnreadIndicator && item.booksUnreadCount > 0 {
         VStack(alignment: .trailing) {

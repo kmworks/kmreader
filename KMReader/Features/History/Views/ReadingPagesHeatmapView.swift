@@ -11,12 +11,11 @@ struct ReadingPagesHeatmapView: View {
 
   private let tileSize: CGFloat = 13
   private let tileSpacing: CGFloat = 4
-  private let tileHitSize: CGFloat = 28
 
-  // Hit containers exceed the visual tiles; the compensation keeps the dense
-  // grid pitch unchanged instead of spreading the tiles apart.
-  private var gridSpacing: CGFloat {
-    tileSpacing - (tileHitSize - tileSize)
+  // Hit containers span exactly one grid pitch, so the gaps stay tappable;
+  // larger targets would overlap the neighbors on this pitch.
+  private var tileHitSize: CGFloat {
+    tileSize + tileSpacing
   }
 
   private var maxValue: Double {
@@ -38,9 +37,9 @@ struct ReadingPagesHeatmapView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       ScrollView(.horizontal, showsIndicators: false) {
-        LazyHStack(alignment: .top, spacing: gridSpacing) {
+        LazyHStack(alignment: .top, spacing: 0) {
           ForEach(weeks) { week in
-            VStack(spacing: gridSpacing) {
+            VStack(spacing: 0) {
               ForEach(0..<week.days.count, id: \.self) { index in
                 if let point = week.days[index] {
                   Button {

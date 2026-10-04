@@ -115,6 +115,16 @@ struct DivinaPreferencesView: View {
     )
   }
 
+  // The caption under the picker swaps with the selection.
+  private var pageTransitionStyleSelection: Binding<PageTransitionStyle> {
+    Binding(
+      get: { pageTransitionStyle },
+      set: { newValue in
+        withAnimation(.appCurve()) { pageTransitionStyle = newValue }
+      }
+    )
+  }
+
   var body: some View {
     Form {
       Section(header: Text("Default Reading Options")) {
@@ -255,7 +265,7 @@ struct DivinaPreferencesView: View {
       Section(header: Text("Page Turn")) {
         if shouldShowPagedSpecificSettings {
           VStack(alignment: .leading, spacing: 8) {
-            Picker("Page Transition Style", selection: $pageTransitionStyle) {
+            Picker("Page Transition Style", selection: pageTransitionStyleSelection) {
               ForEach(PageTransitionStyle.availableCases, id: \.self) { style in
                 Text(style.displayName).tag(style)
               }

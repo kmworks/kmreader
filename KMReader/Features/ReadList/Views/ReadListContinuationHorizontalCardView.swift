@@ -30,7 +30,7 @@ struct ReadListContinuationHorizontalCardView: View {
       },
       downloadIcon: continuation.downloadStatus.displayIcon,
       downloadSpinning: continuation.downloadStatus.isPending,
-      downloadColor: continuation.downloadStatus.displayColor
+      downloadColor: continuation.downloadStatus.failureColor
     ) { palette in
       Spacer(minLength: 0)
 
