@@ -64,13 +64,12 @@ struct BookSelectionItemView: View {
     switch layout {
     case .grid, .largeGrid:
       selectionContent
-        .overlay(alignment: .topLeading) {
-          SelectionBadge(isSelected: isSelected, onCover: true)
-        }
+        .selectionDimmed(!isSelected, scale: 0.92)
     case .list:
       HStack(spacing: 12) {
-        SelectionBadge(isSelected: isSelected)
         selectionContent
+          .selectionDimmed(!isSelected, scale: 0.97)
+        SelectionBadge(isSelected: isSelected)
       }
     }
   }
@@ -84,7 +83,8 @@ struct BookSelectionItemView: View {
           item: item,
           onReadBook: { _ in },
           showSeriesTitle: showSeriesTitle,
-          showCompletedIndicator: false
+          showCompletedIndicator: false,
+          selectionIsSelected: isSelected
         )
       case .list:
         BookRowView(
