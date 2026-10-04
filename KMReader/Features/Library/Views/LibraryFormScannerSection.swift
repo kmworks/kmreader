@@ -9,8 +9,7 @@ import SwiftUI
 /// oneshots directory, and directory exclusions.
 struct LibraryFormScannerSection<Fields: LibraryFormFields>: View {
   @Binding var fields: Fields
-
-  @State private var newExclusion = ""
+  @Binding var newExclusion: String
 
   var body: some View {
     Section(header: Text(String(localized: "library.add.section.scanner", defaultValue: "Scanner"))) {

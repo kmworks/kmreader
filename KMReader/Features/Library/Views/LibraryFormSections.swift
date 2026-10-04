@@ -12,11 +12,13 @@ struct LibraryFormSections<Fields: LibraryFormFields>: View {
   @Binding var showDirectoryBrowser: Bool
 
   @State private var selectedTab = 0
+  // Hoisted above the tab switch so half-typed input survives it.
+  @State private var newExclusion = ""
 
   var body: some View {
     #if os(tvOS)
       LibraryFormGeneralSection(fields: $fields, showDirectoryBrowser: $showDirectoryBrowser)
-      LibraryFormScannerSection(fields: $fields)
+      LibraryFormScannerSection(fields: $fields, newExclusion: $newExclusion)
       LibraryFormOptionsSection(fields: $fields)
       LibraryFormMetadataSection(fields: $fields)
     #else
@@ -34,7 +36,7 @@ struct LibraryFormSections<Fields: LibraryFormFields>: View {
       case 0:
         LibraryFormGeneralSection(fields: $fields, showDirectoryBrowser: $showDirectoryBrowser)
       case 1:
-        LibraryFormScannerSection(fields: $fields)
+        LibraryFormScannerSection(fields: $fields, newExclusion: $newExclusion)
       case 2:
         LibraryFormOptionsSection(fields: $fields)
       case 3:
