@@ -412,7 +412,9 @@ actor OfflineManager {
         instanceId: instanceId, bookId: info.bookId,
         message: String(localized: "notification.book.offlineRemoved"))
     case .pending:
-      await cancelDownload(bookId: info.bookId, instanceId: instanceId)
+      await cancelDownloadWithUndo(
+        instanceId: instanceId, bookId: info.bookId,
+        message: String(localized: "notification.book.downloadCancelled"))
     case .notDownloaded, .failed:
       await cancelPendingDeletion(forBookId: info.bookId)
       await ensureSeriesRow(instanceId: instanceId, bookId: info.bookId)
@@ -719,13 +721,17 @@ actor OfflineManager {
     }
   }
 
-  /// A delete that already ran makes any staged record for the same books redundant.
+  /// A delete that already ran makes any staged record for the same books redundant:
+  /// drop the record and dismiss its toast, whose commit and Undo would both no-op.
   private func dropPendingDeletions(forBookIds bookIds: [String]) {
-    let staleIds = pendingDeletions.values.filter { entry in
+    let stale = pendingDeletions.values.filter { entry in
       entry.bookIds.contains(where: bookIds.contains)
-    }.map(\.id)
-    for id in staleIds {
-      pendingDeletions.removeValue(forKey: id)
+    }
+    for entry in stale {
+      pendingDeletions.removeValue(forKey: entry.id)
+      if let notificationId = entry.notificationId {
+        Task { await ErrorManager.shared.performAction(id: notificationId) }
+      }
     }
   }
 

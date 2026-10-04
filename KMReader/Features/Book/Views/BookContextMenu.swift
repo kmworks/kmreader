@@ -84,10 +84,13 @@ struct BookContextMenu: View {
           let previousStatus = downloadStatus
           await OfflineManager.shared.toggleDownload(
             instanceId: current.instanceId, info: book.downloadInfo)
-          // Removal carries its own undo toast; a plain one would queue behind it
-          // and claim the book was removed even when the user undoes.
-          if previousStatus != .downloaded {
+          // Removal and cancellation carry their own undo toasts; a plain one would
+          // queue behind and report the outcome even when the user undoes.
+          switch previousStatus {
+          case .notDownloaded, .failed:
             ErrorManager.shared.notify(message: previousStatus.toggledNotification)
+          case .downloaded, .pending:
+            break
           }
           onMutationCompleted?()
         }
