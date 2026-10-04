@@ -13,6 +13,9 @@ struct BookCardView: View {
   var showSeriesTitle: Bool = false
   var showSeriesNavigation: Bool = true
   var showCompletedIndicator: Bool = true
+  /// Selection-mode state: renders the selection badge at the cover's
+  /// bottom-trailing corner in place of the completed indicator.
+  var selectionIsSelected: Bool? = nil
   /// Small dashboard cards are cover-only: at that width every text line
   /// truncates and stops carrying information.
   var coverOnly: Bool = false
@@ -69,7 +72,10 @@ struct BookCardView: View {
       progress: item.progress,
       isInProgress: item.isInProgress
     ) {
-      if item.isCompleted && thumbnailShowUnreadIndicator && showCompletedIndicator {
+      if let selectionIsSelected {
+        SelectionBadge(isSelected: selectionIsSelected, onCover: true)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+      } else if item.isCompleted && thumbnailShowUnreadIndicator && showCompletedIndicator {
         CompletedIndicator(size: badgeSize)
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
       }

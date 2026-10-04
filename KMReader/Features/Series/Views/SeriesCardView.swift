@@ -10,6 +10,9 @@ struct SeriesCardView: View {
   var onMutationCompleted: (() -> Void)? = nil
   var onDeleteRequested: (() -> Void)? = nil
   var showUnreadIndicator: Bool = true
+  /// Selection-mode state: renders the selection badge at the cover's
+  /// bottom-trailing corner in place of the unread count badge.
+  var selectionIsSelected: Bool? = nil
   /// Small dashboard cards are cover-only: at that width every text line
   /// truncates and stops carrying information.
   var coverOnly: Bool = false
@@ -48,7 +51,10 @@ struct SeriesCardView: View {
       downloadSpinning: item.downloadStatus.isPending,
       downloadColor: item.downloadStatus.failureColor
     ) {
-      if thumbnailShowUnreadIndicator && showUnreadIndicator && item.booksUnreadCount > 0 {
+      if let selectionIsSelected {
+        SelectionBadge(isSelected: selectionIsSelected, onCover: true)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+      } else if thumbnailShowUnreadIndicator && showUnreadIndicator && item.booksUnreadCount > 0 {
         VStack(alignment: .trailing) {
           UnreadCountBadge(count: item.booksUnreadCount, size: badgeSize)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)

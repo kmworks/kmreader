@@ -58,13 +58,12 @@ struct SeriesSelectionItemView: View {
     switch layout {
     case .grid, .largeGrid:
       selectionContent
-        .overlay(alignment: .topLeading) {
-          SelectionBadge(isSelected: isSelected, onCover: true)
-        }
+        .selectionDimmed(!isSelected, scale: 0.92)
     case .list:
       HStack(spacing: 12) {
-        SelectionBadge(isSelected: isSelected)
         selectionContent
+          .selectionDimmed(!isSelected, scale: 0.97)
+        SelectionBadge(isSelected: isSelected)
       }
     }
   }
@@ -76,7 +75,8 @@ struct SeriesSelectionItemView: View {
       case .grid, .largeGrid:
         SeriesCardView(
           item: item,
-          showUnreadIndicator: false
+          showUnreadIndicator: false,
+          selectionIsSelected: isSelected
         )
       case .list:
         SeriesRowView(

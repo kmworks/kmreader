@@ -32,3 +32,14 @@ struct SelectionBadge: View {
     }
   }
 }
+
+extension View {
+  /// Selection-mode emphasis: unselected items recede (shrink in place, gray
+  /// out) so the picked ones stand out.
+  func selectionDimmed(_ dimmed: Bool, scale: CGFloat) -> some View {
+    self
+      .scaleEffect(dimmed ? scale : 1)
+      .opacity(dimmed ? 0.55 : 1)
+      .saturation(dimmed ? 0.7 : 1)
+  }
+}
