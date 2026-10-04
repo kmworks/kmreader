@@ -20,9 +20,21 @@ struct BrowseActionsMenu: View {
   let onShowPresets: () -> Void
   let onShowFilter: () -> Void
 
+  /// Same treatment as LayoutModeMenu: layout switches animate everywhere.
+  private var animatedLayoutMode: Binding<BrowseLayoutMode> {
+    Binding(
+      get: { layoutMode },
+      set: { newValue in
+        withAnimation {
+          layoutMode = newValue
+        }
+      }
+    )
+  }
+
   var body: some View {
     Menu {
-      Picker(selection: $layoutMode) {
+      Picker(selection: animatedLayoutMode) {
         ForEach(BrowseLayoutMode.allCases) { mode in
           Label(mode.displayName, systemImage: mode.iconName).tag(mode)
         }
