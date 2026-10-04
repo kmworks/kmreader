@@ -1150,7 +1150,7 @@
       }
 
       /// With bouncing off, a flick past the first/last page has no visible
-      /// answer; nudge the pages a few points against the attempted direction
+      /// answer; nudge the pages a few points along the attempted direction
       /// and back so the boundary reads as a wall.
       private func performBoundarySwipeFeedbackIfNeeded(
         velocity: CGPoint,

@@ -84,8 +84,8 @@ struct BookContextMenu: View {
           let previousStatus = downloadStatus
           await OfflineManager.shared.toggleDownload(
             instanceId: current.instanceId, info: book.downloadInfo)
-          // Removal carries its own undo toast; a second plain one would supersede
-          // it and hide the Undo button while the commit still runs.
+          // Removal carries its own undo toast; a plain one would queue behind it
+          // and claim the book was removed even when the user undoes.
           if previousStatus != .downloaded {
             ErrorManager.shared.notify(message: previousStatus.toggledNotification)
           }

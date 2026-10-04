@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Telegram-style filmstrip for paged DIVINA modes: page thumbnails centered
+/// Filmstrip for paged DIVINA modes: page thumbnails centered
 /// on the current page. The strip is not independently scrollable — it follows
 /// the committed page, taps jump, and dragging scrubs pages in real time.
 struct PageFilmstripView: View {

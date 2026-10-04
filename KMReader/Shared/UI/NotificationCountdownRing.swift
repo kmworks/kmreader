@@ -6,8 +6,8 @@
 import SwiftUI
 
 /// Remaining lifetime of an action toast as a thin depleting ring around the
-/// seconds count (Telegram secretTimeout style): communicates that the window
-/// is closing without a bare readout sitting between message and button.
+/// seconds count: communicates that the window is closing without a bare
+/// readout sitting between message and button.
 struct NotificationCountdownRing: View {
   let deadline: Date
   let lifetime: TimeInterval
