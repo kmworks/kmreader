@@ -285,7 +285,7 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
 
   private var placeholderBase: some View {
     RoundedRectangle(cornerRadius: cornerRadius)
-      .fill(.secondary)
+      .fill(Color.gray.opacity(0.2))
   }
 }
 
