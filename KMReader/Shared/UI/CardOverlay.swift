@@ -98,12 +98,12 @@ struct CompletedIndicator: View {
   }
 
   var body: some View {
-    // Glyph matches the count digit's visual weight; glyph + padding keep the
-    // badge's total height at UnreadCountBadge's ~1.9×size.
+    // Glyph stays small; the padding alone grows the slab to UnreadCountBadge's
+    // total height (~1.9×size) so both corner badges read as one size.
     Image(systemName: "checkmark")
-      .font(.system(size: size * 0.85, weight: .bold))
+      .font(.system(size: size * 0.5, weight: .bold))
       .foregroundStyle(.white)
-      .padding(size * 0.6)
+      .padding(size * 0.75)
       .background(
         UnevenRoundedRectangle(
           bottomLeadingRadius: size * 0.65,
