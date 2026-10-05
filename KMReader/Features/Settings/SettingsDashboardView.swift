@@ -83,9 +83,7 @@ struct SettingsDashboardView: View {
                 Spacer()
 
                 Button {
-                  withAnimation {
-                    controller.showSection(section)
-                  }
+                  controller.showSection(section)
                 } label: {
                   Image(systemName: "plus.circle.fill")
                     .foregroundStyle(.green)
@@ -104,9 +102,7 @@ struct SettingsDashboardView: View {
 
         Section {
           Button(role: .destructive) {
-            withAnimation {
-              controller.resetSections()
-            }
+            controller.resetSections()
           } label: {
             HStack {
               Spacer()
@@ -117,6 +113,7 @@ struct SettingsDashboardView: View {
         }
       }
       .optimizedListStyle()
+      .animation(.appCurve(), value: controller.sections)
       .platformNavigationTitle(SettingsSection.dashboard.title)
       .toolbar {
         EditButton()
@@ -178,9 +175,7 @@ struct SettingsDashboardView: View {
                   sections: controller.sections,
                   draggedSection: $draggedSection,
                   onMove: { from, to in
-                    withAnimation {
-                      controller.moveSections(IndexSet(integer: from), to)
-                    }
+                    controller.moveSections(IndexSet(integer: from), to)
                   }
                 )
               )
@@ -215,9 +210,7 @@ struct SettingsDashboardView: View {
                   Spacer()
 
                   Button {
-                    withAnimation {
-                      controller.showSection(section)
-                    }
+                    controller.showSection(section)
                   } label: {
                     Image(systemName: "plus.circle.fill")
                       .foregroundStyle(.green)
@@ -238,9 +231,7 @@ struct SettingsDashboardView: View {
 
         Section {
           Button(role: .destructive) {
-            withAnimation {
-              controller.resetSections()
-            }
+            controller.resetSections()
           } label: {
             HStack {
               Spacer()
@@ -251,7 +242,7 @@ struct SettingsDashboardView: View {
         }
       }
       .formStyle(.grouped)
-      .settingsFormWidth()
+      .animation(.appCurve(), value: controller.sections)
       .platformNavigationTitle(SettingsSection.dashboard.title)
     }
   }
@@ -432,6 +423,7 @@ struct SettingsDashboardView: View {
         }
       }
       .environment(\.editMode, $editModeValue)
+      .animation(.appCurve(), value: controller.sections)
       .platformNavigationTitle(SettingsSection.dashboard.title)
     }
 
@@ -542,12 +534,10 @@ private struct DashboardSectionsController {
     Binding(
       get: { isSectionVisible(section) },
       set: { newValue in
-        withAnimation {
-          if newValue {
-            showSection(section)
-          } else {
-            hideSection(section)
-          }
+        if newValue {
+          showSection(section)
+        } else {
+          hideSection(section)
         }
       }
     )

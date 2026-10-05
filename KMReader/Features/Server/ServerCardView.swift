@@ -12,6 +12,19 @@ struct ServerCardView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
 
   var body: some View {
+    #if os(tvOS)
+      // tvOS has no room for a nested button: the whole card is the switch
+      // entry, so directional focus always has a full-width target.
+      NavigationLink(value: NavDestination.settingsServers) {
+        cardContent
+      }
+      .adaptiveButtonStyle(.plain)
+    #else
+      cardContent
+    #endif
+  }
+
+  private var cardContent: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .top, spacing: 12) {
         VStack(alignment: .leading, spacing: 4) {
@@ -34,12 +47,18 @@ struct ServerCardView: View {
 
         Spacer()
 
-        NavigationLink(value: NavDestination.settingsServers) {
-          Label(String(localized: "server.switch"), systemImage: "arrow.left.arrow.right")
-        }
-        .font(.caption)
-        .controlSize(.small)
-        .adaptiveButtonStyle(.borderedProminent)
+        #if os(tvOS)
+          Image(systemName: "chevron.right")
+            .font(.caption)
+            .foregroundColor(.secondary)
+        #else
+          NavigationLink(value: NavDestination.settingsServers) {
+            Label(String(localized: "server.switch"), systemImage: "arrow.left.arrow.right")
+          }
+          .font(.caption)
+          .controlSize(.small)
+          .adaptiveButtonStyle(.borderedProminent)
+        #endif
       }
 
       if let userEmail = accountDisplayValue {

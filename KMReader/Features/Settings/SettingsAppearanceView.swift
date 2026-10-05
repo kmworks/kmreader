@@ -52,7 +52,7 @@ struct SettingsAppearanceView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             } else {
-              HStack(spacing: 12) {
+              HStack(spacing: 16) {
                 ForEach(AppIconOption.allCases) { option in
                   appIconButton(for: option)
                 }
@@ -91,7 +91,6 @@ struct SettingsAppearanceView: View {
 
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.appearance.title)
     #if os(iOS)
       .onAppear {
@@ -103,32 +102,31 @@ struct SettingsAppearanceView: View {
   #if os(iOS)
     private func appIconButton(for option: AppIconOption) -> some View {
       let isSelected = selectedAppIcon == option
+      let iconSize: CGFloat = 60
+      let ringPadding: CGFloat = 4
 
       return Button {
         selectedAppIcon = option
       } label: {
-        VStack(spacing: 4) {
-          Image(option.logoAssetName)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        VStack(spacing: 6) {
+          AppIconPreview(option: option, size: iconSize)
+            .padding(ringPadding)
+            .overlay(
+              RoundedRectangle(
+                cornerRadius: AppIconPreview.cornerRadius(for: iconSize) + ringPadding,
+                style: .continuous
+              )
+              .strokeBorder(
+                isSelected ? Color.accentColor : Color.clear,
+                lineWidth: 2.5
+              )
+            )
           Text(option.title)
-            .font(.caption2)
-            .foregroundColor(.secondary)
+            .font(.caption)
+            .foregroundStyle(isSelected ? .primary : .secondary)
             .lineLimit(1)
         }
-        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
-        .padding(8)
-        .background(Color.secondary.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-          RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .stroke(
-              isSelected ? Color.primary : Color.secondary.opacity(0.2),
-              lineWidth: isSelected ? 2 : 1
-            )
-        )
       }
       .buttonStyle(.plain)
       .accessibilityAddTraits(isSelected ? .isSelected : [])

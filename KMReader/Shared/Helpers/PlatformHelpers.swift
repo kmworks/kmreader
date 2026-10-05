@@ -229,25 +229,26 @@ enum PlatformHelper {
     #endif
   }
 
-  /// Get device orientation
-  /// - iOS: use `UIDevice.current.orientation`
-  /// - tvOS / macOS: always return `.landscape`
-  /// - Others: `.unknown`
+  /// Aspect ratio (width / height) of the surface the reader runs in: the app
+  /// window on iOS, which tracks rotation and split-screen resizing; the
+  /// screen on tvOS and macOS.
   @MainActor
-  static var deviceOrientation: DeviceOrientation {
-    #if os(tvOS) || os(macOS)
-      return .landscape
-    #elseif os(iOS)
-      let orientation = UIDevice.current.orientation
-      if orientation.isLandscape {
-        return .landscape
-      } else if orientation.isPortrait {
-        return .portrait
-      } else {
-        return .unknown
-      }
+  static var readerSurfaceAspectRatio: CGFloat {
+    #if os(iOS)
+      let window = UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .flatMap(\.windows)
+        .first { $0.isKeyWindow }
+      let size = window?.bounds.size ?? UIScreen.main.bounds.size
+      return size.width / size.height
+    #elseif os(tvOS)
+      let size = UIScreen.main.bounds.size
+      return size.width / size.height
+    #elseif os(macOS)
+      let size = NSScreen.main?.visibleFrame.size ?? CGSize(width: 16, height: 10)
+      return size.width / size.height
     #else
-      return .unknown
+      return 1
     #endif
   }
 
@@ -323,20 +324,6 @@ enum PlatformHelper {
     #else
       return nil
     #endif
-  }
-}
-
-enum DeviceOrientation {
-  case portrait
-  case landscape
-  case unknown
-
-  var isLandscape: Bool {
-    self == .landscape
-  }
-
-  var isPortrait: Bool {
-    self == .portrait
   }
 }
 

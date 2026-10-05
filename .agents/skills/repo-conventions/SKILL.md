@@ -245,8 +245,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - Settings pages carry no group titles; top-level groups are Server (iPhone only: server card, then Libraries/Account) / Display / Reader / server management (iPhone only, admin-only) / Behavior / Advanced / About. The Libraries entry is admin-only everywhere — its page is read-only for regular users.
 - Settings shared by all readers (DIVINA, EPUB, PDF) live in the Reader group's first entry, `SettingsSection.reading` (`ReaderPreferencesView`) — never in the DIVINA-only `ReaderSettingsSheet` or the per-reader preference pages; reading-session feature toggles (Keep Screen Awake, Reader Live Activity, Auto Full Screen on Open) live there too, as do the offline-reading preference toggles (Offline-first Reading, Auto Delete Read Books, in the page's first section). The read list continuation toggle (`SettingsReadListContinuationToggle`) lives there as well, in the page's Read Lists section: it is a reading behavior (entry-point resolution, recording, sync) whose dashboard section is a side effect.
 - In-reader settings sheets stay compact (no description text); full settings pages may carry description text.
-- `SettingsSystemFeaturesView` keeps Handoff only and is not linked on tvOS; new pages register a `SettingsSection` case and use `SettingsBadgeRow`/`SettingsSectionRow` entries.
-- Settings forms cap at 674pt on iPad/macOS (`View.settingsFormWidth()`), centered with at least 16pt of side inset; iPhone/tvOS keep the full-width form. Content-heavy non-form pages (logs, licenses) stay uncapped.
+- `SettingsSystemFeaturesView` groups Handoff and Spotlight indexing and is not linked on tvOS; new pages register a `SettingsSection` case and use `SettingsBadgeRow`/`SettingsSectionRow` entries.
 
 ### Notifications
 
