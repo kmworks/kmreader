@@ -16,13 +16,13 @@
     var body: some View {
       switch request {
       case .readList(let bookId):
-        ReadListPickerSheet(bookId: bookId) { readListId in
+        ReadListPickerSheet(bookIds: [bookId]) { readListId in
           Task {
             await addBook(bookId, toReadList: readListId)
           }
         }
       case .collection(let seriesId):
-        CollectionPickerSheet(seriesId: seriesId) { collectionId in
+        CollectionPickerSheet(seriesIds: [seriesId]) { collectionId in
           Task {
             await addSeries(seriesId, toCollection: collectionId)
           }

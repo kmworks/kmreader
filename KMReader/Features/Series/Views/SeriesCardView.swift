@@ -100,7 +100,7 @@ struct SeriesCardView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .sheet(isPresented: $showCollectionPicker) {
       CollectionPickerSheet(
-        seriesId: item.seriesId,
+        seriesIds: [item.seriesId],
         onSelect: { collectionId in
           addToCollection(collectionId: collectionId)
         }

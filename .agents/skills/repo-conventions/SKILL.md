@@ -124,6 +124,14 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 - Dashboard/library selections persist via `LibraryManager` and related managers.
 
+### Selection Mode
+
+- Selection mode exists on the series detail books list, the books and series browse pages, and the read list/collection membership lists (remove-only, admin). Entry is a trailing `checkmark.circle` button next to the filter chip row; tvOS always disables it (`supportsSelectionMode`), and the online-only modes hide it while offline.
+- Two toolbars: `SelectionActionsToolbar` (select all, mark read/unread, one list-membership add action, cancel) for the books/series lists, and `SelectionToolbar` (remove-only) for read list/collection membership, which keeps full selection disabled so the list can never be emptied through it.
+- Select-all scope: detail lists cover full membership from GRDB; browse pages cover only the loaded window (kmweb parity).
+- The membership pickers (`ReadListPickerSheet`/`CollectionPickerSheet`) take id arrays, not single ids; a row is `alreadyIn` (disabled) only when it contains every selected id. Batch add goes through `ReadListService.addBooksToReadList`/`CollectionService.addSeriesToCollection` (GET + full-replace PATCH), then syncs and posts the projection change.
+- Batch mark read/unread runs per-item requests in a task group, then re-syncs the succeeded items (series-scoped lists: `syncSeriesDetail`/`syncAllSeriesBooks` + `postSeriesBooksDidChange`; the cross-series books browse: `syncVisitedItems` + `postBooksAndSeriesDidChange`), followed by one `DashboardSectionRefreshNotifier.postReadStatusChanged` and a full list reload.
+
 ### Page Structure
 
 - Browse pages split shell from content: `BrowseContentView` is the scrollable content (optional library header, content-type picker, search placeholder, per-type lists) and owns no chrome; `BrowseView` is the standalone-page shell around it (search field + `onSubmit` query state, toolbar, navigation title, refresh triggers), and the Dashboard search overlay is `DashboardSearchResultsView`, which feeds the Dashboard's submitted query straight to `BrowseContentView`. The overlay appears only once a query is submitted — there is no placeholder state on iPad/macOS; while typing or after clearing the field, the dashboard stays visible. Embedded content never gets its own search field or toolbar — they would duplicate the enclosing page's chrome. Every shell wires real filter-sheet state into `BrowseContentView` (the in-content filter bars drive those bindings; a `.constant` leaves the sort/preset chips dead), and the effective content type resolves through `BrowseContentType.effective(fixed:libraryScoped:persisted:)`.
@@ -230,7 +238,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 ### Layout Toggle & Chip Rows
 
 - Browse layout switching (row / medium / large cards, `BrowseLayoutMode.list`/`.grid`/`.largeGrid`) lives in `LayoutModeMenu`, a dropdown menu showing the current layout's icon, rendered at the front of the filter chip row (the chip-row views take an optional `layoutMode` binding); pages without a chip row place the same menu above the content (e.g. `DashboardSectionDetailView`). The two card modes differ only in card width (`LayoutConfig.gridCardWidth` vs `largeGridCardWidth` via `BrowseLayoutMode.cardWidth`), which feeds `adaptiveColumns(cardWidth:)` and the item views' `cardWidth`.
-- Chip rows are always full-width leading-aligned — on detail pages (series/read list/collection) the selection-mode button sits trailing — so the menu aligns with the content below; do not wrap the row in a `Spacer`-pushed trailing cluster.
+- Chip rows are always full-width leading-aligned — the selection-mode button sits trailing (series/read list/collection detail pages and the books/series browse pages) — so the menu aligns with the content below; do not wrap the row in a `Spacer`-pushed trailing cluster.
 - The menu matches chip height through a blank caption-weight text line (icon glyphs alone render shorter). Do not reintroduce toolbar layout pickers.
 
 ### Toolbar

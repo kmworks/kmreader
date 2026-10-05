@@ -21,6 +21,7 @@ struct BooksListViewForSeries: View {
   @State private var selectedBookIds: Set<String> = []
   @State private var isSelectionMode = false
   @State private var isSubmitting = false
+  @State private var showReadListPicker = false
   @State private var allSeriesBookIds: [String] = []
   @State private var loadedSeriesId: String?
 
@@ -60,10 +61,11 @@ struct BooksListViewForSeries: View {
       .padding(.horizontal)
 
       if supportsSelectionMode && isSelectionMode {
-        ReadStatusSelectionToolbar(
+        SelectionActionsToolbar(
           selectedCount: selectedBookIds.count,
           totalCount: allSeriesBookIds.count,
           isSubmitting: isSubmitting,
+          addLabel: String(localized: "Add to Read List"),
           onSelectAll: {
             if selectedBookIds.count == allSeriesBookIds.count {
               selectedBookIds.removeAll()
@@ -80,6 +82,9 @@ struct BooksListViewForSeries: View {
             Task {
               await markSelected(read: false)
             }
+          },
+          onAdd: {
+            showReadListPicker = true
           },
           onCancel: {
             isSelectionMode = false
@@ -120,6 +125,14 @@ struct BooksListViewForSeries: View {
         }
       }
     }
+    .sheet(isPresented: $showReadListPicker) {
+      ReadListPickerSheet(
+        bookIds: Array(selectedBookIds),
+        onSelect: { readListId in
+          addSelectedToReadList(readListId: readListId)
+        }
+      )
+    }
   }
 
   private func loadAllSeriesBookIds() async {
@@ -136,6 +149,29 @@ struct BooksListViewForSeries: View {
       browseOpts: browseOpts,
       refresh: refresh
     )
+  }
+
+  private func addSelectedToReadList(readListId: String) {
+    let bookIds = Array(selectedBookIds)
+    guard !bookIds.isEmpty else { return }
+
+    Task {
+      do {
+        try await ReadListService.addBooksToReadList(
+          readListId: readListId,
+          bookIds: bookIds
+        )
+        ErrorManager.shared.notify(
+          message: String(localized: "notification.book.booksAddedToReadList"))
+        await ContentProjectionNotifier.postReadListDidChange(readListId: readListId)
+        withAnimation {
+          selectedBookIds.removeAll()
+          isSelectionMode = false
+        }
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
   }
 
   private func markSelected(read: Bool) async {

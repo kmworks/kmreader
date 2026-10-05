@@ -12,14 +12,14 @@ struct ReadListPickerSheet: View {
   @State private var isLoading = false
   @State private var readLists: [ReadListDisplayItem] = []
 
-  let bookId: String
+  let bookIds: [String]
   let onSelect: (String) -> Void
 
   init(
-    bookId: String,
+    bookIds: [String],
     onSelect: @escaping (String) -> Void
   ) {
-    self.bookId = bookId
+    self.bookIds = bookIds
     self.onSelect = onSelect
   }
 
@@ -28,7 +28,7 @@ struct ReadListPickerSheet: View {
       EntityPickerItem(
         id: readList.readListId,
         name: readList.name,
-        alreadyIn: readList.bookIds.contains(bookId)
+        alreadyIn: bookIds.allSatisfy(readList.bookIds.contains)
       )
     }
   }
@@ -43,7 +43,7 @@ struct ReadListPickerSheet: View {
       onSelect: onSelect
     ) {
       CreateReadListSheet(
-        bookId: bookId,
+        bookIds: bookIds,
         onCreate: { _ in
           dismiss()
         }

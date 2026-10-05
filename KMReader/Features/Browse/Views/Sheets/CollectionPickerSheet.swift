@@ -12,14 +12,14 @@ struct CollectionPickerSheet: View {
   @State private var isLoading = false
   @State private var collections: [CollectionDisplayItem] = []
 
-  let seriesId: String
+  let seriesIds: [String]
   let onSelect: (String) -> Void
 
   init(
-    seriesId: String,
+    seriesIds: [String],
     onSelect: @escaping (String) -> Void
   ) {
-    self.seriesId = seriesId
+    self.seriesIds = seriesIds
     self.onSelect = onSelect
   }
 
@@ -28,7 +28,7 @@ struct CollectionPickerSheet: View {
       EntityPickerItem(
         id: collection.collectionId,
         name: collection.name,
-        alreadyIn: collection.seriesIds.contains(seriesId)
+        alreadyIn: seriesIds.allSatisfy(collection.seriesIds.contains)
       )
     }
   }
@@ -43,7 +43,7 @@ struct CollectionPickerSheet: View {
       onSelect: onSelect
     ) {
       CreateCollectionSheet(
-        seriesId: seriesId,
+        seriesIds: seriesIds,
         onCreate: { _ in
           dismiss()
         }

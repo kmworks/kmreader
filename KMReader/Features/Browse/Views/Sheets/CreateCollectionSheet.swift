@@ -7,7 +7,7 @@ import SwiftUI
 
 struct CreateCollectionSheet: View {
   @Environment(\.dismiss) private var dismiss
-  let seriesId: String
+  let seriesIds: [String]
   let onCreate: (String) -> Void
 
   @State private var name: String = ""
@@ -43,7 +43,7 @@ struct CreateCollectionSheet: View {
       do {
         let collection = try await CollectionService.createCollection(
           name: name,
-          seriesIds: [seriesId]
+          seriesIds: seriesIds
         )
         // Sync the collection to update its local series IDs
         _ = try? await SyncService.syncCollection(id: collection.id)

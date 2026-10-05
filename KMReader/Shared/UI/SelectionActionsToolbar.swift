@@ -1,18 +1,23 @@
 //
-// ReadStatusSelectionToolbar.swift
+// SelectionActionsToolbar.swift
 //
 //
 
 import SwiftUI
 
-/// Selection-mode toolbar for batch read status changes (mark read/unread).
-struct ReadStatusSelectionToolbar: View {
+/// Selection-mode toolbar for batch actions on the selected items: mark
+/// read/unread plus one list-membership action (add to read list/collection).
+/// All buttons use circle-family glyphs so the capsules come out the same
+/// size; the accessibility label carries each action's meaning.
+struct SelectionActionsToolbar: View {
   let selectedCount: Int
   let totalCount: Int
   let isSubmitting: Bool
+  let addLabel: String
   let onSelectAll: () -> Void
   let onMarkRead: () -> Void
   let onMarkUnread: () -> Void
+  let onAdd: () -> Void
   let onCancel: () -> Void
 
   var submitDisabled: Bool {
@@ -42,6 +47,15 @@ struct ReadStatusSelectionToolbar: View {
       .adaptiveButtonStyle(.bordered)
       .disabled(submitDisabled)
       .accessibilityLabel(String(localized: "Mark Unread"))
+
+      Button {
+        onAdd()
+      } label: {
+        Image(systemName: "plus.circle")
+      }
+      .adaptiveButtonStyle(.bordered)
+      .disabled(submitDisabled)
+      .accessibilityLabel(addLabel)
 
       Button(role: .cancel) {
         withAnimation {

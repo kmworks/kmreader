@@ -7,7 +7,7 @@ import SwiftUI
 
 struct CreateReadListSheet: View {
   @Environment(\.dismiss) private var dismiss
-  let bookId: String
+  let bookIds: [String]
   let onCreate: (String) -> Void
 
   @State private var name: String = ""
@@ -47,7 +47,7 @@ struct CreateReadListSheet: View {
         let readList = try await ReadListService.createReadList(
           name: name,
           summary: summary,
-          bookIds: [bookId]
+          bookIds: bookIds
         )
         // Sync the readlist to update its local book IDs
         _ = try? await SyncService.syncReadList(id: readList.id)
