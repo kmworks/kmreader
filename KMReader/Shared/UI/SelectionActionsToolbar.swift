@@ -7,8 +7,8 @@ import SwiftUI
 
 /// Selection-mode toolbar for batch actions on the selected items: mark
 /// read/unread plus one list-membership action (add to read list/collection).
-/// All buttons use circle-family glyphs so the capsules come out the same
-/// size; the accessibility label carries each action's meaning.
+/// The action glyphs come from the circle family so the capsules render at
+/// the same size; the accessibility label carries each action's meaning.
 struct SelectionActionsToolbar: View {
   let selectedCount: Int
   let totalCount: Int

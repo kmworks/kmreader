@@ -13,7 +13,7 @@ struct SeriesQueryView: View {
   let viewModel: SeriesViewModel
   let useLocalOnly: Bool
   let offlineOnly: Bool
-  let isSelectionMode: Bool
+  /// Non-nil enters selection mode with this selection binding.
   let selectedSeriesIds: Binding<Set<String>>?
 
   private var columns: [GridItem] {
@@ -32,7 +32,6 @@ struct SeriesQueryView: View {
     viewModel: SeriesViewModel,
     useLocalOnly: Bool = false,
     offlineOnly: Bool = false,
-    isSelectionMode: Bool = false,
     selectedSeriesIds: Binding<Set<String>>? = nil
   ) {
     self.libraryIds = libraryIds
@@ -42,7 +41,6 @@ struct SeriesQueryView: View {
     self.viewModel = viewModel
     self.useLocalOnly = useLocalOnly
     self.offlineOnly = offlineOnly
-    self.isSelectionMode = isSelectionMode
     self.selectedSeriesIds = selectedSeriesIds
   }
 
@@ -62,11 +60,12 @@ struct SeriesQueryView: View {
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(viewModel.pagination.items) { series in
             Group {
-              if isSelectionMode, let selectedSeriesIds {
+              if let selectedSeriesIds {
                 SeriesSelectionItemView(
                   seriesId: series.id,
                   layout: browseLayout,
-                  selectedSeriesIds: selectedSeriesIds
+                  selectedSeriesIds: selectedSeriesIds,
+                  cardWidth: browseLayout.cardWidth
                 )
               } else {
                 SeriesQueryItemView(
@@ -91,7 +90,7 @@ struct SeriesQueryView: View {
         LazyVStack {
           ForEach(viewModel.pagination.items) { series in
             Group {
-              if isSelectionMode, let selectedSeriesIds {
+              if let selectedSeriesIds {
                 SeriesSelectionItemView(
                   seriesId: series.id,
                   layout: .list,

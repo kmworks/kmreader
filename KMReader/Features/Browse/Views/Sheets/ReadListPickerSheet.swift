@@ -14,13 +14,18 @@ struct ReadListPickerSheet: View {
 
   let bookIds: [String]
   let onSelect: (String) -> Void
+  /// Create-New completion: the new list already holds the given books, so
+  /// callers only need to react to the dismissal (e.g. exit selection mode).
+  var onCreate: ((String) -> Void)? = nil
 
   init(
     bookIds: [String],
-    onSelect: @escaping (String) -> Void
+    onSelect: @escaping (String) -> Void,
+    onCreate: ((String) -> Void)? = nil
   ) {
     self.bookIds = bookIds
     self.onSelect = onSelect
+    self.onCreate = onCreate
   }
 
   private var pickerItems: [EntityPickerItem] {
@@ -44,7 +49,8 @@ struct ReadListPickerSheet: View {
     ) {
       CreateReadListSheet(
         bookIds: bookIds,
-        onCreate: { _ in
+        onCreate: { id in
+          onCreate?(id)
           dismiss()
         }
       )

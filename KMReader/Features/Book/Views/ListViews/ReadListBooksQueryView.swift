@@ -14,7 +14,6 @@ struct ReadListBooksQueryView: View {
   let isSelectionMode: Bool
   @Binding var selectedBookIds: Set<String>
   let isAdmin: Bool
-  let refreshBooks: () -> Void
 
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
@@ -32,8 +31,7 @@ struct ReadListBooksQueryView: View {
     browseLayout: BrowseLayoutMode,
     isSelectionMode: Bool,
     selectedBookIds: Binding<Set<String>>,
-    isAdmin: Bool,
-    refreshBooks: @escaping () -> Void
+    isAdmin: Bool
   ) {
     self.readListId = readListId
     self.readListContext = readListContext
@@ -43,7 +41,6 @@ struct ReadListBooksQueryView: View {
     self.isSelectionMode = isSelectionMode
     self._selectedBookIds = selectedBookIds
     self.isAdmin = isAdmin
-    self.refreshBooks = refreshBooks
   }
 
   var body: some View {
@@ -63,7 +60,7 @@ struct ReadListBooksQueryView: View {
                     bookId: book.id,
                     layout: browseLayout,
                     selectedBookIds: $selectedBookIds,
-                    refreshBooks: refreshBooks,
+                    cardWidth: browseLayout.cardWidth,
                     showSeriesTitle: true
                   )
                 } else {
@@ -96,7 +93,6 @@ struct ReadListBooksQueryView: View {
                     bookId: book.id,
                     layout: .list,
                     selectedBookIds: $selectedBookIds,
-                    refreshBooks: refreshBooks,
                     showSeriesTitle: true
                   )
                 } else {

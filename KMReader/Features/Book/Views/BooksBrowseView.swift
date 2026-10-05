@@ -109,8 +109,7 @@ struct BooksBrowseView: View {
         browseOpts: effectiveBrowseOpts,
         browseLayout: browseLayout,
         viewModel: viewModel,
-        isSelectionMode: supportsSelectionMode && isSelectionMode,
-        selectedBookIds: $selectedBookIds
+        selectedBookIds: supportsSelectionMode && isSelectionMode ? $selectedBookIds : nil
       )
       .task(id: initializationKey) {
         guard initializedKey != initializationKey else { return }
@@ -150,15 +149,23 @@ struct BooksBrowseView: View {
           await loadBooks(refresh: true)
         }
       }
-      .sheet(isPresented: $showReadListPicker) {
-        ReadListPickerSheet(
-          bookIds: Array(selectedBookIds),
-          onSelect: { readListId in
-            addSelectedToReadList(readListId: readListId)
-          }
-        )
-      }
     }
+    .sheet(isPresented: $showReadListPicker) {
+      ReadListPickerSheet(
+        bookIds: selectedBookIdsInDisplayOrder,
+        onSelect: { readListId in
+          addSelectedToReadList(readListId: readListId)
+        },
+        onCreate: { _ in
+          exitSelectionMode()
+        }
+      )
+    }
+  }
+
+  /// Selected ids in display order, so read-list appends keep the list's order.
+  private var selectedBookIdsInDisplayOrder: [String] {
+    loadedBookIds.filter(selectedBookIds.contains)
   }
 
   private var effectiveBrowseOpts: BookBrowseOptions {
@@ -198,7 +205,7 @@ struct BooksBrowseView: View {
     let bookIds = Array(selectedBookIds)
     let outcome = await withTaskGroup(
       of: (id: String, error: Error?).self,
-      returning: (succeeded: [String], firstError: Error?).self
+      returning: (succeeded: [String], failed: [String], firstError: Error?).self
     ) { group in
       for bookId in bookIds {
         group.addTask {
@@ -215,15 +222,17 @@ struct BooksBrowseView: View {
         }
       }
       var succeeded: [String] = []
+      var failed: [String] = []
       var firstError: Error?
       for await result in group {
         if let error = result.error {
+          failed.append(result.id)
           if firstError == nil { firstError = error }
         } else {
           succeeded.append(result.id)
         }
       }
-      return (succeeded: succeeded, firstError: firstError)
+      return (succeeded: succeeded, failed: failed, firstError: firstError)
     }
 
     // Sync whatever succeeded so the UI never goes stale, then report failures.
@@ -251,9 +260,14 @@ struct BooksBrowseView: View {
       ErrorManager.shared.notify(message: String(localized: "notification.book.markedUnread"))
     }
 
+    // Keep the failed items selected so the batch can be retried.
     withAnimation {
-      selectedBookIds.removeAll()
-      isSelectionMode = false
+      if outcome.failed.isEmpty {
+        selectedBookIds.removeAll()
+        isSelectionMode = false
+      } else {
+        selectedBookIds = Set(outcome.failed)
+      }
     }
 
     await loadBooks(refresh: true)
@@ -275,7 +289,7 @@ struct BooksBrowseView: View {
   }
 
   private func addSelectedToReadList(readListId: String) {
-    let bookIds = Array(selectedBookIds)
+    let bookIds = selectedBookIdsInDisplayOrder
     guard !bookIds.isEmpty else { return }
 
     Task {
@@ -287,13 +301,17 @@ struct BooksBrowseView: View {
         ErrorManager.shared.notify(
           message: String(localized: "notification.book.booksAddedToReadList"))
         await ContentProjectionNotifier.postReadListDidChange(readListId: readListId)
-        withAnimation {
-          selectedBookIds.removeAll()
-          isSelectionMode = false
-        }
+        exitSelectionMode()
       } catch {
         ErrorManager.shared.alert(error: error)
       }
+    }
+  }
+
+  private func exitSelectionMode() {
+    withAnimation {
+      selectedBookIds.removeAll()
+      isSelectionMode = false
     }
   }
 

@@ -14,13 +14,18 @@ struct CollectionPickerSheet: View {
 
   let seriesIds: [String]
   let onSelect: (String) -> Void
+  /// Create-New completion: the new collection already holds the given series,
+  /// so callers only need to react to the dismissal (e.g. exit selection mode).
+  var onCreate: ((String) -> Void)? = nil
 
   init(
     seriesIds: [String],
-    onSelect: @escaping (String) -> Void
+    onSelect: @escaping (String) -> Void,
+    onCreate: ((String) -> Void)? = nil
   ) {
     self.seriesIds = seriesIds
     self.onSelect = onSelect
+    self.onCreate = onCreate
   }
 
   private var pickerItems: [EntityPickerItem] {
@@ -44,7 +49,8 @@ struct CollectionPickerSheet: View {
     ) {
       CreateCollectionSheet(
         seriesIds: seriesIds,
-        onCreate: { _ in
+        onCreate: { id in
+          onCreate?(id)
           dismiss()
         }
       )

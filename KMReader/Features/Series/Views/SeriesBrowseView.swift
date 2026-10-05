@@ -107,8 +107,7 @@ struct SeriesBrowseView: View {
         browseOpts: effectiveBrowseOpts,
         browseLayout: browseLayout,
         viewModel: viewModel,
-        isSelectionMode: supportsSelectionMode && isSelectionMode,
-        selectedSeriesIds: $selectedSeriesIds
+        selectedSeriesIds: supportsSelectionMode && isSelectionMode ? $selectedSeriesIds : nil
       )
     }
     .task(id: initializationKey) {
@@ -151,12 +150,20 @@ struct SeriesBrowseView: View {
     }
     .sheet(isPresented: $showCollectionPicker) {
       CollectionPickerSheet(
-        seriesIds: Array(selectedSeriesIds),
+        seriesIds: selectedSeriesIdsInDisplayOrder,
         onSelect: { collectionId in
           addSelectedToCollection(collectionId: collectionId)
+        },
+        onCreate: { _ in
+          exitSelectionMode()
         }
       )
     }
+  }
+
+  /// Selected ids in display order, so collection appends keep that order.
+  private var selectedSeriesIdsInDisplayOrder: [String] {
+    loadedSeriesIds.filter(selectedSeriesIds.contains)
   }
 
   private var effectiveBrowseOpts: SeriesBrowseOptions {
@@ -196,7 +203,7 @@ struct SeriesBrowseView: View {
     let seriesIds = Array(selectedSeriesIds)
     let outcome = await withTaskGroup(
       of: (id: String, error: Error?).self,
-      returning: (succeeded: [String], firstError: Error?).self
+      returning: (succeeded: [String], failed: [String], firstError: Error?).self
     ) { group in
       for seriesId in seriesIds {
         group.addTask {
@@ -213,15 +220,17 @@ struct SeriesBrowseView: View {
         }
       }
       var succeeded: [String] = []
+      var failed: [String] = []
       var firstError: Error?
       for await result in group {
         if let error = result.error {
+          failed.append(result.id)
           if firstError == nil { firstError = error }
         } else {
           succeeded.append(result.id)
         }
       }
-      return (succeeded: succeeded, firstError: firstError)
+      return (succeeded: succeeded, failed: failed, firstError: firstError)
     }
 
     // Sync whatever succeeded so the UI never goes stale, then report failures.
@@ -252,16 +261,21 @@ struct SeriesBrowseView: View {
       ErrorManager.shared.notify(message: String(localized: "notification.series.markedUnread"))
     }
 
+    // Keep the failed items selected so the batch can be retried.
     withAnimation {
-      selectedSeriesIds.removeAll()
-      isSelectionMode = false
+      if outcome.failed.isEmpty {
+        selectedSeriesIds.removeAll()
+        isSelectionMode = false
+      } else {
+        selectedSeriesIds = Set(outcome.failed)
+      }
     }
 
     await loadSeries(refresh: true)
   }
 
   private func addSelectedToCollection(collectionId: String) {
-    let seriesIds = Array(selectedSeriesIds)
+    let seriesIds = selectedSeriesIdsInDisplayOrder
     guard !seriesIds.isEmpty else { return }
 
     Task {
@@ -273,13 +287,17 @@ struct SeriesBrowseView: View {
         ErrorManager.shared.notify(
           message: String(localized: "notification.series.addedToCollection"))
         await ContentProjectionNotifier.postCollectionDidChange(collectionId: collectionId)
-        withAnimation {
-          selectedSeriesIds.removeAll()
-          isSelectionMode = false
-        }
+        exitSelectionMode()
       } catch {
         ErrorManager.shared.alert(error: error)
       }
+    }
+  }
+
+  private func exitSelectionMode() {
+    withAnimation {
+      selectedSeriesIds.removeAll()
+      isSelectionMode = false
     }
   }
 }

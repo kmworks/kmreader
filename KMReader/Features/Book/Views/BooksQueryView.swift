@@ -13,7 +13,7 @@ struct BooksQueryView: View {
   let viewModel: BookViewModel
   let useLocalOnly: Bool
   let offlineOnly: Bool
-  let isSelectionMode: Bool
+  /// Non-nil enters selection mode with this selection binding.
   let selectedBookIds: Binding<Set<String>>?
 
   private var columns: [GridItem] {
@@ -32,7 +32,6 @@ struct BooksQueryView: View {
     viewModel: BookViewModel,
     useLocalOnly: Bool = false,
     offlineOnly: Bool = false,
-    isSelectionMode: Bool = false,
     selectedBookIds: Binding<Set<String>>? = nil
   ) {
     self.libraryIds = libraryIds
@@ -42,7 +41,6 @@ struct BooksQueryView: View {
     self.viewModel = viewModel
     self.useLocalOnly = useLocalOnly
     self.offlineOnly = offlineOnly
-    self.isSelectionMode = isSelectionMode
     self.selectedBookIds = selectedBookIds
   }
 
@@ -62,14 +60,12 @@ struct BooksQueryView: View {
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(viewModel.pagination.items) { book in
             Group {
-              if isSelectionMode, let selectedBookIds {
+              if let selectedBookIds {
                 BookSelectionItemView(
                   bookId: book.id,
                   layout: browseLayout,
                   selectedBookIds: selectedBookIds,
-                  refreshBooks: {
-                    loadBooks(refresh: true)
-                  }
+                  cardWidth: browseLayout.cardWidth
                 )
               } else {
                 BookQueryItemView(
@@ -94,14 +90,11 @@ struct BooksQueryView: View {
         LazyVStack {
           ForEach(viewModel.pagination.items) { book in
             Group {
-              if isSelectionMode, let selectedBookIds {
+              if let selectedBookIds {
                 BookSelectionItemView(
                   bookId: book.id,
                   layout: .list,
-                  selectedBookIds: selectedBookIds,
-                  refreshBooks: {
-                    loadBooks(refresh: true)
-                  }
+                  selectedBookIds: selectedBookIds
                 )
               } else {
                 BookQueryItemView(
