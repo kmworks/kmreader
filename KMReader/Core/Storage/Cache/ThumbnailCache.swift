@@ -44,6 +44,7 @@ actor ThumbnailCache {
   private let diskCacheURL: URL = CacheNamespace.directory(for: "KomgaThumbnailCache")
   private let fileManager = FileManager.default
   private var downloadTasks: [String: DownloadTaskEntry] = [:]
+  private var imageTasks: [String: Task<PlatformImage?, Never>] = [:]
 
   // Cached disk cache size (static for shared access)
   private static let cacheSizeActor = CacheSizeActor()
@@ -279,6 +280,28 @@ actor ThumbnailCache {
     if let memoryKey, let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
       return cached
     }
+    // Page thumbnails skip the memory tier, so they never join here either.
+    guard let memoryKey else {
+      return await loadImage(id: id, type: type, page: page, memoryKey: nil)
+    }
+    // Cover loads join one in-flight task: cells recreated while a load is
+    // running share it instead of decoding twice, and their cancellation
+    // cannot abort the memory-tier store.
+    if let inFlight = imageTasks[memoryKey] {
+      return await inFlight.value
+    }
+    let task = Task<PlatformImage?, Never> {
+      await self.loadImage(id: id, type: type, page: page, memoryKey: memoryKey)
+    }
+    imageTasks[memoryKey] = task
+    let loaded = await task.value
+    imageTasks[memoryKey] = nil
+    return loaded
+  }
+
+  private func loadImage(id: String, type: ThumbnailType, page: Int?, memoryKey: String?) async
+    -> PlatformImage?
+  {
     guard let url = try? await ensureThumbnail(id: id, type: type, page: page) else {
       return nil
     }

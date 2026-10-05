@@ -30,7 +30,9 @@ final class ThumbnailMemoryCache {
   private let cache = NSCache<NSString, Entry>()
 
   private init() {
-    cache.countLimit = 300
+    // Covers are ~240KB decoded (≤300px); 512 of them ≈ 120MB, inside the
+    // 128MB cost budget, which stays the binding constraint for larger covers.
+    cache.countLimit = 512
     cache.totalCostLimit = 128 * 1024 * 1024
   }
 
