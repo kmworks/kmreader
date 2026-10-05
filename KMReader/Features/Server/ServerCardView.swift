@@ -60,6 +60,9 @@ struct ServerCardView: View {
     .padding(12)
     .background(.thinMaterial)
     .clipShape(RoundedRectangle(cornerRadius: 16))
+    #if os(tvOS)
+      .focusSection()
+    #endif
   }
 
   private var serverDisplayName: String {
