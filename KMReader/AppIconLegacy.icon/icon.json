@@ -6,7 +6,7 @@
     {
       "layers" : [
         {
-          "glass" : false,
+          "glass" : true,
           "image-name" : "icon.svg",
           "name" : "icon",
           "position" : {
