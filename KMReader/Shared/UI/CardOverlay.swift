@@ -5,12 +5,52 @@
 
 import SwiftUI
 
-struct UnreadCountBadge: View {
-  let count: Int
+/// Shared corner-badge shell: a hidden sizing text anchors the badge's height
+/// and a stable same-length width, the content overlays it, and the slab
+/// matches the cover's top-right corner.
+private struct CornerBadgeShell<Content: View>: View {
+  let sizingText: String
   let size: CGFloat
   /// Must match the cover's corner radius so the badge arc overlaps the
   /// cover clip exactly; a different radius or corner style lets the cover
   /// bleed through at the top-right corner.
+  let cornerRadius: CGFloat
+  @ViewBuilder let content: () -> Content
+
+  @State private var measuredHeight: CGFloat = 0
+
+  private var badgeFont: Font {
+    .system(size: size, weight: .semibold, design: .rounded)
+  }
+
+  var body: some View {
+    Text(sizingText)
+      .font(badgeFont)
+      .opacity(0)
+      .accessibilityHidden(true)
+      .overlay { content() }
+      .foregroundStyle(.white)
+      .padding(.horizontal, size * 0.6)
+      .padding(.vertical, size * 0.35)
+      .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+        measuredHeight = height
+      }
+      .frame(minWidth: measuredHeight)
+      .background(
+        UnevenRoundedRectangle(
+          bottomLeadingRadius: size * 0.65,
+          topTrailingRadius: cornerRadius,
+          style: .circular
+        )
+        .fill(Color(white: 0.12))
+      )
+  }
+}
+
+struct UnreadCountBadge: View {
+  let count: Int
+  let size: CGFloat
+  /// See CornerBadgeShell.cornerRadius.
   let cornerRadius: CGFloat
 
   #if os(tvOS)
@@ -19,7 +59,6 @@ struct UnreadCountBadge: View {
     static let defaultSize: CGFloat = 12
   #endif
 
-  @State private var measuredHeight: CGFloat = 0
   @State private var bounceScale: CGFloat = 1
 
   init(count: Int, size: CGFloat = defaultSize, cornerRadius: CGFloat = 8) {
@@ -39,51 +78,35 @@ struct UnreadCountBadge: View {
   }
 
   var body: some View {
-    Text(sizingText)
-      .font(badgeFont)
-      .opacity(0)
-      .accessibilityHidden(true)
-      .overlay {
-        Text("\(count)")
-          .font(badgeFont)
-          .contentTransition(.numericText())
-      }
-      .foregroundStyle(.white)
-      .padding(.horizontal, size * 0.6)
-      .padding(.vertical, size * 0.35)
-      .accessibilityLabel(
-        Text(String.localizedStringWithFormat(String(localized: "%lld unread"), count))
-      )
-      .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
-        measuredHeight = height
-      }
-      .frame(minWidth: measuredHeight)
-      .background(
-        UnevenRoundedRectangle(
-          bottomLeadingRadius: size * 0.65,
-          topTrailingRadius: cornerRadius,
-          style: .circular
-        )
-        .fill(Color(white: 0.12))
-      )
-      .scaleEffect(bounceScale)
-      .animation(.appCurve(0.2), value: count)
-      .onChange(of: count) { oldValue, newValue in
-        guard newValue > oldValue else { return }
-        withAnimation(.appCurve(0.12), completionCriteria: .removed) {
-          bounceScale = 1.2
-        } completion: {
-          withAnimation(.appCurve(0.12)) {
-            bounceScale = 1
-          }
+    CornerBadgeShell(sizingText: sizingText, size: size, cornerRadius: cornerRadius) {
+      Text("\(count)")
+        .font(badgeFont)
+        .contentTransition(.numericText())
+        // "11" is wider than its "18" anchor in the rounded font; without a
+        // free size the count truncates to an ellipsis.
+        .fixedSize()
+    }
+    .accessibilityLabel(
+      Text(String.localizedStringWithFormat(String(localized: "%lld unread"), count))
+    )
+    .scaleEffect(bounceScale)
+    .animation(.appCurve(0.2), value: count)
+    .onChange(of: count) { oldValue, newValue in
+      guard newValue > oldValue else { return }
+      withAnimation(.appCurve(0.12), completionCriteria: .removed) {
+        bounceScale = 1.2
+      } completion: {
+        withAnimation(.appCurve(0.12)) {
+          bounceScale = 1
         }
       }
+    }
   }
 }
 
 struct CompletedIndicator: View {
   let size: CGFloat
-  /// See UnreadCountBadge.cornerRadius.
+  /// See CornerBadgeShell.cornerRadius.
   let cornerRadius: CGFloat
 
   #if os(tvOS)
@@ -98,21 +121,11 @@ struct CompletedIndicator: View {
   }
 
   var body: some View {
-    // Glyph stays small; the padding alone grows the slab to UnreadCountBadge's
-    // total height (~1.9×size) so both corner badges read as one size.
-    Image(systemName: "checkmark")
-      .font(.system(size: size * 0.5, weight: .bold))
-      .foregroundStyle(.white)
-      .padding(size * 0.75)
-      .background(
-        UnevenRoundedRectangle(
-          bottomLeadingRadius: size * 0.65,
-          topTrailingRadius: cornerRadius,
-          style: .circular
-        )
-        .fill(Color(white: 0.12))
-      )
-      .accessibilityLabel(Text("Completed"))
+    CornerBadgeShell(sizingText: "8", size: size, cornerRadius: cornerRadius) {
+      Image(systemName: "checkmark")
+        .font(.system(size: size * 0.85, weight: .bold))
+    }
+    .accessibilityLabel(Text("Completed"))
   }
 }
 
