@@ -8,6 +8,12 @@ import ImageIO
 import OSLog
 import UniformTypeIdentifiers
 
+#if os(iOS) || os(tvOS)
+  import UIKit
+#elseif os(macOS)
+  import AppKit
+#endif
+
 extension Notification.Name {
   static let thumbnailDidRefresh = Notification.Name("thumbnailDidRefresh")
 }
@@ -218,6 +224,11 @@ actor ThumbnailCache {
         triggerCleanupIfNeeded()
       }
 
+      if force {
+        await ThumbnailMemoryCache.shared.remove(
+          forKey: ThumbnailMemoryCache.key(id: id, type: type, page: page))
+      }
+
       return fileURL
     }
 
@@ -254,6 +265,34 @@ actor ThumbnailCache {
         task.cancel()
       }
     }
+  }
+
+  // MARK: - Multi-level Image Access
+
+  /// Decoded image for display, resolving memory → disk → network. This is the
+  /// entry point for image consumers; file-level consumers (widgets, indexing,
+  /// tint extraction) keep using `ensureThumbnail`.
+  func image(id: String, type: ThumbnailType, page: Int? = nil) async -> PlatformImage? {
+    let memoryKey = ThumbnailMemoryCache.key(id: id, type: type, page: page)
+    if let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
+      return cached
+    }
+    guard let url = try? await ensureThumbnail(id: id, type: type, page: page) else {
+      return nil
+    }
+    let decoded: PlatformImage? = await Task.detached(priority: .userInitiated) {
+      guard let raw = PlatformImage(contentsOfFile: url.path) else { return nil }
+      return await ImageDecodeHelper.decodeForDisplay(raw)
+    }.value
+    if let decoded {
+      await ThumbnailMemoryCache.shared.store(decoded, forKey: memoryKey)
+    }
+    return decoded
+  }
+
+  /// Synchronous memory-tier lookup for view initializers; never touches disk.
+  @MainActor static func cachedImage(id: String, type: ThumbnailType) -> PlatformImage? {
+    ThumbnailMemoryCache.shared.image(forKey: ThumbnailMemoryCache.key(id: id, type: type))
   }
 
   private func shouldRetryStandardDownload(

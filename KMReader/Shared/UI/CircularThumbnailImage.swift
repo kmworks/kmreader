@@ -20,9 +20,7 @@ struct CircularThumbnailImage: View {
     self.id = id
     self.type = type
     self.diameter = diameter
-    _image = State(
-      initialValue: ThumbnailMemoryCache.shared.image(
-        forKey: ThumbnailMemoryCache.key(id: id, type: type)))
+    _image = State(initialValue: ThumbnailCache.cachedImage(id: id, type: type))
   }
 
   var body: some View {
@@ -52,29 +50,12 @@ struct CircularThumbnailImage: View {
       else {
         return
       }
-      ThumbnailMemoryCache.shared.remove(forKey: ThumbnailMemoryCache.key(id: id, type: type))
       refreshTrigger = UUID()
     }
     .task(id: "\(type.rawValue)|\(id)|\(refreshTrigger)") {
-      let memoryKey = ThumbnailMemoryCache.key(id: id, type: type)
-      if let cached = ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
-        image = cached
-        return
-      }
-      let loaded = await Self.load(id: id, type: type)
-      if let loaded {
-        ThumbnailMemoryCache.shared.store(loaded, forKey: memoryKey)
+      if let loaded = await ThumbnailCache.shared.image(id: id, type: type) {
         image = loaded
       }
     }
-  }
-
-  private static func load(id: String, type: ThumbnailType) async -> PlatformImage? {
-    await Task.detached(priority: .userInitiated) {
-      guard let url = try? await ThumbnailCache.shared.ensureThumbnail(id: id, type: type),
-        let image = PlatformImage(contentsOfFile: url.path)
-      else { return nil }
-      return await ImageDecodeHelper.decodeForDisplay(image)
-    }.value
   }
 }

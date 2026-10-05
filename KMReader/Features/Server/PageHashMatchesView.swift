@@ -134,7 +134,7 @@ private struct PageHashMatchThumbnailView: View {
 
   private enum LoadState {
     case loading
-    case loaded(URL)
+    case loaded(PlatformImage)
     case failed
   }
 
@@ -147,28 +147,23 @@ private struct PageHashMatchThumbnailView: View {
         // Keep the same spinner the previous AsyncImage showed while loading.
         ProgressView()
           .frame(width: 50, height: 70)
-      case .loaded(let url):
-        if let image = PlatformImage(contentsOfFile: url.path) {
-          Image(platformImage: image)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 50, height: 70)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-        } else {
-          placeholder
-        }
+      case .loaded(let image):
+        Image(platformImage: image)
+          .resizable()
+          .aspectRatio(contentMode: .fit)
+          .frame(width: 50, height: 70)
+          .clipShape(RoundedRectangle(cornerRadius: 4))
       case .failed:
         placeholder
       }
     }
     .task(id: "\(bookId)#\(pageNumber)") {
       state = .loading
-      do {
-        let url = try await ThumbnailCache.shared.ensureThumbnail(
-          id: bookId, type: .page, page: pageNumber
-        )
-        state = .loaded(url)
-      } catch {
+      if let image = await ThumbnailCache.shared.image(
+        id: bookId, type: .page, page: pageNumber)
+      {
+        state = .loaded(image)
+      } else {
         state = .failed
       }
     }

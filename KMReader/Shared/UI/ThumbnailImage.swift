@@ -90,8 +90,7 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     self.overlay = overlay
     self.menu = menu
 
-    let cached = ThumbnailMemoryCache.shared.image(
-      forKey: ThumbnailMemoryCache.key(id: id, type: type))
+    let cached = ThumbnailCache.cachedImage(id: id, type: type)
     _isLoading = State(initialValue: cached == nil)
     _image = State(initialValue: cached)
     _currentBaseKey = State(initialValue: cached != nil ? "\(id)#\(type.rawValue)" : nil)
@@ -120,16 +119,6 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     return realRatio < 0.35 || realRatio > 4.242
   }
 
-  private func loadThumbnail(id: String, type: ThumbnailType) async -> PlatformImage? {
-    await Task.detached(priority: .userInitiated) {
-      let targetURL = try? await ThumbnailCache.shared.ensureThumbnail(id: id, type: type)
-
-      guard !Task.isCancelled, let url = targetURL else { return nil }
-      guard let image = PlatformImage(contentsOfFile: url.path) else { return nil }
-      return await ImageDecodeHelper.decodeForDisplay(image)
-    }.value
-  }
-
   var body: some View {
     thumbnailSurface
       .onReceive(NotificationCenter.default.publisher(for: .thumbnailDidRefresh)) { notification in
@@ -141,7 +130,6 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
         else {
           return
         }
-        ThumbnailMemoryCache.shared.remove(forKey: ThumbnailMemoryCache.key(id: id, type: type))
         currentBaseKey = nil
         refreshTrigger = UUID()
       }
@@ -153,19 +141,10 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
         }
         guard image == nil else { return }
 
-        let memoryKey = ThumbnailMemoryCache.key(id: id, type: type)
-        if let cached = ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
-          loadedImageSize = cached.size
-          image = cached
-          isLoading = false
-          return
-        }
-
         isLoading = true
-        let loaded = await loadThumbnail(id: id, type: type)
+        let loaded = await ThumbnailCache.shared.image(id: id, type: type)
         guard !Task.isCancelled, currentBaseKey == baseKey else { return }
         if let loaded = loaded {
-          ThumbnailMemoryCache.shared.store(loaded, forKey: memoryKey)
           loadedImageSize = loaded.size
           image = loaded
         }

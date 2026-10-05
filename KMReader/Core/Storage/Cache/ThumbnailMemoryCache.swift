@@ -34,8 +34,9 @@ final class ThumbnailMemoryCache {
     cache.totalCostLimit = 128 * 1024 * 1024
   }
 
-  static nonisolated func key(id: String, type: ThumbnailType) -> String {
-    "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)"
+  static nonisolated func key(id: String, type: ThumbnailType, page: Int? = nil) -> String {
+    let base = "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)"
+    return page != nil ? "\(base)#\(page!)" : base
   }
 
   func image(forKey key: String) -> PlatformImage? {
