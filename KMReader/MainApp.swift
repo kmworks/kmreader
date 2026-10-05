@@ -69,7 +69,6 @@ struct MainApp: App {
 
   init() {
     PlatformHelper.setup()
-    AnimatedImageSupport.configureCoders()
     AppConfig.migrateOfflineProvenanceIfNeeded()
     AppConfig.removeLegacyThemeColor()
     AppConfig.migrateLegacyHorizontalBookCards()

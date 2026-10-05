@@ -102,7 +102,9 @@ actor ImageCache {
 
     // Write data to disk cache
     do {
-      try data.write(to: fileURL)
+      // Atomic so a page image mapped for animated playback never sees the
+      // file truncated in place (mmap of a truncated file raises SIGBUS).
+      try data.write(to: fileURL, options: [.atomic])
     } catch {
       // Log write failure
       let dataSize = ByteCountFormatter.string(

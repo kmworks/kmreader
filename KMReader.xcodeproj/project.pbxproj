@@ -11,8 +11,7 @@
 		193F577A2EFA1C1D003362E1 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 193F57792EFA1C1D003362E1 /* SwiftUI.framework */; };
 		193F578B2EFA1C1F003362E1 /* KMReaderWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 193F57752EFA1C1D003362E1 /* KMReaderWidgetsExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		196028592ED9F7980066E8A4 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 196028582ED9F7980066E8A4 /* SwiftSoup */; };
-		1983B7312FF4000100A1B2C3 /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = 1983B7302FF4000100A1B2C3 /* SDWebImage */; };
-		1983B7332FF4000100A1B2C3 /* SDWebImageWebPCoder in Frameworks */ = {isa = PBXBuildFile; productRef = 1983B7322FF4000100A1B2C3 /* SDWebImageWebPCoder */; };
+		19C0EB012F5D000100C0EB01 /* libwebp in Frameworks */ = {isa = PBXBuildFile; productRef = 19C0EB002F5D000100C0EB01 /* libwebp */; };
 		19AEC07F2EE714150073EB5F /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 19AEC07E2EE714150073EB5F /* Flow */; };
 		19AEFE572EFC62E200EC7D3B /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19AEFE562EFC62E200EC7D3B /* StoreKit.framework */; };
 		19D0A1022F0A000000D0A001 /* LibArchive in Frameworks */ = {isa = PBXBuildFile; productRef = 19D0A1012F0A000000D0A001 /* LibArchive */; };
@@ -98,8 +97,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				196028592ED9F7980066E8A4 /* SwiftSoup in Frameworks */,
-				1983B7312FF4000100A1B2C3 /* SDWebImage in Frameworks */,
-				1983B7332FF4000100A1B2C3 /* SDWebImageWebPCoder in Frameworks */,
+				19C0EB012F5D000100C0EB01 /* libwebp in Frameworks */,
 				19F0B1022F10000000B10000 /* GRDB in Frameworks */,
 				19D0A1022F0A000000D0A001 /* LibArchive in Frameworks */,
 				19AEFE572EFC62E200EC7D3B /* StoreKit.framework in Frameworks */,
@@ -173,8 +171,7 @@
 			name = KMReader;
 			packageProductDependencies = (
 				196028582ED9F7980066E8A4 /* SwiftSoup */,
-				1983B7302FF4000100A1B2C3 /* SDWebImage */,
-				1983B7322FF4000100A1B2C3 /* SDWebImageWebPCoder */,
+				19C0EB002F5D000100C0EB01 /* libwebp */,
 				19AEC07E2EE714150073EB5F /* Flow */,
 				19D0A1012F0A000000D0A001 /* LibArchive */,
 				19F0B1012F10000000B10000 /* GRDB */,
@@ -244,8 +241,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				196028572ED9F7980066E8A4 /* XCRemoteSwiftPackageReference "SwiftSoup" */,
-				1983B72E2FF4000100A1B2C3 /* XCRemoteSwiftPackageReference "SDWebImage" */,
-				1983B72F2FF4000100A1B2C3 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */,
+				19C0EB022F5D000100C0EB01 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */,
 				19AEC07D2EE714150073EB5F /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */,
 				19D0A1002F0A000000D0A001 /* XCRemoteSwiftPackageReference "libarchive-swift" */,
 				19F0B1002F10000000B10000 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
@@ -442,7 +438,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "KMReader/KMReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 627;
+				CURRENT_PROJECT_VERSION = 628;
 				DEVELOPMENT_TEAM = M777UHWZA4;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -501,7 +497,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "KMReader/KMReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 627;
+				CURRENT_PROJECT_VERSION = 628;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=appletvos*]" = M777UHWZA4;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = M777UHWZA4;
@@ -562,7 +558,7 @@
 				CODE_SIGN_ENTITLEMENTS = KMReaderWidgets/KMReaderWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 627;
+				CURRENT_PROJECT_VERSION = 628;
 				DEVELOPMENT_TEAM = M777UHWZA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KMReaderWidgets/Info.plist;
@@ -596,7 +592,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 627;
+				CURRENT_PROJECT_VERSION = 628;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = M777UHWZA4;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -665,20 +661,12 @@
 				minimumVersion = 2.11.2;
 			};
 		};
-		1983B72E2FF4000100A1B2C3 /* XCRemoteSwiftPackageReference "SDWebImage" */ = {
+		19C0EB022F5D000100C0EB01 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SDWebImage/SDWebImage.git";
+			repositoryURL = "https://github.com/SDWebImage/libwebp-Xcode.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 5.21.7;
-			};
-		};
-		1983B72F2FF4000100A1B2C3 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SDWebImage/SDWebImageWebPCoder.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.15.0;
+				minimumVersion = 1.6.0;
 			};
 		};
 		19AEC07D2EE714150073EB5F /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */ = {
@@ -713,15 +701,10 @@
 			package = 196028572ED9F7980066E8A4 /* XCRemoteSwiftPackageReference "SwiftSoup" */;
 			productName = SwiftSoup;
 		};
-		1983B7302FF4000100A1B2C3 /* SDWebImage */ = {
+		19C0EB002F5D000100C0EB01 /* libwebp */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1983B72E2FF4000100A1B2C3 /* XCRemoteSwiftPackageReference "SDWebImage" */;
-			productName = SDWebImage;
-		};
-		1983B7322FF4000100A1B2C3 /* SDWebImageWebPCoder */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1983B72F2FF4000100A1B2C3 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */;
-			productName = SDWebImageWebPCoder;
+			package = 19C0EB022F5D000100C0EB01 /* XCRemoteSwiftPackageReference "libwebp-Xcode" */;
+			productName = libwebp;
 		};
 		19AEC07E2EE714150073EB5F /* Flow */ = {
 			isa = XCSwiftPackageProductDependency;
