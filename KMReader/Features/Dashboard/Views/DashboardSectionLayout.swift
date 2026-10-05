@@ -22,9 +22,19 @@ struct DashboardSectionLayout<Content: View>: View {
     AppConfig.showDashboardSectionGradientBackground
 
   #if os(macOS)
+    @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
+
     /// Scroll-content frame in global coordinates; the macOS scroll arrows
     /// derive the real scroll position from it.
     @State private var stripContentFrame: CGRect = .zero
+
+    /// Grid cards carry metadata below the cover, so the arrows center on the
+    /// cover block at the card top; horizontal cards are cover-tall already.
+    private var scrollArrowsCoverHeight: CGFloat? {
+      let kind = dashboard.cardKind(for: section)
+      guard kind != .horizontal else { return nil }
+      return kind.cardWidth * CoverAspectRatio.heightToWidth
+    }
   #endif
 
   private var verticalPadding: CGFloat {
@@ -76,8 +86,10 @@ struct DashboardSectionLayout<Content: View>: View {
         ScrollViewReader { proxy in
           ScrollView(.horizontal, showsIndicators: false) {
             content()
-              .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-              .padding(.bottom, verticalPadding)
+              #if os(iOS) || os(tvOS)
+                .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
+                .padding(.bottom, verticalPadding)
+              #endif
               #if os(macOS)
                 .padding(.leading, 16)
                 .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
@@ -92,8 +104,14 @@ struct DashboardSectionLayout<Content: View>: View {
               scrollProxy: proxy,
               itemIds: itemIds,
               contentFrame: stripContentFrame,
-              horizontalContentMargin: LayoutConfig.defaultSpacing
+              horizontalContentMargin: LayoutConfig.defaultSpacing,
+              coverHeight: scrollArrowsCoverHeight
             )
+            // macOS keeps the vertical padding outside the scroll view so the
+            // arrows overlay hugs the card strip; elsewhere it stays in the
+            // content so the padding area still drags the strip.
+            .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
+            .padding(.bottom, verticalPadding)
           #endif
         }
       }

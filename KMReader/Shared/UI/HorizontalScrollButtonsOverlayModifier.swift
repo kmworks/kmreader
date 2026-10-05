@@ -11,6 +11,7 @@ import SwiftUI
     let itemIds: [ID]
     let contentFrame: CGRect
     let horizontalContentMargin: CGFloat
+    let coverHeight: CGFloat?
 
     @State private var areButtonsVisible = false
 
@@ -22,7 +23,8 @@ import SwiftUI
             itemIds: itemIds,
             isVisible: areButtonsVisible,
             contentFrame: contentFrame,
-            horizontalContentMargin: horizontalContentMargin
+            horizontalContentMargin: horizontalContentMargin,
+            coverHeight: coverHeight
           )
         }
         .onHover { hovering in
@@ -37,14 +39,16 @@ import SwiftUI
       scrollProxy: ScrollViewProxy,
       itemIds: [ID],
       contentFrame: CGRect,
-      horizontalContentMargin: CGFloat
+      horizontalContentMargin: CGFloat,
+      coverHeight: CGFloat? = nil
     ) -> some View {
       modifier(
         HorizontalScrollButtonsOverlayModifier(
           scrollProxy: scrollProxy,
           itemIds: itemIds,
           contentFrame: contentFrame,
-          horizontalContentMargin: horizontalContentMargin
+          horizontalContentMargin: horizontalContentMargin,
+          coverHeight: coverHeight
         )
       )
     }

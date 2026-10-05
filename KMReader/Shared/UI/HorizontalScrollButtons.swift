@@ -18,6 +18,10 @@ import SwiftUI
     /// the rest and end positions from the content frame when the margin is
     /// known, since the frame never crosses into it.
     let horizontalContentMargin: CGFloat
+    /// Height of the cover block at the top of each card. Grid cards carry
+    /// metadata below the cover, so the arrows center on the cover instead of
+    /// the whole strip; nil centers on the strip.
+    let coverHeight: CGFloat?
 
     private var isMeasured: Bool {
       contentFrame.width > 0
@@ -41,9 +45,15 @@ import SwiftUI
               .frame(maxWidth: .infinity, alignment: .trailing)
           }
         }
+        .frame(height: arrowBandHeight(viewportHeight: geometry.size.height))
+        .frame(maxHeight: .infinity, alignment: .top)
       }
       .animation(.appCurve(0.15), value: isVisible)
       .allowsHitTesting(isVisible)
+    }
+
+    private func arrowBandHeight(viewportHeight: CGFloat) -> CGFloat {
+      min(coverHeight ?? viewportHeight, viewportHeight)
     }
 
     private enum ScrollDirection {
