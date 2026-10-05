@@ -5,12 +5,26 @@
 
 import SwiftUI
 
+/// Slab behind corner badges, shaped to the cover's top-right corner.
+private struct CornerBadgeSlab: View {
+  let size: CGFloat
+  /// Must match the cover's corner radius so the badge arc overlaps the cover
+  /// clip exactly; a different radius lets the cover bleed through at the corner.
+  let cornerRadius: CGFloat
+
+  var body: some View {
+    UnevenRoundedRectangle(
+      bottomLeadingRadius: size * 0.65,
+      topTrailingRadius: cornerRadius,
+      style: .circular
+    )
+    .fill(Color(white: 0.12))
+  }
+}
+
 struct UnreadCountBadge: View {
   let count: Int
   let size: CGFloat
-  /// Must match the cover's corner radius so the badge arc overlaps the
-  /// cover clip exactly; a different radius or corner style lets the cover
-  /// bleed through at the top-right corner.
   let cornerRadius: CGFloat
 
   #if os(tvOS)
@@ -29,25 +43,15 @@ struct UnreadCountBadge: View {
   }
 
   private var badgeFont: Font {
-    .system(size: size, weight: .semibold, design: .rounded)
-  }
-
-  /// Width is measured with the last digit replaced by the wide digit "8", so
-  /// a change between same-length counts never resizes the badge.
-  private var sizingText: String {
-    String(String(max(count, 0)).dropLast()) + "8"
+    // Monospaced digits keep same-length counts at one width, so a count
+    // change never resizes the badge.
+    .system(size: size, weight: .semibold, design: .rounded).monospacedDigit()
   }
 
   var body: some View {
-    Text(sizingText)
+    Text("\(count)")
       .font(badgeFont)
-      .opacity(0)
-      .accessibilityHidden(true)
-      .overlay {
-        Text("\(count)")
-          .font(badgeFont)
-          .contentTransition(.numericText())
-      }
+      .contentTransition(.numericText())
       .foregroundStyle(.white)
       .padding(.horizontal, size * 0.6)
       .padding(.vertical, size * 0.35)
@@ -58,14 +62,7 @@ struct UnreadCountBadge: View {
         measuredHeight = height
       }
       .frame(minWidth: measuredHeight)
-      .background(
-        UnevenRoundedRectangle(
-          bottomLeadingRadius: size * 0.65,
-          topTrailingRadius: cornerRadius,
-          style: .circular
-        )
-        .fill(Color(white: 0.12))
-      )
+      .background(CornerBadgeSlab(size: size, cornerRadius: cornerRadius))
       .scaleEffect(bounceScale)
       .animation(.appCurve(0.2), value: count)
       .onChange(of: count) { oldValue, newValue in
@@ -83,7 +80,6 @@ struct UnreadCountBadge: View {
 
 struct CompletedIndicator: View {
   let size: CGFloat
-  /// See UnreadCountBadge.cornerRadius.
   let cornerRadius: CGFloat
 
   #if os(tvOS)
@@ -92,24 +88,36 @@ struct CompletedIndicator: View {
     static let defaultSize: CGFloat = 12
   #endif
 
+  @State private var measuredHeight: CGFloat = 0
+
   init(size: CGFloat = defaultSize, cornerRadius: CGFloat = 8) {
     self.size = size
     self.cornerRadius = cornerRadius
   }
 
+  private var badgeFont: Font {
+    .system(size: size, weight: .semibold, design: .rounded).monospacedDigit()
+  }
+
   var body: some View {
-    Image(systemName: "checkmark")
-      .font(.system(size: size * 0.5, weight: .bold))
+    // The glyph has no line box of its own; a hidden digit in the count
+    // badge's font supplies the identical height and width.
+    Text("0")
+      .font(badgeFont)
+      .opacity(0)
+      .accessibilityHidden(true)
+      .overlay {
+        Image(systemName: "checkmark")
+          .font(.system(size: size * 0.85, weight: .bold))
+      }
       .foregroundStyle(.white)
-      .padding(size * 0.3)
-      .background(
-        UnevenRoundedRectangle(
-          bottomLeadingRadius: size * 0.65,
-          topTrailingRadius: cornerRadius,
-          style: .circular
-        )
-        .fill(Color(white: 0.12))
-      )
+      .padding(.horizontal, size * 0.6)
+      .padding(.vertical, size * 0.35)
+      .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
+        measuredHeight = height
+      }
+      .frame(minWidth: measuredHeight)
+      .background(CornerBadgeSlab(size: size, cornerRadius: cornerRadius))
       .accessibilityLabel(Text("Completed"))
   }
 }

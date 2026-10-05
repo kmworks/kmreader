@@ -193,7 +193,13 @@ struct SettingsBrowseCardPreview: View {
 
   private var baseImageCard: some View {
     RoundedRectangle(cornerRadius: imageCornerRadius)
-      .fill(imageFill)
+      // Opaque base: the shadow image behind is a solid black core, which a
+      // semi-transparent fill would show through.
+      .fill(PlatformHelper.systemBackgroundColor)
+      .overlay {
+        RoundedRectangle(cornerRadius: imageCornerRadius)
+          .fill(imageFill)
+      }
       .clipShape(RoundedRectangle(cornerRadius: imageCornerRadius))
   }
 

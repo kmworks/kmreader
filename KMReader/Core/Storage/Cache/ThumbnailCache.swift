@@ -44,6 +44,7 @@ actor ThumbnailCache {
   private let diskCacheURL: URL = CacheNamespace.directory(for: "KomgaThumbnailCache")
   private let fileManager = FileManager.default
   private var downloadTasks: [String: DownloadTaskEntry] = [:]
+  private var imageTasks: [String: ImageTaskEntry] = [:]
 
   // Cached disk cache size (static for shared access)
   private static let cacheSizeActor = CacheSizeActor()
@@ -57,6 +58,11 @@ actor ThumbnailCache {
     let id = UUID()
     let task: Task<URL, Error>
     let stopWhenCacheFull: Bool
+  }
+
+  private struct ImageTaskEntry {
+    let id: UUID
+    let task: Task<PlatformImage?, Never>
   }
 
   private static nonisolated func getMaxDiskCacheSize() -> Int {
@@ -225,8 +231,9 @@ actor ThumbnailCache {
       }
 
       if force {
-        await ThumbnailMemoryCache.shared.remove(
-          forKey: ThumbnailMemoryCache.key(id: id, type: type, page: page))
+        let memoryKey = ThumbnailMemoryCache.key(id: id, type: type, page: page)
+        imageTasks[memoryKey] = nil
+        await ThumbnailMemoryCache.shared.remove(forKey: memoryKey)
       }
 
       return fileURL
@@ -279,17 +286,40 @@ actor ThumbnailCache {
     if let memoryKey, let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
       return cached
     }
+    // Page thumbnails skip the memory tier, so they never join here either.
+    guard let memoryKey else {
+      return await loadImage(id: id, type: type, page: page)
+    }
+    // Cover loads join one in-flight task: cells recreated while a load is
+    // running share it instead of decoding twice, and their cancellation
+    // cannot abort the load.
+    if let inFlight = imageTasks[memoryKey] {
+      return await inFlight.task.value
+    }
+    let taskID = UUID()
+    let task = Task<PlatformImage?, Never> {
+      let decoded = await self.loadImage(id: id, type: type, page: page)
+      // A force refresh or cache clear drops the registration; without the
+      // check the stale decode would be written back over the fresh state.
+      if let decoded, self.imageTasks[memoryKey]?.id == taskID {
+        await ThumbnailMemoryCache.shared.store(decoded, forKey: memoryKey)
+      }
+      return decoded
+    }
+    imageTasks[memoryKey] = ImageTaskEntry(id: taskID, task: task)
+    let loaded = await task.value
+    imageTasks[memoryKey] = nil
+    return loaded
+  }
+
+  private func loadImage(id: String, type: ThumbnailType, page: Int?) async -> PlatformImage? {
     guard let url = try? await ensureThumbnail(id: id, type: type, page: page) else {
       return nil
     }
-    let decoded: PlatformImage? = await Task.detached(priority: .userInitiated) {
+    return await Task.detached(priority: .userInitiated) {
       guard let raw = PlatformImage(contentsOfFile: url.path) else { return nil }
       return await ImageDecodeHelper.decodeForDisplay(raw)
     }.value
-    if let decoded, let memoryKey {
-      await ThumbnailMemoryCache.shared.store(decoded, forKey: memoryKey)
-    }
-    return decoded
   }
 
   /// Synchronous memory-tier lookup for view initializers; never touches disk.
@@ -592,6 +622,7 @@ actor ThumbnailCache {
   /// Clear disk cache for the current instance only
   static func clearCurrentInstanceDiskCache() async {
     await ThumbnailMemoryCache.shared.removeAll()
+    await shared.clearImageTasks()
     let fileManager = FileManager.default
     let cacheNamespaceId = currentCacheNamespaceId()
     let diskCacheURL = await namespacedDiskCacheURL(namespaceId: cacheNamespaceId)
@@ -607,6 +638,7 @@ actor ThumbnailCache {
   /// Clear all disk cache for thumbnails
   static func clearAllDiskCache() async {
     await ThumbnailMemoryCache.shared.removeAll()
+    await shared.clearImageTasks()
     let fileManager = FileManager.default
     let diskCacheURL = CacheNamespace.baseDirectory(for: "KomgaThumbnailCache")
 
@@ -618,6 +650,11 @@ actor ThumbnailCache {
 
     // Reset cached size and count for every namespace.
     await cacheSizeActor.removeAll()
+  }
+
+  /// Drops in-flight cover loads so none can write back into a just-cleared tier.
+  private func clearImageTasks() {
+    imageTasks = [:]
   }
 
   /// Get disk cache size in bytes
