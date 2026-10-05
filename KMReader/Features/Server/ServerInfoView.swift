@@ -10,6 +10,18 @@ struct ServerInfoView: View {
   @State private var serverInfo: ServerInfo?
   @State private var isLoading = false
 
+  private struct InfoSectionData {
+    let title: LocalizedStringKey
+    let rows: [InfoRowData]
+  }
+
+  private struct InfoRowData {
+    let label: String.LocalizationValue
+    let value: String
+    let icon: String
+    var monospaced: Bool = false
+  }
+
   var body: some View {
     Form {
       if !current.isAdmin {
@@ -22,100 +34,8 @@ struct ServerInfoView: View {
             Spacer()
           }
         }
-      } else if let serverInfo = serverInfo {
-        if let build = serverInfo.build {
-          Section(header: Text("Build Information")) {
-            if let version = build.version {
-              infoRow(label: "Version", value: version, icon: "number")
-            }
-            if let artifact = build.artifact {
-              infoRow(label: "Artifact", value: artifact, icon: "cube.box")
-            }
-            if let name = build.name {
-              infoRow(label: "Name", value: name, icon: "tag")
-            }
-            if let group = build.group {
-              infoRow(label: "Group", value: group, icon: "folder")
-            }
-            if let time = build.time {
-              infoRow(label: "Build Time", value: time, icon: "clock")
-            }
-          }
-        }
-
-        if let git = serverInfo.git {
-          Section(header: Text("Git Information")) {
-            if let branch = git.branch {
-              infoRow(label: "Branch", value: branch, icon: "arrow.branch")
-            }
-            if let commit = git.commit {
-              if let id = commit.id {
-                infoRow(label: "Commit ID", value: id, icon: "number.square", monospaced: true)
-              }
-              if let idAbbrev = commit.idAbbrev {
-                infoRow(
-                  label: "Commit ID (Short)", value: idAbbrev, icon: "number.square.fill",
-                  monospaced: true)
-              }
-              if let time = commit.time {
-                infoRow(label: "Commit Time", value: time, icon: "clock")
-              }
-            }
-          }
-        }
-
-        if let java = serverInfo.java {
-          Section(header: Text("Java Information")) {
-            if let version = java.version {
-              infoRow(label: "Version", value: version, icon: "number")
-            }
-            if let vendor = java.vendor {
-              if let name = vendor.name {
-                infoRow(label: "Vendor", value: name, icon: "building.2")
-              }
-              if let version = vendor.version {
-                infoRow(label: "Vendor Version", value: version, icon: "tag")
-              }
-            }
-            if let runtime = java.runtime {
-              if let name = runtime.name {
-                infoRow(label: "Runtime", value: name, icon: "gearshape")
-              }
-              if let version = runtime.version {
-                infoRow(label: "Runtime Version", value: version, icon: "number.square")
-              }
-            }
-            if let jvm = java.jvm {
-              if let name = jvm.name {
-                infoRow(label: "JVM", value: name, icon: "cpu")
-              }
-              if let vendor = jvm.vendor {
-                infoRow(label: "JVM Vendor", value: vendor, icon: "building.2")
-              }
-              if let version = jvm.version {
-                infoRow(label: "JVM Version", value: version, icon: "number.square")
-              }
-            }
-          }
-        }
-
-        if let os = serverInfo.os {
-          Section(header: Text("Operating System")) {
-            if let name = os.name {
-              infoRow(label: "Name", value: name, icon: "desktopcomputer")
-            }
-            if let version = os.version {
-              infoRow(label: "Version", value: version, icon: "number")
-            }
-            if let arch = os.arch {
-              infoRow(label: "Architecture", value: arch, icon: "cpu")
-            }
-          }
-        }
-
-        if serverInfo.build == nil && serverInfo.git == nil && serverInfo.java == nil
-          && serverInfo.os == nil
-        {
+      } else if serverInfo != nil {
+        if infoSections.isEmpty {
           Section {
             HStack {
               Spacer()
@@ -124,6 +44,14 @@ struct ServerInfoView: View {
               Spacer()
             }
             .tvFocusableHighlight()
+          }
+        } else {
+          ForEach(Array(infoSections.enumerated()), id: \.offset) { _, section in
+            Section(header: Text(section.title)) {
+              ForEach(Array(section.rows.enumerated()), id: \.offset) { _, row in
+                infoRow(data: row)
+              }
+            }
           }
         }
       }
@@ -142,11 +70,99 @@ struct ServerInfoView: View {
     }
   }
 
-  private func infoRow(
-    label: String.LocalizationValue, value: String, icon: String, monospaced: Bool = false
-  ) -> some View {
-    InfoRow(label: String(localized: label), value: value, icon: icon, monospaced: monospaced)
-      .tvFocusableHighlight()
+  private var infoSections: [InfoSectionData] {
+    guard let serverInfo else { return [] }
+    var sections: [InfoSectionData] = []
+
+    if let build = serverInfo.build {
+      let rows = [
+        infoRowData("Version", build.version, "number"),
+        infoRowData("Artifact", build.artifact, "cube.box"),
+        infoRowData("Name", build.name, "tag"),
+        infoRowData("Group", build.group, "folder"),
+        infoRowData("Build Time", build.time, "clock"),
+      ].compactMap { $0 }
+      if !rows.isEmpty {
+        sections.append(InfoSectionData(title: "Build Information", rows: rows))
+      }
+    }
+
+    if let git = serverInfo.git {
+      var rows: [InfoRowData?] = [
+        infoRowData("Branch", git.branch, "arrow.branch")
+      ]
+      if let commit = git.commit {
+        rows.append(infoRowData("Commit ID", commit.id, "number.square", monospaced: true))
+        rows.append(
+          infoRowData(
+            "Commit ID (Short)", commit.idAbbrev, "number.square.fill", monospaced: true))
+        rows.append(infoRowData("Commit Time", commit.time, "clock"))
+      }
+      let compactRows = rows.compactMap { $0 }
+      if !compactRows.isEmpty {
+        sections.append(InfoSectionData(title: "Git Information", rows: compactRows))
+      }
+    }
+
+    if let java = serverInfo.java {
+      var rows: [InfoRowData?] = [
+        infoRowData("Version", java.version, "number")
+      ]
+      if let vendor = java.vendor {
+        rows.append(infoRowData("Vendor", vendor.name, "building.2"))
+        rows.append(infoRowData("Vendor Version", vendor.version, "tag"))
+      }
+      if let runtime = java.runtime {
+        rows.append(infoRowData("Runtime", runtime.name, "gearshape"))
+        rows.append(infoRowData("Runtime Version", runtime.version, "number.square"))
+      }
+      if let jvm = java.jvm {
+        rows.append(infoRowData("JVM", jvm.name, "cpu"))
+        rows.append(infoRowData("JVM Vendor", jvm.vendor, "building.2"))
+        rows.append(infoRowData("JVM Version", jvm.version, "number.square"))
+      }
+      let compactRows = rows.compactMap { $0 }
+      if !compactRows.isEmpty {
+        sections.append(InfoSectionData(title: "Java Information", rows: compactRows))
+      }
+    }
+
+    if let os = serverInfo.os {
+      let rows = [
+        infoRowData("Name", os.name, "desktopcomputer"),
+        infoRowData("Version", os.version, "number"),
+        infoRowData("Architecture", os.arch, "cpu"),
+      ].compactMap { $0 }
+      if !rows.isEmpty {
+        sections.append(InfoSectionData(title: "Operating System", rows: rows))
+      }
+    }
+
+    return sections
+  }
+
+  /// kmrs keeps the Spring `java` section's shape with "-" placeholders; treat
+  /// placeholder and blank values as absent so empty sections hide entirely.
+  private func infoRowData(
+    _ label: String.LocalizationValue,
+    _ value: String?,
+    _ icon: String,
+    monospaced: Bool = false
+  ) -> InfoRowData? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespaces)
+    guard !trimmed.isEmpty, trimmed != "-" else { return nil }
+    return InfoRowData(label: label, value: value, icon: icon, monospaced: monospaced)
+  }
+
+  private func infoRow(data: InfoRowData) -> some View {
+    InfoRow(
+      label: String(localized: data.label),
+      value: data.value,
+      icon: data.icon,
+      monospaced: data.monospaced
+    )
+    .tvFocusableHighlight()
   }
 
   private func loadServerInfo() async {
