@@ -3236,7 +3236,7 @@ actor OfflineManager {
             if !FileManager.default.fileExists(atPath: dest.path) {
               let (data, _) = try await BookService.getBookPage(
                 bookId: bookId, page: page.number)
-              try data.write(to: dest)
+              try data.write(to: dest, options: [.atomic])
               Self.excludeFromBackupIfNeeded(at: dest)
             }
           }

@@ -395,7 +395,6 @@
       layoutSubtreeIfNeeded()
       if let sourceFileURL {
         animatedInlineContainer.isHidden = false
-        animatedInlineContainer.layer?.contents = nil
         updateAnimatedPresentationState()
         animatedImageController.start(
           sourceFileURL: sourceFileURL,

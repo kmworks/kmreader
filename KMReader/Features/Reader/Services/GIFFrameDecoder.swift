@@ -11,7 +11,10 @@ nonisolated final class GIFFrameDecoder: AnimatedFrameDecoder {
   private var nextFrameIndex = 0
 
   init?(fileURL: URL, maxPixelSize: Int?) {
-    guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil) else { return nil }
+    // Frame caching stays off so decoded frames never accumulate in the source
+    // across loops; playback memory stays bounded to the current frame.
+    let options = [kCGImageSourceShouldCache: false] as CFDictionary
+    guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, options) else { return nil }
     let frameCount = CGImageSourceGetCount(source)
     guard frameCount > 0 else { return nil }
     self.source = source
@@ -71,7 +74,7 @@ nonisolated final class GIFFrameDecoder: AnimatedFrameDecoder {
       (gif[kCGImagePropertyGIFUnclampedDelayTime as String] as? Double)
       ?? (gif[kCGImagePropertyGIFDelayTime as String] as? Double)
       ?? 0.1
-    // Browsers clamp near-zero GIF delays; unclamped 0 would spin the decoder.
+    // Match browsers and the previous player: near-zero GIF delays are clamped.
     return max(delay, 0.02)
   }
 }

@@ -43,7 +43,7 @@ enum AnimatedImageSupport {
     else {
       return nil
     }
-    if type == "org.webmproject.webp" as CFString {
+    if type == UTType.webP.identifier as CFString {
       return WebPFrameDecoder(fileURL: fileURL, maxPixelSize: maxPixelSize)
     }
     if type == UTType.gif.identifier as CFString {

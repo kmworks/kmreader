@@ -67,13 +67,17 @@ final class AnimatedImagePlayerController: NSObject {
         ),
         decoder.timeline.frameCount > 1
       else {
+        await self?.playbackDidExit(generation: generation)
         return
       }
 
       let timeline = decoder.timeline
       let ready = await MainActor.run { [weak self] () -> Bool in
         guard let self, self.playbackGeneration == generation else { return false }
-        self.beginDisplay(timeline: timeline)
+        guard self.beginDisplay(timeline: timeline) else {
+          self.playbackDidExit(generation: generation)
+          return false
+        }
         return true
       }
       guard ready else { return }
@@ -84,7 +88,10 @@ final class AnimatedImagePlayerController: NSObject {
         target = max(target, newTarget)
         while cursor <= target {
           if Task.isCancelled { return }
-          guard let frame = decoder.decodeNextFrame() else { return }
+          guard let frame = decoder.decodeNextFrame() else {
+            await self?.playbackDidExit(generation: generation)
+            return
+          }
           let tick = cursor
           cursor &+= 1
           // Only the newest frame reaches the layer; intermediate decodes exist
@@ -118,20 +125,35 @@ final class AnimatedImagePlayerController: NSObject {
     targetMaxPixelSize = nil
   }
 
-  private func beginDisplay(timeline: AnimatedImageTimeline) {
+  private func beginDisplay(timeline: AnimatedImageTimeline) -> Bool {
     self.timeline = timeline
     startTimestamp = CACurrentMediaTime()
     currentTargetTick = 0
     #if os(macOS)
       guard
         let displayLink = targetView?.displayLink(target: self, selector: #selector(handleDisplayLink(_:)))
-      else { return }
+      else { return false }
     #else
       let displayLink = CADisplayLink(target: self, selector: #selector(handleDisplayLink(_:)))
     #endif
     displayLink.add(to: .main, forMode: .common)
     self.displayLink = displayLink
     targetContinuation?.yield(0)
+    return true
+  }
+
+  /// Tears down playback machinery when the decode task exits on its own
+  /// (decoder failure, corrupt frame, display-link creation failure), so a
+  /// later `start` with the same source can retry. `stop()` supersedes this
+  /// via the generation counter.
+  private func playbackDidExit(generation: UInt64) {
+    guard playbackGeneration == generation else { return }
+    displayLink?.invalidate()
+    displayLink = nil
+    targetContinuation?.finish()
+    targetContinuation = nil
+    playbackTask = nil
+    timeline = nil
   }
 
   @objc private func handleDisplayLink(_ displayLink: CADisplayLink) {

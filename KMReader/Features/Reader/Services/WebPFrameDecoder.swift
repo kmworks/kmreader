@@ -69,10 +69,14 @@ nonisolated final class WebPFrameDecoder: AnimatedFrameDecoder {
     var iterator = WebPIterator()
     for frameNumber in 1...frameCount {
       startTimes.append(elapsed)
-      if WebPDemuxGetFrame(demux, Int32(frameNumber), &iterator) != 0 {
-        elapsed += Double(iterator.duration) / 1000
-        WebPDemuxReleaseIterator(&iterator)
+      guard WebPDemuxGetFrame(demux, Int32(frameNumber), &iterator) != 0 else {
+        WebPDemuxDelete(demux)
+        WebPAnimDecoderDelete(animDecoder)
+        munmap(mappedPointer, mappedSize)
+        return nil
       }
+      elapsed += Double(iterator.duration) / 1000
+      WebPDemuxReleaseIterator(&iterator)
     }
     let loopCount = Int(WebPDemuxGetI(demux, WEBP_FF_LOOP_COUNT))
     WebPDemuxDelete(demux)
