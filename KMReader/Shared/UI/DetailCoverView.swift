@@ -13,8 +13,6 @@ struct DetailCoverView: View {
   let width: CGFloat
   let cornerRadius: CGFloat
 
-  @State private var thumbnailRefreshKey = UUID()
-
   init(
     id: String,
     type: ThumbnailType,
@@ -43,12 +41,7 @@ struct DetailCoverView: View {
       Button {
         Task {
           do {
-            _ = try await ThumbnailCache.shared.ensureThumbnail(
-              id: id,
-              type: type,
-              force: true
-            )
-            thumbnailRefreshKey = UUID()
+            try await ThumbnailCache.refreshThumbnail(id: id, type: type)
             ErrorManager.shared.notify(
               message: String(localized: "notification.cover.refreshed"))
           } catch {
@@ -60,6 +53,5 @@ struct DetailCoverView: View {
         Label(String(localized: "Refresh Cover"), systemImage: "arrow.clockwise")
       }
     }
-    .id(thumbnailRefreshKey)
   }
 }

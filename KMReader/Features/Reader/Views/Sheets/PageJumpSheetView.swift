@@ -24,13 +24,11 @@ private struct LoadedPagePreviewCard: View {
     )
     .task(id: "\(readerPage.id.description)-\(Int(imageHeight))") {
       loadedImage = nil
-      if let url = try? await ThumbnailCache.shared.ensureThumbnail(
+      loadedImage = await ThumbnailCache.shared.image(
         id: readerPage.bookId,
         type: .page,
         page: readerPage.pageNumber
-      ) {
-        loadedImage = PlatformImage(contentsOfFile: url.path)
-      }
+      )
     }
   }
 }

@@ -89,6 +89,12 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     self.onAction = onAction
     self.overlay = overlay
     self.menu = menu
+
+    let cached = ThumbnailCache.cachedImage(id: id, type: type)
+    _isLoading = State(initialValue: cached == nil)
+    _image = State(initialValue: cached)
+    _currentBaseKey = State(initialValue: cached != nil ? "\(id)#\(type.rawValue)" : nil)
+    _loadedImageSize = State(initialValue: cached?.size)
   }
 
   private var baseKey: String {
@@ -113,16 +119,6 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     return realRatio < 0.35 || realRatio > 4.242
   }
 
-  private func loadThumbnail(id: String, type: ThumbnailType) async -> PlatformImage? {
-    await Task.detached(priority: .userInitiated) {
-      let targetURL = try? await ThumbnailCache.shared.ensureThumbnail(id: id, type: type)
-
-      guard !Task.isCancelled, let url = targetURL else { return nil }
-      guard let image = PlatformImage(contentsOfFile: url.path) else { return nil }
-      return await ImageDecodeHelper.decodeForDisplay(image)
-    }.value
-  }
-
   var body: some View {
     thumbnailSurface
       .onReceive(NotificationCenter.default.publisher(for: .thumbnailDidRefresh)) { notification in
@@ -134,17 +130,19 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
         else {
           return
         }
+        currentBaseKey = nil
         refreshTrigger = UUID()
       }
       .task(id: loadTaskKey) {
-        isLoading = true
         if currentBaseKey != baseKey {
           currentBaseKey = baseKey
           image = nil
           loadedImageSize = nil
         }
+        guard image == nil else { return }
 
-        let loaded = await loadThumbnail(id: id, type: type)
+        isLoading = true
+        let loaded = await ThumbnailCache.shared.image(id: id, type: type)
         guard !Task.isCancelled, currentBaseKey == baseKey else { return }
         if let loaded = loaded {
           loadedImageSize = loaded.size
