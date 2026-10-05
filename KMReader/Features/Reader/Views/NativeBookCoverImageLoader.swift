@@ -12,7 +12,11 @@ import Foundation
 #endif
 
 func loadNativeBookCoverImage(for bookID: String) async -> PlatformImage? {
-  await Task.detached(priority: .userInitiated) {
+  let memoryKey = ThumbnailMemoryCache.key(id: bookID, type: .book)
+  if let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
+    return cached
+  }
+  let image: PlatformImage? = await Task.detached(priority: .userInitiated) {
     let targetURL = try? await ThumbnailCache.shared.ensureThumbnail(id: bookID, type: .book)
 
     guard !Task.isCancelled, let targetURL else { return nil }
@@ -20,4 +24,8 @@ func loadNativeBookCoverImage(for bookID: String) async -> PlatformImage? {
     return await ImageDecodeHelper.decodeForDisplay(image)
   }
   .value
+  if let image {
+    await ThumbnailMemoryCache.shared.store(image, forKey: memoryKey)
+  }
+  return image
 }
