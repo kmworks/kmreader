@@ -22,9 +22,6 @@ enum SettingsSection: String, CaseIterable {
   #endif
   case sse
   case systemFeatures
-  #if os(iOS) || os(macOS)
-    case spotlight
-  #endif
   case network
   case logs
 
@@ -58,10 +55,6 @@ enum SettingsSection: String, CaseIterable {
       return "antenna.radiowaves.left.and.right"
     case .systemFeatures:
       return "gearshape.2"
-    #if os(iOS) || os(macOS)
-      case .spotlight:
-        return "magnifyingglass.circle"
-    #endif
     case .network:
       return "network"
     case .logs:
@@ -99,10 +92,6 @@ enum SettingsSection: String, CaseIterable {
       return .orange
     case .systemFeatures:
       return .blue
-    #if os(iOS) || os(macOS)
-      case .spotlight:
-        return .gray
-    #endif
     case .network:
       return .teal
     case .logs:
@@ -140,10 +129,6 @@ enum SettingsSection: String, CaseIterable {
       return String(localized: "Real-time Updates")
     case .systemFeatures:
       return String(localized: "System Features")
-    #if os(iOS) || os(macOS)
-      case .spotlight:
-        return String(localized: "Spotlight")
-    #endif
     case .network:
       return String(localized: "Network")
     case .logs:

@@ -74,12 +74,18 @@ struct ApiKeysView: View {
                   Image(systemName: "clock")
                   Text("Recent activity")
                     .foregroundColor(.secondary.opacity(0.6))
-                  Text(
-                    showRelativeDate
-                      ? lastActivity.formatted(.relative(presentation: .named))
-                      : formatTime(lastActivity)
-                  )
-                  .monospacedDigit()
+                  Button {
+                    showRelativeDate.toggle()
+                  } label: {
+                    Text(
+                      showRelativeDate
+                        ? lastActivity.formatted(.relative(presentation: .named))
+                        : formatTime(lastActivity)
+                    )
+                    .monospacedDigit()
+                    .contentShape(Rectangle())
+                  }
+                  .adaptiveButtonStyle(.plain)
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -110,21 +116,7 @@ struct ApiKeysView: View {
           }
         }
       } header: {
-        HStack {
-          Text(ServerSection.apiKeys.title)
-          Spacer()
-          Button {
-            showRelativeDate.toggle()
-          } label: {
-            Text(
-              showRelativeDate
-                ? String(localized: "Relative") : String(localized: "Absolute")
-            )
-            .font(.caption)
-            .contentShape(Rectangle())
-          }
-          .adaptiveButtonStyle(.plain)
-        }
+        Text(ServerSection.apiKeys.title)
       }
     }
     .formStyle(.grouped)

@@ -506,7 +506,6 @@ struct DivinaPreferencesView: View {
 
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.divinaReader.title)
   }
 

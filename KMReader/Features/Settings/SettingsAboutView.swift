@@ -121,7 +121,6 @@ struct SettingsAboutView: View {
       }
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(String(localized: "About"))
   }
 }

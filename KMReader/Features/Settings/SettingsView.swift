@@ -125,11 +125,6 @@ struct SettingsView: View {
             SettingsSectionRow(section: .systemFeatures)
           }
         #endif
-        #if os(iOS) || os(macOS)
-          NavigationLink(value: NavDestination.settingsSpotlight) {
-            SettingsSectionRow(section: .spotlight)
-          }
-        #endif
       }
 
       Section {
@@ -154,7 +149,6 @@ struct SettingsView: View {
       }
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(String(localized: "title.settings"))
   }
 }

@@ -87,7 +87,6 @@ struct SettingsAccountView: View {
       }
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(ServerSection.account.title)
     .sheet(isPresented: $showingUpdatePassword) {
       UpdatePasswordSheet(authViewModel: authViewModel)

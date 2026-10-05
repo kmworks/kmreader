@@ -12,9 +12,10 @@ struct TapZoneModePicker: View {
 
   private let columnCount = 3
 
-  /// nil until the container is measured; the device orientation stands in so
-  /// full-screen platforms don't flip after the first layout.
-  @State private var isPortraitContainer: Bool?
+  /// Tracks the reader surface's aspect so the preview flips between the
+  /// portrait and landscape cover ratios on rotation; the picker's own shape
+  /// says nothing about the reader surface.
+  @State private var surfaceAspectRatio = PlatformHelper.readerSurfaceAspectRatio
 
   private var rows: [[TapZoneMode]] {
     let modes = TapZoneMode.allCases
@@ -24,14 +25,7 @@ struct TapZoneModePicker: View {
   }
 
   private var previewAspectRatio: CGFloat {
-    isPortrait ? CoverAspectRatio.widthToHeight : CoverAspectRatio.heightToWidth
-  }
-
-  private var isPortrait: Bool {
-    if let isPortraitContainer {
-      return isPortraitContainer
-    }
-    return PlatformHelper.deviceOrientation != .landscape
+    surfaceAspectRatio < 1 ? CoverAspectRatio.widthToHeight : CoverAspectRatio.heightToWidth
   }
 
   /// Eager rows rather than a LazyVGrid: inside a self-sizing List/Form row,
@@ -51,10 +45,8 @@ struct TapZoneModePicker: View {
       }
     }
     .padding(.vertical, 4)
-    .onGeometryChange(for: CGSize.self, of: { $0.size }) { size in
-      // The preview mirrors the surface the reader runs in; the screen bounds
-      // are wrong for split windows, so the container's own aspect decides.
-      isPortraitContainer = size.width < size.height
+    .onGeometryChange(for: CGSize.self, of: { $0.size }) { _ in
+      surfaceAspectRatio = PlatformHelper.readerSurfaceAspectRatio
     }
   }
 

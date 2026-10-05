@@ -157,7 +157,6 @@
       }
       .animation(.appCurve(0.2), value: useNativePdfReader)
       .formStyle(.grouped)
-      .settingsFormWidth()
       .platformNavigationTitle(SettingsSection.pdfReader.title)
     }
   }

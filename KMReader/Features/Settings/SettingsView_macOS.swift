@@ -30,7 +30,6 @@ import SwiftUI
           Section {
             SettingsSectionRow(section: .sse)
             SettingsSectionRow(section: .systemFeatures)
-            SettingsSectionRow(section: .spotlight)
           }
 
           Section {
@@ -85,8 +84,6 @@ import SwiftUI
         SettingsSSEView()
       case .systemFeatures:
         SettingsSystemFeaturesView()
-      case .spotlight:
-        SettingsSpotlightView()
       case .network:
         SettingsNetworkView()
       case .logs:

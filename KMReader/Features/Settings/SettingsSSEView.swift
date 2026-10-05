@@ -99,7 +99,6 @@ struct SettingsSSEView: View {
       }
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.sse.title)
   }
 }

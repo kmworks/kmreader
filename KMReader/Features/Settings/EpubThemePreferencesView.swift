@@ -343,7 +343,6 @@
 
       }
       .formStyle(.grouped)
-      .settingsFormWidth()
       .animation(.appCurve(0.2), value: draft.advancedLayout)
       .animation(.appCurve(0.2), value: draft.fontWeight != nil)
       .onChange(of: draft.advancedLayout) {

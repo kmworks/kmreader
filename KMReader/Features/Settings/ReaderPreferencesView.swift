@@ -133,7 +133,6 @@ struct ReaderPreferencesView: View {
       #endif
     }
     .formStyle(.grouped)
-    .settingsFormWidth()
     .platformNavigationTitle(SettingsSection.reading.title)
     .alert(
       String(localized: "settings.offline.auto_delete_read"),

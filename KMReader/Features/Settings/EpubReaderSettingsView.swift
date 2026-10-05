@@ -37,7 +37,6 @@
         .presentationDragIndicator(.visible)
       } else {
         settingsForm
-          .settingsFormWidth()
           .platformNavigationTitle(String(localized: "EPUB Settings"))
       }
     }

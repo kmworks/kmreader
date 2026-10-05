@@ -48,9 +48,6 @@ enum NavDestination: Hashable {
   #endif
   case settingsSSE
   case settingsSystemFeatures
-  #if os(iOS) || os(macOS)
-    case settingsSpotlight
-  #endif
   case settingsNetwork
   case settingsLogs
 
@@ -198,10 +195,6 @@ enum NavDestination: Hashable {
       SettingsSSEView()
     case .settingsSystemFeatures:
       SettingsSystemFeaturesView()
-    #if os(iOS) || os(macOS)
-      case .settingsSpotlight:
-        SettingsSpotlightView()
-    #endif
     case .settingsNetwork:
       SettingsNetworkView()
     case .settingsLogs:
