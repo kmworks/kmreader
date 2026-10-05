@@ -40,16 +40,14 @@
     @ViewBuilder
     private var background: some View {
       switch option {
-      case .primary:
-        Color.appIconBackgroundPrimary
+      case .primary, .legacy:
+        Color.appIconBackground
       case .classic:
         LinearGradient(
           colors: [.appIconBackgroundClassicTop, .appIconBackgroundClassicBottom],
           startPoint: .top,
           endPoint: UnitPoint(x: 0.5, y: 0.7)
         )
-      case .legacy:
-        Color.white
       }
     }
   }
