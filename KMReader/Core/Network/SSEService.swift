@@ -108,9 +108,8 @@ actor SSEService {
 
       // Notify user that SSE connected successfully (if notifications enabled)
       if AppConfig.enableSSENotify {
-        await MainActor.run {
-          ErrorManager.shared.notify(message: String(localized: "notification.sse.connected"))
-        }
+        await ErrorManager.shared.notify(
+          message: String(localized: "notification.sse.connected"))
       }
 
       var lineBuffer = ""

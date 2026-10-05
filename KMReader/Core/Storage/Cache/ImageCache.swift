@@ -271,9 +271,7 @@ actor ImageCache {
 
   /// Namespaced disk cache directory URL (static helper)
   nonisolated private static func namespacedDiskCacheURL() async -> URL {
-    await MainActor.run {
-      CacheNamespace.directory(for: "KomgaImageCache")
-    }
+    CacheNamespace.directory(for: "KomgaImageCache")
   }
 
   /// Collect file information (size and modification date) for all files

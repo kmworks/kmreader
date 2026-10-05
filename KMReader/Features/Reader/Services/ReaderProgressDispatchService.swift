@@ -519,11 +519,8 @@ actor ReaderProgressDispatchService {
             "❌ [Progress/Page] Timeout retries exhausted: book=\(update.bookId), version=\(update.version), page=\(update.page), retries=\(timeoutRetryLimit)"
           )
           if isFlush {
-            await MainActor.run {
-              ErrorManager.shared.notify(
-                message: String(localized: "notification.progressSyncFailed")
-              )
-            }
+            await ErrorManager.shared.notify(
+              message: String(localized: "notification.progressSyncFailed"))
           }
           return .failed
         }

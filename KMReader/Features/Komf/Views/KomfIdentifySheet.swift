@@ -253,7 +253,7 @@ struct KomfIdentifySheet: View {
         provider: provider,
         providerSeriesId: providerSeriesId
       )
-      await KomfJobTracker.shared.track(
+      KomfJobTracker.shared.track(
         jobId: response.id,
         seriesId: series.id,
         seriesTitle: series.metadata.title.isEmpty ? series.name : series.metadata.title

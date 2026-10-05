@@ -56,9 +56,7 @@ nonisolated enum ContentProjectionNotifier {
   ) async {
     guard !bookId.isEmpty else { return }
 
-    await MainActor.run {
-      enqueueBookIds([bookId], libraryId: libraryId, reason: reason, refreshDelay: refreshDelay)
-    }
+    await enqueueBookIds([bookId], libraryId: libraryId, reason: reason, refreshDelay: refreshDelay)
   }
 
   static func postBooksDidChange(
@@ -70,9 +68,7 @@ nonisolated enum ContentProjectionNotifier {
     let ids = Set(bookIds.filter { !$0.isEmpty })
     guard !ids.isEmpty else { return }
 
-    await MainActor.run {
-      enqueueBookIds(ids, libraryId: libraryId, reason: reason, refreshDelay: refreshDelay)
-    }
+    await enqueueBookIds(ids, libraryId: libraryId, reason: reason, refreshDelay: refreshDelay)
   }
 
   static func postSeriesDidChange(
@@ -84,18 +80,14 @@ nonisolated enum ContentProjectionNotifier {
     guard !seriesId.isEmpty else { return }
 
     let resolvedLibraryId = await resolveSeriesLibraryId(seriesId: seriesId, libraryId: libraryId)
-    await MainActor.run {
-      enqueueSeriesIds([seriesId], libraryId: resolvedLibraryId, reason: reason, refreshDelay: refreshDelay)
-    }
+    await enqueueSeriesIds([seriesId], libraryId: resolvedLibraryId, reason: reason, refreshDelay: refreshDelay)
   }
 
   static func postAllSeriesDidChange(
     reason: ContentProjectionChangeReason = .content,
     refreshDelay: UInt64 = localRefreshDelay
   ) async {
-    await MainActor.run {
-      enqueueAllSeries(reason: reason, refreshDelay: refreshDelay)
-    }
+    await enqueueAllSeries(reason: reason, refreshDelay: refreshDelay)
   }
 
   static func postCollectionDidChange(
@@ -104,9 +96,7 @@ nonisolated enum ContentProjectionNotifier {
   ) async {
     guard !collectionId.isEmpty else { return }
 
-    await MainActor.run {
-      enqueueCollectionIds([collectionId], refreshDelay: refreshDelay)
-    }
+    await enqueueCollectionIds([collectionId], refreshDelay: refreshDelay)
   }
 
   static func postCollectionsDidChange(
@@ -116,9 +106,7 @@ nonisolated enum ContentProjectionNotifier {
     let ids = Set(collectionIds.filter { !$0.isEmpty })
     guard !ids.isEmpty else { return }
 
-    await MainActor.run {
-      enqueueCollectionIds(ids, refreshDelay: refreshDelay)
-    }
+    await enqueueCollectionIds(ids, refreshDelay: refreshDelay)
   }
 
   static func postReadListDidChange(
@@ -127,9 +115,7 @@ nonisolated enum ContentProjectionNotifier {
   ) async {
     guard !readListId.isEmpty else { return }
 
-    await MainActor.run {
-      enqueueReadListIds([readListId], refreshDelay: refreshDelay)
-    }
+    await enqueueReadListIds([readListId], refreshDelay: refreshDelay)
   }
 
   static func postReadListsDidChange(
@@ -139,9 +125,7 @@ nonisolated enum ContentProjectionNotifier {
     let ids = Set(readListIds.filter { !$0.isEmpty })
     guard !ids.isEmpty else { return }
 
-    await MainActor.run {
-      enqueueReadListIds(ids, refreshDelay: refreshDelay)
-    }
+    await enqueueReadListIds(ids, refreshDelay: refreshDelay)
   }
 
   static func postBookAndSeriesDidChange(

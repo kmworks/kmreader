@@ -37,7 +37,7 @@ struct DirectoryBrowserSheet: View {
           Spacer()
           ProgressView()
           Spacer()
-        } else if let error {
+        } else if error != nil {
           Spacer()
           VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
