@@ -5,10 +5,11 @@
 
 import SwiftUI
 
-/// Slab behind corner badges, shaped to the cover's top-right corner: the
-/// badge arc must overlap the cover clip exactly, or the cover bleeds through.
+/// Slab behind corner badges, shaped to the cover's top-right corner.
 private struct CornerBadgeSlab: View {
   let size: CGFloat
+  /// Must match the cover's corner radius so the badge arc overlaps the cover
+  /// clip exactly; a different radius lets the cover bleed through at the corner.
   let cornerRadius: CGFloat
 
   var body: some View {
@@ -24,7 +25,6 @@ private struct CornerBadgeSlab: View {
 struct UnreadCountBadge: View {
   let count: Int
   let size: CGFloat
-  /// See CornerBadgeSlab.cornerRadius.
   let cornerRadius: CGFloat
 
   #if os(tvOS)
@@ -80,7 +80,6 @@ struct UnreadCountBadge: View {
 
 struct CompletedIndicator: View {
   let size: CGFloat
-  /// See CornerBadgeSlab.cornerRadius.
   let cornerRadius: CGFloat
 
   #if os(tvOS)
