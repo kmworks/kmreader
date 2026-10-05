@@ -1245,16 +1245,11 @@ nonisolated final class APIClient: Sendable {
       )
       guard shouldSwitch else { return }
       logger.info("🔌 Network issue detected, automatically switching to offline mode")
-      await MainActor.run {
-        guard !AppConfig.isOffline else { return }
-        AppConfig.enterAutoOfflineMode()
-      }
+      guard !AppConfig.isOffline else { return }
+      AppConfig.enterAutoOfflineMode()
       await SSEService.shared.disconnect()
-      await MainActor.run {
-        ErrorManager.shared.notify(
-          message: String(localized: "notification.automaticOfflineMode")
-        )
-      }
+      await ErrorManager.shared.notify(
+        message: String(localized: "notification.automaticOfflineMode"))
     }
   }
 

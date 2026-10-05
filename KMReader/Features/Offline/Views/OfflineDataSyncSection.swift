@@ -131,9 +131,7 @@ struct OfflineDataSyncSection: View {
 
     Task(priority: .utility) {
       await syncViewModel.syncReadingProgressOnly(force: true)
-      await MainActor.run {
-        latestReadHistoryTime = AppConfig.recentlyReadRecordTime(instanceId: instanceId)
-      }
+      latestReadHistoryTime = AppConfig.recentlyReadRecordTime(instanceId: instanceId)
     }
   }
 }

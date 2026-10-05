@@ -100,9 +100,7 @@ nonisolated enum AuthService {
 
     // Clear local data
     apiClient.setAuthToken("")
-    await MainActor.run {
-      AppConfig.clearAuthData(clearCurrent: clearCurrent)
-    }
+    await AppConfig.clearAuthData(clearCurrent: clearCurrent)
   }
 
   static func validate(serverURL: String) async throws {

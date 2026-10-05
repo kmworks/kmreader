@@ -136,7 +136,7 @@ actor OfflineManager {
 
   #if os(iOS)
     private func setupBackgroundDownloadCallbacks() async {
-      let manager = await MainActor.run { BackgroundDownloadManager.shared }
+      let manager = await BackgroundDownloadManager.shared
 
       await MainActor.run {
         manager.onDownloadComplete = { [weak self] bookId, pageNumber, fileURL in
@@ -401,7 +401,7 @@ actor OfflineManager {
 
   func toggleDownload(instanceId: String, info: DownloadInfo) async {
     // Toggling a book whose removal is still staged cancels the removal instead.
-    if await isPendingDeletion(bookId: info.bookId) {
+    if isPendingDeletion(bookId: info.bookId) {
       await cancelPendingDeletion(forBookId: info.bookId)
       return
     }
@@ -985,10 +985,8 @@ actor OfflineManager {
 
   private func startBackgroundTask() async -> BackgroundTaskID {
     #if os(iOS)
-      return await MainActor.run {
-        UIApplication.shared.beginBackgroundTask(withName: "OfflineMetadataFetch") {
-          // If the task expires, there's not much we can do but log it
-        }
+      return await UIApplication.shared.beginBackgroundTask(withName: "OfflineMetadataFetch") {
+        // If the task expires, there's not much we can do but log it
       }
     #else
       return 0
@@ -998,9 +996,7 @@ actor OfflineManager {
   private func endBackgroundTask(_ identifier: BackgroundTaskID) async {
     #if os(iOS)
       if identifier != .invalid {
-        await MainActor.run {
-          UIApplication.shared.endBackgroundTask(identifier)
-        }
+        await UIApplication.shared.endBackgroundTask(identifier)
       }
     #endif
   }
@@ -1048,11 +1044,8 @@ actor OfflineManager {
             instanceId: instanceId
           )) ?? 0
         if failedCount == 0 {
-          await MainActor.run {
-            ErrorManager.shared.notify(
-              message: String(localized: "notification.offline.tasksCompleted")
-            )
-          }
+          await ErrorManager.shared.notify(
+            message: String(localized: "notification.offline.tasksCompleted"))
         }
       }
       return
@@ -1290,15 +1283,13 @@ actor OfflineManager {
     ) async throws {
       let totalTaskCount = pages.count
       guard totalTaskCount > 0 else {
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
         await finalizeDownload(instanceId: instanceId, bookId: info.bookId, bookDir: bookDir)
         await syncDownloadQueue(instanceId: instanceId)
         return
       }
 
-      let serverURL = await MainActor.run { AppConfig.current.serverURL }
+      let serverURL = AppConfig.current.serverURL
       var pagesToDownload: [BookPage] = []
 
       for page in pages {
@@ -1322,9 +1313,7 @@ actor OfflineManager {
       let completedTaskCount = totalTaskCount - pagesToDownload.count
       if pagesToDownload.isEmpty {
         logger.info("✅ All pages already downloaded for book: \(info.bookId)")
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
         await finalizeDownload(instanceId: instanceId, bookId: info.bookId, bookDir: bookDir)
         await syncDownloadQueue(instanceId: instanceId)
         return
@@ -1342,9 +1331,7 @@ actor OfflineManager {
 
       if completedTaskCount > 0 {
         let initialProgress = Double(completedTaskCount) / Double(totalTaskCount)
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: initialProgress)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: initialProgress)
         await LiveActivityManager.shared.updateActivity(
           seriesTitle: info.seriesTitle,
           bookInfo: info.bookInfo,
@@ -1385,15 +1372,13 @@ actor OfflineManager {
       let destinationURL = bookDir.appendingPathComponent(Self.pdfFileName)
       if FileManager.default.fileExists(atPath: destinationURL.path) {
         logger.info("✅ Background PDF already exists for book: \(info.bookId)")
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
         await finalizeDownload(instanceId: instanceId, bookId: info.bookId, bookDir: bookDir)
         await syncDownloadQueue(instanceId: instanceId)
         return
       }
 
-      let serverURL = await MainActor.run { AppConfig.current.serverURL }
+      let serverURL = AppConfig.current.serverURL
       guard let downloadURL = URL(string: serverURL + "/api/v1/books/\(info.bookId)/file") else {
         throw AppErrorType.invalidFileURL(url: "/api/v1/books/\(info.bookId)/file")
       }
@@ -1429,15 +1414,13 @@ actor OfflineManager {
       if FileManager.default.fileExists(atPath: destinationURL.path) {
         logger.info("✅ Background image archive already exists for book: \(info.bookId)")
         try await finalizeExistingImageArchiveFile(info: info, bookDir: bookDir)
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
         await finalizeDownload(instanceId: instanceId, bookId: info.bookId, bookDir: bookDir)
         await syncDownloadQueue(instanceId: instanceId)
         return
       }
 
-      let serverURL = await MainActor.run { AppConfig.current.serverURL }
+      let serverURL = AppConfig.current.serverURL
       guard let downloadURL = URL(string: serverURL + "/api/v1/books/\(info.bookId)/file") else {
         throw AppErrorType.invalidFileURL(url: "/api/v1/books/\(info.bookId)/file")
       }
@@ -1481,15 +1464,13 @@ actor OfflineManager {
       }
       if FileManager.default.fileExists(atPath: destinationURL.path) {
         logger.info("✅ Background EPUB already exists for book: \(info.bookId)")
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: info.bookId, value: 1.0)
         await finalizeDownload(instanceId: instanceId, bookId: info.bookId, bookDir: bookDir)
         await syncDownloadQueue(instanceId: instanceId)
         return
       }
 
-      let serverURL = await MainActor.run { AppConfig.current.serverURL }
+      let serverURL = AppConfig.current.serverURL
       guard let downloadURL = URL(string: serverURL + "/api/v1/books/\(info.bookId)/file") else {
         throw AppErrorType.invalidFileURL(url: "/api/v1/books/\(info.bookId)/file")
       }
@@ -2332,9 +2313,7 @@ actor OfflineManager {
     }
 
     #if os(iOS)
-      return await MainActor.run {
-        UIApplication.shared.applicationState == .background
-      }
+      return await UIApplication.shared.applicationState == .background
     #else
       return false
     #endif
@@ -2391,9 +2370,7 @@ actor OfflineManager {
           instanceId: info.instanceId
         )) ?? 0
 
-      await MainActor.run {
-        DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: progress)
-      }
+      await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: progress)
 
       await LiveActivityManager.shared.updateActivity(
         seriesTitle: info.seriesTitle,
@@ -2747,17 +2724,13 @@ actor OfflineManager {
   ) async throws {
     let pages = try await savePageMetadataFromServer(bookId: bookId, bookDir: bookDir)
 
-    await MainActor.run {
-      DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 0.0)
-    }
+    await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 0.0)
 
     let archiveFile = bookDir.appendingPathComponent(format.fileName)
     _ = try await BookService.downloadBookFile(bookId: bookId, to: archiveFile)
     Self.excludeFromBackupIfNeeded(at: archiveFile)
 
-    await MainActor.run {
-      DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
-    }
+    await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
     #if os(iOS)
       await updateDownloadLiveActivityProgress(
         bookId: bookId,
@@ -2769,9 +2742,7 @@ actor OfflineManager {
     try Task.checkCancellation()
     try await validateImageArchiveFile(archiveFile: archiveFile, pages: pages)
 
-    await MainActor.run {
-      DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
-    }
+    await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
     #if os(iOS)
       await updateDownloadLiveActivityProgress(bookId: bookId, progress: 1.0)
     #endif
@@ -2799,18 +2770,14 @@ actor OfflineManager {
       return
     }
 
-    await MainActor.run {
-      DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 0.0)
-    }
+    await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 0.0)
 
     let epubFile = bookDir.appendingPathComponent(Self.epubFileName)
     _ = try await BookService.downloadBookFile(bookId: bookId, to: epubFile)
     Self.excludeFromBackupIfNeeded(at: epubFile)
     try await validateEpubArchiveFile(epubFile, bookId: bookId)
 
-    await MainActor.run {
-      DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
-    }
+    await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
     #if os(iOS)
       await updateDownloadLiveActivityProgress(bookId: bookId, progress: 1.0)
     #endif
@@ -2838,9 +2805,7 @@ actor OfflineManager {
     let fileURL = bookDir.appendingPathComponent(Self.pdfFileName)
     _ = try await BookService.downloadBookFile(bookId: bookId, to: fileURL)
     Self.excludeFromBackupIfNeeded(at: fileURL)
-    await MainActor.run {
-      DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
-    }
+    await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
     #if os(iOS)
       await updateDownloadLiveActivityProgress(bookId: bookId, progress: 1.0)
     #endif
@@ -3208,15 +3173,11 @@ actor OfflineManager {
     var completedCount = pages.count - pagesToDownload.count
     if total > 0, completedCount > 0 {
       let progress = Double(completedCount) / total
-      await MainActor.run {
-        DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: progress)
-      }
+      await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: progress)
     }
 
     if pagesToDownload.isEmpty {
-      await MainActor.run {
-        DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
-      }
+      await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: 1.0)
       return
     }
 
@@ -3257,9 +3218,7 @@ actor OfflineManager {
         let progress = Double(completedCount) / total
 
         // Update in-memory progress for UI
-        await MainActor.run {
-          DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: progress)
-        }
+        await DownloadProgressTracker.shared.updateProgress(bookId: bookId, value: progress)
 
         submitNext()
       }

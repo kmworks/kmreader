@@ -454,7 +454,7 @@ actor ThumbnailCache {
       return nil
     }
 
-    let instanceId = await MainActor.run { AppConfig.current.instanceId }
+    let instanceId = AppConfig.current.instanceId
 
     // Try common image extensions
     let extensions = ["jpg", "jpeg", "png", "webp", "avif", "gif"]
@@ -742,9 +742,7 @@ actor ThumbnailCache {
   }
 
   nonisolated private static func namespacedDiskCacheURL(namespaceId: String) async -> URL {
-    await MainActor.run {
-      CacheNamespace.directory(for: "KomgaThumbnailCache", instanceId: namespaceId)
-    }
+    CacheNamespace.directory(for: "KomgaThumbnailCache", instanceId: namespaceId)
   }
 
   private static func collectFileInfo(
