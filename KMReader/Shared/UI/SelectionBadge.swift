@@ -36,12 +36,18 @@ struct SelectionBadge: View {
 }
 
 extension View {
-  /// Selection-mode emphasis: unselected items recede (shrink in place, gray
-  /// out) so the picked ones stand out.
+  /// Selection-mode emphasis: unselected items recede (shrink in place, veiled)
+  /// so the picked ones stand out. A plain veil composites as one extra layer;
+  /// opacity/saturation on the card would force an offscreen render pass of
+  /// the whole subtree, which stalls scrolling in card grids.
   func selectionDimmed(_ dimmed: Bool, scale: CGFloat) -> some View {
     self
+      .overlay {
+        if dimmed {
+          Color.selectionVeil
+            .allowsHitTesting(false)
+        }
+      }
       .scaleEffect(dimmed ? scale : 1)
-      .opacity(dimmed ? 0.55 : 1)
-      .saturation(dimmed ? 0.7 : 1)
   }
 }
