@@ -397,12 +397,10 @@
         animatedInlineContainer.isHidden = false
         animatedInlineContainer.layer?.contents = nil
         updateAnimatedPresentationState()
-        if let layer = animatedInlineContainer.layer {
-          animatedImageController.start(
-            sourceFileURL: sourceFileURL,
-            targetLayer: layer
-          )
-        }
+        animatedImageController.start(
+          sourceFileURL: sourceFileURL,
+          targetView: animatedInlineContainer
+        )
       } else {
         animatedImageController.stop()
         animatedInlineContainer.layer?.contents = nil

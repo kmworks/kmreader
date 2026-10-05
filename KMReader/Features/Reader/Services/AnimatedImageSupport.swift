@@ -1,18 +1,15 @@
 import CoreGraphics
 import Foundation
 import ImageIO
-import SDWebImage
-import SDWebImageWebPCoder
+import UniformTypeIdentifiers
+
+#if os(iOS) || os(tvOS)
+  import UIKit
+#elseif os(macOS)
+  import AppKit
+#endif
 
 enum AnimatedImageSupport {
-  nonisolated private static let configureCodersOnce: Void = {
-    SDImageCodersManager.shared.addCoder(SDImageWebPCoder.shared)
-  }()
-
-  nonisolated static func configureCoders() {
-    _ = configureCodersOnce
-  }
-
   nonisolated static func isAnimatedImageFile(at fileURL: URL) -> Bool {
     let options = [kCGImageSourceShouldCache: false] as CFDictionary
     guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, options) else {
@@ -22,42 +19,36 @@ enum AnimatedImageSupport {
   }
 
   nonisolated static func posterImage(from fileURL: URL) -> PlatformImage? {
-    configureCoders()
-
-    guard let imageData = loadImageData(fileURL: fileURL) else {
+    guard
+      let decoder = makeFrameDecoder(fileURL: fileURL, maxPixelSize: nil),
+      let cgImage = decoder.decodeNextFrame()
+    else {
       return nil
     }
-
-    // Keep the preloaded poster as a static image so the page cache does not retain
-    // the full animated payload before playback actually starts.
-    return PlatformImage.sd_image(with: imageData, scale: 1, firstFrameOnly: true)
+    #if os(macOS)
+      return NSImage(
+        cgImage: cgImage,
+        size: NSSize(width: cgImage.width, height: cgImage.height)
+      )
+    #else
+      return UIImage(cgImage: cgImage)
+    #endif
   }
 
-  nonisolated static func loadAnimatedImage(fileURL: URL, maxPixelSize: Int?) -> SDAnimatedImage? {
-    configureCoders()
-
-    guard let imageData = loadImageData(fileURL: fileURL) else {
+  nonisolated static func makeFrameDecoder(fileURL: URL, maxPixelSize: Int?) -> (any AnimatedFrameDecoder)? {
+    let options = [kCGImageSourceShouldCache: false] as CFDictionary
+    guard
+      let source = CGImageSourceCreateWithURL(fileURL as CFURL, options),
+      let type = CGImageSourceGetType(source)
+    else {
       return nil
     }
-
-    if let options = coderOptions(maxPixelSize: maxPixelSize) {
-      return SDAnimatedImage(data: imageData, scale: 1, options: options)
+    if type == "org.webmproject.webp" as CFString {
+      return WebPFrameDecoder(fileURL: fileURL, maxPixelSize: maxPixelSize)
     }
-
-    return SDAnimatedImage(data: imageData, scale: 1)
-  }
-
-  nonisolated private static func loadImageData(fileURL: URL) -> Data? {
-    try? Data(contentsOf: fileURL, options: [.mappedIfSafe])
-  }
-
-  nonisolated private static func coderOptions(maxPixelSize: Int?) -> [SDImageCoderOption: Any]? {
-    guard let maxPixelSize, maxPixelSize > 0 else {
-      return nil
+    if type == UTType.gif.identifier as CFString {
+      return GIFFrameDecoder(fileURL: fileURL, maxPixelSize: maxPixelSize)
     }
-
-    return [
-      .decodeThumbnailPixelSize: CGSize(width: maxPixelSize, height: maxPixelSize)
-    ]
+    return nil
   }
 }
