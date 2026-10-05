@@ -131,7 +131,7 @@
       coverContainerView.layer.shadowPath = nil
 
       coverImageTask = Task { @MainActor [weak self] in
-        let image = await loadNativeBookCoverImage(for: bookID)
+        let image = await ThumbnailCache.shared.image(id: bookID, type: .book)
         guard !Task.isCancelled, let self else { return }
         guard self.coverImageBookID == bookID else { return }
         self.coverImageTask = nil
