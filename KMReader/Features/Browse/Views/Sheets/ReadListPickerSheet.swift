@@ -12,15 +12,20 @@ struct ReadListPickerSheet: View {
   @State private var isLoading = false
   @State private var readLists: [ReadListDisplayItem] = []
 
-  let bookId: String
+  let bookIds: [String]
   let onSelect: (String) -> Void
+  /// Create-New completion: the new list already holds the given books, so
+  /// callers only need to react to the dismissal (e.g. exit selection mode).
+  var onCreate: ((String) -> Void)? = nil
 
   init(
-    bookId: String,
-    onSelect: @escaping (String) -> Void
+    bookIds: [String],
+    onSelect: @escaping (String) -> Void,
+    onCreate: ((String) -> Void)? = nil
   ) {
-    self.bookId = bookId
+    self.bookIds = bookIds
     self.onSelect = onSelect
+    self.onCreate = onCreate
   }
 
   private var pickerItems: [EntityPickerItem] {
@@ -28,7 +33,7 @@ struct ReadListPickerSheet: View {
       EntityPickerItem(
         id: readList.readListId,
         name: readList.name,
-        alreadyIn: readList.bookIds.contains(bookId)
+        alreadyIn: bookIds.allSatisfy(readList.bookIds.contains)
       )
     }
   }
@@ -43,8 +48,9 @@ struct ReadListPickerSheet: View {
       onSelect: onSelect
     ) {
       CreateReadListSheet(
-        bookId: bookId,
-        onCreate: { _ in
+        bookIds: bookIds,
+        onCreate: { id in
+          onCreate?(id)
           dismiss()
         }
       )

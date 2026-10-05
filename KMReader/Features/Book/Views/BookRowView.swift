@@ -12,6 +12,8 @@ struct BookRowView: View {
   var onDeleteRequested: (() -> Void)? = nil
   var showSeriesTitle: Bool = false
   var showSeriesNavigation: Bool = true
+  /// Selection mode hides the menu: the row's only interaction is toggling.
+  var showsEllipsis: Bool = true
 
   @AppStorage("thumbnailBlurUnreadCovers") private var thumbnailBlurUnreadCovers: Bool = false
 
@@ -125,36 +127,38 @@ struct BookRowView: View {
               systemName: icon, spinning: item.downloadStatus.isPending,
               color: item.downloadStatus.displayColor, bookId: item.bookId)
           }
-          EllipsisMenuButton {
-            BookContextMenu(
-              book: item.book,
-              downloadStatus: item.downloadStatus,
-              onReadBook: onReadBook,
-              onShowReadListPicker: {
-                #if os(macOS)
-                  // Present in a standalone window: a view-attached sheet
-                  // triggered from an NSMenu action can wedge the app on
-                  // macOS 15.
-                  PickerWindowOpener.shared.open(.readList(bookId: item.bookId))
-                #else
-                  showReadListPicker = true
-                #endif
-              },
-              onDeleteRequested: onDeleteRequested,
-              onEditRequested: {
-                showEditSheet = true
-              },
-              onMutationCompleted: onMutationCompleted,
-              showSeriesNavigation: showSeriesNavigation
-            )
-            .id(item.bookId)
+          if showsEllipsis {
+            EllipsisMenuButton {
+              BookContextMenu(
+                book: item.book,
+                downloadStatus: item.downloadStatus,
+                onReadBook: onReadBook,
+                onShowReadListPicker: {
+                  #if os(macOS)
+                    // Present in a standalone window: a view-attached sheet
+                    // triggered from an NSMenu action can wedge the app on
+                    // macOS 15.
+                    PickerWindowOpener.shared.open(.readList(bookId: item.bookId))
+                  #else
+                    showReadListPicker = true
+                  #endif
+                },
+                onDeleteRequested: onDeleteRequested,
+                onEditRequested: {
+                  showEditSheet = true
+                },
+                onMutationCompleted: onMutationCompleted,
+                showSeriesNavigation: showSeriesNavigation
+              )
+              .id(item.bookId)
+            }
           }
         }
       }
     }
     .sheet(isPresented: $showReadListPicker) {
       ReadListPickerSheet(
-        bookId: item.bookId,
+        bookIds: [item.bookId],
         onSelect: { readListId in
           addToReadList(readListId: readListId)
         }

@@ -50,6 +50,7 @@ After changing code: `make format`, then `make build`. Simulator interaction: ve
 21. Never render an empty `HStack`/`VStack`; put the condition around the stack itself so nothing renders when there is no content.
 22. Lazy containers (`LazyVStack`/`LazyHStack`/`LazyVGrid`) only for genuinely unbounded content (paginated or otherwise huge lists); eager stacks everywhere else — lazy stacks cache child frames and misplace children during animated layout updates.
 23. Plain-style buttons and links (`.buttonStyle(.plain)`, text-or-label-only) must declare `.contentShape(Rectangle())` (or an equivalent hit shape) **on the content inside the button's label** so the whole frame is tappable; without it only the glyphs respond. `.contentShape` applied outside on the button itself has no effect on hit-testing, regardless of button style.
+24. Hardcoded `.frame` sizes are a last resort: never pin pixel dimensions to paper over a sizing difference (e.g. normalizing buttons whose glyphs have different bounding boxes). Fix the cause instead — pick glyphs from one visual family, use control sizes, or change the layout.
 
 Additional patterns:
 

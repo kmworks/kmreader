@@ -42,7 +42,8 @@ struct CollectionSeriesQueryView: View {
                 SeriesSelectionItemView(
                   seriesId: series.id,
                   layout: browseLayout,
-                  selectedSeriesIds: $selectedSeriesIds
+                  selectedSeriesIds: $selectedSeriesIds,
+                  cardWidth: browseLayout.cardWidth
                 )
               } else {
                 SeriesQueryItemView(

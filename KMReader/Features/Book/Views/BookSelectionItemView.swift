@@ -10,7 +10,7 @@ struct BookSelectionItemView: View {
   let bookId: String
   let layout: BrowseLayoutMode
   @Binding var selectedBookIds: Set<String>
-  let refreshBooks: () -> Void
+  var cardWidth: CGFloat = LayoutConfig.gridCardWidth
   var showSeriesTitle: Bool = true
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -20,13 +20,13 @@ struct BookSelectionItemView: View {
     bookId: String,
     layout: BrowseLayoutMode,
     selectedBookIds: Binding<Set<String>>,
-    refreshBooks: @escaping () -> Void,
+    cardWidth: CGFloat = LayoutConfig.gridCardWidth,
     showSeriesTitle: Bool = true
   ) {
     self.bookId = bookId
     self.layout = layout
     self._selectedBookIds = selectedBookIds
-    self.refreshBooks = refreshBooks
+    self.cardWidth = cardWidth
     self.showSeriesTitle = showSeriesTitle
 
   }
@@ -84,13 +84,15 @@ struct BookSelectionItemView: View {
           onReadBook: { _ in },
           showSeriesTitle: showSeriesTitle,
           showCompletedIndicator: false,
-          selectionIsSelected: isSelected
+          selectionIsSelected: isSelected,
+          cardWidth: cardWidth
         )
       case .list:
         BookRowView(
           item: item,
           onReadBook: { _ in },
-          showSeriesTitle: showSeriesTitle
+          showSeriesTitle: showSeriesTitle,
+          showsEllipsis: false
         )
       }
     } else {

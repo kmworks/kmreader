@@ -9,6 +9,8 @@ struct SeriesRowView: View {
   let item: SeriesDisplayItem
   var onMutationCompleted: (() -> Void)? = nil
   var onDeleteRequested: (() -> Void)? = nil
+  /// Selection mode hides the menu: the row's only interaction is toggling.
+  var showsEllipsis: Bool = true
 
   @AppStorage("thumbnailBlurUnreadCovers") private var thumbnailBlurUnreadCovers: Bool = false
 
@@ -127,44 +129,46 @@ struct SeriesRowView: View {
               systemName: icon, spinning: downloadStatus.isPending,
               color: downloadStatus.displayColor)
           }
-          EllipsisMenuButton {
-            SeriesContextMenu(
-              seriesId: item.seriesId,
-              libraryId: item.series.libraryId,
-              seriesTitle: item.metaTitle,
-              downloadStatus: item.downloadStatus,
-              offlinePolicy: item.offlinePolicy,
-              offlinePolicyLimit: item.offlinePolicyLimit,
-              booksUnreadCount: item.booksUnreadCount,
-              booksReadCount: item.booksReadCount,
-              booksInProgressCount: item.booksInProgressCount,
-              onShowCollectionPicker: {
-                #if os(macOS)
-                  // Present in a standalone window: a view-attached sheet
-                  // triggered from an NSMenu action can wedge the app on
-                  // macOS 15.
-                  PickerWindowOpener.shared.open(.collection(seriesId: item.seriesId))
-                #else
-                  showCollectionPicker = true
-                #endif
-              },
-              onDeleteRequested: onDeleteRequested,
-              onEditRequested: {
-                showEditSheet = true
-              },
-              onKomfIdentifyRequested: {
-                showKomfIdentify = true
-              },
-              onMutationCompleted: onMutationCompleted
-            )
-            .id(item.seriesId)
+          if showsEllipsis {
+            EllipsisMenuButton {
+              SeriesContextMenu(
+                seriesId: item.seriesId,
+                libraryId: item.series.libraryId,
+                seriesTitle: item.metaTitle,
+                downloadStatus: item.downloadStatus,
+                offlinePolicy: item.offlinePolicy,
+                offlinePolicyLimit: item.offlinePolicyLimit,
+                booksUnreadCount: item.booksUnreadCount,
+                booksReadCount: item.booksReadCount,
+                booksInProgressCount: item.booksInProgressCount,
+                onShowCollectionPicker: {
+                  #if os(macOS)
+                    // Present in a standalone window: a view-attached sheet
+                    // triggered from an NSMenu action can wedge the app on
+                    // macOS 15.
+                    PickerWindowOpener.shared.open(.collection(seriesId: item.seriesId))
+                  #else
+                    showCollectionPicker = true
+                  #endif
+                },
+                onDeleteRequested: onDeleteRequested,
+                onEditRequested: {
+                  showEditSheet = true
+                },
+                onKomfIdentifyRequested: {
+                  showKomfIdentify = true
+                },
+                onMutationCompleted: onMutationCompleted
+              )
+              .id(item.seriesId)
+            }
           }
         }
       }
     }
     .sheet(isPresented: $showCollectionPicker) {
       CollectionPickerSheet(
-        seriesId: series.id,
+        seriesIds: [series.id],
         onSelect: { collectionId in
           addToCollection(collectionId: collectionId)
         }

@@ -12,15 +12,20 @@ struct CollectionPickerSheet: View {
   @State private var isLoading = false
   @State private var collections: [CollectionDisplayItem] = []
 
-  let seriesId: String
+  let seriesIds: [String]
   let onSelect: (String) -> Void
+  /// Create-New completion: the new collection already holds the given series,
+  /// so callers only need to react to the dismissal (e.g. exit selection mode).
+  var onCreate: ((String) -> Void)? = nil
 
   init(
-    seriesId: String,
-    onSelect: @escaping (String) -> Void
+    seriesIds: [String],
+    onSelect: @escaping (String) -> Void,
+    onCreate: ((String) -> Void)? = nil
   ) {
-    self.seriesId = seriesId
+    self.seriesIds = seriesIds
     self.onSelect = onSelect
+    self.onCreate = onCreate
   }
 
   private var pickerItems: [EntityPickerItem] {
@@ -28,7 +33,7 @@ struct CollectionPickerSheet: View {
       EntityPickerItem(
         id: collection.collectionId,
         name: collection.name,
-        alreadyIn: collection.seriesIds.contains(seriesId)
+        alreadyIn: seriesIds.allSatisfy(collection.seriesIds.contains)
       )
     }
   }
@@ -43,8 +48,9 @@ struct CollectionPickerSheet: View {
       onSelect: onSelect
     ) {
       CreateCollectionSheet(
-        seriesId: seriesId,
-        onCreate: { _ in
+        seriesIds: seriesIds,
+        onCreate: { id in
+          onCreate?(id)
           dismiss()
         }
       )

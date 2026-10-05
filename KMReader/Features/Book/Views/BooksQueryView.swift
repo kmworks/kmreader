@@ -13,6 +13,8 @@ struct BooksQueryView: View {
   let viewModel: BookViewModel
   let useLocalOnly: Bool
   let offlineOnly: Bool
+  /// Non-nil enters selection mode with this selection binding.
+  let selectedBookIds: Binding<Set<String>>?
 
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
@@ -29,7 +31,8 @@ struct BooksQueryView: View {
     browseLayout: BrowseLayoutMode,
     viewModel: BookViewModel,
     useLocalOnly: Bool = false,
-    offlineOnly: Bool = false
+    offlineOnly: Bool = false,
+    selectedBookIds: Binding<Set<String>>? = nil
   ) {
     self.libraryIds = libraryIds
     self.searchText = searchText
@@ -38,6 +41,7 @@ struct BooksQueryView: View {
     self.viewModel = viewModel
     self.useLocalOnly = useLocalOnly
     self.offlineOnly = offlineOnly
+    self.selectedBookIds = selectedBookIds
   }
 
   var body: some View {
@@ -55,14 +59,25 @@ struct BooksQueryView: View {
       case .grid, .largeGrid:
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(viewModel.pagination.items) { book in
-            BookQueryItemView(
-              bookId: book.id,
-              layout: browseLayout,
-              cardWidth: browseLayout.cardWidth,
-              onItemMissing: {
-                viewModel.removeBook(id: book.id)
+            Group {
+              if let selectedBookIds {
+                BookSelectionItemView(
+                  bookId: book.id,
+                  layout: browseLayout,
+                  selectedBookIds: selectedBookIds,
+                  cardWidth: browseLayout.cardWidth
+                )
+              } else {
+                BookQueryItemView(
+                  bookId: book.id,
+                  layout: browseLayout,
+                  cardWidth: browseLayout.cardWidth,
+                  onItemMissing: {
+                    viewModel.removeBook(id: book.id)
+                  }
+                )
               }
-            )
+            }
             .onAppear {
               if viewModel.pagination.shouldLoadMore(after: book) {
                 loadBooks(refresh: false)
@@ -74,13 +89,23 @@ struct BooksQueryView: View {
       case .list:
         LazyVStack {
           ForEach(viewModel.pagination.items) { book in
-            BookQueryItemView(
-              bookId: book.id,
-              layout: .list,
-              onItemMissing: {
-                viewModel.removeBook(id: book.id)
+            Group {
+              if let selectedBookIds {
+                BookSelectionItemView(
+                  bookId: book.id,
+                  layout: .list,
+                  selectedBookIds: selectedBookIds
+                )
+              } else {
+                BookQueryItemView(
+                  bookId: book.id,
+                  layout: .list,
+                  onItemMissing: {
+                    viewModel.removeBook(id: book.id)
+                  }
+                )
               }
-            )
+            }
             .onAppear {
               if viewModel.pagination.shouldLoadMore(after: book) {
                 loadBooks(refresh: false)

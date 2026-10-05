@@ -13,6 +13,8 @@ struct SeriesQueryView: View {
   let viewModel: SeriesViewModel
   let useLocalOnly: Bool
   let offlineOnly: Bool
+  /// Non-nil enters selection mode with this selection binding.
+  let selectedSeriesIds: Binding<Set<String>>?
 
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
@@ -29,7 +31,8 @@ struct SeriesQueryView: View {
     browseLayout: BrowseLayoutMode,
     viewModel: SeriesViewModel,
     useLocalOnly: Bool = false,
-    offlineOnly: Bool = false
+    offlineOnly: Bool = false,
+    selectedSeriesIds: Binding<Set<String>>? = nil
   ) {
     self.libraryIds = libraryIds
     self.searchText = searchText
@@ -38,6 +41,7 @@ struct SeriesQueryView: View {
     self.viewModel = viewModel
     self.useLocalOnly = useLocalOnly
     self.offlineOnly = offlineOnly
+    self.selectedSeriesIds = selectedSeriesIds
   }
 
   var body: some View {
@@ -55,14 +59,25 @@ struct SeriesQueryView: View {
       case .grid, .largeGrid:
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(viewModel.pagination.items) { series in
-            SeriesQueryItemView(
-              seriesId: series.id,
-              layout: browseLayout,
-              cardWidth: browseLayout.cardWidth,
-              onItemMissing: {
-                viewModel.removeSeries(id: series.id)
+            Group {
+              if let selectedSeriesIds {
+                SeriesSelectionItemView(
+                  seriesId: series.id,
+                  layout: browseLayout,
+                  selectedSeriesIds: selectedSeriesIds,
+                  cardWidth: browseLayout.cardWidth
+                )
+              } else {
+                SeriesQueryItemView(
+                  seriesId: series.id,
+                  layout: browseLayout,
+                  cardWidth: browseLayout.cardWidth,
+                  onItemMissing: {
+                    viewModel.removeSeries(id: series.id)
+                  }
+                )
               }
-            )
+            }
             .onAppear {
               if viewModel.pagination.shouldLoadMore(after: series) {
                 loadSeries(refresh: false)
@@ -74,13 +89,23 @@ struct SeriesQueryView: View {
       case .list:
         LazyVStack {
           ForEach(viewModel.pagination.items) { series in
-            SeriesQueryItemView(
-              seriesId: series.id,
-              layout: .list,
-              onItemMissing: {
-                viewModel.removeSeries(id: series.id)
+            Group {
+              if let selectedSeriesIds {
+                SeriesSelectionItemView(
+                  seriesId: series.id,
+                  layout: .list,
+                  selectedSeriesIds: selectedSeriesIds
+                )
+              } else {
+                SeriesQueryItemView(
+                  seriesId: series.id,
+                  layout: .list,
+                  onItemMissing: {
+                    viewModel.removeSeries(id: series.id)
+                  }
+                )
               }
-            )
+            }
             .onAppear {
               if viewModel.pagination.shouldLoadMore(after: series) {
                 loadSeries(refresh: false)

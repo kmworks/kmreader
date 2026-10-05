@@ -19,9 +19,11 @@ struct SelectionBadge: View {
           Image(systemName: "circle.fill")
             .foregroundStyle(.black.opacity(0.35))
         }
+        // Fixed white/black palette: Color.primary would collide with the
+        // white circle in dark mode and hide the checkmark.
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
           .symbolRenderingMode(.palette)
-          .foregroundStyle(.white, Color.primary)
+          .foregroundStyle(.white, .black)
       }
       .font(.title3)
       .padding(8)

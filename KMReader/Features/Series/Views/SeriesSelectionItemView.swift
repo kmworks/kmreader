@@ -10,6 +10,7 @@ struct SeriesSelectionItemView: View {
   let seriesId: String
   let layout: BrowseLayoutMode
   @Binding var selectedSeriesIds: Set<String>
+  var cardWidth: CGFloat = LayoutConfig.gridCardWidth
 
   @AppStorage("currentAccount") private var current: Current = .init()
   @State private var item: SeriesDisplayItem?
@@ -17,11 +18,13 @@ struct SeriesSelectionItemView: View {
   init(
     seriesId: String,
     layout: BrowseLayoutMode,
-    selectedSeriesIds: Binding<Set<String>>
+    selectedSeriesIds: Binding<Set<String>>,
+    cardWidth: CGFloat = LayoutConfig.gridCardWidth
   ) {
     self.seriesId = seriesId
     self.layout = layout
     self._selectedSeriesIds = selectedSeriesIds
+    self.cardWidth = cardWidth
 
   }
 
@@ -76,11 +79,13 @@ struct SeriesSelectionItemView: View {
         SeriesCardView(
           item: item,
           showUnreadIndicator: false,
-          selectionIsSelected: isSelected
+          selectionIsSelected: isSelected,
+          cardWidth: cardWidth
         )
       case .list:
         SeriesRowView(
-          item: item
+          item: item,
+          showsEllipsis: false
         )
       }
     } else {

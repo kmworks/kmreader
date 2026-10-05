@@ -21,6 +21,7 @@ struct BooksListViewForSeries: View {
   @State private var selectedBookIds: Set<String> = []
   @State private var isSelectionMode = false
   @State private var isSubmitting = false
+  @State private var showReadListPicker = false
   @State private var allSeriesBookIds: [String] = []
   @State private var loadedSeriesId: String?
 
@@ -60,10 +61,11 @@ struct BooksListViewForSeries: View {
       .padding(.horizontal)
 
       if supportsSelectionMode && isSelectionMode {
-        ReadStatusSelectionToolbar(
+        SelectionActionsToolbar(
           selectedCount: selectedBookIds.count,
           totalCount: allSeriesBookIds.count,
           isSubmitting: isSubmitting,
+          addLabel: String(localized: "Add to Read List"),
           onSelectAll: {
             if selectedBookIds.count == allSeriesBookIds.count {
               selectedBookIds.removeAll()
@@ -81,6 +83,9 @@ struct BooksListViewForSeries: View {
               await markSelected(read: false)
             }
           },
+          onAdd: {
+            showReadListPicker = true
+          },
           onCancel: {
             isSelectionMode = false
             selectedBookIds.removeAll()
@@ -95,12 +100,7 @@ struct BooksListViewForSeries: View {
         browseOpts: browseOpts,
         browseLayout: layoutMode,
         isSelectionMode: supportsSelectionMode && isSelectionMode,
-        selectedBookIds: $selectedBookIds,
-        refreshBooks: {
-          Task {
-            await refreshBooks(refresh: true)
-          }
-        }
+        selectedBookIds: $selectedBookIds
       )
     }
     .task(id: seriesId) {
@@ -120,6 +120,22 @@ struct BooksListViewForSeries: View {
         }
       }
     }
+    .sheet(isPresented: $showReadListPicker) {
+      ReadListPickerSheet(
+        bookIds: selectedBookIdsInSeriesOrder,
+        onSelect: { readListId in
+          addSelectedToReadList(readListId: readListId)
+        },
+        onCreate: { _ in
+          exitSelectionMode()
+        }
+      )
+    }
+  }
+
+  /// Selected ids in series order, so read-list appends keep that order.
+  private var selectedBookIdsInSeriesOrder: [String] {
+    allSeriesBookIds.filter(selectedBookIds.contains)
   }
 
   private func loadAllSeriesBookIds() async {
@@ -138,6 +154,33 @@ struct BooksListViewForSeries: View {
     )
   }
 
+  private func addSelectedToReadList(readListId: String) {
+    let bookIds = selectedBookIdsInSeriesOrder
+    guard !bookIds.isEmpty else { return }
+
+    Task {
+      do {
+        try await ReadListService.addBooksToReadList(
+          readListId: readListId,
+          bookIds: bookIds
+        )
+        ErrorManager.shared.notify(
+          message: String(localized: "notification.book.booksAddedToReadList"))
+        await ContentProjectionNotifier.postReadListDidChange(readListId: readListId)
+        exitSelectionMode()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func exitSelectionMode() {
+    withAnimation {
+      selectedBookIds.removeAll()
+      isSelectionMode = false
+    }
+  }
+
   private func markSelected(read: Bool) async {
     guard !selectedBookIds.isEmpty, !isSubmitting else { return }
 
@@ -146,8 +189,8 @@ struct BooksListViewForSeries: View {
 
     let bookIds = Array(selectedBookIds)
     let outcome = await withTaskGroup(
-      of: Error?.self,
-      returning: (firstError: Error?, failureCount: Int).self
+      of: (id: String, error: Error?).self,
+      returning: (succeeded: [String], failed: [String], firstError: Error?).self
     ) { group in
       for bookId in bookIds {
         group.addTask {
@@ -157,25 +200,28 @@ struct BooksListViewForSeries: View {
             } else {
               try await BookService.markAsUnread(bookId: bookId)
             }
-            return nil
+            return (bookId, nil)
           } catch {
-            return error
+            return (bookId, error)
           }
         }
       }
+      var succeeded: [String] = []
+      var failed: [String] = []
       var firstError: Error?
-      var failureCount = 0
       for await result in group {
-        if let result {
-          failureCount += 1
-          if firstError == nil { firstError = result }
+        if let error = result.error {
+          failed.append(result.id)
+          if firstError == nil { firstError = error }
+        } else {
+          succeeded.append(result.id)
         }
       }
-      return (firstError: firstError, failureCount: failureCount)
+      return (succeeded: succeeded, failed: failed, firstError: firstError)
     }
 
     // Sync whatever succeeded so the UI never goes stale, then report failures.
-    if outcome.failureCount < bookIds.count {
+    if !outcome.succeeded.isEmpty {
       _ = try? await SyncService.syncSeriesDetail(seriesId: seriesId)
       try? await SyncService.syncAllSeriesBooks(seriesId: seriesId)
       await ContentProjectionNotifier.postSeriesBooksDidChange(
@@ -196,9 +242,14 @@ struct BooksListViewForSeries: View {
       ErrorManager.shared.notify(message: String(localized: "notification.book.markedUnread"))
     }
 
+    // Keep the failed items selected so the batch can be retried.
     withAnimation {
-      selectedBookIds.removeAll()
-      isSelectionMode = false
+      if outcome.failed.isEmpty {
+        selectedBookIds.removeAll()
+        isSelectionMode = false
+      } else {
+        selectedBookIds = Set(outcome.failed)
+      }
     }
 
     await refreshBooks(refresh: true)

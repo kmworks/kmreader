@@ -108,12 +108,7 @@ struct BooksListViewForReadList: View {
           browseLayout: layoutMode,
           isSelectionMode: isSelectionMode,
           selectedBookIds: $selectedBookIds,
-          isAdmin: current.isAdmin,
-          refreshBooks: {
-            Task {
-              await refreshBooks()
-            }
-          }
+          isAdmin: current.isAdmin
         )
       } else if bookViewModel.isLoading {
         ProgressView()

@@ -252,7 +252,7 @@ struct SeriesDetailView: View {
     }
     .sheet(isPresented: $showCollectionPicker) {
       CollectionPickerSheet(
-        seriesId: seriesId,
+        seriesIds: [seriesId],
         onSelect: { collectionId in
           addToCollection(collectionId: collectionId)
         }
