@@ -1,0 +1,65 @@
+//
+// ThumbnailMemoryCache.swift
+//
+//
+
+import Foundation
+
+#if os(iOS) || os(tvOS)
+  import UIKit
+#elseif os(macOS)
+  import AppKit
+#endif
+
+/// Decoded covers kept in memory: lazy grids and lists recreate their cells on
+/// scroll, and without this cache every recreation re-reads and re-decodes the
+/// disk cache, flashing the loading placeholder each time.
+final class ThumbnailMemoryCache {
+  static let shared = ThumbnailMemoryCache()
+
+  private final class Entry {
+    let image: PlatformImage
+    let storedAt: Date
+
+    init(image: PlatformImage) {
+      self.image = image
+      self.storedAt = Date()
+    }
+  }
+
+  private let cache = NSCache<NSString, Entry>()
+
+  private init() {
+    cache.countLimit = 300
+    cache.totalCostLimit = 128 * 1024 * 1024
+  }
+
+  static nonisolated func key(id: String, type: ThumbnailType) -> String {
+    "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)"
+  }
+
+  func image(forKey key: String) -> PlatformImage? {
+    let nsKey = key as NSString
+    guard let entry = cache.object(forKey: nsKey) else { return nil }
+    // Honor the disk cache's expiration so a stale cover still re-validates.
+    guard Date().timeIntervalSince(entry.storedAt) <= AppConfig.coverCacheExpirationInterval
+    else {
+      cache.removeObject(forKey: nsKey)
+      return nil
+    }
+    return entry.image
+  }
+
+  func store(_ image: PlatformImage, forKey key: String) {
+    let cost = Int(image.size.width * image.size.height * 4)
+    cache.setObject(Entry(image: image), forKey: key as NSString, cost: cost)
+  }
+
+  func remove(forKey key: String) {
+    cache.removeObject(forKey: key as NSString)
+  }
+
+  func removeAll() {
+    cache.removeAllObjects()
+  }
+}

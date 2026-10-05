@@ -89,6 +89,13 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     self.onAction = onAction
     self.overlay = overlay
     self.menu = menu
+
+    let cached = ThumbnailMemoryCache.shared.image(
+      forKey: ThumbnailMemoryCache.key(id: id, type: type))
+    _isLoading = State(initialValue: cached == nil)
+    _image = State(initialValue: cached)
+    _currentBaseKey = State(initialValue: cached != nil ? "\(id)#\(type.rawValue)" : nil)
+    _loadedImageSize = State(initialValue: cached?.size)
   }
 
   private var baseKey: String {
@@ -134,19 +141,31 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
         else {
           return
         }
+        ThumbnailMemoryCache.shared.remove(forKey: ThumbnailMemoryCache.key(id: id, type: type))
+        currentBaseKey = nil
         refreshTrigger = UUID()
       }
       .task(id: loadTaskKey) {
-        isLoading = true
         if currentBaseKey != baseKey {
           currentBaseKey = baseKey
           image = nil
           loadedImageSize = nil
         }
+        guard image == nil else { return }
 
+        let memoryKey = ThumbnailMemoryCache.key(id: id, type: type)
+        if let cached = ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
+          loadedImageSize = cached.size
+          image = cached
+          isLoading = false
+          return
+        }
+
+        isLoading = true
         let loaded = await loadThumbnail(id: id, type: type)
         guard !Task.isCancelled, currentBaseKey == baseKey else { return }
         if let loaded = loaded {
+          ThumbnailMemoryCache.shared.store(loaded, forKey: memoryKey)
           loadedImageSize = loaded.size
           image = loaded
         }

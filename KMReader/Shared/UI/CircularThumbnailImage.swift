@@ -16,6 +16,15 @@ struct CircularThumbnailImage: View {
   @State private var image: PlatformImage?
   @State private var refreshTrigger = UUID()
 
+  init(id: String, type: ThumbnailType = .book, diameter: CGFloat = 28) {
+    self.id = id
+    self.type = type
+    self.diameter = diameter
+    _image = State(
+      initialValue: ThumbnailMemoryCache.shared.image(
+        forKey: ThumbnailMemoryCache.key(id: id, type: type)))
+  }
+
   var body: some View {
     Group {
       if let image {
@@ -43,10 +52,20 @@ struct CircularThumbnailImage: View {
       else {
         return
       }
+      ThumbnailMemoryCache.shared.remove(forKey: ThumbnailMemoryCache.key(id: id, type: type))
       refreshTrigger = UUID()
     }
     .task(id: "\(type.rawValue)|\(id)|\(refreshTrigger)") {
-      image = await Self.load(id: id, type: type)
+      let memoryKey = ThumbnailMemoryCache.key(id: id, type: type)
+      if let cached = ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
+        image = cached
+        return
+      }
+      let loaded = await Self.load(id: id, type: type)
+      if let loaded {
+        ThumbnailMemoryCache.shared.store(loaded, forKey: memoryKey)
+        image = loaded
+      }
     }
   }
 

@@ -550,6 +550,7 @@ actor ThumbnailCache {
 
   /// Clear disk cache for the current instance only
   static func clearCurrentInstanceDiskCache() async {
+    await ThumbnailMemoryCache.shared.removeAll()
     let fileManager = FileManager.default
     let cacheNamespaceId = currentCacheNamespaceId()
     let diskCacheURL = await namespacedDiskCacheURL(namespaceId: cacheNamespaceId)
@@ -564,6 +565,7 @@ actor ThumbnailCache {
 
   /// Clear all disk cache for thumbnails
   static func clearAllDiskCache() async {
+    await ThumbnailMemoryCache.shared.removeAll()
     let fileManager = FileManager.default
     let diskCacheURL = CacheNamespace.baseDirectory(for: "KomgaThumbnailCache")
 
