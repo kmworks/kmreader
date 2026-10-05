@@ -272,9 +272,11 @@ actor ThumbnailCache {
   /// Decoded image for display, resolving memory → disk → network. This is the
   /// entry point for image consumers; file-level consumers (widgets, indexing,
   /// tint extraction) keep using `ensureThumbnail`.
+  /// The memory tier holds covers only: page thumbnails stream through jump
+  /// sheets by the hundreds and would churn the cover cache out.
   func image(id: String, type: ThumbnailType, page: Int? = nil) async -> PlatformImage? {
-    let memoryKey = ThumbnailMemoryCache.key(id: id, type: type, page: page)
-    if let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
+    let memoryKey = type != .page ? ThumbnailMemoryCache.key(id: id, type: type, page: page) : nil
+    if let memoryKey, let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
       return cached
     }
     guard let url = try? await ensureThumbnail(id: id, type: type, page: page) else {
@@ -284,7 +286,7 @@ actor ThumbnailCache {
       guard let raw = PlatformImage(contentsOfFile: url.path) else { return nil }
       return await ImageDecodeHelper.decodeForDisplay(raw)
     }.value
-    if let decoded {
+    if let decoded, let memoryKey {
       await ThumbnailMemoryCache.shared.store(decoded, forKey: memoryKey)
     }
     return decoded
