@@ -26,6 +26,11 @@ struct DownloadStatusIcon: View {
   @State private var checkProgress: Double = 0
   @State private var bounceTrigger = 0
   @State private var progressTracker = DownloadProgressTracker.shared
+  /// The tracker entry is cleared at completion while the status flip is still
+  /// in flight; the last reported value keeps the pie full until the completion
+  /// checkmark replaces it. Reset when spinning stops so a re-queued download
+  /// starts from the minimum sliver instead of a stale value.
+  @State private var lastReportedProgress: Double = 0
 
   private var effectiveSystemName: String {
     displayedSystemName ?? systemName
@@ -52,7 +57,7 @@ struct DownloadStatusIcon: View {
             .hidden()
             .overlay {
               DownloadProgressPie(
-                progress: progressTracker.progress[bookId] ?? 0,
+                progress: progressTracker.progress[bookId] ?? lastReportedProgress,
                 color: color
               )
             }
@@ -74,7 +79,15 @@ struct DownloadStatusIcon: View {
       displayedSpinning = spinning
     }
     .onChange(of: systemName) { _, _ in handleStatusChange() }
-    .onChange(of: spinning) { _, _ in handleStatusChange() }
+    .onChange(of: spinning) { _, newValue in
+      if !newValue { lastReportedProgress = 0 }
+      handleStatusChange()
+    }
+    .onChange(of: progressTracker.progress) { _, newValue in
+      if let bookId, let reported = newValue[bookId] {
+        lastReportedProgress = reported
+      }
+    }
   }
 
   @ViewBuilder
