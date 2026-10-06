@@ -216,12 +216,31 @@ struct BrowseView: View {
       browseScope = nil
     }
     .onChange(of: scopeStore.libraries) { _, libraries in
-      // A scoped library that vanished falls back to the aggregate.
-      guard !libraries.isEmpty,
-        let scopedId = browseScope?.libraryId,
+      // A scoped library that vanished falls back to the aggregate, for the
+      // page-local and the tab-root scope alike.
+      guard !libraries.isEmpty else { return }
+      if let scopedId = browseScope?.libraryId,
         !libraries.contains(where: { $0.libraryId == scopedId })
-      else { return }
-      browseScope = nil
+      {
+        browseScope = nil
+      }
+      if let tabScope = libraryTabScope,
+        let scopedId = tabScope.wrappedValue.libraryId,
+        !libraries.contains(where: { $0.libraryId == scopedId })
+      {
+        tabScope.wrappedValue = .pinned
+      }
+    }
+    .onChange(of: dashboard.libraryIds) { _, pinnedIds in
+      // The Pinned item only exists while pins do; an emptied pinned set is
+      // the full set, which All already represents.
+      guard pinnedIds.isEmpty else { return }
+      if libraryTabScope?.wrappedValue == .pinned {
+        libraryTabScope?.wrappedValue = .all
+      }
+      if browseScope == .pinned {
+        browseScope = .all
+      }
     }
     .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
       guard librarySelection == nil else { return }

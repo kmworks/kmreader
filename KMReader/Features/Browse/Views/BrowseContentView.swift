@@ -139,13 +139,9 @@ struct BrowseContentView: View {
       return nil
     }
     guard let title else { return nil }
-    var text = Text(title).fontWeight(.medium)
-    if let factsText = facts.flatMap({ LibraryMetricsText.sizeAndMetrics(for: $0) }) {
-      text =
-        text + Text(" · ").foregroundColor(.secondary)
-        + factsText.foregroundColor(.secondary)
-    }
-    return text
+    return LibraryMetricsText.scopeCaption(
+      title: title,
+      facts: facts.flatMap { LibraryMetricsText.sizeAndMetrics(for: $0) })
   }
 
   var body: some View {

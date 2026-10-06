@@ -33,19 +33,21 @@ enum LibraryBrowseScope: Hashable {
 
   /// Display title: All Libraries, the pinned count (or the single covered
   /// library's name), or the scoped library's name. Nil when the scoped
-  /// library is not in the list.
+  /// library is not in the list, or (for pinned) before the list arrives —
+  /// a count rendered from an empty list would flash "0 Libraries".
   func title(pinnedIds: [String], libraries: [SidebarLibraryItem]) -> String? {
     switch self {
     case .all:
       return String(localized: "All Libraries")
     case .pinned:
+      guard !libraries.isEmpty else { return nil }
       let pinned = Set(pinnedIds)
       let covered = pinned.isEmpty ? libraries : libraries.filter { pinned.contains($0.libraryId) }
       if covered.count == 1, let name = covered.first?.name {
         return name
       }
       return String.localizedStringWithFormat(
-        String(localized: "offline.coverSync.scope.selected", defaultValue: "%lld Libraries"),
+        String(localized: "library.scope.librariesCount", defaultValue: "%lld Libraries"),
         covered.count)
     case .library(let id):
       return libraries.first(where: { $0.libraryId == id })?.name

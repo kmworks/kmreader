@@ -12,7 +12,6 @@ import SwiftUI
     @State private var readingBarContext = ReadingActionBarContext.shared
     @State private var selectedTab: TabItem = .home
     @State private var homePath = NavigationPath()
-    @State private var libraryPath = NavigationPath()
 
     var body: some View {
       rootTabView
@@ -55,7 +54,7 @@ import SwiftUI
         }
 
         Tab(TabItem.library.title, systemImage: TabItem.library.icon, value: TabItem.library) {
-          NavigationStack(path: $libraryPath) {
+          NavigationStack {
             rootContent(for: .library)
           }
         }

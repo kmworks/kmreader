@@ -5,18 +5,20 @@
 
 import SwiftUI
 
-/// Library scope dropdown, icon-only. Switches between All Libraries (pins
-/// ignored), the pinned aggregate, and a single library. On the Dashboard it
-/// re-filters the sections; on iPad/macOS browse roots the pick writes through
-/// to the shell's selection (sidebar/tab highlight follows); elsewhere it
-/// re-filters the page in place (a pushed sidebar selection is only the
-/// initial scope). The pinned-set editor (`LibraryPickerSheet`) is reached
-/// through "Pin Libraries…". Individual library rows carry no icon — the
-/// glyphs are reserved for All/Pinned.
+/// Library scope dropdown. Switches between All Libraries (pins ignored), the
+/// pinned aggregate (offered only while pins exist), and a single library. On
+/// the Dashboard it re-filters the sections; on iPad/macOS browse roots the
+/// pick writes through to the shell's selection (sidebar/tab highlight
+/// follows); elsewhere it re-filters the page in place (a pushed sidebar
+/// selection is only the initial scope). The pinned-set editor
+/// (`LibraryPickerSheet`) is reached through "Pin Libraries…". Individual
+/// library rows carry no icon — the glyphs are reserved for All/Pinned.
 struct LibraryScopeMenu: View {
   let libraries: [SidebarLibraryItem]
   @Binding var showLibraryPicker: Bool
   @Binding var scope: LibraryBrowseScope
+  /// Toolbars use the icon-only button; the tvOS header shows the scope title.
+  var iconOnly: Bool = true
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
 
@@ -48,11 +50,13 @@ struct LibraryScopeMenu: View {
       Picker(selection: $scope) {
         Label(String(localized: "All Libraries"), systemImage: ContentIcon.library)
           .tag(LibraryBrowseScope.all)
-        Label(
-          String(localized: "library.scope.pinned", defaultValue: "Pinned"),
-          systemImage: "pin"
-        )
-        .tag(LibraryBrowseScope.pinned)
+        if !dashboard.libraryIds.isEmpty {
+          Label(
+            String(localized: "library.scope.pinned", defaultValue: "Pinned"),
+            systemImage: "pin"
+          )
+          .tag(LibraryBrowseScope.pinned)
+        }
       } label: {
         EmptyView()
       }
@@ -85,8 +89,12 @@ struct LibraryScopeMenu: View {
         )
       }
     } label: {
-      Image(systemName: scopeIcon)
-        .contentTransition(.symbolEffect(.replace))
+      if iconOnly {
+        Image(systemName: scopeIcon)
+          .contentTransition(.symbolEffect(.replace))
+      } else {
+        Label(scopeTitle, systemImage: scopeIcon)
+      }
     }
     .accessibilityLabel(scopeTitle)
     .help(scopeTitle)

@@ -42261,67 +42261,66 @@
         }
       }
     },
-    "library.scope.choose" : {
-      "extractionState" : "stale",
+    "library.scope.librariesCount" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bibliotheken auswählen…"
+            "value" : "%lld Bibliotheken"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choose Libraries…"
+            "value" : "%lld Libraries"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elegir bibliotecas…"
+            "value" : "%lld bibliotecas"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Choisir les bibliothèques…"
+            "value" : "%lld bibliothèques"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scegli biblioteche…"
+            "value" : "%lld librerie"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ライブラリを選択…"
+            "value" : "%lld 個のライブラリ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "라이브러리 선택…"
+            "value" : "%lld개 라이브러리"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выбрать библиотеки…"
+            "value" : "%lld библиотек"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择书库…"
+            "value" : "%lld 个资料库"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "選擇書庫…"
+            "value" : "%lld 個資料庫"
           }
         }
       }

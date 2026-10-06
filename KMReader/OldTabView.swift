@@ -9,9 +9,6 @@ struct OldTabView: View {
   let context: AppViewContext
   @State private var selectedTab: TabItem = .home
   @State private var homePath = NavigationPath()
-  #if os(iOS)
-    @State private var libraryPath = NavigationPath()
-  #endif
 
   var body: some View {
     TabView(selection: $selectedTab) {
@@ -22,7 +19,7 @@ struct OldTabView: View {
       .tag(TabItem.home)
 
       #if os(iOS)
-        NavigationStack(path: $libraryPath) {
+        NavigationStack {
           rootContent(for: .library)
         }
         .tabItem { TabItem.library.label }

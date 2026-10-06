@@ -30,6 +30,18 @@ enum LibraryMetricsText {
     return join(parts, separator: " · ")
   }
 
+  /// Scope caption trailing a content-type chip: the title in medium weight,
+  /// then the facts line in secondary.
+  static func scopeCaption(title: String, facts: Text?) -> Text {
+    var text = Text(title).fontWeight(.medium)
+    if let facts {
+      text =
+        text + Text(" · ").foregroundColor(.secondary)
+        + facts.foregroundColor(.secondary)
+    }
+    return text
+  }
+
   /// Per-library metrics: series, books, and sidecars on one line.
   static func metrics(for library: SidebarLibraryItem) -> Text? {
     var parts: [Text] = []

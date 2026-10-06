@@ -63,35 +63,26 @@ import SwiftUI
           nav = .browse(scope: .all)
         }
       }
+      .onChange(of: store.libraries) { _, libraries in
+        guard case .browseLibrary(let selection) = nav else { return }
+        if !libraries.contains(where: { $0.libraryId == selection.libraryId }) {
+          nav = .home
+        }
+      }
     }
 
     @ViewBuilder
     private func detailContent(for nav: NavDestination) -> some View {
       nav.content(context: context)
         .environment(\.browseLibrarySelection, librarySelection)
-        .environment(\.libraryScopeBinding, scopeBinding(for: nav))
+        .environment(\.libraryScopeBinding, nav.libraryScopeBinding(apply: applyScope))
         .environment(\.readerActions, context.readerActions)
         .handleNavigation(context: context)
     }
 
-    /// Scope binding that keeps the sidebar selection in sync with in-page
-    /// picks: choosing a library selects its sidebar row; choosing All/Pinned
-    /// selects the matching aggregate row.
-    private func scopeBinding(for destination: NavDestination) -> Binding<LibraryBrowseScope>? {
-      switch destination {
-      case .browse(let scope):
-        return Binding(
-          get: { scope },
-          set: { applyScope($0) })
-      case .browseLibrary(let librarySelection):
-        return Binding(
-          get: { .library(librarySelection.libraryId) },
-          set: { applyScope($0) })
-      default:
-        return nil
-      }
-    }
-
+    /// Applies in-page scope picks to the sidebar selection: choosing a
+    /// library selects its sidebar row; choosing All/Pinned selects the
+    /// matching aggregate row.
     private func applyScope(_ scope: LibraryBrowseScope) {
       switch scope {
       case .library(let libraryId):

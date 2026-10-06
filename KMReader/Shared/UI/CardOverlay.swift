@@ -102,7 +102,7 @@ struct CompletedIndicator: View {
   var body: some View {
     // The glyph has no line box of its own; a hidden digit in the count
     // badge's font supplies the identical height and width.
-    Text(verbatim: "0")
+    Text("0")
       .font(badgeFont)
       .opacity(0)
       .accessibilityHidden(true)

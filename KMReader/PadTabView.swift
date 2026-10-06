@@ -146,29 +146,14 @@ import SwiftUI
     private func rootContent(for destination: NavDestination) -> some View {
       destination.content(context: context)
         .environment(\.browseLibrarySelection, destination.librarySelection)
-        .environment(\.libraryScopeBinding, scopeBinding(for: destination))
+        .environment(\.libraryScopeBinding, destination.libraryScopeBinding(apply: applyScope))
         .environment(\.readerActions, context.readerActions)
         .handleNavigation(context: context)
     }
 
-    /// Scope binding that keeps the tab selection in sync with in-page picks:
-    /// choosing a library switches to its tab; choosing All/Pinned switches to
-    /// the matching aggregate tab.
-    private func scopeBinding(for destination: NavDestination) -> Binding<LibraryBrowseScope>? {
-      switch destination {
-      case .browse(let scope):
-        return Binding(
-          get: { scope },
-          set: { applyScope($0) })
-      case .browseLibrary(let librarySelection):
-        return Binding(
-          get: { .library(librarySelection.libraryId) },
-          set: { applyScope($0) })
-      default:
-        return nil
-      }
-    }
-
+    /// Applies in-page scope picks to the tab selection: choosing a library
+    /// switches to its tab; choosing All/Pinned switches to the matching
+    /// aggregate tab.
     private func applyScope(_ scope: LibraryBrowseScope) {
       switch scope {
       case .library(let libraryId):

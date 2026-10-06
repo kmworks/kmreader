@@ -50,7 +50,7 @@ struct DashboardView: View {
   /// libraries' metrics; a single library shows its own name and metrics.
   private var scopedLibraryHeader: some View {
     LibraryScopeHeader(
-      scope: DashboardLibraryScopeStore.shared.scope,
+      scope: dashboardScopeStore.scope,
       pinnedIds: dashboard.libraryIds,
       libraries: scopeStore.libraries,
       allLibrariesEntry: scopeStore.allLibrariesEntry)
@@ -60,11 +60,11 @@ struct DashboardView: View {
   private var dashboardHeader: some View {
     #if os(tvOS)
       HStack {
-        Button {
-          showLibraryPicker = true
-        } label: {
-          Label(String(localized: "Libraries"), systemImage: ContentIcon.library)
-        }
+        LibraryScopeMenu(
+          libraries: scopeStore.libraries,
+          showLibraryPicker: $showLibraryPicker,
+          scope: $dashboardScopeStore.scope,
+          iconOnly: false)
 
         NavigationLink(value: NavDestination.settingsReadingStats) {
           Label(
@@ -119,7 +119,9 @@ struct DashboardView: View {
         isRefreshing = true
       }
     }
-    await scopeStore.refreshMetrics(instanceId: current.instanceId)
+    await scopeStore.refreshMetrics(
+      instanceId: current.instanceId,
+      displayedLibraryIds: dashboardScopeStore.scope.resolvedIds(pinned: dashboard.libraryIds))
     await DashboardSectionRefreshNotifier.postAll(source: .manual, reason: reason)
     if showsToolbarIndicator {
       withAnimation {
@@ -147,9 +149,7 @@ struct DashboardView: View {
       VStack(alignment: .leading, spacing: 0) {
         dashboardHeader
 
-        #if os(iOS) || os(macOS)
-          scopedLibraryHeader
-        #endif
+        scopedLibraryHeader
 
         if showsEmptyLibraryGuidance {
           DashboardEmptyLibraryView(isAdmin: current.isAdmin) {
@@ -212,7 +212,12 @@ struct DashboardView: View {
         }
       }
     }
-    .onChange(of: dashboard.libraryIds) { _, _ in
+    .onChange(of: dashboard.libraryIds) { _, pinnedIds in
+      // The Pinned item only exists while pins do; an emptied pinned set is
+      // the full set, which All already represents.
+      if pinnedIds.isEmpty, dashboardScopeStore.scope == .pinned {
+        dashboardScopeStore.scope = .all
+      }
       // Skip during server switch - dedicated refresh happens when switch completes
       guard !authViewModel.isSwitching else { return }
       // Bypass auto-refresh setting for configuration changes
@@ -221,7 +226,7 @@ struct DashboardView: View {
       }
       WidgetDataService.refreshWidgetData()
     }
-    .onChange(of: DashboardLibraryScopeStore.shared.scope) { _, _ in
+    .onChange(of: dashboardScopeStore.scope) { _, _ in
       // Widget data follows the pinned aggregate, not the session scope.
       guard !authViewModel.isSwitching else { return }
       Task {
@@ -232,10 +237,10 @@ struct DashboardView: View {
       // A scoped library that vanished (deleted or never loaded) falls back
       // to the aggregate.
       guard !libraries.isEmpty,
-        let scopedId = DashboardLibraryScopeStore.shared.scope.libraryId,
+        let scopedId = dashboardScopeStore.scope.libraryId,
         !libraries.contains(where: { $0.libraryId == scopedId })
       else { return }
-      DashboardLibraryScopeStore.shared.reset()
+      dashboardScopeStore.reset()
     }
     .task {
       DashboardRefreshCoordinator.shared.configure(

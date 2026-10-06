@@ -96,16 +96,8 @@ struct OfflineView: View {
       return LibraryMetricsText.join(parts, separator: " · ")
     }
 
-    /// Caption trailing the content-type chip: the scope title in medium
-    /// weight, then the download aggregate of the scoped set in secondary.
     private var chipCaptionText: Text {
-      var text = Text(scopeCaptionTitle).fontWeight(.medium)
-      if let downloadFactsText {
-        text =
-          text + Text(" · ").foregroundColor(.secondary)
-          + downloadFactsText.foregroundColor(.secondary)
-      }
-      return text
+      LibraryMetricsText.scopeCaption(title: scopeCaptionTitle, facts: downloadFactsText)
     }
 
     private var scopeCaptionTitle: String {
@@ -195,6 +187,21 @@ struct OfflineView: View {
         guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
         Task {
           await scopeStore.load(instanceId: current.instanceId)
+        }
+      }
+      .onChange(of: scopeStore.libraries) { _, libraries in
+        // A scoped library that vanished falls back to the aggregate.
+        guard !libraries.isEmpty,
+          let scopedId = scope.libraryId,
+          !libraries.contains(where: { $0.libraryId == scopedId })
+        else { return }
+        scope = .pinned
+      }
+      .onChange(of: dashboard.libraryIds) { _, pinnedIds in
+        // The Pinned item only exists while pins do; an emptied pinned set
+        // is the full set, which All already represents.
+        if pinnedIds.isEmpty, scope == .pinned {
+          scope = .all
         }
       }
       .toolbar {

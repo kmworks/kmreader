@@ -25,18 +25,21 @@ final class LibraryScopeStore {
   }
 
   /// Reloads the admin-only library metrics so scope headers follow the
-  /// dashboard refresh. The all-libraries entry refreshes every time; the
-  /// per-library tagged metrics load only when missing (new library or first
-  /// load) — full reloads stay with the library management surfaces.
+  /// dashboard refresh. The all-libraries entry refreshes every time;
+  /// per-library tagged metrics refresh for the displayed scope's libraries
+  /// and load whenever missing (new library or first load) — full reloads
+  /// stay with the library management surfaces.
   /// No-op for non-admin users and offline mode.
-  func refreshMetrics(instanceId: String) async {
+  func refreshMetrics(instanceId: String, displayedLibraryIds: [String] = []) async {
     if AppConfig.current.isAdmin, !AppConfig.isOffline, !instanceId.isEmpty {
       do {
         let libraries = try await fetchLibraries(instanceId: instanceId)
-        let missingIds = libraries.filter { !hasMetrics($0) }.map(\.libraryId)
+        let displayed = Set(displayedLibraryIds)
+        let refreshIds = libraries.filter { !hasMetrics($0) || displayed.contains($0.libraryId) }
+          .map(\.libraryId)
         let metricsByLibrary = await LibraryMetricsLoader.shared.refreshMetrics(
           instanceId: instanceId,
-          libraryIds: missingIds
+          libraryIds: refreshIds
         )
         let database = try await DatabaseOperator.database()
         try await database.updateLibraryMetrics(
