@@ -69787,6 +69787,71 @@
         }
       }
     },
+    "server.info.statsRequirement" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server statistics require KMServer %@ or later."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serverstatistiken erfordern KMServer %@ oder neuer."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las estadísticas del servidor requieren KMServer %@ o una versión posterior."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les statistiques du serveur nécessitent KMServer %@ ou une version ultérieure."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le statistiche del server richiedono KMServer %@ o una versione successiva."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サーバー統計には KMServer %@ 以降が必要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서버 통계를 사용하려면 KMServer %@ 이상이 필요합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для просмотра статистики сервера требуется KMServer %@ или новее."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务器统计需要 KMServer %@ 或更高版本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "伺服器統計需要 KMServer %@ 或以上版本。"
+          }
+        }
+      }
+    },
     "server.switch" : {
       "localizations" : {
         "de" : {

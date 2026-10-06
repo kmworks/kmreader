@@ -124,7 +124,28 @@ struct ServerInfoView: View {
                   String(localized: "Server Info Unavailable"),
                   systemImage: ServerSection.serverInfo.icon)
               } description: {
-                Text(String(localized: "This server does not provide server statistics."))
+                VStack(spacing: 8) {
+                  Text(String(localized: "This server does not provide server statistics."))
+                  Text(
+                    String.localizedStringWithFormat(
+                      String(
+                        localized: "server.info.statsRequirement",
+                        defaultValue: "Server statistics require KMServer %@ or later."),
+                      ServerStatsService.minimumVersion)
+                  )
+                  .font(.footnote)
+                  .foregroundColor(.secondary)
+                  if let url = URL(string: "https://kmworks.date/server/") {
+                    Link(destination: url) {
+                      Label {
+                        Text(verbatim: "kmworks.date/server")
+                      } icon: {
+                        Image(systemName: AppIcon.externalLink)
+                      }
+                      .font(.footnote)
+                    }
+                  }
+                }
               }
               .frame(maxWidth: .infinity)
               .padding(.vertical, 16)
