@@ -56,7 +56,7 @@ nonisolated enum MediaManagementService {
     let condition: [String: Any] = [
       "allOf": [
         ["mediaStatus": ["operator": "is", "value": MediaStatus.ready.rawValue]],
-        ["poster": ["operator": "isnot", "value": ["selected": true]]],
+        ["poster": ["operator": "isNot", "value": ["selected": true]]],
       ]
     ]
     let search = BookSearch(condition: condition)

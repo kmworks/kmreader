@@ -98,7 +98,7 @@ extension SeriesSearch {
 
     if !filters.excludeReadStatuses.isEmpty {
       let statusConditions = filters.excludeReadStatuses.map {
-        ["readStatus": ["operator": "isnot", "value": $0.rawValue]]
+        ["readStatus": ["operator": "isNot", "value": $0.rawValue]]
       }
       conditions.append(["allOf": statusConditions])
     }
@@ -113,7 +113,7 @@ extension SeriesSearch {
 
     if !filters.excludeSeriesStatuses.isEmpty {
       let statusConditions = filters.excludeSeriesStatuses.map { status in
-        ["seriesStatus": ["operator": "isnot", "value": status]]
+        ["seriesStatus": ["operator": "isNot", "value": status]]
       }
       let wrapperKey = filters.seriesStatusLogic == .all ? "allOf" : "anyOf"
       conditions.append([wrapperKey: statusConditions])
@@ -122,7 +122,7 @@ extension SeriesSearch {
     if let oneshot = filters.oneshot {
       conditions.append([
         "oneshot": [
-          "operator": oneshot ? "istrue" : "isfalse"
+          "operator": oneshot ? "isTrue" : "isFalse"
         ]
       ])
     }
@@ -130,7 +130,7 @@ extension SeriesSearch {
     if let complete = filters.complete {
       conditions.append([
         "complete": [
-          "operator": complete ? "istrue" : "isfalse"
+          "operator": complete ? "isTrue" : "isFalse"
         ]
       ])
     }
@@ -138,7 +138,7 @@ extension SeriesSearch {
     if let deleted = filters.deleted {
       conditions.append([
         "deleted": [
-          "operator": deleted ? "istrue" : "isfalse"
+          "operator": deleted ? "isTrue" : "isFalse"
         ]
       ])
     }

@@ -85,7 +85,7 @@ extension BookSearch {
 
     if !filters.excludeReadStatuses.isEmpty {
       let statusConditions = filters.excludeReadStatuses.map {
-        ["readStatus": ["operator": "isnot", "value": $0.rawValue]]
+        ["readStatus": ["operator": "isNot", "value": $0.rawValue]]
       }
       conditions.append(["allOf": statusConditions])
     }
@@ -114,7 +114,7 @@ extension BookSearch {
     if let oneshot = filters.oneshot {
       conditions.append([
         "oneshot": [
-          "operator": oneshot ? "istrue" : "isfalse"
+          "operator": oneshot ? "isTrue" : "isFalse"
         ]
       ])
     }
@@ -122,7 +122,7 @@ extension BookSearch {
     if let deleted = filters.deleted {
       conditions.append([
         "deleted": [
-          "operator": deleted ? "istrue" : "isfalse"
+          "operator": deleted ? "isTrue" : "isFalse"
         ]
       ])
     }
