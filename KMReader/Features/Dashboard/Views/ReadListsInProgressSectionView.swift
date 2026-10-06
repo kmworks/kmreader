@@ -19,7 +19,8 @@ struct ReadListsInProgressSectionView: View {
   /// The library scope hides entries by the library of the book each list
   /// continues with; which book that is never depends on the scope.
   private var continuations: [ReadListContinuation] {
-    let librarySelection = Set(dashboard.libraryIds)
+    let librarySelection = Set(
+      DashboardLibraryScopeStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds))
     return ReadListReadingService.shared.continuations.filter {
       librarySelection.isEmpty || librarySelection.contains($0.libraryId)
     }

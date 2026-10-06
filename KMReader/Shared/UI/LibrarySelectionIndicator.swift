@@ -5,21 +5,12 @@
 
 import SwiftUI
 
-/// Selection checkmark for library rows: a single circle in multi-select, a
-/// radio circle in single-select.
+/// Selection checkmark for library rows.
 struct LibrarySelectionIndicator: View {
   let isSelected: Bool
-  var isSingleSelectionMode: Bool = false
-
-  private var indicatorName: String {
-    if isSingleSelectionMode {
-      return isSelected ? "largecircle.fill.circle" : "circle"
-    }
-    return isSelected ? "checkmark.circle.fill" : "circle"
-  }
 
   var body: some View {
-    Image(systemName: indicatorName)
+    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
       .foregroundStyle(isSelected ? Color.primary : .secondary)
       .font(.title3)
       .animation(.appCurve(), value: isSelected)

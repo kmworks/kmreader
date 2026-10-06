@@ -8,7 +8,9 @@ import SwiftUI
 
 enum NavDestination: Hashable {
   case home
-  case browse
+  /// Aggregate browse; only the `.all`/`.pinned` scopes occur (single
+  /// libraries are `browseLibrary`).
+  case browse(scope: LibraryBrowseScope)
   case browseSearch
   case browseCollections
   case browseReadLists
@@ -91,7 +93,9 @@ enum NavDestination: Hashable {
         authViewModel: context.authViewModel,
         readerPresentation: context.readerPresentation
       )
-    case .browse:
+    case .browse(_):
+      // The scope is carried for the shell's selection mapping; the page
+      // reads it back through the shell-provided scope binding.
       BrowseView(authViewModel: context.authViewModel)
     case .browseSearch:
       BrowseView(

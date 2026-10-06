@@ -14,6 +14,7 @@ struct DashboardView: View {
   @State private var showLibraryAddSheet = false
   @State private var isCheckingConnection = false
   @State private var scopeStore = LibraryScopeStore()
+  @State private var dashboardScopeStore = DashboardLibraryScopeStore.shared
   @State private var searchQuery = ""
   // Results re-query only on submit, so the submitted text is stored apart
   // from the live field text.
@@ -43,6 +44,16 @@ struct DashboardView: View {
     #else
       return false
     #endif
+  }
+
+  /// Header content for the active scope: All and Pinned aggregate the covered
+  /// libraries' metrics; a single library shows its own name and metrics.
+  private var scopedLibraryHeader: some View {
+    LibraryScopeHeader(
+      scope: DashboardLibraryScopeStore.shared.scope,
+      pinnedIds: dashboard.libraryIds,
+      libraries: scopeStore.libraries,
+      allLibrariesEntry: scopeStore.allLibrariesEntry)
   }
 
   @ViewBuilder
@@ -108,6 +119,7 @@ struct DashboardView: View {
         isRefreshing = true
       }
     }
+    await scopeStore.refreshMetrics(instanceId: current.instanceId)
     await DashboardSectionRefreshNotifier.postAll(source: .manual, reason: reason)
     if showsToolbarIndicator {
       withAnimation {
@@ -134,6 +146,10 @@ struct DashboardView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         dashboardHeader
+
+        #if os(iOS) || os(macOS)
+          scopedLibraryHeader
+        #endif
 
         if showsEmptyLibraryGuidance {
           DashboardEmptyLibraryView(isAdmin: current.isAdmin) {
@@ -205,6 +221,22 @@ struct DashboardView: View {
       }
       WidgetDataService.refreshWidgetData()
     }
+    .onChange(of: DashboardLibraryScopeStore.shared.scope) { _, _ in
+      // Widget data follows the pinned aggregate, not the session scope.
+      guard !authViewModel.isSwitching else { return }
+      Task {
+        await refreshDashboard(reason: "Library scope changed")
+      }
+    }
+    .onChange(of: scopeStore.libraries) { _, libraries in
+      // A scoped library that vanished (deleted or never loaded) falls back
+      // to the aggregate.
+      guard !libraries.isEmpty,
+        let scopedId = DashboardLibraryScopeStore.shared.scope.libraryId,
+        !libraries.contains(where: { $0.libraryId == scopedId })
+      else { return }
+      DashboardLibraryScopeStore.shared.reset()
+    }
     .task {
       DashboardRefreshCoordinator.shared.configure(
         autoRefreshEnabled: enableSSEAutoRefresh
@@ -251,18 +283,27 @@ struct DashboardView: View {
 
         #if os(macOS)
           ToolbarItem(placement: .navigation) {
-            LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+            LibraryScopeMenu(
+              libraries: scopeStore.libraries,
+              showLibraryPicker: $showLibraryPicker,
+              scope: $dashboardScopeStore.scope)
           }
         #endif
 
         #if os(iOS)
           if PlatformHelper.isPad {
             ToolbarItem(placement: .cancellationAction) {
-              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              LibraryScopeMenu(
+                libraries: scopeStore.libraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: $dashboardScopeStore.scope)
             }
           } else {
             ToolbarItem(placement: .confirmationAction) {
-              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              LibraryScopeMenu(
+                libraries: scopeStore.libraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: $dashboardScopeStore.scope)
             }
             if #available(iOS 26.0, *) {
               ToolbarSpacer(.fixed, placement: .confirmationAction)

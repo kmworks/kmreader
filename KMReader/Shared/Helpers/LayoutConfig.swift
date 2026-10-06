@@ -235,27 +235,33 @@ struct LayoutConfig {
     #endif
   }
 
-  /// Vertical padding inside a dashboard section band, above the header and
-  /// below the card strip. Both ends are equal so content sits evenly between
-  /// the band's gradient edges (Apple Books style); adjacent bands touch, so
-  /// each band's gray gradient edge is the separator between sections.
-  static var dashboardSectionVerticalPadding: CGFloat {
+  /// Top padding inside a dashboard section band, above the section header.
+  static var dashboardSectionTopPadding: CGFloat {
     #if os(tvOS)
-      return 40
-    #else
-      return 30
-    #endif
-  }
-
-  /// Band padding when the gradient background is off: without a visible band
-  /// edge the full padding reads as empty space between sections, so the gap
-  /// shrinks to twice the header-to-cards spacing.
-  static var dashboardSectionVerticalPaddingCompact: CGFloat {
-    #if os(tvOS)
-      return 24
+      return 32
     #else
       return 16
     #endif
+  }
+
+  /// Bottom padding inside a dashboard section band, below the card strip.
+  /// Adjacent bands touch and the gradient edge is the separator (Apple Books
+  /// style); without the gradient the edge is invisible, so the padding
+  /// shrinks to the top value to keep sections from drifting apart.
+  static func dashboardSectionBottomPadding(gradientBackground: Bool) -> CGFloat {
+    #if os(tvOS)
+      return gradientBackground ? 48 : 32
+    #else
+      return gradientBackground ? 24 : 16
+    #endif
+  }
+
+  /// Vertical padding around the dashboard scope header: applied above it
+  /// always so it clears the navigation title, and below it only when the
+  /// gradient background is on so the row keeps a gap from the visible band
+  /// edge.
+  static var dashboardScopeHeaderPadding: CGFloat {
+    8
   }
 
   /// Spacing between a dashboard section header and its card strip. Tighter

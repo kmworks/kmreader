@@ -32,6 +32,10 @@ struct DashboardSectionView: View {
     cardKind == .horizontal ? LayoutConfig.horizontalCoverWidth : nil
   }
 
+  private var effectiveLibraryIds: [String] {
+    DashboardLibraryScopeStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds)
+  }
+
   var body: some View {
     DashboardSectionLayout(
       section: section,
@@ -46,7 +50,7 @@ struct DashboardSectionView: View {
             .id(item.id)
             .frame(width: itemWidth)
             .onAppear {
-              viewModel.loadMoreIfNeeded(after: item, libraryIds: dashboard.libraryIds)
+              viewModel.loadMoreIfNeeded(after: item, libraryIds: effectiveLibraryIds)
             }
         }
       }
@@ -60,7 +64,7 @@ struct DashboardSectionView: View {
     }
     .onAppear {
       DashboardRefreshCoordinator.shared.registerSection(section)
-      viewModel.ensureLoaded(libraryIds: dashboard.libraryIds)
+      viewModel.ensureLoaded(libraryIds: effectiveLibraryIds)
     }
     .onDisappear {
       DashboardRefreshCoordinator.shared.unregisterSection(section)
@@ -110,7 +114,7 @@ struct DashboardSectionView: View {
       return
     }
 
-    let libraryIds = dashboard.libraryIds
+    let libraryIds = effectiveLibraryIds
     Task {
       logger.debug("Dashboard section \(section) reloading")
       defer {

@@ -21,12 +21,15 @@ struct OfflineView: View {
   @State private var refreshTrigger = UUID()
   @State private var searchQuery: String = ""
   @State private var activeSearchText: String = ""
+  @State private var showFilterSheet = false
+  @State private var showSavedFilters = false
+  @State private var scope: LibraryBrowseScope = .pinned
   #if os(iOS) || os(macOS)
     @State private var showLibraryPicker = false
     @State private var scopeStore = LibraryScopeStore()
+    @State private var downloadStats: (count: Int, sizeBytes: Int64)?
+    @State private var progressTracker = DownloadProgressTracker.shared
   #endif
-  @State private var showFilterSheet = false
-  @State private var showSavedFilters = false
 
   private var coverSyncViewModel: OfflineCoverSyncViewModel {
     OfflineCoverSyncViewModel.shared
@@ -43,7 +46,7 @@ struct OfflineView: View {
     if let library = librarySelection {
       return [library.libraryId]
     }
-    return dashboard.libraryIds
+    return scope.resolvedIds(pinned: dashboard.libraryIds)
   }
 
   private var resolvedLibraryIdsKey: String {
@@ -76,6 +79,44 @@ struct OfflineView: View {
     resolvedOfflineContent == .books ? $bookBrowseLayout : $seriesBrowseLayout
   }
 
+  #if os(iOS) || os(macOS)
+    /// Facts line for the scope caption: total downloaded size first, then the
+    /// downloaded-books count.
+    private var downloadFactsText: Text? {
+      guard let downloadStats, downloadStats.count > 0 else { return nil }
+      var parts: [Text] = []
+      if downloadStats.sizeBytes > 0 {
+        parts.append(Text(Double(downloadStats.sizeBytes).humanReadableFileSize))
+      }
+      parts.append(
+        Text(
+          String.localizedStringWithFormat(
+            String(localized: "library.list.metrics.books", defaultValue: "%lld books"),
+            downloadStats.count)))
+      return LibraryMetricsText.join(parts, separator: " · ")
+    }
+
+    /// Caption trailing the content-type chip: the scope title in medium
+    /// weight, then the download aggregate of the scoped set in secondary.
+    private var chipCaptionText: Text {
+      var text = Text(scopeCaptionTitle).fontWeight(.medium)
+      if let downloadFactsText {
+        text =
+          text + Text(" · ").foregroundColor(.secondary)
+          + downloadFactsText.foregroundColor(.secondary)
+      }
+      return text
+    }
+
+    private var scopeCaptionTitle: String {
+      if let selection = librarySelection {
+        return selection.name
+      }
+      return scope.title(pinnedIds: dashboard.libraryIds, libraries: scopeStore.libraries)
+        ?? String(localized: "All Libraries")
+    }
+  #endif
+
   /// Pins the search bar only on iPhone: there it renders as a drawer row whose
   /// hide/reveal animation fights the refresh control during pull-to-refresh.
   /// iPad and macOS keep the search field in the toolbar, which never conflicts.
@@ -90,22 +131,24 @@ struct OfflineView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        if let library = librarySelection {
-          VStack(alignment: .leading) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-              Image(systemName: ContentIcon.library)
-              Text(library.name)
-                .font(.title2)
-              if let fileSize = library.fileSize {
-                Text(fileSize.humanReadableFileSize)
-                  .font(.subheadline)
-                  .foregroundColor(.secondary)
+        #if !os(iOS) && !os(macOS)
+          if let library = librarySelection {
+            VStack(alignment: .leading) {
+              HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: ContentIcon.library)
+                Text(library.name)
+                  .font(.title2)
+                if let fileSize = library.fileSize {
+                  Text(fileSize.humanReadableFileSize)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                }
+                Spacer()
               }
-              Spacer()
             }
+            .padding()
           }
-          .padding()
-        }
+        #endif
 
         downloadShortcuts
           .padding(.horizontal)
@@ -113,13 +156,17 @@ struct OfflineView: View {
           .padding(.bottom, 12)
 
         HStack {
-          Spacer()
-          Picker("", selection: offlineContentBinding) {
-            Text(String(localized: "browse.content.series")).tag(BrowseContentType.series)
-            Text(String(localized: "browse.content.books")).tag(BrowseContentType.books)
-          }
-          .pickerStyle(.segmented)
-          .labelsHidden()
+          BrowseContentTypeMenu(
+            selection: offlineContentBinding,
+            types: [.series, .books],
+            counts: [:]
+          )
+          #if os(iOS) || os(macOS)
+            chipCaptionText
+              .font(.caption)
+              .lineLimit(1)
+              .truncationMode(.tail)
+          #endif
           Spacer()
         }
         .padding(.horizontal)
@@ -138,6 +185,12 @@ struct OfflineView: View {
       .task(id: current.instanceId) {
         await scopeStore.refresh(instanceId: current.instanceId)
       }
+      .task(id: "\(current.instanceId)|\(resolvedLibraryIdsKey)") {
+        await loadDownloadStats()
+      }
+      .onChange(of: progressTracker.queueUpdateToken) { _, _ in
+        Task { await loadDownloadStats() }
+      }
       .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
         guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
         Task {
@@ -155,7 +208,10 @@ struct OfflineView: View {
         #if os(macOS)
           if librarySelection == nil {
             ToolbarItem(placement: .navigation) {
-              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+              LibraryScopeMenu(
+                libraries: scopeStore.libraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: $scope)
             }
           }
         #endif
@@ -163,11 +219,17 @@ struct OfflineView: View {
           if librarySelection == nil {
             if PlatformHelper.isPad {
               ToolbarItem(placement: .cancellationAction) {
-                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+                LibraryScopeMenu(
+                  libraries: scopeStore.libraries,
+                  showLibraryPicker: $showLibraryPicker,
+                  scope: $scope)
               }
             } else {
               ToolbarItem(placement: .confirmationAction) {
-                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
+                LibraryScopeMenu(
+                  libraries: scopeStore.libraries,
+                  showLibraryPicker: $showLibraryPicker,
+                  scope: $scope)
               }
               if #available(iOS 26.0, *) {
                 ToolbarSpacer(.fixed, placement: .confirmationAction)
@@ -290,4 +352,18 @@ struct OfflineView: View {
     guard !authViewModel.isSwitching else { return }
     await refreshBrowse()
   }
+
+  #if os(iOS) || os(macOS)
+    private func loadDownloadStats() async {
+      let instanceId = current.instanceId
+      let libraryIds = resolvedLibraryIds
+      guard !instanceId.isEmpty else {
+        downloadStats = nil
+        return
+      }
+      downloadStats =
+        (try? await DatabaseOperator.database().fetchDownloadedBooksStats(
+          instanceId: instanceId, libraryIds: libraryIds)) ?? (0, 0)
+    }
+  #endif
 }

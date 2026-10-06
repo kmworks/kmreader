@@ -26,6 +26,7 @@ enum DashboardLibrarySelectionStore {
 
   @MainActor
   static func loadSelection(for instanceId: String, preferCachedIfUnset: Bool = false) async {
+    DashboardLibraryScopeStore.shared.reset()
     guard !instanceId.isEmpty else {
       applyCachedSelection([])
       return

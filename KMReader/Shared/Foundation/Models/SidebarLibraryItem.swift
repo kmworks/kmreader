@@ -37,7 +37,46 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
     self.readlistsCount = readlistsCount
   }
 
+  init(selection: LibrarySelection) {
+    self.init(
+      libraryId: selection.libraryId,
+      name: selection.name,
+      fileSize: selection.fileSize,
+      booksCount: selection.booksCount,
+      seriesCount: selection.seriesCount,
+      sidecarsCount: selection.sidecarsCount,
+      collectionsCount: selection.collectionsCount,
+      readlistsCount: selection.readlistsCount
+    )
+  }
+
   var displayBookCount: Int? {
     booksCount.map { Int($0) }
+  }
+
+  /// Whether any admin metrics are present.
+  var hasAnyMetrics: Bool {
+    fileSize != nil || seriesCount != nil || booksCount != nil || sidecarsCount != nil
+      || collectionsCount != nil || readlistsCount != nil
+  }
+
+  /// Client-side sum of per-library metrics; a field stays nil when no
+  /// library reports it. For the full set prefer the server's all-libraries
+  /// entry instead — overlapping library roots make sums overstate file size.
+  static func aggregating(_ items: [SidebarLibraryItem]) -> SidebarLibraryItem {
+    func sum(_ keyPath: KeyPath<SidebarLibraryItem, Double?>) -> Double? {
+      let values = items.compactMap { $0[keyPath: keyPath] }
+      return values.isEmpty ? nil : values.reduce(0, +)
+    }
+    return SidebarLibraryItem(
+      libraryId: "",
+      name: "",
+      fileSize: sum(\.fileSize),
+      booksCount: sum(\.booksCount),
+      seriesCount: sum(\.seriesCount),
+      sidecarsCount: sum(\.sidecarsCount),
+      collectionsCount: sum(\.collectionsCount),
+      readlistsCount: sum(\.readlistsCount)
+    )
   }
 }
