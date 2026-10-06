@@ -24,6 +24,7 @@ struct OfflineView: View {
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
   @State private var scope: LibraryBrowseScope = .pinned
+  @State private var shortcutsWidth: CGFloat = PlatformHelper.isPad ? .infinity : 0
   #if os(iOS) || os(macOS)
     @State private var showLibraryPicker = false
     @State private var scopeStore = LibraryScopeStore()
@@ -166,6 +167,7 @@ struct OfflineView: View {
 
         browseContentView
       }
+      .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { shortcutsWidth = $0 }
     }
     .inlineLargeBarTitleStyle(enabled: librarySelection == nil)
     .platformNavigationTitle(title)
@@ -319,31 +321,55 @@ struct OfflineView: View {
     }
   }
 
+  private let shortcutsWideLayoutMinimumWidth: CGFloat = 640
+
+  private var shortcutsSideBySide: Bool {
+    shortcutsWidth >= shortcutsWideLayoutMinimumWidth
+  }
+
+  @ViewBuilder
   private var downloadShortcuts: some View {
-    VStack(spacing: 8) {
-      NavigationLink(value: NavDestination.settingsOfflineTasks) {
-        OfflineShortcutRow(
-          title: OfflineSection.tasks.title,
-          subtitle: String(localized: "offline.shortcuts.tasks.subtitle"),
-          systemImage: OfflineSection.tasks.icon,
-          color: OfflineSection.tasks.color
-        ) {
-          OfflineTasksStatusView()
-        }
+    if shortcutsSideBySide {
+      HStack(spacing: 8) {
+        tasksShortcut
+        booksShortcut
       }
-      .adaptiveButtonStyle(.plain)
-      NavigationLink(value: NavDestination.settingsOfflineBooks) {
-        OfflineShortcutRow(
-          title: OfflineSection.books.title,
-          subtitle: String(localized: "offline.shortcuts.books.subtitle"),
-          systemImage: OfflineSection.books.icon,
-          color: OfflineSection.books.color
-        ) {
-          OfflineBooksCountView()
-        }
+    } else {
+      VStack(spacing: 8) {
+        tasksShortcut
+        booksShortcut
       }
-      .adaptiveButtonStyle(.plain)
     }
+  }
+
+  private var tasksShortcut: some View {
+    NavigationLink(value: NavDestination.settingsOfflineTasks) {
+      OfflineShortcutRow(
+        title: OfflineSection.tasks.title,
+        subtitle: String(localized: "offline.shortcuts.tasks.subtitle"),
+        systemImage: OfflineSection.tasks.icon,
+        color: OfflineSection.tasks.color
+      ) {
+        OfflineTasksStatusView()
+      }
+    }
+    .adaptiveButtonStyle(.plain)
+    .frame(maxWidth: .infinity)
+  }
+
+  private var booksShortcut: some View {
+    NavigationLink(value: NavDestination.settingsOfflineBooks) {
+      OfflineShortcutRow(
+        title: OfflineSection.books.title,
+        subtitle: String(localized: "offline.shortcuts.books.subtitle"),
+        systemImage: OfflineSection.books.icon,
+        color: OfflineSection.books.color
+      ) {
+        OfflineBooksCountView()
+      }
+    }
+    .adaptiveButtonStyle(.plain)
+    .frame(maxWidth: .infinity)
   }
 
   private func refreshBrowse() async {
