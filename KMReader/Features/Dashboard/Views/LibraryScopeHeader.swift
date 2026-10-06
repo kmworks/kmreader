@@ -8,8 +8,8 @@ import SwiftUI
 /// Library identity line shown on the Dashboard for the active scope: icon
 /// and title matching the scope menu (books.vertical for All/a library, pin
 /// for Pinned), then a single truncating facts line — file size first, then
-/// series/books/sidecars counts (admin-only metrics; the line degrades to the
-/// bare title without them).
+/// series/books counts (admin-only metrics; the line degrades to the bare
+/// title without them).
 struct LibraryScopeHeader: View {
   let scope: LibraryBrowseScope
   let pinnedIds: [String]

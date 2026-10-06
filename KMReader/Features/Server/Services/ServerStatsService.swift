@@ -11,6 +11,9 @@ import Foundation
 nonisolated enum ServerStatsService {
   private static let apiClient = APIClient.shared
 
+  /// The first kmrs version shipping the stats endpoints.
+  static let minimumVersion = "0.18.2"
+
   // An unsupported verdict expires after this interval so a server upgrade is picked up.
   private static let capabilityRecheckInterval: TimeInterval = 24 * 60 * 60
 

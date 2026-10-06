@@ -119,12 +119,33 @@ struct ServerInfoView: View {
         if isUnsupported {
           if displayedTaskQueueStatus.count == 0 {
             Section {
-              ContentUnavailableView {
-                Label(
-                  String(localized: "Server Info Unavailable"),
-                  systemImage: ServerSection.serverInfo.icon)
-              } description: {
-                Text(String(localized: "This server does not provide server statistics."))
+              VStack(spacing: 4) {
+                ContentUnavailableView {
+                  Label(
+                    String(localized: "Server Info Unavailable"),
+                    systemImage: ServerSection.serverInfo.icon)
+                } description: {
+                  Text(String(localized: "This server does not provide server statistics."))
+                }
+                Text(
+                  String.localizedStringWithFormat(
+                    String(
+                      localized: "server.info.statsRequirement",
+                      defaultValue: "Server statistics require KMServer %@ or later."),
+                    ServerStatsService.minimumVersion)
+                )
+                .font(.footnote)
+                .foregroundColor(.secondary)
+                if let url = URL(string: "https://kmworks.date/server/") {
+                  Link(destination: url) {
+                    HStack(spacing: 4) {
+                      Text(verbatim: "kmworks.date/server")
+                      Image(systemName: AppIcon.externalLink)
+                        .imageScale(.small)
+                    }
+                    .font(.footnote)
+                  }
+                }
               }
               .frame(maxWidth: .infinity)
               .padding(.vertical, 16)

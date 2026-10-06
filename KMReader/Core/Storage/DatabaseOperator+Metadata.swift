@@ -39,6 +39,8 @@ extension DatabaseOperator {
         libraries[index].booksCount = metrics.booksCount
         libraries[index].seriesCount = metrics.seriesCount
         libraries[index].sidecarsCount = metrics.sidecarsCount
+        libraries[index].collectionsCount = metrics.collectionsCount
+        libraries[index].readlistsCount = metrics.readlistsCount
         try save(libraries[index], db: db)
       }
     }
@@ -620,13 +622,15 @@ extension DatabaseOperator {
     fetchBooksCount(instanceId: instanceId, status: "downloaded")
   }
 
-  /// Downloaded-books aggregate for the offline scope header: count and total
-  /// on-disk size, restricted to a library subset when ids are given.
-  func fetchDownloadedBooksStats(instanceId: String, libraryIds: [String]) -> (count: Int, sizeBytes: Int64) {
+  /// Offline books aggregate for the scope caption and content chip: the count
+  /// covers the books the offline list shows, the size sums downloaded books
+  /// only — pending books have no data yet.
+  func fetchOfflineBooksStats(instanceId: String, libraryIds: [String]) -> (count: Int, sizeBytes: Int64) {
     (try? read { db in
       var sql = """
-        SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM \(KomgaBook.databaseTableName)
-        WHERE instance_id = ? AND download_status_raw = 'downloaded'
+        SELECT COUNT(*), COALESCE(SUM(CASE WHEN download_status_raw = 'downloaded' THEN size_bytes END), 0)
+        FROM \(KomgaBook.databaseTableName)
+        WHERE instance_id = ? AND \(Self.offlineBooksSQLPredicate)
         """
       var arguments: StatementArguments = [instanceId]
       Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)
@@ -635,6 +639,19 @@ extension DatabaseOperator {
       let sizeBytes: Int64 = row[1]
       return (count, sizeBytes)
     }) ?? (0, 0)
+  }
+
+  /// Downloaded-series count for the offline content chip.
+  func fetchDownloadedSeriesCount(instanceId: String, libraryIds: [String]) -> Int {
+    (try? read { db in
+      var sql = """
+        SELECT COUNT(*) FROM \(KomgaSeries.databaseTableName)
+        WHERE instance_id = ? AND \(Self.offlineSeriesSQLPredicate)
+        """
+      var arguments: StatementArguments = [instanceId]
+      Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)
+      return try Int.fetchOne(db, sql: sql, arguments: arguments) ?? 0
+    }) ?? 0
   }
 
   func fetchDownloadedBooks(instanceId: String) -> [Book] {

@@ -18,13 +18,13 @@ enum LibraryMetricsText {
     ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .binary)
   }
 
-  /// Facts line: file size first, then series/books/sidecars counts.
+  /// Facts line: file size first, then series/books counts.
   static func sizeAndMetrics(for library: SidebarLibraryItem) -> Text? {
     var parts: [Text] = []
     if let fileSize = library.fileSize {
       parts.append(Text(fileSize.humanReadableFileSize))
     }
-    if let metrics = metrics(for: library) {
+    if let metrics = metrics(for: library, includeSidecars: false) {
       parts.append(metrics)
     }
     return join(parts, separator: " · ")
@@ -42,8 +42,9 @@ enum LibraryMetricsText {
     return text
   }
 
-  /// Per-library metrics: series, books, and sidecars on one line.
-  static func metrics(for library: SidebarLibraryItem) -> Text? {
+  /// Per-library metrics: series and books on one line, plus sidecars for
+  /// list rows that want them.
+  static func metrics(for library: SidebarLibraryItem, includeSidecars: Bool = true) -> Text? {
     var parts: [Text] = []
 
     if let seriesCount = library.seriesCount {
@@ -60,7 +61,7 @@ enum LibraryMetricsText {
             String(localized: "library.list.metrics.books", defaultValue: "%lld books"),
             Int(booksCount))))
     }
-    if let sidecarsCount = library.sidecarsCount {
+    if includeSidecars, let sidecarsCount = library.sidecarsCount {
       parts.append(
         Text(
           String.localizedStringWithFormat(
