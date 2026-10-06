@@ -5,24 +5,21 @@
 
 import Foundation
 
-/// `GET /api/v1/stats/server` (kmrs-private, admin only): task queue depth
-/// merged with per-type execution metrics, process stats, and global totals.
+/// `GET /api/v1/stats/server` (kmrs-private, admin only): per-type task
+/// execution metrics, process stats, and global totals.
 nonisolated struct ServerStatsResponse: Decodable, Sendable {
   let tasks: TaskStats
   let process: ProcessStats
   let totals: Totals
 
   struct TaskStats: Decodable, Sendable {
-    let queueSize: Int
     let types: [TaskTypeStats]
   }
 
   struct TaskTypeStats: Decodable, Sendable {
     let type: String
-    let queued: Int
     let executions: Double
     let totalTimeMs: Double
-    let maxTimeMs: Double
     let failures: Double
   }
 

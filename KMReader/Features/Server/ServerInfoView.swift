@@ -57,11 +57,9 @@ struct ServerInfoView: View {
           .listRowBackground(Color.clear)
         #endif
 
-        // Task Queue Status Section (from SSE)
         if displayedTaskQueueStatus.count > 0 {
           Section {
             VStack(spacing: 12) {
-              // Total Tasks with highlight
               HStack {
                 Label(String(localized: "Total Tasks"), systemImage: "list.bullet.clipboard")
                   .font(.headline)
@@ -77,7 +75,6 @@ struct ServerInfoView: View {
               .padding(.vertical, 4)
               .tvFocusableHighlight()
 
-              // Task types with animation
               if !displayedTaskQueueStatus.countByType.isEmpty {
                 Divider()
                 ForEach(Array(displayedTaskQueueStatus.countByType.keys.sorted()), id: \.self) {
