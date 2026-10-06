@@ -56,6 +56,7 @@ struct OfflineShortcutRow<Accessory: View>: View {
           Text(subtitle)
             .font(.caption)
             .foregroundColor(.secondary)
+            .lineLimit(1)
         }
       }
 
