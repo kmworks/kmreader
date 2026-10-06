@@ -112,9 +112,9 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
     case .readListsInProgress:
       return "list.number"
     case .pinnedCollections:
-      return "square.stack.3d.down.right"
+      return ContentIcon.collection
     case .pinnedReadLists:
-      return "list.bullet.rectangle"
+      return ContentIcon.readList
     case .recentlyReleasedBooks:
       return "calendar.badge.clock"
     case .recentlyAddedBooks:

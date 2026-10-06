@@ -32,11 +32,11 @@ struct LibraryScopeMenu: View {
     case .all:
       return "line.3.horizontal"
     case .library:
-      return "line.3.horizontal.decrease"
+      return AppIcon.filter
     case .pinned:
       let pinnedIds = dashboard.libraryIds
       if pinnedIds.count == 1, libraries.count > 1 {
-        return "line.3.horizontal.decrease"
+        return AppIcon.filter
       }
       if !pinnedIds.isEmpty, pinnedIds.count < libraries.count {
         return "checklist"

@@ -482,7 +482,7 @@
 
             if let error = viewModel.errorMessage, !viewModel.isLoading {
               ReaderUnavailableView(
-                icon: "exclamationmark.triangle",
+                icon: AppIcon.loadError,
                 title: "Failed to load media",
                 message: error,
                 onRetry: {
@@ -743,7 +743,7 @@
             Button {
               closeReader()
             } label: {
-              Image(systemName: "xmark")
+              Image(systemName: AppIcon.close)
                 .contentShape(Circle())
             }
             .controlSize(.extraLarge)
@@ -766,7 +766,7 @@
                   showingQuickActions.toggle()
                 }
               } label: {
-                Image(systemName: showingQuickActions ? "xmark" : "line.3.horizontal")
+                Image(systemName: showingQuickActions ? AppIcon.close : "line.3.horizontal")
                   .padding(2)
                   .contentTransition(.symbolEffect(.replace, options: .nonRepeating))
                   .contentShape(Circle())
@@ -848,7 +848,7 @@
           HStack {
             Text("Book Info")
               .font(.callout)
-            Image(systemName: "info.circle")
+            Image(systemName: AppIcon.details)
           }
           .contentShape(Capsule())
         }
@@ -862,7 +862,7 @@
           HStack {
             Text("Settings")
               .font(.callout)
-            Image(systemName: "gearshape")
+            Image(systemName: AppIcon.settings)
           }
           .contentShape(Capsule())
         }

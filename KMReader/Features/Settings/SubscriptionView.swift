@@ -139,7 +139,7 @@ struct SubscriptionView: View {
           await StoreManager.shared.loadProducts()
         }
       } label: {
-        Label(String(localized: "Try Again"), systemImage: "arrow.clockwise")
+        Label(String(localized: "Try Again"), systemImage: AppIcon.refresh)
       }
       .adaptiveButtonStyle(.bordered)
       .padding(.top, 8)

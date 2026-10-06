@@ -74,7 +74,7 @@
                   addCustomFont()
                 } label: {
                   HStack(spacing: 4) {
-                    Image(systemName: "plus.circle.fill")
+                    Image(systemName: AppIcon.addRow)
                     Text("Add")
                   }.foregroundStyle(.white)
                 }
@@ -130,7 +130,7 @@
                   Button(role: .destructive) {
                     removeCustomFont(font)
                   } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label("Delete", systemImage: AppIcon.delete)
                   }
                 }
               }

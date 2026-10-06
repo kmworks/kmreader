@@ -331,7 +331,7 @@ struct OfflineTaskRow: View {
               onChanged()
             }
           } label: {
-            Image(systemName: task.isFailed ? "trash" : "xmark.circle")
+            Image(systemName: task.isFailed ? AppIcon.delete : "xmark.circle")
               .foregroundColor(.red)
               .frame(minWidth: 44, minHeight: 44)
               .contentShape(Rectangle())

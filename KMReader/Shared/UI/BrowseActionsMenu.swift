@@ -56,11 +56,11 @@ struct BrowseActionsMenu: View {
       Button {
         deferMenuActionPresentation { onShowFilter() }
       } label: {
-        Label(String(localized: "Filter"), systemImage: "line.3.horizontal.decrease")
+        Label(String(localized: "Filter"), systemImage: AppIcon.filter)
       }
       .disabled(!isFilterEnabled)
     } label: {
-      Image(systemName: "ellipsis")
+      Image(systemName: AppIcon.more)
     }
   }
 }

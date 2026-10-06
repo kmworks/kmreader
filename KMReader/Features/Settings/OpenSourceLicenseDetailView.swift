@@ -22,7 +22,7 @@ struct OpenSourceLicenseDetailView: View {
           HStack {
             Label(String(localized: "Source Code"), systemImage: "chevron.left.forwardslash.chevron.right")
             Spacer()
-            Image(systemName: "arrow.up.right.square")
+            Image(systemName: AppIcon.externalLink)
               .font(.caption)
               .foregroundColor(.secondary)
           }

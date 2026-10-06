@@ -38,7 +38,7 @@ enum LibraryAction: CaseIterable {
     case .scanDeep:
       return "arrow.triangle.2.circlepath"
     case .analyze:
-      return "waveform.path.ecg"
+      return AppIcon.analyze
     case .refreshMetadata:
       return "arrow.triangle.branch"
     case .emptyTrash:

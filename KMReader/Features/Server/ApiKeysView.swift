@@ -34,7 +34,7 @@ struct ApiKeysView: View {
             } label: {
               HStack {
                 Spacer()
-                Image(systemName: "plus")
+                Image(systemName: AppIcon.add)
                 Spacer()
               }
             }
@@ -108,7 +108,7 @@ struct ApiKeysView: View {
                         showingDeleteConfirmation = true
                       }
                     } label: {
-                      Label(String(localized: "Delete"), systemImage: "trash")
+                      Label(String(localized: "Delete"), systemImage: AppIcon.delete)
                     }
                   }
                 }
@@ -129,7 +129,7 @@ struct ApiKeysView: View {
               showingAddSheet = true
             }
           } label: {
-            Image(systemName: "plus")
+            Image(systemName: AppIcon.add)
           }
         }
       }

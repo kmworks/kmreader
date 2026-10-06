@@ -99,14 +99,14 @@ struct EpubThemePresetsView: View {
         Button(role: .destructive) {
           deletePreset(preset)
         } label: {
-          Label("Delete", systemImage: "trash")
+          Label("Delete", systemImage: AppIcon.delete)
         }
 
         Button {
           newName = preset.name
           presetToRename = preset
         } label: {
-          Label("Rename", systemImage: "pencil")
+          Label("Rename", systemImage: AppIcon.edit)
         }
       }
     #endif
@@ -122,7 +122,7 @@ struct EpubThemePresetsView: View {
         newName = preset.name
         presetToRename = preset
       } label: {
-        Label("Rename", systemImage: "pencil")
+        Label("Rename", systemImage: AppIcon.edit)
       }
 
       Divider()
@@ -130,7 +130,7 @@ struct EpubThemePresetsView: View {
       Button(role: .destructive) {
         deletePreset(preset)
       } label: {
-        Label("Delete", systemImage: "trash")
+        Label("Delete", systemImage: AppIcon.delete)
       }
     }
   }

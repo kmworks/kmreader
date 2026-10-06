@@ -85,7 +85,7 @@ struct SettingsDashboardView: View {
                 Button {
                   controller.showSection(section)
                 } label: {
-                  Image(systemName: "plus.circle.fill")
+                  Image(systemName: AppIcon.addRow)
                     .foregroundStyle(.green)
                     .imageScale(.large)
                     .frame(minWidth: 44, minHeight: 44)
@@ -212,7 +212,7 @@ struct SettingsDashboardView: View {
                   Button {
                     controller.showSection(section)
                   } label: {
-                    Image(systemName: "plus.circle.fill")
+                    Image(systemName: AppIcon.addRow)
                       .foregroundStyle(.green)
                       .frame(minWidth: 44, minHeight: 44)
                       .contentShape(Rectangle())
@@ -376,7 +376,7 @@ struct SettingsDashboardView: View {
                     workingSections.append(section)
                   }
                 } label: {
-                  Image(systemName: "plus")
+                  Image(systemName: AppIcon.add)
                     .font(.body.bold())
                 }
                 .buttonStyle(.bordered)

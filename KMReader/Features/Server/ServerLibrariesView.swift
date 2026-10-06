@@ -54,7 +54,7 @@ struct ServerLibrariesView: View {
           Button {
             showAddSheet = true
           } label: {
-            Image(systemName: "plus")
+            Image(systemName: AppIcon.add)
           }
         }
       }

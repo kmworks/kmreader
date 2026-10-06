@@ -122,7 +122,7 @@ struct SettingsNetworkView: View {
         HStack {
           Label(
             String(localized: "settings.network.api_retry_count.label"),
-            systemImage: "arrow.counterclockwise")
+            systemImage: AppIcon.reset)
           Spacer()
           Button {
             apiRetryCount = max(0, apiRetryCount - 1)
@@ -146,7 +146,7 @@ struct SettingsNetworkView: View {
           HStack {
             Label(
               String(localized: "settings.network.api_retry_count.label"),
-              systemImage: "arrow.counterclockwise")
+              systemImage: AppIcon.reset)
             Spacer()
             Text("\(apiRetryCount)")
               .foregroundStyle(.secondary)

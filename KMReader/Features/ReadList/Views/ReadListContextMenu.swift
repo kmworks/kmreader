@@ -31,7 +31,7 @@ struct ReadListContextMenu: View {
   var body: some View {
     Group {
       NavigationLink(value: NavDestination.readListDetail(readListId: readListId)) {
-        Label("View Details", systemImage: "info.circle")
+        Label("View Details", systemImage: AppIcon.details)
       }
 
       Divider()
@@ -61,7 +61,7 @@ struct ReadListContextMenu: View {
         Menu {
           ReadListDownloadActionMenuItems(status: downloadStatus, actions: offlineActions)
         } label: {
-          Label("Offline", systemImage: downloadStatus.icon ?? "icloud.and.arrow.down")
+          Label("Offline", systemImage: downloadStatus.icon ?? AppIcon.download)
         }
 
         if current.isAdmin {
@@ -69,7 +69,7 @@ struct ReadListContextMenu: View {
           Button {
             onEditRequested?()
           } label: {
-            Label("Edit", systemImage: "pencil")
+            Label("Edit", systemImage: AppIcon.edit)
           }
 
           if onDeleteRequested != nil {
@@ -77,7 +77,7 @@ struct ReadListContextMenu: View {
             Button(role: .destructive) {
               deferMenuActionPresentation { onDeleteRequested?() }
             } label: {
-              Label("Delete Read List", systemImage: "trash")
+              Label("Delete Read List", systemImage: AppIcon.delete)
             }
           }
         }
@@ -86,7 +86,7 @@ struct ReadListContextMenu: View {
         Button {
           refreshCover()
         } label: {
-          Label("Refresh Cover", systemImage: "arrow.clockwise")
+          Label("Refresh Cover", systemImage: AppIcon.refresh)
         }
       }
     }

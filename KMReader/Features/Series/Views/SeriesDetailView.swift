@@ -355,7 +355,7 @@ extension SeriesDetailView {
   @ViewBuilder
   private var seriesLoadFailureView: some View {
     ContentUnavailableView {
-      Label("Failed to load series details", systemImage: "exclamationmark.triangle")
+      Label("Failed to load series details", systemImage: AppIcon.loadError)
     } actions: {
       Button(String(localized: "Retry")) {
         Task {
@@ -586,7 +586,7 @@ extension SeriesDetailView {
       #if os(iOS) || os(macOS)
         if let shareURL {
           ShareLink(item: shareURL, subject: Text(navigationTitle)) {
-            Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
+            Label(String(localized: "Share"), systemImage: AppIcon.share)
           }
 
           Divider()
@@ -597,7 +597,7 @@ extension SeriesDetailView {
         Button {
           deferMenuActionPresentation { showEditSheet = true }
         } label: {
-          Label("Edit", systemImage: "pencil")
+          Label("Edit", systemImage: AppIcon.edit)
         }
 
         Divider()
@@ -605,13 +605,13 @@ extension SeriesDetailView {
         Button {
           analyzeSeries()
         } label: {
-          Label("Analyze", systemImage: "waveform.path.ecg")
+          Label("Analyze", systemImage: AppIcon.analyze)
         }
 
         Button {
           refreshSeriesMetadata()
         } label: {
-          Label("Refresh Metadata", systemImage: "arrow.clockwise")
+          Label("Refresh Metadata", systemImage: AppIcon.refresh)
         }
 
         #if os(iOS) || os(macOS)
@@ -648,7 +648,7 @@ extension SeriesDetailView {
           Button {
             markSeriesAsRead()
           } label: {
-            Label("Mark as Read", systemImage: "checkmark")
+            Label("Mark as Read", systemImage: AppIcon.markRead)
           }
         }
 
@@ -656,7 +656,7 @@ extension SeriesDetailView {
           Button {
             markSeriesAsUnread()
           } label: {
-            Label("Mark as Unread", systemImage: "circle")
+            Label("Mark as Unread", systemImage: AppIcon.markUnread)
           }
         }
       }
@@ -667,11 +667,11 @@ extension SeriesDetailView {
         Button(role: .destructive) {
           deferMenuActionPresentation { showDeleteConfirmation = true }
         } label: {
-          Label("Delete Series", systemImage: "trash")
+          Label("Delete Series", systemImage: AppIcon.delete)
         }
       }
     } label: {
-      Image(systemName: "ellipsis")
+      Image(systemName: AppIcon.more)
     }
     .toolbarButtonStyle()
   }

@@ -44,7 +44,7 @@ struct SeriesDownloadActionsSection: View {
         actionsView(actions: actions)
       } label: {
         HStack(spacing: 4) {
-          Image(systemName: "icloud.and.arrow.down")
+          Image(systemName: AppIcon.download)
             .font(.caption2)
           Text(String(localized: "Download"))
             .font(.caption)
@@ -198,7 +198,7 @@ struct SeriesDownloadActionsSection: View {
       HStack(spacing: 4) {
         Text(value == policy ? title : value.label)
         if value == policy {
-          Image(systemName: "checkmark")
+          Image(systemName: AppIcon.confirm)
         }
       }
     } icon: {
@@ -210,7 +210,7 @@ struct SeriesDownloadActionsSection: View {
   private func limitOptionLabel(policy: OfflinePolicy, limit: Int) -> some View {
     let title = OfflinePolicy.limitTitle(limit)
     if self.policy == policy && offlinePolicyLimit == limit {
-      Label(title, systemImage: "checkmark")
+      Label(title, systemImage: AppIcon.confirm)
     } else {
       Text(title)
     }

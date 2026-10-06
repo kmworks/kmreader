@@ -383,7 +383,7 @@
 
         if let errorMessage = viewModel.errorMessage, !viewModel.isLoading {
           ReaderUnavailableView(
-            icon: "exclamationmark.triangle",
+            icon: AppIcon.loadError,
             title: "Failed to load media",
             message: errorMessage,
             onRetry: {

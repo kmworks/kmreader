@@ -33,7 +33,7 @@ struct CircularThumbnailImage: View {
         Circle()
           .fill(Color.secondary.opacity(0.15))
           .overlay {
-            Image(systemName: "book")
+            Image(systemName: ContentIcon.book)
               .font(.caption)
               .foregroundStyle(.secondary)
           }

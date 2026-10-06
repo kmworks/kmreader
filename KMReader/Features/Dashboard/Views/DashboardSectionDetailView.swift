@@ -94,7 +94,7 @@ struct DashboardSectionDetailView: View {
           } label: {
             Label(
               String(localized: "Download"),
-              systemImage: "arrow.down.circle"
+              systemImage: AppIcon.download
             )
           }
           .disabled(isOffline || isQueueingOffline)
@@ -160,7 +160,7 @@ struct DashboardSectionDetailView: View {
               if isQueueingOffline {
                 LoadingIcon()
               } else {
-                Image(systemName: "ellipsis")
+                Image(systemName: AppIcon.more)
               }
             }
           }
@@ -176,7 +176,7 @@ struct DashboardSectionDetailView: View {
     } label: {
       Label(
         String(localized: "dashboard.downloadLatest20", defaultValue: "Download Latest 20 Books"),
-        systemImage: "arrow.down.circle"
+        systemImage: AppIcon.download
       )
     }
     .disabled(isOffline || isQueueingOffline)
@@ -187,7 +187,7 @@ struct DashboardSectionDetailView: View {
       } label: {
         Label(
           String(localized: "dashboard.downloadAll", defaultValue: "Download All"),
-          systemImage: "arrow.down.circle.fill"
+          systemImage: AppIcon.download
         )
       }
       .disabled(isOffline || isQueueingOffline)

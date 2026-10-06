@@ -168,7 +168,7 @@ struct BrowseContentView: View {
 
         if searchOnly && searchText.isEmpty {
           ContentUnavailableView {
-            Label(String(localized: "tab.search", defaultValue: "Search"), systemImage: "magnifyingglass")
+            Label(String(localized: "tab.search", defaultValue: "Search"), systemImage: AppIcon.search)
           } description: {
             Text(
               String(

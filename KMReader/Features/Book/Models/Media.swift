@@ -55,9 +55,9 @@ nonisolated enum MediaStatus: String, Codable, Hashable, Sendable {
     case .ready:
       return ""
     case .error:
-      return "exclamationmark.triangle"
+      return AppIcon.loadError
     case .unsupported:
-      return "xmark.circle"
+      return "doc.questionmark"
     case .outdated:
       return "clock.badge.exclamationmark"
     case .unknown:

@@ -70,7 +70,7 @@ struct OneshotEditSheet: View {
         if isSaving {
           LoadingIcon()
         } else {
-          Label("Save", systemImage: "checkmark")
+          Label("Save", systemImage: AppIcon.confirm)
         }
       }
       .disabled(isSaving)
@@ -220,7 +220,7 @@ struct OneshotEditSheet: View {
               bookMetadataUpdate.authorsLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
               .padding(8)
               .contentShape(Rectangle())
           }
@@ -248,7 +248,7 @@ struct OneshotEditSheet: View {
 
       // Own form row: a row shared with the Picker becomes the Picker's tap target.
       Button(action: commitPendingAuthor) {
-        Label("Add Author", systemImage: "plus.circle.fill")
+        Label("Add Author", systemImage: AppIcon.addRow)
           .frame(maxWidth: .infinity)
       }
       .adaptiveButtonStyle(hasPendingAuthor ? .borderedProminent : .borderless)
@@ -295,7 +295,7 @@ struct OneshotEditSheet: View {
               seriesMetadataUpdate.genresLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
               .padding(8)
               .contentShape(Rectangle())
           }
@@ -306,7 +306,7 @@ struct OneshotEditSheet: View {
         TextField("Genre", text: $newGenre)
           .onSubmit { commitPendingGenre() }
         Button(action: commitPendingGenre) {
-          Image(systemName: "plus.circle.fill")
+          Image(systemName: AppIcon.addRow)
         }
         .disabled(!hasPendingGenre)
       }
@@ -343,7 +343,7 @@ struct OneshotEditSheet: View {
               bookMetadataUpdate.tagsLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
               .padding(8)
               .contentShape(Rectangle())
           }
@@ -354,7 +354,7 @@ struct OneshotEditSheet: View {
         TextField("Tag", text: $newBookTag)
           .onSubmit { commitPendingBookTag() }
         Button(action: commitPendingBookTag) {
-          Image(systemName: "plus.circle.fill")
+          Image(systemName: AppIcon.addRow)
         }
         .disabled(!hasPendingBookTag)
       }
@@ -391,7 +391,7 @@ struct OneshotEditSheet: View {
               seriesMetadataUpdate.sharingLabelsLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
               .padding(8)
               .contentShape(Rectangle())
           }
@@ -402,7 +402,7 @@ struct OneshotEditSheet: View {
         TextField("Label", text: $newSharingLabel)
           .onSubmit { commitPendingSharingLabel() }
         Button(action: commitPendingSharingLabel) {
-          Image(systemName: "plus.circle.fill")
+          Image(systemName: AppIcon.addRow)
         }
         .disabled(!hasPendingSharingLabel)
       }
@@ -440,7 +440,7 @@ struct OneshotEditSheet: View {
                 bookMetadataUpdate.linksLock = true
               }
             } label: {
-              Image(systemName: "trash")
+              Image(systemName: AppIcon.delete)
                 .padding(8)
                 .contentShape(Rectangle())
             }
@@ -461,7 +461,7 @@ struct OneshotEditSheet: View {
           #endif
           .onSubmit { commitPendingLink() }
         Button(action: commitPendingLink) {
-          Label("Add Link", systemImage: "plus.circle.fill")
+          Label("Add Link", systemImage: AppIcon.addRow)
         }
         .adaptiveButtonStyle(hasPendingLink ? .borderedProminent : .borderless)
         .disabled(!hasPendingLink)

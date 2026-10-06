@@ -41,7 +41,7 @@ struct OfflineTasksStatusView: View {
         if summary.failedCount > 0 {
           statusBadge(
             title: "\(summary.failedCount)",
-            systemImage: "exclamationmark.circle.fill"
+            systemImage: AppIcon.downloadFailed
           )
         }
       }

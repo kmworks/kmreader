@@ -61,7 +61,7 @@ struct BookDetailView: View {
           }
         } else if hasError {
           ContentUnavailableView {
-            Label("Failed to load book details", systemImage: "exclamationmark.triangle")
+            Label("Failed to load book details", systemImage: AppIcon.loadError)
           } actions: {
             Button(String(localized: "Retry")) {
               Task {
@@ -317,7 +317,7 @@ struct BookDetailView: View {
       #if os(iOS) || os(macOS)
         if let shareURL {
           ShareLink(item: shareURL, subject: Text(navigationTitle)) {
-            Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
+            Label(String(localized: "Share"), systemImage: AppIcon.share)
           }
 
           Divider()
@@ -328,7 +328,7 @@ struct BookDetailView: View {
         Button {
           deferMenuActionPresentation { showEditSheet = true }
         } label: {
-          Label("Edit", systemImage: "pencil")
+          Label("Edit", systemImage: AppIcon.edit)
         }
 
         Divider()
@@ -336,13 +336,13 @@ struct BookDetailView: View {
         Button {
           analyzeBook()
         } label: {
-          Label("Analyze", systemImage: "waveform.path.ecg")
+          Label("Analyze", systemImage: AppIcon.analyze)
         }
 
         Button {
           refreshMetadata()
         } label: {
-          Label("Refresh Metadata", systemImage: "arrow.clockwise")
+          Label("Refresh Metadata", systemImage: AppIcon.refresh)
         }
       }
 
@@ -365,7 +365,7 @@ struct BookDetailView: View {
           Button {
             markBookAsRead()
           } label: {
-            Label("Mark as Read", systemImage: "checkmark")
+            Label("Mark as Read", systemImage: AppIcon.markRead)
           }
         }
 
@@ -373,7 +373,7 @@ struct BookDetailView: View {
           Button {
             markBookAsUnread()
           } label: {
-            Label("Mark as Unread", systemImage: "circle")
+            Label("Mark as Unread", systemImage: AppIcon.markUnread)
           }
         }
       }
@@ -384,7 +384,7 @@ struct BookDetailView: View {
         Button(role: .destructive) {
           deferMenuActionPresentation { showDeleteConfirmation = true }
         } label: {
-          Label("Delete Book", systemImage: "trash")
+          Label("Delete Book", systemImage: AppIcon.delete)
         }
       }
 
@@ -393,11 +393,11 @@ struct BookDetailView: View {
         Button(role: .destructive) {
           clearCache()
         } label: {
-          Label("Clear Cache", systemImage: "xmark")
+          Label("Clear Cache", systemImage: AppIcon.clearCache)
         }
       }
     } label: {
-      Image(systemName: "ellipsis")
+      Image(systemName: AppIcon.more)
     }
     .toolbarButtonStyle()
   }

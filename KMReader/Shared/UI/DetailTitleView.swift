@@ -18,7 +18,7 @@ struct DetailTitleView: View {
         Button {
           copyTitle()
         } label: {
-          Image(systemName: "doc.on.doc")
+          Image(systemName: AppIcon.copy)
             .font(.subheadline)
             .contentShape(Rectangle())
         }

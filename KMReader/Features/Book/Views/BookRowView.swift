@@ -51,7 +51,7 @@ struct BookRowView: View {
         } label: {
           VStack(alignment: .leading, spacing: 4) {
             if item.oneshot {
-              Label(item.oneshotLine, systemImage: "book.closed")
+              Label(item.oneshotLine, systemImage: ContentIcon.oneshot)
                 .labelStyle(.compact)
                 .font(.footnote)
                 .foregroundColor(.secondary)
@@ -81,13 +81,13 @@ struct BookRowView: View {
               {
                 Text("•")
                 if progressCompleted {
-                  Image(systemName: "checkmark.circle")
+                  Image(systemName: ReadStatus.read.icon)
                     .foregroundColor(.green)
                   if let completedLastReadText = item.completedLastReadText {
                     Text(completedLastReadText)
                   }
                 } else {
-                  Image(systemName: "circle.righthalf.filled")
+                  Image(systemName: ReadStatus.inProgress.icon)
                     .foregroundColor(.orange)
                   Text("Page \(progressPage + 1)")
                     .foregroundColor(.orange)

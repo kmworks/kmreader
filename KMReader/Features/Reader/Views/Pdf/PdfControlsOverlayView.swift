@@ -120,7 +120,7 @@
             Button {
               onDismiss()
             } label: {
-              Image(systemName: "xmark")
+              Image(systemName: AppIcon.close)
                 .contentShape(Circle())
             }
             .accessibilityLabel(Text("Close"))
@@ -171,7 +171,7 @@
             Menu {
               menuContent()
             } label: {
-              Image(systemName: "ellipsis")
+              Image(systemName: AppIcon.more)
                 .padding(4)
                 .contentShape(Circle())
             }
@@ -323,7 +323,7 @@
       Button {
         showingReaderSettingsSheet = true
       } label: {
-        Label(String(localized: "Reader Settings"), systemImage: "gearshape")
+        Label(String(localized: "Reader Settings"), systemImage: AppIcon.settings)
       }
 
       Section {
@@ -339,14 +339,14 @@
           guard pageCount > 0 else { return }
           showingPageJumpSheet = true
         } label: {
-          Label(String(localized: "Jump to Page"), systemImage: "bookmark")
+          Label(String(localized: "Jump to Page"), systemImage: AppIcon.pageJump)
         }
         .disabled(pageCount <= 0)
 
         Button {
           showingSearchSheet = true
         } label: {
-          Label(String(localized: "Search"), systemImage: "magnifyingglass")
+          Label(String(localized: "Search"), systemImage: AppIcon.search)
         }
         .disabled(!canSearch)
       } header: {

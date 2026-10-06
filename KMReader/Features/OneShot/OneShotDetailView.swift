@@ -76,7 +76,7 @@ struct OneshotDetailView: View {
           }
         } else if hasError {
           ContentUnavailableView {
-            Label("Failed to load oneshot details", systemImage: "exclamationmark.triangle")
+            Label("Failed to load oneshot details", systemImage: AppIcon.loadError)
           } actions: {
             Button(String(localized: "Retry")) {
               Task {
@@ -427,7 +427,7 @@ struct OneshotDetailView: View {
       #if os(iOS) || os(macOS)
         if let shareURL {
           ShareLink(item: shareURL, subject: Text(navigationTitle)) {
-            Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
+            Label(String(localized: "Share"), systemImage: AppIcon.share)
           }
 
           Divider()
@@ -438,7 +438,7 @@ struct OneshotDetailView: View {
         Button {
           deferMenuActionPresentation { showEditSheet = true }
         } label: {
-          Label("Edit", systemImage: "pencil")
+          Label("Edit", systemImage: AppIcon.edit)
         }
 
         Divider()
@@ -446,13 +446,13 @@ struct OneshotDetailView: View {
         Button {
           analyzeOneshot()
         } label: {
-          Label("Analyze", systemImage: "waveform.path.ecg")
+          Label("Analyze", systemImage: AppIcon.analyze)
         }
 
         Button {
           refreshMetadata()
         } label: {
-          Label("Refresh Metadata", systemImage: "arrow.clockwise")
+          Label("Refresh Metadata", systemImage: AppIcon.refresh)
         }
 
         #if os(iOS) || os(macOS)
@@ -503,7 +503,7 @@ struct OneshotDetailView: View {
           Button {
             markOneshotAsRead()
           } label: {
-            Label("Mark as Read", systemImage: "checkmark")
+            Label("Mark as Read", systemImage: AppIcon.markRead)
           }
         }
 
@@ -511,7 +511,7 @@ struct OneshotDetailView: View {
           Button {
             markOneshotAsUnread()
           } label: {
-            Label("Mark as Unread", systemImage: "circle")
+            Label("Mark as Unread", systemImage: AppIcon.markUnread)
           }
         }
       }
@@ -522,7 +522,7 @@ struct OneshotDetailView: View {
         Button(role: .destructive) {
           deferMenuActionPresentation { showDeleteConfirmation = true }
         } label: {
-          Label("Delete Oneshot", systemImage: "trash")
+          Label("Delete Oneshot", systemImage: AppIcon.delete)
         }
       }
 
@@ -530,11 +530,11 @@ struct OneshotDetailView: View {
         Button(role: .destructive) {
           clearCache()
         } label: {
-          Label("Clear Cache", systemImage: "xmark")
+          Label("Clear Cache", systemImage: AppIcon.clearCache)
         }
       }
     } label: {
-      Image(systemName: "ellipsis")
+      Image(systemName: AppIcon.more)
     }
     .toolbarButtonStyle()
   }

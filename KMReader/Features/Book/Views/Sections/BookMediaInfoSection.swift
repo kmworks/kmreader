@@ -33,7 +33,7 @@ struct BookMediaInfoSection: View {
 
         if let comment = book.media.localizedComment {
           VStack(alignment: .leading, spacing: 2) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: AppIcon.loadError)
               .font(.caption)
               .foregroundColor(.orange)
             Text(comment)

@@ -35,13 +35,13 @@ enum ServerSection: String, CaseIterable {
       return "doc.viewfinder"
 
     case .servers:
-      return "list.bullet.rectangle"
+      return "externaldrive.connected.to.linebelow"
     case .account:
       return "person.crop.circle"
     case .apiKeys:
       return "key"
     case .authenticationActivity:
-      return "clock"
+      return "person.badge.key"
 
     }
   }

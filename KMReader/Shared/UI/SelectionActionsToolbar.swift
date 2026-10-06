@@ -62,7 +62,7 @@ struct SelectionActionsToolbar: View {
           onCancel()
         }
       } label: {
-        Image(systemName: "xmark")
+        Image(systemName: AppIcon.close)
       }
       .adaptiveButtonStyle(.bordered)
       .accessibilityLabel(String(localized: "Cancel"))

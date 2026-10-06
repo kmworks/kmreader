@@ -188,7 +188,7 @@ extension CollectionDetailView {
   @ViewBuilder
   private var collectionLoadFailureView: some View {
     ContentUnavailableView {
-      Label("Failed to load collection details", systemImage: "exclamationmark.triangle")
+      Label("Failed to load collection details", systemImage: AppIcon.loadError)
     } actions: {
       Button(String(localized: "Retry")) {
         Task {
@@ -278,7 +278,7 @@ extension CollectionDetailView {
         Button {
           showEditSheet = true
         } label: {
-          Label("Edit", systemImage: "pencil")
+          Label("Edit", systemImage: AppIcon.edit)
         }
 
         Divider()
@@ -286,11 +286,11 @@ extension CollectionDetailView {
         Button(role: .destructive) {
           showDeleteConfirmation = true
         } label: {
-          Label("Delete Collection", systemImage: "trash")
+          Label("Delete Collection", systemImage: AppIcon.delete)
         }
       }
     } label: {
-      Image(systemName: "ellipsis")
+      Image(systemName: AppIcon.more)
     }
   }
 }

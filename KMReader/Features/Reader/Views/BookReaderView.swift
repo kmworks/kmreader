@@ -72,7 +72,7 @@ struct BookReaderView: View {
                 )
               #else
                 ReaderUnavailableView(
-                  icon: "exclamationmark.triangle",
+                  icon: AppIcon.loadError,
                   title: "EPUB Reader Not Available",
                   message: String(
                     localized:

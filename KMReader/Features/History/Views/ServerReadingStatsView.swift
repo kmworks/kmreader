@@ -102,7 +102,7 @@ struct ServerReadingStatsView: View {
           if viewModel.isRefreshing {
             ProgressView()
           } else {
-            Image(systemName: "arrow.clockwise")
+            Image(systemName: AppIcon.refresh)
           }
         }
         .disabled(viewModel.isLoading || viewModel.isRefreshing)
@@ -161,7 +161,7 @@ struct ServerReadingStatsView: View {
           await reload(forceRefresh: true)
         }
       } label: {
-        Label(String(localized: "Refresh"), systemImage: "arrow.clockwise")
+        Label(String(localized: "Refresh"), systemImage: AppIcon.refresh)
       }
       .adaptiveButtonStyle(.borderedProminent)
     }
@@ -250,7 +250,7 @@ struct ServerReadingStatsView: View {
   private func summarySection(_ summary: ReadingStatsSummary) -> some View {
     var cards = [
       (String(localized: "Books Started"), formatCount(summary.booksStartedReading), "book"),
-      (String(localized: "Books Completed"), formatCount(summary.booksCompletedReading), "checkmark.circle"),
+      (String(localized: "Books Completed"), formatCount(summary.booksCompletedReading), ReadStatus.read.icon),
       (String(localized: "Pages Read"), formatCount(summary.totalPagesRead), "doc.text"),
       (String(localized: "Reading Days"), formatCount(summary.readingDays), "calendar"),
     ]

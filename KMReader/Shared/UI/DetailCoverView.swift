@@ -50,7 +50,7 @@ struct DetailCoverView: View {
           }
         }
       } label: {
-        Label(String(localized: "Refresh Cover"), systemImage: "arrow.clockwise")
+        Label(String(localized: "Refresh Cover"), systemImage: AppIcon.refresh)
       }
     }
   }

@@ -88,7 +88,7 @@ struct DuplicatePagesUnknownView: View {
             } label: {
               Label(
                 String(localized: "Manual Delete Remaining (\(visibleItems.count))"),
-                systemImage: "trash"
+                systemImage: AppIcon.delete
               )
             }
 

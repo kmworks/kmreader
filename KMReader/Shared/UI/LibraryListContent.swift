@@ -306,7 +306,7 @@ struct LibraryListContent: View {
         try await scanAllLibraries(deep: false)
       }
     } label: {
-      Label(String(localized: "Scan All Libraries"), systemImage: "arrow.clockwise")
+      Label(String(localized: "Scan All Libraries"), systemImage: AppIcon.refresh)
     }
 
     Button {

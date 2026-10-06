@@ -188,7 +188,7 @@
                 } label: {
                   HStack(spacing: 4) {
                     Text("Jump")
-                    Image(systemName: "arrow.right.to.line")
+                    Image(systemName: AppIcon.pageJump)
                   }
                 }
                 .adaptiveButtonStyle(.borderedProminent)

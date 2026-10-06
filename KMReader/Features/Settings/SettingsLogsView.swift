@@ -87,7 +87,7 @@ struct SettingsLogsView: View {
         ToolbarItem(placement: .primaryAction) {
           Menu {
             ShareLink(item: exportLogs()) {
-              Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
+              Label(String(localized: "Share"), systemImage: AppIcon.share)
             }
 
             Divider()
@@ -97,10 +97,10 @@ struct SettingsLogsView: View {
                 await clearLogs()
               }
             } label: {
-              Label(String(localized: "Clear All"), systemImage: "trash")
+              Label(String(localized: "Clear All"), systemImage: AppIcon.delete)
             }
           } label: {
-            Image(systemName: "ellipsis")
+            Image(systemName: AppIcon.more)
           }
         }
       }
@@ -156,7 +156,7 @@ struct SettingsLogsView: View {
           Button(role: .destructive) {
             Task { await clearLogs() }
           } label: {
-            LogFilterChip(icon: "trash", text: String(localized: "Clear All"), color: .red)
+            LogFilterChip(icon: AppIcon.delete, text: String(localized: "Clear All"), color: .red)
           }
         #endif
       }
@@ -188,7 +188,7 @@ struct SettingsLogsView: View {
           Button {
             copyToClipboard(formatEntry(entry))
           } label: {
-            Label(String(localized: "Copy"), systemImage: "doc.on.doc")
+            Label(String(localized: "Copy"), systemImage: AppIcon.copy)
           }
         }
       #endif

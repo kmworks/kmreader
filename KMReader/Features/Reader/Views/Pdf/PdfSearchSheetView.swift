@@ -31,7 +31,7 @@
           } else if trimmedQuery.isEmpty {
             Section {
               ContentUnavailableView {
-                Label(String(localized: "Search in PDF"), systemImage: "magnifyingglass")
+                Label(String(localized: "Search in PDF"), systemImage: AppIcon.search)
               }
               .listRowBackground(Color.clear)
             }
@@ -77,7 +77,7 @@
         Button {
           onSearch(trimmedQuery)
         } label: {
-          Label(String(localized: "Search"), systemImage: "magnifyingglass")
+          Label(String(localized: "Search"), systemImage: AppIcon.search)
         }
         .disabled(trimmedQuery.isEmpty)
       }

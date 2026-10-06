@@ -50,7 +50,7 @@ struct SettingsSSEView: View {
         Toggle(isOn: $enableSSEAutoRefresh) {
           VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-              Image(systemName: "arrow.clockwise")
+              Image(systemName: AppIcon.refresh)
               Text(String(localized: "Auto-refresh Dashboard"))
             }
             Text(String(localized: "Automatically refresh dashboard when content changes"))

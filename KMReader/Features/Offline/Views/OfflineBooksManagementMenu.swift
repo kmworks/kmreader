@@ -20,7 +20,7 @@ struct OfflineBooksManagementMenu: View {
         } label: {
           Label(
             String(localized: "settings.offline_books.remove_read"),
-            systemImage: "checkmark.circle")
+            systemImage: ReadStatus.read.icon)
         }
         .disabled(!canRemoveReadBooks)
 
@@ -39,7 +39,7 @@ struct OfflineBooksManagementMenu: View {
         Button(role: .destructive) {
           onRemoveAll()
         } label: {
-          Label(String(localized: "settings.offline_books.remove_all"), systemImage: "trash")
+          Label(String(localized: "settings.offline_books.remove_all"), systemImage: AppIcon.delete)
         }
       }
     } label: {
@@ -48,7 +48,7 @@ struct OfflineBooksManagementMenu: View {
           ProgressView()
             .controlSize(.small)
         }
-        Label(String(localized: "Manage"), systemImage: "ellipsis")
+        Label(String(localized: "Manage"), systemImage: AppIcon.more)
       }
     }
   }

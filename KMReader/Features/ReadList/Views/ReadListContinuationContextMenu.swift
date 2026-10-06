@@ -14,7 +14,7 @@ struct ReadListContinuationContextMenu: View {
 
   var body: some View {
     NavigationLink(value: NavDestination.readListDetail(readListId: continuation.readListId)) {
-      Label("View Details", systemImage: "info.circle")
+      Label("View Details", systemImage: AppIcon.details)
     }
     ReadListStopReadingButton(readListId: continuation.readListId, instanceId: current.instanceId)
   }

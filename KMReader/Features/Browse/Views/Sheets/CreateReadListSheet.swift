@@ -28,7 +28,7 @@ struct CreateReadListSheet: View {
         if isCreating {
           LoadingIcon()
         } else {
-          Label("Create", systemImage: "checkmark")
+          Label("Create", systemImage: AppIcon.confirm)
         }
       }
       .disabled(name.isEmpty || isCreating)

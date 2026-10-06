@@ -55,7 +55,7 @@ struct SaveFilterSheet: View {
         if isSaving {
           ProgressView()
         } else {
-          Label("Save Filter", systemImage: "checkmark")
+          Label("Save Filter", systemImage: AppIcon.confirm)
         }
       }
       .disabled(filterName.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)

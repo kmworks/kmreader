@@ -31,6 +31,15 @@ enum ReadStatus: String, Codable, CaseIterable, Sendable {
     case .inProgress: return String(localized: "readStatus.inProgress")
     }
   }
+
+  /// Base outline names; render sites apply `.symbolVariant(.fill)` for emphasis.
+  var icon: String {
+    switch self {
+    case .read: return "checkmark.circle"
+    case .inProgress: return "circle.righthalf.filled"
+    case .unread: return "circle"
+    }
+  }
 }
 
 func resolveReadStatusState(

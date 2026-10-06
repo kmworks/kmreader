@@ -378,14 +378,14 @@
             Button {
               dismiss()
             } label: {
-              Label(String(localized: "Close"), systemImage: "xmark")
+              Label(String(localized: "Close"), systemImage: AppIcon.close)
             }
           }
           Button {
             draft = EpubThemePreferences()
             ErrorManager.shared.notify(message: String(localized: "Reset"))
           } label: {
-            Label(String(localized: "Reset"), systemImage: "arrow.counterclockwise")
+            Label(String(localized: "Reset"), systemImage: AppIcon.reset)
           }
         }
         ToolbarItemGroup(placement: .confirmationAction) {
@@ -393,13 +393,13 @@
             Button {
               clearBookPreferences()
             } label: {
-              Label(String(localized: "Reset to Global"), systemImage: "trash")
+              Label(String(localized: "Reset to Global"), systemImage: AppIcon.delete)
             }
           }
           Button {
             savePreferences()
           } label: {
-            Label(String(localized: "Done"), systemImage: "checkmark")
+            Label(String(localized: "Done"), systemImage: AppIcon.confirm)
           }
           .disabled(isSaveDisabled)
         }

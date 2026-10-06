@@ -621,7 +621,7 @@
       }
 
       private func makeShareAction(for pageID: ReaderPageID) -> UIAction {
-        UIAction(title: String(localized: "Share"), image: UIImage(systemName: "square.and.arrow.up")) {
+        UIAction(title: String(localized: "Share"), image: UIImage(systemName: AppIcon.share)) {
           [weak self] _ in
           self?.shareCurrentImage(for: pageID)
         }

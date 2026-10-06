@@ -277,7 +277,7 @@ struct DivinaControlsOverlayView: View {
           Button {
             onDismiss()
           } label: {
-            Image(systemName: "xmark")
+            Image(systemName: AppIcon.close)
               .contentShape(Circle())
           }
           .accessibilityLabel(Text("Close"))
@@ -351,7 +351,7 @@ struct DivinaControlsOverlayView: View {
           Menu {
             menuContent()
           } label: {
-            Image(systemName: "ellipsis")
+            Image(systemName: AppIcon.more)
               .padding(4)
               .contentShape(Circle())
           }
@@ -527,7 +527,7 @@ struct DivinaControlsOverlayView: View {
     Button {
       showingReaderSettingsSheet = true
     } label: {
-      Label(String(localized: "Reader Settings"), systemImage: "gearshape")
+      Label(String(localized: "Reader Settings"), systemImage: AppIcon.settings)
     }
 
     Section {
@@ -594,7 +594,7 @@ struct DivinaControlsOverlayView: View {
       guard viewModel.hasPages else { return }
       showingPageJumpSheet = true
     } label: {
-      Label(String(localized: "Jump to Page"), systemImage: "bookmark")
+      Label(String(localized: "Jump to Page"), systemImage: AppIcon.pageJump)
     }
     .disabled(!viewModel.hasPages)
   }
@@ -640,7 +640,7 @@ struct DivinaControlsOverlayView: View {
         Button {
           sharePage(id: pageID)
         } label: {
-          Label(String(localized: "Share"), systemImage: "square.and.arrow.up")
+          Label(String(localized: "Share"), systemImage: AppIcon.share)
         }
 
         if let isolationAction = pageIsolationAction(for: pageID) {

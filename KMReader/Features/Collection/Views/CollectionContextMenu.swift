@@ -18,7 +18,7 @@ struct CollectionContextMenu: View {
   var body: some View {
     Group {
       NavigationLink(value: NavDestination.collectionDetail(collectionId: collectionId)) {
-        Label("View Details", systemImage: "info.circle")
+        Label("View Details", systemImage: AppIcon.details)
       }
 
       Divider()
@@ -37,7 +37,7 @@ struct CollectionContextMenu: View {
           Button {
             onEditRequested?()
           } label: {
-            Label("Edit", systemImage: "pencil")
+            Label("Edit", systemImage: AppIcon.edit)
           }
 
           if onDeleteRequested != nil {
@@ -45,7 +45,7 @@ struct CollectionContextMenu: View {
             Button(role: .destructive) {
               deferMenuActionPresentation { onDeleteRequested?() }
             } label: {
-              Label("Delete Collection", systemImage: "trash")
+              Label("Delete Collection", systemImage: AppIcon.delete)
             }
           }
         }
@@ -54,7 +54,7 @@ struct CollectionContextMenu: View {
         Button {
           refreshCover()
         } label: {
-          Label("Refresh Cover", systemImage: "arrow.clockwise")
+          Label("Refresh Cover", systemImage: AppIcon.refresh)
         }
       }
     }

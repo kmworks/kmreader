@@ -67,7 +67,7 @@ struct SettingsSystemFeaturesView: View {
           Toggle(isOn: $enableSpotlightIndexing) {
             VStack(alignment: .leading, spacing: 4) {
               HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
+                Image(systemName: AppIcon.search)
                 Text(String(localized: "Enable Spotlight Indexing"))
               }
               Text(
@@ -87,10 +87,10 @@ struct SettingsSystemFeaturesView: View {
         if enableSpotlightIndexing {
           Section {
             Toggle(isOn: $enableSpotlightBookIndexing) {
-              Label(String(localized: "Index Books"), systemImage: "book")
+              Label(String(localized: "Index Books"), systemImage: ContentIcon.book)
             }
             Toggle(isOn: $enableSpotlightSeriesIndexing) {
-              Label(String(localized: "Index Series"), systemImage: "books.vertical")
+              Label(String(localized: "Index Series"), systemImage: ContentIcon.series)
             }
           } header: {
             Text(String(localized: "Content Types"))

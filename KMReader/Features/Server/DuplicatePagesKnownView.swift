@@ -275,7 +275,7 @@ struct DuplicatePagesKnownView: View {
           Button {
             hashPendingDeleteMatches = hash
           } label: {
-            Label(String(localized: "Delete Matches"), systemImage: "trash")
+            Label(String(localized: "Delete Matches"), systemImage: AppIcon.delete)
               .font(.caption)
           }
           .adaptiveButtonStyle(.bordered)

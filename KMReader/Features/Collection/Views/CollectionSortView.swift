@@ -25,7 +25,7 @@ struct CollectionSortView: View {
 
         FilterChip(
           label: sortString,
-          systemImage: "arrow.up.arrow.down",
+          systemImage: AppIcon.sort,
           openSheet: $showFilterSheet
         )
       }

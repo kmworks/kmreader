@@ -798,7 +798,7 @@ struct DivinaReaderView: View {
           .readerLoadingContent(isVisible: showsLoadedContent)
       } else if !viewModel.isLoading {
         ReaderUnavailableView(
-          icon: "exclamationmark.triangle",
+          icon: AppIcon.loadError,
           title: "No Pages Available",
           message: String(
             localized: "Unable to load pages for this book. This format may not be supported."),

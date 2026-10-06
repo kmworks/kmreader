@@ -62,7 +62,7 @@ struct SeriesRowView: View {
         NavigationLink(value: item.navDestination) {
           VStack(alignment: .leading, spacing: 4) {
             if series.oneshot {
-              Label(item.oneshotLine, systemImage: "book.closed")
+              Label(item.oneshotLine, systemImage: ContentIcon.oneshot)
                 .labelStyle(.compact)
                 .font(.footnote)
                 .foregroundColor(.secondary)

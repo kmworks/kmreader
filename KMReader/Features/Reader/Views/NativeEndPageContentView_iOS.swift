@@ -726,12 +726,12 @@
       case .ready?:
         nextProgressCircle.alpha = 0
         nextStatusIconView.alpha = 1
-        nextStatusIconView.image = UIImage(systemName: "checkmark.icloud.fill")
+        nextStatusIconView.image = UIImage(systemName: AppIcon.downloaded)
         nextStatusContainer.accessibilityLabel = String(localized: "Ready for offline reading")
       case nil:
         nextProgressCircle.alpha = 0
         nextStatusIconView.alpha = 1
-        nextStatusIconView.image = UIImage(systemName: "icloud")
+        nextStatusIconView.image = UIImage(systemName: AppIcon.downloadPartial)
         nextStatusContainer.accessibilityLabel = String(localized: "status.not_downloaded")
       }
     }

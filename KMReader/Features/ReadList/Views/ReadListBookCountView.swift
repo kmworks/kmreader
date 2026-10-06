@@ -18,7 +18,7 @@ struct ReadListBookCountView: View {
         .font(.subheadline.weight(.semibold))
 
       if readList.ordered {
-        Label("Ordered", systemImage: "arrow.up.arrow.down")
+        Label("Ordered", systemImage: AppIcon.sort)
           .font(.caption)
           .foregroundStyle(.secondary)
       }

@@ -45,7 +45,7 @@ struct ReadListOfflinePolicyMenuItems: View {
       HStack(spacing: 4) {
         Text(value == policy ? title : value.label)
         if value == policy {
-          Image(systemName: "checkmark")
+          Image(systemName: AppIcon.confirm)
         }
       }
     } icon: {
@@ -57,7 +57,7 @@ struct ReadListOfflinePolicyMenuItems: View {
   private func limitOptionLabel(policy value: OfflinePolicy, limit: Int) -> some View {
     let title = OfflinePolicy.limitTitle(limit)
     if policy == value && offlinePolicyLimit == limit {
-      Label(title, systemImage: "checkmark")
+      Label(title, systemImage: AppIcon.confirm)
     } else {
       Text(title)
     }

@@ -102,7 +102,7 @@ struct SavedFiltersView: View {
         Button(role: .destructive) {
           deleteFilter(filter)
         } label: {
-          Label("Delete", systemImage: "trash")
+          Label("Delete", systemImage: AppIcon.delete)
         }
 
         Button {
@@ -111,7 +111,7 @@ struct SavedFiltersView: View {
             filterToRename = filter
           }
         } label: {
-          Label("Rename", systemImage: "pencil")
+          Label("Rename", systemImage: AppIcon.edit)
         }
       }
     #endif
@@ -129,7 +129,7 @@ struct SavedFiltersView: View {
           filterToRename = filter
         }
       } label: {
-        Label("Rename", systemImage: "pencil")
+        Label("Rename", systemImage: AppIcon.edit)
       }
 
       Divider()
@@ -137,7 +137,7 @@ struct SavedFiltersView: View {
       Button(role: .destructive) {
         deleteFilter(filter)
       } label: {
-        Label("Delete", systemImage: "trash")
+        Label("Delete", systemImage: AppIcon.delete)
       }
     }
   }

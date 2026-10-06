@@ -50,7 +50,7 @@ struct BookFilterView: View {
   }
 
   private var sortIcon: String {
-    usesRelevanceSort ? "magnifyingglass" : "arrow.up.arrow.down"
+    usesRelevanceSort ? AppIcon.search : AppIcon.sort
   }
 
   var body: some View {
@@ -98,7 +98,7 @@ struct BookFilterView: View {
     if ignoresFiltersForSearch {
       FilterChip(
         label: String(localized: "filters.ignored"),
-        systemImage: "line.3.horizontal.decrease.circle",
+        systemImage: AppIcon.filterCircle,
         openSheet: $showFilterSheet
       )
     } else {
@@ -119,7 +119,7 @@ struct BookFilterView: View {
       {
         FilterChip(
           label: label,
-          systemImage: "dot.circle",
+          systemImage: ContentIcon.oneshot,
           variant: browseOpts.oneshotFilter.state == .exclude ? .negative : .normal,
           openSheet: $showFilterSheet
         )
@@ -130,7 +130,7 @@ struct BookFilterView: View {
       {
         FilterChip(
           label: label,
-          systemImage: "trash",
+          systemImage: AppIcon.delete,
           variant: browseOpts.deletedFilter.state == .exclude ? .negative : .normal,
           openSheet: $showFilterSheet
         )

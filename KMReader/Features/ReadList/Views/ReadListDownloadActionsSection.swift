@@ -29,7 +29,7 @@ struct ReadListDownloadActionsSection: View {
         ReadListDownloadActionMenuItems(status: status, actions: offlineActions)
       } label: {
         HStack(spacing: 4) {
-          Image(systemName: "icloud.and.arrow.down")
+          Image(systemName: AppIcon.download)
             .font(.caption2)
           Text(String(localized: "Download"))
             .font(.caption)

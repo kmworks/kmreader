@@ -94,7 +94,7 @@ struct DashboardView: View {
                 await refreshDashboard(reason: "Manual tvOS button")
               }
             } label: {
-              Label("Refresh", systemImage: "arrow.clockwise")
+              Label("Refresh", systemImage: AppIcon.refresh)
             }
             .disabled(isRefreshing)
           }
@@ -351,7 +351,7 @@ struct DashboardView: View {
                   await refreshDashboard(reason: "Manual toolbar button")
                 }
               } label: {
-                Label(String(localized: "Refresh Dashboard"), systemImage: "arrow.clockwise")
+                Label(String(localized: "Refresh Dashboard"), systemImage: AppIcon.refresh)
               }
 
               Button {
@@ -360,7 +360,7 @@ struct DashboardView: View {
                 Label(String(localized: "Enter Offline Mode"), systemImage: "wifi.slash")
               }
             } label: {
-              Image(systemName: "ellipsis")
+              Image(systemName: AppIcon.more)
             }
           }
         }

@@ -70,7 +70,7 @@ struct LibraryRowView: View {
           } label: {
             Label(
               String(localized: "library.action.edit", defaultValue: "Edit Library"),
-              systemImage: "pencil")
+              systemImage: AppIcon.edit)
           }
 
           Divider()
@@ -90,7 +90,7 @@ struct LibraryRowView: View {
           Button(role: .destructive) {
             onDelete()
           } label: {
-            Label(String(localized: "Delete Library"), systemImage: "trash")
+            Label(String(localized: "Delete Library"), systemImage: AppIcon.delete)
           }
         }
       }

@@ -31,13 +31,7 @@ extension Series {
   }
 
   var statusIcon: String {
-    switch normalizedStatus {
-    case "ONGOING": return "bolt.circle"
-    case "ENDED": return "checkmark.circle"
-    case "ABANDONED": return "exclamationmark.circle"
-    case "HIATUS": return "pause.circle"
-    default: return "questionmark.circle"
-    }
+    SeriesStatus.fromAPIValue(metadata.status)?.icon ?? "questionmark.circle"
   }
 
   var readStatus: ReadStatus {
@@ -53,11 +47,7 @@ extension Series {
   }
 
   var readStatusIcon: String {
-    switch readStatus {
-    case .read: return "checkmark.circle.fill"
-    case .inProgress: return "circle.righthalf.filled"
-    case .unread: return "circle"
-    }
+    readStatus.icon
   }
 
   var lastUpdatedDisplay: String {

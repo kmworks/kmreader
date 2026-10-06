@@ -73,7 +73,7 @@
               onClose()
             } label: {
               HStack(spacing: 8) {
-                Image(systemName: "xmark")
+                Image(systemName: AppIcon.close)
                 Text("Close")
               }
               .padding(.horizontal, 4)

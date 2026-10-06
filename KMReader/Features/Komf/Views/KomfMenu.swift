@@ -34,7 +34,7 @@ struct KomfMenu: View {
         Button {
           deferMenuActionPresentation { onReset() }
         } label: {
-          Label("Reset Metadata", systemImage: "arrow.counterclockwise")
+          Label("Reset Metadata", systemImage: AppIcon.reset)
         }
       }
     } label: {

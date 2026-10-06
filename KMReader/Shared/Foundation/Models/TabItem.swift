@@ -52,13 +52,13 @@ enum TabItem: Hashable, Identifiable {
     case .library:
       return ContentIcon.library
     case .browse:
-      return "magnifyingglass"
+      return AppIcon.search
     case .offline:
       return "tray.and.arrow.down"
     case .server:
       return "server.rack"
     case .settings:
-      return "gearshape"
+      return AppIcon.settings
     }
   }
 

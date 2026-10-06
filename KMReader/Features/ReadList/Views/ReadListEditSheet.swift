@@ -36,7 +36,7 @@ struct ReadListEditSheet: View {
         if isSaving {
           LoadingIcon()
         } else {
-          Label("Save", systemImage: "checkmark")
+          Label("Save", systemImage: AppIcon.confirm)
         }
       }
       .disabled(isSaving || name.isEmpty)
