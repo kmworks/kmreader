@@ -113,7 +113,7 @@ extension BookSearch {
 
     if let oneshot = filters.oneshot {
       conditions.append([
-        "oneshot": [
+        "oneShot": [
           "operator": oneshot ? "isTrue" : "isFalse"
         ]
       ])

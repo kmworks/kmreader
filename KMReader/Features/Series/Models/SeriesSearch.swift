@@ -121,7 +121,7 @@ extension SeriesSearch {
 
     if let oneshot = filters.oneshot {
       conditions.append([
-        "oneshot": [
+        "oneShot": [
           "operator": oneshot ? "isTrue" : "isFalse"
         ]
       ])
