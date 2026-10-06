@@ -29,6 +29,24 @@ private struct ShadowImageDescriptor {
   let style: ShadowStyle
   let cornerRadius: CGFloat
   let colorScheme: ColorScheme
+  /// How far the corner curve reaches along the core's edges.
+  let cornerSpan: CGFloat
+
+  /// The core only casts the shadow; the card covers it. Shrinking it a hair
+  /// inside the card bounds keeps coverage from depending on exact shape or
+  /// antialiasing matches with the card's clip.
+  static let coreInset: CGFloat = 0.5
+
+  init(style: ShadowStyle, cornerRadius: CGFloat, colorScheme: ColorScheme) {
+    self.style = style
+    self.cornerRadius = cornerRadius
+    self.colorScheme = colorScheme
+    self.cornerSpan = Self.measureCornerSpan(Self.effectiveRadius(cornerRadius))
+  }
+
+  static func effectiveRadius(_ cornerRadius: CGFloat) -> CGFloat {
+    max(cornerRadius - coreInset, 0)
+  }
 
   struct Layer {
     let colorName: String
@@ -57,13 +75,52 @@ private struct ShadowImageDescriptor {
     layers.map { $0.blur + abs($0.y) + 2 }.max() ?? 0
   }
 
+  /// Core edge length: both corner curves plus a straight stretchable center.
+  var coreSize: CGFloat {
+    2 * (Self.coreInset + cornerSpan + 1) + 24
+  }
+
   var cacheKey: String {
     "\(style)#\(cornerRadius)#\(colorScheme == .dark ? "dark" : "light")"
   }
 
   var capInsets: EdgeInsets {
-    let inset = margin + cornerRadius + 1
+    let inset = margin + Self.coreInset + cornerSpan + 1
     return EdgeInsets(top: inset, leading: inset, bottom: inset, trailing: inset)
+  }
+
+  /// Continuous corners start curving about 1.5 radii ahead of the corner,
+  /// well beyond the circular tangent point, so cap insets derived from the
+  /// nominal radius would stretch part of the curve.
+  private static func measureCornerSpan(_ cornerRadius: CGFloat) -> CGFloat {
+    guard cornerRadius > 0 else { return 0 }
+    let rect = CGRect(
+      x: 0, y: 0, width: 4 * cornerRadius + 100, height: 4 * cornerRadius + 100)
+    var span = cornerRadius
+    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+      .path(in: rect)
+      .forEach { element in
+        let point: CGPoint
+        switch element {
+        case .move(let to), .line(let to):
+          point = to
+        case .quadCurve(let to, _), .curve(let to, _, _):
+          point = to
+        case .closeSubpath:
+          return
+        }
+        // The path starts mid-edge; only corner-region points are tangents.
+        let limit = rect.width / 4
+        if point.y <= rect.minY + 0.001 || point.y >= rect.maxY - 0.001 {
+          let candidate = min(point.x - rect.minX, rect.maxX - point.x)
+          if candidate < limit { span = max(span, candidate) }
+        }
+        if point.x <= rect.minX + 0.001 || point.x >= rect.maxX - 0.001 {
+          let candidate = min(point.y - rect.minY, rect.maxY - point.y)
+          if candidate < limit { span = max(span, candidate) }
+        }
+      }
+    return span
   }
 }
 
@@ -90,7 +147,7 @@ private enum ShadowImageCache {
 
   private static func render(_ descriptor: ShadowImageDescriptor) -> CGImage {
     let margin = descriptor.margin
-    let core: CGFloat = 48
+    let core = descriptor.coreSize
     let pointSize = core + margin * 2
     let pixelSize = Int((pointSize * renderScale).rounded())
     guard pixelSize > 0,
@@ -110,13 +167,18 @@ private enum ShadowImageCache {
     context.translateBy(x: 0, y: pointSize * renderScale)
     context.scaleBy(x: renderScale, y: -renderScale)
 
-    let coreRect = CGRect(x: margin, y: margin, width: core, height: core)
-    let path = CGPath(
-      roundedRect: coreRect,
-      cornerWidth: descriptor.cornerRadius,
-      cornerHeight: descriptor.cornerRadius,
-      transform: nil
+    let inset = ShadowImageDescriptor.coreInset
+    let coreRect = CGRect(
+      x: margin + inset, y: margin + inset,
+      width: core - inset * 2, height: core - inset * 2)
+    // Cards clip with SwiftUI's default continuous RoundedRectangle; a
+    // circular core would peek out as dark arcs just ahead of each corner.
+    let path = RoundedRectangle(
+      cornerRadius: ShadowImageDescriptor.effectiveRadius(descriptor.cornerRadius),
+      style: .continuous
     )
+    .path(in: coreRect)
+    .cgPath
     for layer in descriptor.layers {
       context.saveGState()
       // Shadow parameters live in the context's base space (y-up pixels):
