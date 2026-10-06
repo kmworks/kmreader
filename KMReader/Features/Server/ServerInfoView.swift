@@ -138,10 +138,10 @@ struct ServerInfoView: View {
                 .foregroundColor(.secondary)
                 if let url = URL(string: "https://kmworks.date/server/") {
                   Link(destination: url) {
-                    Label {
+                    HStack(spacing: 4) {
                       Text(verbatim: "kmworks.date/server")
-                    } icon: {
                       Image(systemName: AppIcon.externalLink)
+                        .imageScale(.small)
                     }
                     .font(.footnote)
                   }
