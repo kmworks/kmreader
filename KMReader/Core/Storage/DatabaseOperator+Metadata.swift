@@ -44,6 +44,24 @@ extension DatabaseOperator {
     }
   }
 
+  /// Drops every stored library metric of the instance: servers without the
+  /// stats endpoints show no metrics, so previously stored numbers must not linger.
+  func clearLibraryMetrics(instanceId: String) throws {
+    guard !instanceId.isEmpty else { return }
+    try write { db in
+      var libraries = try fetchLibraryRecords(db: db, instanceId: instanceId)
+      for index in libraries.indices {
+        libraries[index].fileSize = nil
+        libraries[index].booksCount = nil
+        libraries[index].seriesCount = nil
+        libraries[index].sidecarsCount = nil
+        libraries[index].collectionsCount = nil
+        libraries[index].readlistsCount = nil
+        try save(libraries[index], db: db)
+      }
+    }
+  }
+
   func replaceLibraries(_ libraries: [LibraryInfo], for instanceId: String) throws {
     try write { db in
       let existing = try fetchLibraryRecords(db: db, instanceId: instanceId)

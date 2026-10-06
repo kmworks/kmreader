@@ -46,16 +46,7 @@ struct ServerView: View {
           ServerActionTile(
             title: ServerSection.serverInfo.title,
             systemImage: ServerSection.serverInfo.icon,
-            color: ServerSection.serverInfo.color
-          )
-        }
-        .adaptiveButtonStyle(.plain)
-
-        NavigationLink(value: NavDestination.settingsTasks) {
-          ServerActionTile(
-            title: ServerSection.tasks.title,
-            systemImage: ServerSection.tasks.icon,
-            color: ServerSection.tasks.color,
+            color: ServerSection.serverInfo.color,
             badge: taskQueueStatus.count > 0 ? "\(taskQueueStatus.count)" : nil,
             badgeColor: Color.secondary
           )

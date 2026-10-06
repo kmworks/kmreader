@@ -119,9 +119,7 @@ struct DashboardView: View {
         isRefreshing = true
       }
     }
-    await scopeStore.refreshMetrics(
-      instanceId: current.instanceId,
-      displayedLibraryIds: dashboardScopeStore.scope.resolvedIds(pinned: dashboard.libraryIds))
+    await scopeStore.refreshMetrics(instanceId: current.instanceId)
     await DashboardSectionRefreshNotifier.postAll(source: .manual, reason: reason)
     if showsToolbarIndicator {
       withAnimation {
