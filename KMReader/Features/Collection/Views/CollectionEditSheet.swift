@@ -32,7 +32,7 @@ struct CollectionEditSheet: View {
         if isSaving {
           ProgressView()
         } else {
-          Label("Save", systemImage: "checkmark")
+          Label("Save", systemImage: AppIcon.confirm)
         }
       }
       .disabled(isSaving || name.isEmpty)

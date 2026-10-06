@@ -134,7 +134,7 @@ struct BookCardView: View {
         Text("•")
       }
       if item.progress == 1 {
-        Image(systemName: "checkmark.circle")
+        Image(systemName: ReadStatus.read.icon)
           .foregroundColor(overlay ? CardOverlayTextStyle.standard.secondaryColor : .secondary)
           .font(overlay ? .caption2 : .system(tertiaryTextStyle))
       }

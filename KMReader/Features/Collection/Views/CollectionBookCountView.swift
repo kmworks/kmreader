@@ -18,7 +18,7 @@ struct CollectionBookCountView: View {
         .font(.subheadline.weight(.semibold))
 
       if collection.ordered {
-        Label("Ordered", systemImage: "arrow.up.arrow.down")
+        Label("Ordered", systemImage: AppIcon.sort)
           .font(.caption)
           .foregroundStyle(.secondary)
       }

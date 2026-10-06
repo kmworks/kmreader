@@ -36,9 +36,9 @@ nonisolated enum DownloadStatus: Equatable, Sendable {
     case .pending:
       return "arrow.clockwise"
     case .downloaded:
-      return "checkmark.icloud.fill"
+      return AppIcon.downloaded
     case .failed:
-      return "exclamationmark.circle.fill"
+      return AppIcon.downloadFailed
     }
   }
 
@@ -90,11 +90,11 @@ nonisolated enum DownloadStatus: Equatable, Sendable {
   var menuIcon: String {
     switch self {
     case .downloaded:
-      return "trash"
+      return AppIcon.delete
     case .pending:
       return "xmark.circle"
     case .notDownloaded, .failed:
-      return "icloud.and.arrow.down"
+      return AppIcon.download
     }
   }
 

@@ -134,7 +134,7 @@ struct BookBrowseOptionsSheet: View {
         Label(String(localized: "Save Filter"), systemImage: "bookmark")
       }
       Button(action: applyChanges) {
-        Label(String(localized: "Done"), systemImage: "checkmark")
+        Label(String(localized: "Done"), systemImage: AppIcon.confirm)
       }
     }
     .sheet(isPresented: $showSaveFilterSheet) {
@@ -149,7 +149,7 @@ struct BookBrowseOptionsSheet: View {
   private var ignoredFiltersSection: some View {
     if ignoresFiltersForSearch {
       Section(String(localized: "Filters")) {
-        Label(String(localized: "filters.ignored"), systemImage: "line.3.horizontal.decrease.circle")
+        Label(String(localized: "filters.ignored"), systemImage: AppIcon.filterCircle)
           .foregroundStyle(.secondary)
       }
     }
@@ -159,7 +159,7 @@ struct BookBrowseOptionsSheet: View {
   private var sortSection: some View {
     if usesRelevanceSort {
       Section(String(localized: "Sort")) {
-        Label(String(localized: "sort.relevance"), systemImage: "magnifyingglass")
+        Label(String(localized: "sort.relevance"), systemImage: AppIcon.search)
           .foregroundStyle(.secondary)
       }
     } else {

@@ -34,19 +34,20 @@ struct SeriesBookCountView: View {
         }
 
         if series.booksUnreadCount > 0 && series.booksUnreadCount < series.booksCount {
-          Label("\(series.booksUnreadCount) unread", systemImage: "circle")
+          Label("\(series.booksUnreadCount) unread", systemImage: ReadStatus.unread.icon)
             .font(.caption)
             .foregroundStyle(.secondary)
         } else if series.booksInProgressCount > 0 {
-          Label("\(series.booksInProgressCount) in progress", systemImage: "circle.righthalf.filled")
+          Label("\(series.booksInProgressCount) in progress", systemImage: ReadStatus.inProgress.icon)
             .font(.caption)
             .foregroundStyle(.orange)
         } else if series.booksUnreadCount == 0 && series.booksCount > 0 {
-          Label("All read", systemImage: "checkmark.circle.fill")
+          Label("All read", systemImage: ReadStatus.read.icon)
+            .symbolVariant(.fill)
             .font(.caption)
             .foregroundStyle(.green)
         } else if series.booksCount > 0 {
-          Label("Unread", systemImage: "circle")
+          Label("Unread", systemImage: ReadStatus.unread.icon)
             .font(.caption)
             .foregroundStyle(.secondary)
         }

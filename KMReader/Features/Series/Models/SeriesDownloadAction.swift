@@ -32,13 +32,13 @@ enum SeriesDownloadAction: String, Identifiable, CaseIterable {
   func icon(for status: SeriesDownloadStatus) -> String {
     switch self {
     case .download:
-      return "icloud.and.arrow.down"
+      return AppIcon.download
     case .downloadUnread:
       return "book.circle"
     case .removeRead:
       return "trash.circle"
     case .remove:
-      return "trash"
+      return AppIcon.delete
     case .cancel:
       return "xmark.circle"
     }

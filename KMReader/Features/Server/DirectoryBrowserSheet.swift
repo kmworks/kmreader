@@ -40,7 +40,7 @@ struct DirectoryBrowserSheet: View {
         } else if error != nil {
           Spacer()
           VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: AppIcon.loadError)
               .font(.largeTitle)
               .foregroundColor(.orange)
             Text(formattedErrorMessage)
@@ -98,7 +98,7 @@ struct DirectoryBrowserSheet: View {
         selectedPath = currentPath
         dismiss()
       } label: {
-        Label(String(localized: "Select"), systemImage: "checkmark")
+        Label(String(localized: "Select"), systemImage: AppIcon.confirm)
       }
       .disabled(currentPath.isEmpty)
     }

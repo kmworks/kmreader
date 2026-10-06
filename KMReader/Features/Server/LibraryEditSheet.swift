@@ -35,7 +35,7 @@ struct LibraryEditSheet: View {
         if isSaving {
           LoadingIcon()
         } else {
-          Label(String(localized: "Save"), systemImage: "checkmark")
+          Label(String(localized: "Save"), systemImage: AppIcon.confirm)
         }
       }
       .disabled(isSaving || !isValid)

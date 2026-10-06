@@ -215,7 +215,7 @@ extension ReadListDetailView {
   @ViewBuilder
   private var readListLoadFailureView: some View {
     ContentUnavailableView {
-      Label("Failed to load read list details", systemImage: "exclamationmark.triangle")
+      Label("Failed to load read list details", systemImage: AppIcon.loadError)
     } actions: {
       Button(String(localized: "Retry")) {
         Task {
@@ -301,7 +301,7 @@ extension ReadListDetailView {
         Button {
           showEditSheet = true
         } label: {
-          Label("Edit", systemImage: "pencil")
+          Label("Edit", systemImage: AppIcon.edit)
         }
 
         Divider()
@@ -309,11 +309,11 @@ extension ReadListDetailView {
         Button(role: .destructive) {
           showDeleteConfirmation = true
         } label: {
-          Label("Delete Read List", systemImage: "trash")
+          Label("Delete Read List", systemImage: AppIcon.delete)
         }
       }
     } label: {
-      Image(systemName: "ellipsis")
+      Image(systemName: AppIcon.more)
     }
     .toolbarButtonStyle()
   }

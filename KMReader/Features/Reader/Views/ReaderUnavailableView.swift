@@ -48,7 +48,7 @@ struct ReaderUnavailableView: View {
           Button {
             onRetry()
           } label: {
-            Label("Retry", systemImage: "arrow.clockwise")
+            Label("Retry", systemImage: AppIcon.refresh)
               .font(.headline)
               .padding(.horizontal, 16)
               .padding(.vertical, 8)

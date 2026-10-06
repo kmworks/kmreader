@@ -51,7 +51,7 @@ struct CollectionSeriesFilterView: View {
 
         FilterChip(
           label: String(localized: "Filter"),
-          systemImage: "line.3.horizontal.decrease.circle",
+          systemImage: AppIcon.filterCircle,
           openSheet: $showFilterSheet
         )
 
@@ -78,7 +78,7 @@ struct CollectionSeriesFilterView: View {
         {
           FilterChip(
             label: label,
-            systemImage: "dot.circle",
+            systemImage: ContentIcon.oneshot,
             variant: browseOpts.oneshotFilter.state == .exclude ? .negative : .normal,
             openSheet: $showFilterSheet
           )
@@ -89,7 +89,7 @@ struct CollectionSeriesFilterView: View {
         {
           FilterChip(
             label: label,
-            systemImage: "trash",
+            systemImage: AppIcon.delete,
             variant: browseOpts.deletedFilter.state == .exclude ? .negative : .normal,
             openSheet: $showFilterSheet
           )

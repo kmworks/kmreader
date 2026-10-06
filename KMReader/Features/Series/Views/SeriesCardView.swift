@@ -125,12 +125,12 @@ struct SeriesCardView: View {
         Text("•")
       }
       if progress == 1 {
-        Image(systemName: "checkmark.circle")
+        Image(systemName: ReadStatus.read.icon)
           .foregroundColor(overlay ? CardOverlayTextStyle.standard.secondaryColor : .secondary)
           .font(overlay ? .caption2 : .system(tertiaryTextStyle))
       }
       if item.oneshot {
-        Label(item.oneshotLine, systemImage: "book.closed")
+        Label(item.oneshotLine, systemImage: ContentIcon.oneshot)
           .labelStyle(.compact)
           .lineLimit(1)
       } else {

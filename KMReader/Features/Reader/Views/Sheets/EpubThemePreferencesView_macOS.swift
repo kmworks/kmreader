@@ -388,7 +388,7 @@
         Button {
           resetPreferences()
         } label: {
-          Label(String(localized: "Reset"), systemImage: "arrow.counterclockwise")
+          Label(String(localized: "Reset"), systemImage: AppIcon.reset)
         }
 
         Spacer()
@@ -397,14 +397,14 @@
           Button {
             clearBookPreferences()
           } label: {
-            Label(String(localized: "Reset to Global"), systemImage: "trash")
+            Label(String(localized: "Reset to Global"), systemImage: AppIcon.delete)
           }
         }
 
         Button {
           savePreferences()
         } label: {
-          Label(String(localized: "Done"), systemImage: "checkmark")
+          Label(String(localized: "Done"), systemImage: AppIcon.confirm)
         }
         .keyboardShortcut(.defaultAction)
         .disabled(isSaveDisabled)

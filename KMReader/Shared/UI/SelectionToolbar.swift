@@ -34,7 +34,7 @@ struct SelectionToolbar: View {
           onDelete()
         }
       } label: {
-        Label(deleteLabel, systemImage: "trash.fill")
+        Label(deleteLabel, systemImage: AppIcon.delete)
           .font(.footnote)
       }
       .adaptiveButtonStyle(.borderedProminent)

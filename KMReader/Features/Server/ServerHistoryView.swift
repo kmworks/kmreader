@@ -84,7 +84,7 @@ struct ServerHistoryView: View {
                   if isClearingLocal {
                     ProgressView()
                   } else {
-                    Label(String(localized: "Clear Local Entries"), systemImage: "trash")
+                    Label(String(localized: "Clear Local Entries"), systemImage: AppIcon.delete)
                   }
                   Spacer()
                 }
@@ -177,7 +177,7 @@ struct ServerHistoryView: View {
             Button(role: .destructive) {
               deferMenuActionPresentation { showClearLocalConfirmation = true }
             } label: {
-              Label(String(localized: "Clear Local Entries"), systemImage: "trash")
+              Label(String(localized: "Clear Local Entries"), systemImage: AppIcon.delete)
             }
             .disabled(isClearingLocal)
           } label: {
@@ -335,7 +335,7 @@ struct ServerHistoryView: View {
     } label: {
       Label(
         String(localized: "history.viewDetails", defaultValue: "View Details"),
-        systemImage: "info.circle"
+        systemImage: AppIcon.details
       )
     }
     .disabled(event.properties.isEmpty)

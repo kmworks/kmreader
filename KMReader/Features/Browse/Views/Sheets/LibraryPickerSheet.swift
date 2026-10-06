@@ -20,7 +20,7 @@ struct LibraryPickerSheet: View {
       Button {
         refreshTrigger += 1
       } label: {
-        Label("Refresh", systemImage: "arrow.clockwise")
+        Label("Refresh", systemImage: AppIcon.refresh)
       }
     }
   }

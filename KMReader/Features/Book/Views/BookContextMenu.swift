@@ -33,14 +33,14 @@ struct BookContextMenu: View {
           Button {
             markAsRead(bookId: book.id)
           } label: {
-            Label("Mark as Read", systemImage: "checkmark.circle")
+            Label("Mark as Read", systemImage: AppIcon.markRead)
           }
         }
         if book.hasStartedReading {
           Button {
             markAsUnread(bookId: book.id)
           } label: {
-            Label("Mark as Unread", systemImage: "circle")
+            Label("Mark as Unread", systemImage: AppIcon.markUnread)
           }
         }
         Divider()
@@ -50,17 +50,17 @@ struct BookContextMenu: View {
             Button {
               deferMenuActionPresentation { onEditRequested?() }
             } label: {
-              Label("Edit", systemImage: "pencil")
+              Label("Edit", systemImage: AppIcon.edit)
             }
             Button {
               analyzeBook(bookId: book.id)
             } label: {
-              Label("Analyze", systemImage: "waveform.path.ecg")
+              Label("Analyze", systemImage: AppIcon.analyze)
             }
             Button {
               refreshMetadata(bookId: book.id)
             } label: {
-              Label("Refresh Metadata", systemImage: "arrow.clockwise")
+              Label("Refresh Metadata", systemImage: AppIcon.refresh)
             }
 
             if onDeleteRequested != nil {
@@ -68,11 +68,11 @@ struct BookContextMenu: View {
               Button(role: .destructive) {
                 deferMenuActionPresentation { onDeleteRequested?() }
               } label: {
-                Label("Delete Book", systemImage: "trash")
+                Label("Delete Book", systemImage: AppIcon.delete)
               }
             }
           } label: {
-            Label("Manage", systemImage: "gearshape")
+            Label("Manage", systemImage: AppIcon.settings)
           }
 
           Divider()
@@ -103,7 +103,7 @@ struct BookContextMenu: View {
         Button {
           refreshCover()
         } label: {
-          Label("Refresh Cover", systemImage: "arrow.clockwise")
+          Label("Refresh Cover", systemImage: AppIcon.refresh)
         }
       }
 
@@ -115,7 +115,7 @@ struct BookContextMenu: View {
             ErrorManager.shared.notify(message: String(localized: "notification.book.cacheCleared"))
           }
         } label: {
-          Label("Clear Cache", systemImage: "xmark.circle")
+          Label("Clear Cache", systemImage: AppIcon.clearCache)
         }
       }
     }
@@ -206,14 +206,14 @@ struct BookContextMenu: View {
     #if os(iOS)
       ControlGroup {
         NavigationLink(value: book.navDestination) {
-          Label("Details", systemImage: "info.circle")
+          Label("Details", systemImage: AppIcon.details)
         }
 
         if let onReadBook = onReadBook {
           Button {
             onReadBook(true)
           } label: {
-            Label("Peek", systemImage: "eye.slash")
+            Label("Peek", systemImage: AppIcon.peek)
           }
         }
 
@@ -228,12 +228,12 @@ struct BookContextMenu: View {
         Button {
           onReadBook(true)
         } label: {
-          Label("Peek", systemImage: "eye.slash")
+          Label("Peek", systemImage: AppIcon.peek)
         }
         Divider()
       }
       NavigationLink(value: book.navDestination) {
-        Label("Details", systemImage: "info.circle")
+        Label("Details", systemImage: AppIcon.details)
       }
       if showSeriesNavigation && !book.oneshot {
         NavigationLink(value: NavDestination.seriesDetail(seriesId: book.seriesId)) {

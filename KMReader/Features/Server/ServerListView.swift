@@ -74,7 +74,7 @@ struct ServerListView: View {
       Section(header: introHeader, footer: footerText) {
         if visibleInstances.isEmpty {
           VStack(spacing: 12) {
-            Image(systemName: "list.bullet.rectangle")
+            Image(systemName: "externaldrive.connected.to.linebelow")
               .font(.largeTitle)
               .foregroundStyle(.secondary)
             Text(String(localized: "No servers added yet"))

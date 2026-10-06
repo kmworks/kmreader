@@ -86,7 +86,7 @@ struct PageHashMatchesView: View {
       Button(role: .destructive) {
         Task { await deleteMatch(match) }
       } label: {
-        Image(systemName: "trash")
+        Image(systemName: AppIcon.delete)
           .foregroundColor(.red)
       }
       .buttonStyle(.borderless)

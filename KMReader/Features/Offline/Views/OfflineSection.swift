@@ -14,7 +14,7 @@ enum OfflineSection: String, CaseIterable {
     case .tasks:
       return "arrow.down.circle"
     case .books:
-      return "books.vertical"
+      return ContentIcon.library
     }
   }
 

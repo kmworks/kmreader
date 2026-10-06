@@ -245,7 +245,7 @@ struct MainApp: App {
                 readerPresentation.setReadingDirectionFromCommand(direction)
               } label: {
                 if state.readingDirection == direction {
-                  Label(direction.displayName, systemImage: "checkmark")
+                  Label(direction.displayName, systemImage: AppIcon.confirm)
                 } else {
                   Text(direction.displayName)
                 }
@@ -262,7 +262,7 @@ struct MainApp: App {
                 readerPresentation.setPageLayoutFromCommand(layout)
               } label: {
                 if state.pageLayout == layout {
-                  Label(layout.displayName, systemImage: "checkmark")
+                  Label(layout.displayName, systemImage: AppIcon.confirm)
                 } else {
                   Text(layout.displayName)
                 }
@@ -279,7 +279,7 @@ struct MainApp: App {
                 readerPresentation.setRotationFromCommand(rotation)
               } label: {
                 if state.rotation == rotation {
-                  Label(rotation.displayName, systemImage: "checkmark")
+                  Label(rotation.displayName, systemImage: AppIcon.confirm)
                 } else {
                   Text(rotation.displayName)
                 }
@@ -301,7 +301,7 @@ struct MainApp: App {
             readerPresentation.toggleIsolateCoverPageFromCommand()
           } label: {
             if state.isolateCoverPage {
-              Label(String(localized: "Isolate Cover Page"), systemImage: "checkmark")
+              Label(String(localized: "Isolate Cover Page"), systemImage: AppIcon.confirm)
             } else {
               Text(String(localized: "Isolate Cover Page"))
             }
@@ -316,7 +316,7 @@ struct MainApp: App {
                 readerPresentation.setSplitWidePageModeFromCommand(mode)
               } label: {
                 if state.splitWidePageMode == mode {
-                  Label(mode.displayName, systemImage: "checkmark")
+                  Label(mode.displayName, systemImage: AppIcon.confirm)
                 } else {
                   Text(mode.displayName)
                 }
@@ -331,7 +331,7 @@ struct MainApp: App {
             readerPresentation.toggleContinuousScrollFromCommand()
           } label: {
             if state.continuousScroll {
-              Label(String(localized: "Continuous Scroll"), systemImage: "checkmark")
+              Label(String(localized: "Continuous Scroll"), systemImage: AppIcon.confirm)
             } else {
               Text(String(localized: "Continuous Scroll"))
             }

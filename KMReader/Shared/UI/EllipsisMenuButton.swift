@@ -11,13 +11,13 @@ struct EllipsisMenuButton<Content: View>: View {
   @ViewBuilder let content: () -> Content
 
   var body: some View {
-    Image(systemName: "ellipsis")
+    Image(systemName: AppIcon.more)
       .hidden()
       .overlay(
         Menu {
           content()
         } label: {
-          Image(systemName: "ellipsis")
+          Image(systemName: AppIcon.more)
             .foregroundColor(color)
             .frame(width: 40, height: 40)
             .contentShape(Rectangle())

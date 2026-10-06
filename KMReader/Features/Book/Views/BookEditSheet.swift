@@ -52,7 +52,7 @@ struct BookEditSheet: View {
         if isSaving {
           LoadingIcon()
         } else {
-          Label("Save", systemImage: "checkmark")
+          Label("Save", systemImage: AppIcon.confirm)
         }
       }
       .disabled(isSaving)
@@ -169,7 +169,7 @@ struct BookEditSheet: View {
               bookMetadataUpdate.authorsLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
           }
         }
       }
@@ -194,7 +194,7 @@ struct BookEditSheet: View {
 
       // Own form row: a row shared with the Picker becomes the Picker's tap target.
       Button(action: commitPendingAuthor) {
-        Label("Add Author", systemImage: "plus.circle.fill")
+        Label("Add Author", systemImage: AppIcon.addRow)
           .frame(maxWidth: .infinity)
       }
       .adaptiveButtonStyle(hasPendingAuthor ? .borderedProminent : .borderless)
@@ -241,7 +241,7 @@ struct BookEditSheet: View {
               bookMetadataUpdate.tagsLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
           }
         }
       }
@@ -249,7 +249,7 @@ struct BookEditSheet: View {
         TextField("Tag", text: $newTag)
           .onSubmit { commitPendingTag() }
         Button(action: commitPendingTag) {
-          Image(systemName: "plus.circle.fill")
+          Image(systemName: AppIcon.addRow)
         }
         .disabled(!hasPendingTag)
       }
@@ -287,7 +287,7 @@ struct BookEditSheet: View {
                 bookMetadataUpdate.linksLock = true
               }
             } label: {
-              Image(systemName: "trash")
+              Image(systemName: AppIcon.delete)
             }
           }
           Text(bookMetadataUpdate.links[index].url)
@@ -305,7 +305,7 @@ struct BookEditSheet: View {
           #endif
           .onSubmit { commitPendingLink() }
         Button(action: commitPendingLink) {
-          Label("Add Link", systemImage: "plus.circle.fill")
+          Label("Add Link", systemImage: AppIcon.addRow)
         }
         .adaptiveButtonStyle(hasPendingLink ? .borderedProminent : .borderless)
         .disabled(!hasPendingLink)

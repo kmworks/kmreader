@@ -673,7 +673,7 @@
         nextProgressCircle.alphaValue = 0
         nextStatusIconView.alphaValue = 1
         nextStatusIconView.image = NSImage(
-          systemSymbolName: "checkmark.icloud.fill",
+          systemSymbolName: AppIcon.downloaded,
           accessibilityDescription: nil
         )
         nextStatusContainer.setAccessibilityLabel(String(localized: "Ready for offline reading"))
@@ -681,7 +681,7 @@
         nextProgressCircle.alphaValue = 0
         nextStatusIconView.alphaValue = 1
         nextStatusIconView.image = NSImage(
-          systemSymbolName: "icloud",
+          systemSymbolName: AppIcon.downloadPartial,
           accessibilityDescription: nil
         )
         nextStatusContainer.setAccessibilityLabel(String(localized: "status.not_downloaded"))

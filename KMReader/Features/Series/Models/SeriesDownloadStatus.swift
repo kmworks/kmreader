@@ -34,13 +34,13 @@ nonisolated enum SeriesDownloadStatus: Equatable, Sendable {
     case .notDownloaded:
       return nil
     case .partiallyDownloaded:
-      return "icloud"
+      return AppIcon.downloadPartial
     case .downloaded:
-      return "checkmark.icloud.fill"
+      return AppIcon.downloaded
     case .pending:
       return "arrow.clockwise"
     case .failed:
-      return "exclamationmark.circle.fill"
+      return AppIcon.downloadFailed
     }
   }
 

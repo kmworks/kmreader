@@ -60,7 +60,7 @@ struct EntityPickerSheet<CreateSheet: View>: View {
                     Image(systemName: "checkmark.circle.fill")
                       .foregroundStyle(.green)
                   } else if selectedItemId == item.id {
-                    Image(systemName: "checkmark")
+                    Image(systemName: AppIcon.confirm)
                       .foregroundStyle(.tint)
                   }
                 }
@@ -78,13 +78,13 @@ struct EntityPickerSheet<CreateSheet: View>: View {
           showCreateSheet = true
         }
       } label: {
-        Label("Create New", systemImage: "plus.circle.fill")
+        Label("Create New", systemImage: AppIcon.addRow)
       }
       .disabled(!current.isAdmin)
 
       HStack(spacing: 12) {
         Button(action: confirmSelection) {
-          Label("Done", systemImage: "checkmark")
+          Label("Done", systemImage: AppIcon.confirm)
         }
         .disabled(selectedItemId == nil)
       }

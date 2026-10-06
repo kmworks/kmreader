@@ -28,7 +28,7 @@ struct SimpleSortOptionsSheet: View {
       }
     } controls: {
       Button(action: applyChanges) {
-        Label("Done", systemImage: "checkmark")
+        Label("Done", systemImage: AppIcon.confirm)
       }
     }
   }

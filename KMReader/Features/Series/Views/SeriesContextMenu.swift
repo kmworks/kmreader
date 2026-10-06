@@ -77,7 +77,7 @@ struct SeriesContextMenu: View {
           Button {
             markSeriesAsRead()
           } label: {
-            Label("Mark as Read", systemImage: "checkmark.circle")
+            Label("Mark as Read", systemImage: AppIcon.markRead)
           }
         }
 
@@ -85,7 +85,7 @@ struct SeriesContextMenu: View {
           Button {
             markSeriesAsUnread()
           } label: {
-            Label("Mark as Unread", systemImage: "circle")
+            Label("Mark as Unread", systemImage: AppIcon.markUnread)
           }
         }
 
@@ -96,17 +96,17 @@ struct SeriesContextMenu: View {
             Button {
               deferMenuActionPresentation { onEditRequested?() }
             } label: {
-              Label("Edit", systemImage: "pencil")
+              Label("Edit", systemImage: AppIcon.edit)
             }
             Button {
               analyzeSeries()
             } label: {
-              Label("Analyze", systemImage: "waveform.path.ecg")
+              Label("Analyze", systemImage: AppIcon.analyze)
             }
             Button {
               refreshMetadata()
             } label: {
-              Label("Refresh Metadata", systemImage: "arrow.clockwise")
+              Label("Refresh Metadata", systemImage: AppIcon.refresh)
             }
 
             if onDeleteRequested != nil {
@@ -114,11 +114,11 @@ struct SeriesContextMenu: View {
               Button(role: .destructive) {
                 deferMenuActionPresentation { onDeleteRequested?() }
               } label: {
-                Label("Delete Series", systemImage: "trash")
+                Label("Delete Series", systemImage: AppIcon.delete)
               }
             }
           } label: {
-            Label("Manage", systemImage: "gearshape")
+            Label("Manage", systemImage: AppIcon.settings)
           }
 
           #if os(iOS) || os(macOS)
@@ -167,7 +167,7 @@ struct SeriesContextMenu: View {
       Menu {
         actionsView(actions: SeriesDownloadAction.availableActions(for: status))
       } label: {
-        Label("Download", systemImage: status.icon ?? "icloud.and.arrow.down")
+        Label("Download", systemImage: status.icon ?? AppIcon.download)
       }
 
       if !isOffline {
@@ -175,7 +175,7 @@ struct SeriesContextMenu: View {
         Button {
           refreshCover()
         } label: {
-          Label("Refresh Cover", systemImage: "arrow.clockwise")
+          Label("Refresh Cover", systemImage: AppIcon.refresh)
         }
       }
     }
@@ -340,7 +340,7 @@ struct SeriesContextMenu: View {
       HStack(spacing: 4) {
         Text(policy == offlinePolicy ? title : policy.label)
         if policy == offlinePolicy {
-          Image(systemName: "checkmark")
+          Image(systemName: AppIcon.confirm)
         }
       }
     } icon: {
@@ -424,7 +424,7 @@ struct SeriesContextMenu: View {
   private func limitOptionLabel(policy: OfflinePolicy, limit: Int) -> some View {
     let title = OfflinePolicy.limitTitle(limit)
     if offlinePolicy == policy && offlinePolicyLimit == limit {
-      Label(title, systemImage: "checkmark")
+      Label(title, systemImage: AppIcon.confirm)
     } else {
       Text(title)
     }

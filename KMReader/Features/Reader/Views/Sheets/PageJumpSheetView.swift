@@ -261,7 +261,7 @@ struct PageJumpSheetView: View {
                   HStack(spacing: 4) {
                     Spacer()
                     Text("Jump")
-                    Image(systemName: "arrow.right.to.line")
+                    Image(systemName: AppIcon.pageJump)
                     Spacer()
                   }
                 }
@@ -291,7 +291,7 @@ struct PageJumpSheetView: View {
                 } label: {
                   HStack(spacing: 4) {
                     Text("Jump")
-                    Image(systemName: "arrow.right.to.line")
+                    Image(systemName: AppIcon.pageJump)
                   }
                 }
                 .adaptiveButtonStyle(.borderedProminent)
@@ -310,7 +310,7 @@ struct PageJumpSheetView: View {
             await sharePage()
           }
         } label: {
-          Image(systemName: "square.and.arrow.up")
+          Image(systemName: AppIcon.share)
         }
         .disabled(!canJump)
       #endif

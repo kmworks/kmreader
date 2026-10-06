@@ -4,7 +4,7 @@
   enum EndPageCloseButtonStyle {
     static func apply(to button: UIButton, textColor: UIColor) {
       var configuration = borderedButtonConfiguration()
-      configuration.image = UIImage(systemName: "xmark")
+      configuration.image = UIImage(systemName: AppIcon.close)
       configuration.imagePlacement = .leading
       configuration.imagePadding = 8
       configuration.preferredSymbolConfigurationForImage = buttonSymbolConfiguration
@@ -59,7 +59,7 @@
   enum EndPageCloseButtonStyle {
     static func apply(to button: NSButton, textColor: NSColor) {
       button.title = String(localized: "Close")
-      button.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: nil)
+      button.image = NSImage(systemSymbolName: AppIcon.close, accessibilityDescription: nil)
       button.imagePosition = .imageLeading
       button.contentTintColor = textColor
     }

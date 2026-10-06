@@ -13,9 +13,9 @@ nonisolated struct OfflineProtectionSource: Equatable, Identifiable, Sendable {
     var systemImage: String {
       switch self {
       case .series:
-        return "rectangle.stack"
+        return ContentIcon.series
       case .readList:
-        return "list.bullet.rectangle"
+        return ContentIcon.readList
       }
     }
   }

@@ -41,7 +41,7 @@ struct SettingsAboutView: View {
             HStack {
               Label(String(localized: "Privacy Policy"), systemImage: "hand.raised")
               Spacer()
-              Image(systemName: "arrow.up.right.square")
+              Image(systemName: AppIcon.externalLink)
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
@@ -56,7 +56,7 @@ struct SettingsAboutView: View {
             HStack {
               Label(String(localized: "Terms of Use"), systemImage: "doc.text")
               Spacer()
-              Image(systemName: "arrow.up.right.square")
+              Image(systemName: AppIcon.externalLink)
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
@@ -69,7 +69,7 @@ struct SettingsAboutView: View {
             HStack {
               Label(String(localized: "Rate This App"), systemImage: "star")
               Spacer()
-              Image(systemName: "arrow.up.right.square")
+              Image(systemName: AppIcon.externalLink)
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
@@ -82,7 +82,7 @@ struct SettingsAboutView: View {
             HStack {
               Label(String(localized: "Discord"), systemImage: "bubble.left.and.bubble.right")
               Spacer()
-              Image(systemName: "arrow.up.right.square")
+              Image(systemName: AppIcon.externalLink)
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
@@ -98,7 +98,7 @@ struct SettingsAboutView: View {
                 systemImage: "chevron.left.forwardslash.chevron.right"
               )
               Spacer()
-              Image(systemName: "arrow.up.right.square")
+              Image(systemName: AppIcon.externalLink)
                 .font(.caption)
                 .foregroundColor(.secondary)
             }

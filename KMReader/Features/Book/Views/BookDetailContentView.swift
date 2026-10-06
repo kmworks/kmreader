@@ -116,19 +116,20 @@ struct BookDetailContentView: View {
                   .foregroundStyle(.red)
               } else if let readProgress = book.readProgress {
                 if book.isCompleted {
-                  Label("Completed", systemImage: "checkmark.circle.fill")
+                  Label("Completed", systemImage: ReadStatus.read.icon)
+                    .symbolVariant(.fill)
                     .font(.caption)
                     .foregroundStyle(.green)
                 } else {
                   Label(
                     "Page \(readProgress.page) / \(book.media.pagesCount)",
-                    systemImage: "circle.righthalf.filled"
+                    systemImage: ReadStatus.inProgress.icon
                   )
                   .font(.caption)
                   .foregroundStyle(.orange)
                 }
               } else {
-                Label("Unread", systemImage: "circle")
+                Label("Unread", systemImage: ReadStatus.unread.icon)
                   .font(.caption)
                   .foregroundStyle(.secondary)
               }

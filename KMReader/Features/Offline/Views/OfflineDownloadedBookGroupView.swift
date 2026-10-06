@@ -78,7 +78,7 @@ struct OfflineDownloadedBookGroupView: View {
           HapticFeedback.medium()
           onDeleteBooks(books)
         } label: {
-          Label(String(localized: "Delete All"), systemImage: "trash")
+          Label(String(localized: "Delete All"), systemImage: AppIcon.delete)
         }.optimizedControlSize()
       }
     #endif
@@ -116,7 +116,7 @@ struct OfflineDownloadedBookGroupView: View {
             HapticFeedback.medium()
             onDeleteBook(book)
           } label: {
-            Label(String(localized: "Delete"), systemImage: "trash")
+            Label(String(localized: "Delete"), systemImage: AppIcon.delete)
           }.optimizedControlSize()
         }
       #endif

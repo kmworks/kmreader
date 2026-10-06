@@ -336,7 +336,7 @@ struct MetadataMultiSelectLoader: View {
         if items.isEmpty {
           ContentUnavailableView(
             title,
-            systemImage: "line.3.horizontal.decrease.circle",
+            systemImage: AppIcon.filterCircle,
             description: Text(emptyDescription)
           )
           .toolbar { placeholderToolbar }
@@ -357,7 +357,7 @@ struct MetadataMultiSelectLoader: View {
         VStack(spacing: 16) {
           ContentUnavailableView(
             String(localized: "Unable to load filters"),
-            systemImage: "exclamationmark.triangle",
+            systemImage: AppIcon.loadError,
             description: Text(loadError.localizedDescription)
           )
           Button(String(localized: "Retry")) {
@@ -509,7 +509,7 @@ struct SelectableRow: View {
         Text(displayName)
         Spacer()
         if isSelected {
-          Image(systemName: "checkmark")
+          Image(systemName: AppIcon.confirm)
             .foregroundStyle(.green)
         }
       }

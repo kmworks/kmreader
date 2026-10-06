@@ -14,7 +14,7 @@ struct DownloadStatusIcon: View {
   var bookId: String? = nil
 
   /// Downloaded-state glyph, shared with DownloadStatus.displayIcon.
-  private static let downloadedSystemName = "checkmark.icloud.fill"
+  private static let downloadedSystemName = AppIcon.downloaded
   /// Drawn check and settle bounce, overlapping; total 0.31s.
   private static let completionDuration: TimeInterval = 0.31
 

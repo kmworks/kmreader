@@ -20,7 +20,7 @@ enum SyncStatus {
     case .paused: return "pause.circle.fill"
     case .downloading: return "arrow.down.circle.fill"
     case .syncing: return "arrow.clockwise.circle.fill"
-    case .idle: return "play.circle.fill"
+    case .idle: return "checkmark.circle.fill"
     }
   }
 }

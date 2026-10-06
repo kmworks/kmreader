@@ -34,7 +34,7 @@ enum SettingsSection: String, CaseIterable {
     case .dashboard:
       return "house"
     case .about:
-      return "info.circle.fill"
+      return AppIcon.details
     case .cache:
       return "externaldrive"
     case .divinaReader:

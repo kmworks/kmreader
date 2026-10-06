@@ -29,7 +29,7 @@ struct LibraryAddSheet: View {
         if isCreating {
           LoadingIcon()
         } else {
-          Label(String(localized: "Create"), systemImage: "plus")
+          Label(String(localized: "Create"), systemImage: AppIcon.confirm)
         }
       }
       .disabled(isCreating || !isValid)

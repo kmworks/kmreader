@@ -94,7 +94,7 @@ struct SidebarView: View {
               ProgressView().controlSize(.small)
               Text(String(localized: "notification.refreshing"))
             } else {
-              Image(systemName: "arrow.clockwise")
+              Image(systemName: AppIcon.refresh)
               Text(String(localized: "Refresh"))
             }
           }

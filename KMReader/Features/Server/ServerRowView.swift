@@ -85,13 +85,13 @@ struct ServerRowView: View {
           Button {
             onEdit()
           } label: {
-            Label(String(localized: "Edit"), systemImage: "pencil")
+            Label(String(localized: "Edit"), systemImage: AppIcon.edit)
           }
 
           Button(role: .destructive) {
             onDelete()
           } label: {
-            Label(String(localized: "Delete"), systemImage: "trash")
+            Label(String(localized: "Delete"), systemImage: AppIcon.delete)
           }
         }
       }
@@ -101,13 +101,13 @@ struct ServerRowView: View {
         Button {
           onEdit()
         } label: {
-          Label(String(localized: "Edit"), systemImage: "pencil")
+          Label(String(localized: "Edit"), systemImage: AppIcon.edit)
         }
 
         Button(role: .destructive) {
           onDelete()
         } label: {
-          Label(String(localized: "Delete"), systemImage: "trash")
+          Label(String(localized: "Delete"), systemImage: AppIcon.delete)
         }
       }
     }

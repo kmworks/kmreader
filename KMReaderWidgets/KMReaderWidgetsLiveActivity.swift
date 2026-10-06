@@ -64,7 +64,7 @@ import WidgetKit
               Spacer()
 
               if context.state.failedCount > 0 {
-                Label("\(context.state.failedCount)", systemImage: "exclamationmark.triangle.fill")
+                Label("\(context.state.failedCount)", systemImage: "exclamationmark.circle.fill")
                   .font(.caption2)
                   .foregroundStyle(.red)
               }

@@ -84,7 +84,7 @@ struct LibraryFormScannerSection<Fields: LibraryFormFields>: View {
             fields.scanDirectoryExclusions.append(newExclusion)
             newExclusion = ""
           } label: {
-            Image(systemName: "plus.circle.fill")
+            Image(systemName: AppIcon.addRow)
               .foregroundColor(.green)
           }
           .buttonStyle(.plain)

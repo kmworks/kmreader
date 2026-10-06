@@ -84,14 +84,14 @@ struct SheetView<Content: View, Controls: View>: View {
               Button {
                 dismiss()
               } label: {
-                Label("Close", systemImage: "xmark")
+                Label("Close", systemImage: AppIcon.close)
               }
             }
             if let onReset {
               Button {
                 onReset()
               } label: {
-                Label("Reset", systemImage: "arrow.counterclockwise")
+                Label("Reset", systemImage: AppIcon.reset)
               }
             }
             Spacer()
@@ -114,14 +114,14 @@ struct SheetView<Content: View, Controls: View>: View {
                 Button {
                   dismiss()
                 } label: {
-                  Label("Close", systemImage: "xmark")
+                  Label("Close", systemImage: AppIcon.close)
                 }
               }
               if let onReset {
                 Button {
                   onReset()
                 } label: {
-                  Image(systemName: "arrow.counterclockwise")
+                  Image(systemName: AppIcon.reset)
                 }
               }
             }

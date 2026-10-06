@@ -131,7 +131,7 @@ struct CollectionSeriesBrowseOptionsSheet: View {
         Label(String(localized: "Save Filter"), systemImage: "bookmark")
       }
       Button(action: applyChanges) {
-        Label(String(localized: "Done"), systemImage: "checkmark")
+        Label(String(localized: "Done"), systemImage: AppIcon.confirm)
       }
     }
     .sheet(isPresented: $showSaveFilterSheet) {

@@ -70,7 +70,7 @@ struct BookHorizontalCardView: View {
         .padding(.bottom, 4)
 
       if item.oneshot {
-        Label(item.oneshotLine, systemImage: "book.closed")
+        Label(item.oneshotLine, systemImage: ContentIcon.oneshot)
           .labelStyle(.compact)
           .font(.system(size: LayoutConfig.horizontalCardSeriesFontSize))
           .foregroundColor(palette.seriesColor)
@@ -124,7 +124,7 @@ struct BookHorizontalCardView: View {
           Text("•")
         }
         if item.progress == 1 {
-          Image(systemName: "checkmark.circle")
+          Image(systemName: ReadStatus.read.icon)
             .foregroundColor(palette.metaColor)
             .font(.system(size: LayoutConfig.horizontalCardMetaFontSize))
         }

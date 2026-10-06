@@ -50,7 +50,7 @@ struct ApiKeyAddSheet: View {
                   ErrorManager.shared.notify(
                     message: String(localized: "API key copied to clipboard"))
                 } label: {
-                  Label(String(localized: "Copy to Clipboard"), systemImage: "doc.on.doc")
+                  Label(String(localized: "Copy to Clipboard"), systemImage: AppIcon.copy)
                 }
               #endif
             }
@@ -72,7 +72,7 @@ struct ApiKeyAddSheet: View {
               } label: {
                 HStack {
                   Spacer()
-                  Label(String(localized: "Create"), systemImage: "plus")
+                  Label(String(localized: "Create"), systemImage: AppIcon.confirm)
                   Spacer()
                 }
               }

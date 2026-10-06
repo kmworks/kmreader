@@ -54,7 +54,7 @@ struct SeriesEditSheet: View {
         if isSaving {
           LoadingIcon()
         } else {
-          Label("Save", systemImage: "checkmark")
+          Label("Save", systemImage: AppIcon.confirm)
         }
       }
       .disabled(isSaving)
@@ -140,7 +140,7 @@ struct SeriesEditSheet: View {
                   metadataUpdate.alternateTitlesLock = true
                 }
               } label: {
-                Image(systemName: "trash")
+                Image(systemName: AppIcon.delete)
               }
             }
             Text(metadataUpdate.alternateTitles[index].title)
@@ -154,7 +154,7 @@ struct SeriesEditSheet: View {
           TextField("Title", text: $newAlternateTitle)
             .onSubmit { commitPendingAlternateTitle() }
           Button(action: commitPendingAlternateTitle) {
-            Label("Add Alternate Title", systemImage: "plus.circle.fill")
+            Label("Add Alternate Title", systemImage: AppIcon.addRow)
           }
           .adaptiveButtonStyle(hasPendingAlternateTitle ? .borderedProminent : .borderless)
           .disabled(!hasPendingAlternateTitle)
@@ -198,7 +198,7 @@ struct SeriesEditSheet: View {
                 metadataUpdate.genresLock = true
               }
             } label: {
-              Image(systemName: "trash")
+              Image(systemName: AppIcon.delete)
             }
           }
         }
@@ -206,7 +206,7 @@ struct SeriesEditSheet: View {
           TextField("Genre", text: $newGenre)
             .onSubmit { commitPendingGenre() }
           Button(action: commitPendingGenre) {
-            Image(systemName: "plus.circle.fill")
+            Image(systemName: AppIcon.addRow)
           }
           .disabled(!hasPendingGenre)
         }
@@ -227,7 +227,7 @@ struct SeriesEditSheet: View {
                 metadataUpdate.tagsLock = true
               }
             } label: {
-              Image(systemName: "trash")
+              Image(systemName: AppIcon.delete)
             }
           }
         }
@@ -235,7 +235,7 @@ struct SeriesEditSheet: View {
           TextField("Tag", text: $newTag)
             .onSubmit { commitPendingTag() }
           Button(action: commitPendingTag) {
-            Image(systemName: "plus.circle.fill")
+            Image(systemName: AppIcon.addRow)
           }
           .disabled(!hasPendingTag)
         }
@@ -288,7 +288,7 @@ struct SeriesEditSheet: View {
                 metadataUpdate.linksLock = true
               }
             } label: {
-              Image(systemName: "trash")
+              Image(systemName: AppIcon.delete)
             }
           }
           Text(metadataUpdate.links[index].url)
@@ -306,7 +306,7 @@ struct SeriesEditSheet: View {
           #endif
           .onSubmit { commitPendingLink() }
         Button(action: commitPendingLink) {
-          Label("Add Link", systemImage: "plus.circle.fill")
+          Label("Add Link", systemImage: AppIcon.addRow)
         }
         .adaptiveButtonStyle(hasPendingLink ? .borderedProminent : .borderless)
         .disabled(!hasPendingLink)
@@ -348,7 +348,7 @@ struct SeriesEditSheet: View {
               metadataUpdate.sharingLabelsLock = true
             }
           } label: {
-            Image(systemName: "trash")
+            Image(systemName: AppIcon.delete)
           }
         }
       }
@@ -356,7 +356,7 @@ struct SeriesEditSheet: View {
         TextField("Label", text: $newSharingLabel)
           .onSubmit { commitPendingSharingLabel() }
         Button(action: commitPendingSharingLabel) {
-          Image(systemName: "plus.circle.fill")
+          Image(systemName: AppIcon.addRow)
         }
         .disabled(!hasPendingSharingLabel)
       }
