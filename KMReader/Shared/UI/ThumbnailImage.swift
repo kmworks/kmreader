@@ -276,10 +276,21 @@ struct ThumbnailImage<Overlay: View, Menu: View>: View {
     if shimmering {
       placeholderBase
         .shimmer(cornerRadius: cornerRadius)
+        .overlay { placeholderOverlay }
         .overlay { borderOverlay }
     } else {
       placeholderBase
+        .overlay { placeholderOverlay }
         .overlay { borderOverlay }
+    }
+  }
+
+  /// The overlay slot also renders before the cover loads, so an unloaded
+  /// card still shows its text overlay and badge.
+  @ViewBuilder
+  private var placeholderOverlay: some View {
+    if let overlay = overlay {
+      overlay()
     }
   }
 
