@@ -620,13 +620,15 @@ extension DatabaseOperator {
     fetchBooksCount(instanceId: instanceId, status: "downloaded")
   }
 
-  /// Downloaded-books aggregate for the offline scope header: count and total
-  /// on-disk size, restricted to a library subset when ids are given.
-  func fetchDownloadedBooksStats(instanceId: String, libraryIds: [String]) -> (count: Int, sizeBytes: Int64) {
+  /// Offline books aggregate for the scope caption and content chip: the count
+  /// covers the books the offline list shows, the size sums downloaded books
+  /// only — pending books have no data yet.
+  func fetchOfflineBooksStats(instanceId: String, libraryIds: [String]) -> (count: Int, sizeBytes: Int64) {
     (try? read { db in
       var sql = """
-        SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM \(KomgaBook.databaseTableName)
-        WHERE instance_id = ? AND download_status_raw = 'downloaded'
+        SELECT COUNT(*), COALESCE(SUM(CASE WHEN download_status_raw = 'downloaded' THEN size_bytes END), 0)
+        FROM \(KomgaBook.databaseTableName)
+        WHERE instance_id = ? AND \(Self.offlineBooksSQLPredicate)
         """
       var arguments: StatementArguments = [instanceId]
       Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)
@@ -637,14 +639,12 @@ extension DatabaseOperator {
     }) ?? (0, 0)
   }
 
-  /// Downloaded-series count for the offline content chip; the condition
-  /// mirrors the offline series list filter so the number matches the list.
+  /// Downloaded-series count for the offline content chip.
   func fetchDownloadedSeriesCount(instanceId: String, libraryIds: [String]) -> Int {
     (try? read { db in
       var sql = """
         SELECT COUNT(*) FROM \(KomgaSeries.databaseTableName)
-        WHERE instance_id = ?
-          AND (downloaded_books > 0 OR pending_books > 0 OR download_status_raw = 'downloaded')
+        WHERE instance_id = ? AND \(Self.offlineSeriesSQLPredicate)
         """
       var arguments: StatementArguments = [instanceId]
       Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)

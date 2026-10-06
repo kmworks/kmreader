@@ -1055,6 +1055,10 @@ extension DatabaseOperator {
     return matchesBookMetadataFilter(book: book, filter: readListBrowseOpts.metadataFilter)
   }
 
+  /// SQL predicate for books the offline list shows; shared with the offline
+  /// books stats query so the chip count cannot drift from the list.
+  nonisolated static let offlineBooksSQLPredicate = "download_status_raw IN ('downloaded', 'pending')"
+
   nonisolated static func appendBookBrowseSQLFilters(
     searchText: String,
     browseOpts: BookBrowseOptions,
@@ -1070,7 +1074,7 @@ extension DatabaseOperator {
     }
 
     if offlineOnly {
-      sql += "\nAND download_status_raw IN ('downloaded', 'pending')"
+      sql += "\nAND \(offlineBooksSQLPredicate)"
     }
 
     if let deletedState = browseOpts.deletedFilter.effectiveBool {

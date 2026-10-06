@@ -400,7 +400,7 @@ struct OfflineView: View {
         downloadedSeriesCount = 0
         return
       }
-      downloadStats = await database.fetchDownloadedBooksStats(
+      downloadStats = await database.fetchOfflineBooksStats(
         instanceId: instanceId, libraryIds: libraryIds)
       downloadedSeriesCount = await database.fetchDownloadedSeriesCount(
         instanceId: instanceId, libraryIds: libraryIds)

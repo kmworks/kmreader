@@ -589,6 +589,11 @@ extension DatabaseOperator {
     return try KomgaSeries.fetchAll(db, sql: sql, arguments: arguments)
   }
 
+  /// SQL predicate for series the offline list shows; shared with the
+  /// downloaded-series count query so the chip count cannot drift from the list.
+  nonisolated static let offlineSeriesSQLPredicate =
+    "(downloaded_books > 0 OR pending_books > 0 OR download_status_raw = 'downloaded')"
+
   nonisolated static func appendSeriesBrowseSQLFilters(
     searchText: String,
     browseOpts: SeriesBrowseOptions,
@@ -604,7 +609,7 @@ extension DatabaseOperator {
     }
 
     if offlineOnly {
-      sql += "\nAND (downloaded_books > 0 OR pending_books > 0 OR download_status_raw = 'downloaded')"
+      sql += "\nAND \(offlineSeriesSQLPredicate)"
     }
 
     if let deletedState = browseOpts.deletedFilter.effectiveBool {

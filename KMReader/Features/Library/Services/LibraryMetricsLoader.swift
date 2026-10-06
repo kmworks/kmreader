@@ -49,41 +49,71 @@ struct LibraryMetricsLoader {
   }
 
   private func actuatorFallbackMetrics(instanceId: String) async -> [String: LibraryMetricValues] {
-    async let fileSize = actuatorMetric(.booksFileSize)
-    async let series = actuatorMetric(.series)
-    async let books = actuatorMetric(.books)
+    do {
+      async let fileSize = actuatorMetric(.booksFileSize)
+      async let series = actuatorMetric(.series)
+      async let books = actuatorMetric(.books)
 
-    let sizes = await fileSize
-    let seriesCounts = await series
-    let bookCounts = await books
+      let sizes = try await fileSize
+      let seriesCounts = try await series
+      let bookCounts = try await books
 
-    var perLibrary: [String: LibraryMetricValues] = [:]
-    for (libraryId, value) in sizes.values {
-      perLibrary[libraryId, default: LibraryMetricValues()].fileSize = value
-    }
-    for (libraryId, value) in seriesCounts.values {
-      perLibrary[libraryId, default: LibraryMetricValues()].seriesCount = value
-    }
-    for (libraryId, value) in bookCounts.values {
-      perLibrary[libraryId, default: LibraryMetricValues()].booksCount = value
-    }
+      var perLibrary: [String: LibraryMetricValues] = [:]
+      for (libraryId, value) in sizes.values {
+        perLibrary[libraryId, default: LibraryMetricValues()].fileSize = value
+      }
+      for (libraryId, value) in seriesCounts.values {
+        perLibrary[libraryId, default: LibraryMetricValues()].seriesCount = value
+      }
+      for (libraryId, value) in bookCounts.values {
+        perLibrary[libraryId, default: LibraryMetricValues()].booksCount = value
+      }
 
-    let total = LibraryMetricValues(
-      fileSize: sizes.total, seriesCount: seriesCounts.total, booksCount: bookCounts.total)
+      // An emptied library vanishes from the actuator tags; zero-fill it from
+      // the known libraries so its stale numbers do not linger.
+      let knownIds = await knownLibraryIds(instanceId: instanceId)
+      if sizes.total != nil {
+        for libraryId in knownIds where perLibrary[libraryId]?.fileSize == nil {
+          perLibrary[libraryId, default: LibraryMetricValues()].fileSize = 0
+        }
+      }
+      if seriesCounts.total != nil {
+        for libraryId in knownIds where perLibrary[libraryId]?.seriesCount == nil {
+          perLibrary[libraryId, default: LibraryMetricValues()].seriesCount = 0
+        }
+      }
+      if bookCounts.total != nil {
+        for libraryId in knownIds where perLibrary[libraryId]?.booksCount == nil {
+          perLibrary[libraryId, default: LibraryMetricValues()].booksCount = 0
+        }
+      }
 
-    guard total.hasAnyValue || !perLibrary.isEmpty else {
-      await clearStoredMetrics(instanceId: instanceId)
-      logger.info("No library metrics source available, library metrics hidden")
+      let total = LibraryMetricValues(
+        fileSize: sizes.total, seriesCount: seriesCounts.total, booksCount: bookCounts.total)
+
+      guard total.hasAnyValue || !perLibrary.isEmpty else {
+        await clearStoredMetrics(instanceId: instanceId)
+        logger.info("No library metrics source available, library metrics hidden")
+        return [:]
+      }
+
+      await storeAllLibrariesEntry(instanceId: instanceId, total: total)
+      return perLibrary
+    } catch {
+      // A transient actuator failure keeps the previously stored numbers.
       return [:]
     }
-
-    await storeAllLibrariesEntry(instanceId: instanceId, total: total)
-    return perLibrary
   }
 
   /// One actuator metric: the untagged total plus each library's tagged value.
-  private func actuatorMetric(_ name: MetricName) async -> (total: Double?, values: [String: Double]) {
-    guard let metric = try? await ManagementService.getMetric(name.rawValue) else {
+  /// A 404 means the metric is genuinely absent (empty result); any other
+  /// error is transient and propagates.
+  private func actuatorMetric(_ name: MetricName) async throws -> (total: Double?, values: [String: Double]) {
+    let metric: Metric
+    do {
+      metric = try await ManagementService.getMetric(name.rawValue)
+    } catch let error as APIError {
+      guard case .notFound = error else { throw error }
       return (nil, [:])
     }
     let total = metric.measurements.first(where: { $0.statistic == "VALUE" })?.value
@@ -105,6 +135,11 @@ struct LibraryMetricsLoader {
       }
     }
     return (total, values)
+  }
+
+  private func knownLibraryIds(instanceId: String) async -> [String] {
+    let database = try? await DatabaseOperator.database()
+    return (try? await database?.fetchSidebarLibraries(instanceId: instanceId).map(\.libraryId)) ?? []
   }
 
   private func storeAllLibrariesEntry(
