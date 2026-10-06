@@ -25,8 +25,7 @@ final class LibraryScopeStore {
   }
 
   /// Reloads the admin-only library metrics so scope headers follow the
-  /// dashboard refresh. No-op for non-admin users and offline mode; servers
-  /// without the stats endpoints show no metrics at all.
+  /// dashboard refresh. No-op for non-admin users and offline mode.
   func refreshMetrics(instanceId: String) async {
     if AppConfig.current.isAdmin, !AppConfig.isOffline, !instanceId.isEmpty {
       do {

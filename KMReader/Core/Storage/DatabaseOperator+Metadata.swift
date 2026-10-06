@@ -637,6 +637,21 @@ extension DatabaseOperator {
     }) ?? (0, 0)
   }
 
+  /// Downloaded-series count for the offline content chip; the condition
+  /// mirrors the offline series list filter so the number matches the list.
+  func fetchDownloadedSeriesCount(instanceId: String, libraryIds: [String]) -> Int {
+    (try? read { db in
+      var sql = """
+        SELECT COUNT(*) FROM \(KomgaSeries.databaseTableName)
+        WHERE instance_id = ?
+          AND (downloaded_books > 0 OR pending_books > 0 OR download_status_raw = 'downloaded')
+        """
+      var arguments: StatementArguments = [instanceId]
+      Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)
+      return try Int.fetchOne(db, sql: sql, arguments: arguments) ?? 0
+    }) ?? 0
+  }
+
   func fetchDownloadedBooks(instanceId: String) -> [Book] {
     (try? read { db in
       try KomgaBook

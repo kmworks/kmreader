@@ -94,24 +94,29 @@ struct BrowseContentView: View {
     return dashboard.libraryIds
   }
 
-  /// The library whose section counts are shown: the in-place tab scope
-  /// first, then the pushed browse selection.
-  private var headerLibraryItem: SidebarLibraryItem? {
-    if let id = libraryScope?.libraryId {
-      return scopeLibraries.first(where: { $0.libraryId == id })
+  /// The metrics item behind the chip caption and the content-type counts:
+  /// the in-place tab scope's covered libraries first, then the pushed
+  /// browse selection.
+  private var headerFacts: SidebarLibraryItem? {
+    if let libraryScope {
+      return libraryScope.facts(
+        pinnedIds: dashboard.libraryIds, libraries: scopeLibraries,
+        allLibrariesEntry: allLibrariesEntry)
     }
     return librarySelection.map(SidebarLibraryItem.init(selection:))
   }
 
   private func sectionCount(browseContent: BrowseContentType) -> Int? {
-    guard let library = headerLibraryItem else { return nil }
+    guard let facts = headerFacts else { return nil }
     switch browseContent {
     case .series:
-      return library.seriesCount.map { Int($0) }
+      return facts.seriesCount.map { Int($0) }
     case .books:
-      return library.booksCount.map { Int($0) }
-    case .collections, .readlists:
-      return nil
+      return facts.booksCount.map { Int($0) }
+    case .collections:
+      return facts.collectionsCount.map { Int($0) }
+    case .readlists:
+      return facts.readlistsCount.map { Int($0) }
     }
   }
 
@@ -122,26 +127,22 @@ struct BrowseContentView: View {
   }
 
   /// Caption trailing the content-type chip: the scope title in medium
-  /// weight, then the covered libraries' metrics in secondary. Nil on
-  /// unscoped pages (no tab scope and no pushed library selection).
+  /// weight, then the covered libraries' file size in secondary (the counts
+  /// live on the chip itself). Nil on unscoped pages (no tab scope and no
+  /// pushed library selection).
   private var chipCaption: Text? {
     let title: String?
-    let facts: SidebarLibraryItem?
     if let libraryScope {
       title = libraryScope.title(pinnedIds: dashboard.libraryIds, libraries: scopeLibraries)
-      facts = libraryScope.facts(
-        pinnedIds: dashboard.libraryIds, libraries: scopeLibraries,
-        allLibrariesEntry: allLibrariesEntry)
     } else if let selection = librarySelection {
       title = selection.name
-      facts = SidebarLibraryItem(selection: selection)
     } else {
       return nil
     }
     guard let title else { return nil }
     return LibraryMetricsText.scopeCaption(
       title: title,
-      facts: facts.flatMap { LibraryMetricsText.sizeAndMetrics(for: $0) })
+      facts: headerFacts?.fileSize.map { Text($0.humanReadableFileSize) })
   }
 
   var body: some View {

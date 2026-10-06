@@ -25,10 +25,11 @@ struct OfflineView: View {
   @State private var showSavedFilters = false
   @State private var scope: LibraryBrowseScope = .pinned
   @State private var shortcutsWidth: CGFloat = PlatformHelper.isPad ? .infinity : 0
+  @State private var downloadStats: (count: Int, sizeBytes: Int64)?
+  @State private var downloadedSeriesCount = 0
   #if os(iOS) || os(macOS)
     @State private var showLibraryPicker = false
     @State private var scopeStore = LibraryScopeStore()
-    @State private var downloadStats: (count: Int, sizeBytes: Int64)?
     @State private var progressTracker = DownloadProgressTracker.shared
   #endif
 
@@ -76,25 +77,29 @@ struct OfflineView: View {
     resolvedOfflineContent == .books ? .books : .series
   }
 
+  /// Downloaded series/books counts for the content-type chip; empty while
+  /// nothing is downloaded.
+  private var offlineContentCounts: [BrowseContentType: Int] {
+    var counts: [BrowseContentType: Int] = [:]
+    if downloadedSeriesCount > 0 {
+      counts[.series] = downloadedSeriesCount
+    }
+    if let downloadStats, downloadStats.count > 0 {
+      counts[.books] = downloadStats.count
+    }
+    return counts
+  }
+
   private var browseLayoutBinding: Binding<BrowseLayoutMode> {
     resolvedOfflineContent == .books ? $bookBrowseLayout : $seriesBrowseLayout
   }
 
   #if os(iOS) || os(macOS)
-    /// Facts line for the scope caption: total downloaded size first, then the
-    /// downloaded-books count.
+    /// Facts line for the scope caption: total downloaded size (the downloaded
+    /// counts live on the content-type chip).
     private var downloadFactsText: Text? {
-      guard let downloadStats, downloadStats.count > 0 else { return nil }
-      var parts: [Text] = []
-      if downloadStats.sizeBytes > 0 {
-        parts.append(Text(Double(downloadStats.sizeBytes).humanReadableFileSize))
-      }
-      parts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.books", defaultValue: "%lld books"),
-            downloadStats.count)))
-      return LibraryMetricsText.join(parts, separator: " · ")
+      guard let downloadStats, downloadStats.sizeBytes > 0 else { return nil }
+      return Text(Double(downloadStats.sizeBytes).humanReadableFileSize)
     }
 
     private var chipCaptionText: Text {
@@ -152,7 +157,7 @@ struct OfflineView: View {
           BrowseContentTypeMenu(
             selection: offlineContentBinding,
             types: [.series, .books],
-            counts: [:]
+            counts: offlineContentCounts
           )
           #if os(iOS) || os(macOS)
             chipCaptionText
@@ -390,13 +395,15 @@ struct OfflineView: View {
     private func loadDownloadStats() async {
       let instanceId = current.instanceId
       let libraryIds = resolvedLibraryIds
-      guard !instanceId.isEmpty else {
+      guard !instanceId.isEmpty, let database = try? await DatabaseOperator.database() else {
         downloadStats = nil
+        downloadedSeriesCount = 0
         return
       }
-      downloadStats =
-        (try? await DatabaseOperator.database().fetchDownloadedBooksStats(
-          instanceId: instanceId, libraryIds: libraryIds)) ?? (0, 0)
+      downloadStats = await database.fetchDownloadedBooksStats(
+        instanceId: instanceId, libraryIds: libraryIds)
+      downloadedSeriesCount = await database.fetchDownloadedSeriesCount(
+        instanceId: instanceId, libraryIds: libraryIds)
     }
   #endif
 }
