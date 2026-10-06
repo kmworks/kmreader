@@ -38,8 +38,11 @@ struct BrowseContentTypeMenu: View {
         Text(title(for: selection))
           .font(.caption)
           .fontWeight(.medium)
-        Image(systemName: "chevron.down")
-          .font(.caption2)
+        #if !os(macOS)
+          // The glass Menu button on macOS appends its own disclosure chevron.
+          Image(systemName: "chevron.down")
+            .font(.caption2)
+        #endif
       }
     }
     .fixedSize()
