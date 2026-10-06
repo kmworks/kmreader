@@ -8,15 +8,14 @@ import SwiftUI
 /// Slab behind corner badges, shaped to the cover's top-right corner.
 private struct CornerBadgeSlab: View {
   let size: CGFloat
-  /// Must match the cover's corner radius so the badge arc overlaps the cover
-  /// clip exactly; a different radius lets the cover bleed through at the corner.
+  /// Must match the cover clip's radius and corner style; a mismatch lets the
+  /// slab poke past the cover edge or the cover bleed through at the corner.
   let cornerRadius: CGFloat
 
   var body: some View {
     UnevenRoundedRectangle(
       bottomLeadingRadius: size * 0.65,
-      topTrailingRadius: cornerRadius,
-      style: .circular
+      topTrailingRadius: cornerRadius
     )
     .fill(Color(white: 0.12))
   }
