@@ -17,12 +17,10 @@ struct LibraryListContent: View {
   @State private var allLibrariesEntry: SidebarLibraryItem?
 
   let selectionEnabled: Bool
-  let isSingleSelectionMode: Bool
   let loadMetrics: Bool
   let alwaysRefreshMetrics: Bool
   let forceMetricsOnAppear: Bool
   let enablePullToRefresh: Bool
-  let onLibrarySelected: ((String?) -> Void)?
   let onEditLibrary: ((String) -> Void)?
   let onDeleteLibrary: ((LibrarySelection) -> Void)?
   let refreshTrigger: Int
@@ -31,24 +29,20 @@ struct LibraryListContent: View {
 
   init(
     selectionEnabled: Bool = false,
-    isSingleSelectionMode: Bool = false,
     loadMetrics: Bool = true,
     alwaysRefreshMetrics: Bool = false,
     forceMetricsOnAppear: Bool = true,
     enablePullToRefresh: Bool = true,
-    onLibrarySelected: ((String?) -> Void)? = nil,
     onEditLibrary: ((String) -> Void)? = nil,
     onDeleteLibrary: ((LibrarySelection) -> Void)? = nil,
     refreshTrigger: Int = 0
   ) {
     let initialSelection = AppConfig.dashboard.libraryIds
     self.selectionEnabled = selectionEnabled
-    self.isSingleSelectionMode = isSingleSelectionMode
     self.loadMetrics = loadMetrics
     self.alwaysRefreshMetrics = alwaysRefreshMetrics
     self.forceMetricsOnAppear = forceMetricsOnAppear
     self.enablePullToRefresh = enablePullToRefresh
-    self.onLibrarySelected = onLibrarySelected
     self.onEditLibrary = onEditLibrary
     self.onDeleteLibrary = onDeleteLibrary
     self.refreshTrigger = refreshTrigger
@@ -100,7 +94,6 @@ struct LibraryListContent: View {
             LibraryRowView(
               library: library,
               selectionEnabled: selectionEnabled,
-              isSingleSelectionMode: isSingleSelectionMode,
               isSelected: selectedLibraryIds.contains(library.libraryId),
               onSelect: selectionEnabled ? { handleLibrarySelection(for: library.libraryId) } : nil,
               onAction: { action in
@@ -121,12 +114,6 @@ struct LibraryListContent: View {
     .onChange(of: refreshTrigger) { _, _ in
       Task {
         await refreshLibraries(forceMetrics: true)
-      }
-    }
-    .onChange(of: isSingleSelectionMode) { _, newValue in
-      guard selectionEnabled, newValue, selectedLibraryIds.count > 1 else { return }
-      withAnimation {
-        selectedLibraryIds = Array(selectedLibraryIds.prefix(1))
       }
     }
     .onChange(of: dashboard.libraryIds) { _, newValue in
@@ -225,12 +212,10 @@ struct LibraryListContent: View {
     isLoadingMetrics = true
 
     let libraryIds = libraries.map(\.libraryId)
-    let hasAllEntry = allLibrariesEntry != nil
 
     let metricsByLibrary = await metricsLoader.refreshMetrics(
       instanceId: current.instanceId,
-      libraryIds: libraryIds,
-      ensureAllLibrariesEntry: hasAllEntry
+      libraryIds: libraryIds
     )
 
     do {
@@ -271,10 +256,7 @@ struct LibraryListContent: View {
       Spacer()
 
       if selectionEnabled {
-        LibrarySelectionIndicator(
-          isSelected: isSelected,
-          isSingleSelectionMode: isSingleSelectionMode
-        )
+        LibrarySelectionIndicator(isSelected: isSelected)
       }
     }
     .contentShape(Rectangle())
@@ -299,12 +281,6 @@ struct LibraryListContent: View {
   }
 
   private func handleLibrarySelection(for libraryId: String) {
-    if isSingleSelectionMode {
-      selectedLibraryIds = [libraryId]
-      onLibrarySelected?(libraryId)
-      return
-    }
-
     var currentIds = selectedLibraryIds
     let isSelected = currentIds.contains(libraryId)
     if isSelected {
@@ -315,12 +291,10 @@ struct LibraryListContent: View {
 
     var seen = Set<String>()
     selectedLibraryIds = currentIds.filter { seen.insert($0).inserted }
-    onLibrarySelected?(isSelected ? nil : libraryId)
   }
 
   private func selectAllLibraries() {
     selectedLibraryIds = []
-    onLibrarySelected?("")
   }
 
   @ViewBuilder

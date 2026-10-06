@@ -10,17 +10,12 @@ struct LibraryMetricsLoader {
 
   func refreshMetrics(
     instanceId: String,
-    libraryIds: [String],
-    ensureAllLibrariesEntry: Bool
+    libraryIds: [String]
   ) async -> [String: LibraryMetricValues] {
     guard !instanceId.isEmpty else { return [:] }
 
     async let libraryMetrics = loadLibraryMetrics(for: libraryIds)
-    async let _ = loadAllLibrariesMetrics(
-      instanceId: instanceId,
-      ensureEntry: ensureAllLibrariesEntry
-    )
-
+    await loadAllLibrariesMetrics(instanceId: instanceId)
     return await libraryMetrics
   }
 
@@ -110,23 +105,7 @@ struct LibraryMetricsLoader {
     return results
   }
 
-  private func loadAllLibrariesMetrics(
-    instanceId: String,
-    ensureEntry: Bool
-  ) async {
-    if !ensureEntry {
-      let database = try? await DatabaseOperator.database()
-      try? await database?.upsertAllLibrariesEntry(
-        instanceId: instanceId,
-        fileSize: nil,
-        booksCount: nil,
-        seriesCount: nil,
-        sidecarsCount: nil,
-        collectionsCount: nil,
-        readlistsCount: nil
-      )
-    }
-
+  private func loadAllLibrariesMetrics(instanceId: String) async {
     var metrics = AllLibrariesMetricsData()
 
     await withTaskGroup(of: (String, Double?).self) { group in
@@ -199,6 +178,9 @@ struct LibraryMetricsLoader {
       }
     }
 
+    // A failed load must not wipe the values already stored.
+    guard metrics.hasAnyValue else { return }
+
     let database = try? await DatabaseOperator.database()
     try? await database?.upsertAllLibrariesEntry(
       instanceId: instanceId,
@@ -226,4 +208,9 @@ private struct AllLibrariesMetricsData {
   var sidecarsCount: Double?
   var collectionsCount: Double?
   var readlistsCount: Double?
+
+  var hasAnyValue: Bool {
+    fileSize != nil || seriesCount != nil || booksCount != nil || sidecarsCount != nil
+      || collectionsCount != nil || readlistsCount != nil
+  }
 }

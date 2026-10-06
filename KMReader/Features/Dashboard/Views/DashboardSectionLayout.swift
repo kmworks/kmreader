@@ -37,10 +37,8 @@ struct DashboardSectionLayout<Content: View>: View {
     }
   #endif
 
-  private var verticalPadding: CGFloat {
-    showGradientBackground
-      ? LayoutConfig.dashboardSectionVerticalPadding
-      : LayoutConfig.dashboardSectionVerticalPaddingCompact
+  private var bottomPadding: CGFloat {
+    LayoutConfig.dashboardSectionBottomPadding(gradientBackground: showGradientBackground)
   }
 
   var body: some View {
@@ -78,7 +76,7 @@ struct DashboardSectionLayout<Content: View>: View {
           }
         }
         .padding(.horizontal)
-        .padding(.top, verticalPadding)
+        .padding(.top, LayoutConfig.dashboardSectionTopPadding)
         #if os(macOS)
           .padding(.leading, 16)
         #endif
@@ -88,7 +86,7 @@ struct DashboardSectionLayout<Content: View>: View {
             content()
               #if os(iOS) || os(tvOS)
                 .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-                .padding(.bottom, verticalPadding)
+                .padding(.bottom, bottomPadding)
               #endif
               #if os(macOS)
                 .padding(.leading, 16)
@@ -111,7 +109,7 @@ struct DashboardSectionLayout<Content: View>: View {
             // arrows overlay hugs the card strip; elsewhere it stays in the
             // content so the padding area still drags the strip.
             .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-            .padding(.bottom, verticalPadding)
+            .padding(.bottom, bottomPadding)
           #endif
         }
       }

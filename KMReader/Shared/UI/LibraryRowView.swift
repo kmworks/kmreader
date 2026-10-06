@@ -10,7 +10,6 @@ struct LibraryRowView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   let library: SidebarLibraryItem
   let selectionEnabled: Bool
-  let isSingleSelectionMode: Bool
   let isSelected: Bool
   let onSelect: (() -> Void)?
   let onAction: (LibraryAction) -> Void
@@ -20,7 +19,6 @@ struct LibraryRowView: View {
   init(
     library: SidebarLibraryItem,
     selectionEnabled: Bool = false,
-    isSingleSelectionMode: Bool = false,
     isSelected: Bool,
     onSelect: (() -> Void)? = nil,
     onAction: @escaping (LibraryAction) -> Void,
@@ -29,7 +27,6 @@ struct LibraryRowView: View {
   ) {
     self.library = library
     self.selectionEnabled = selectionEnabled
-    self.isSingleSelectionMode = isSingleSelectionMode
     self.isSelected = isSelected
     self.onSelect = onSelect
     self.onAction = onAction
@@ -48,10 +45,7 @@ struct LibraryRowView: View {
       Spacer()
 
       if selectionEnabled {
-        LibrarySelectionIndicator(
-          isSelected: isSelected,
-          isSingleSelectionMode: isSingleSelectionMode
-        )
+        LibrarySelectionIndicator(isSelected: isSelected)
       }
     }
     .contentShape(Rectangle())

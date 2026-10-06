@@ -1,32 +1,11 @@
 ---
 name: simulator
-description: Use when observing or driving an iOS simulator for KMReader debugging — screenshots, accessibility tree, tap/swipe/gestures, hardware buttons, orientation, and unified logs. Multi-step verified UI sequences go through the jevsim MCP tools when available, otherwise through baguette; baguette also covers observation, gestures, and logs. Build and install still go through the Makefile + xcrun simctl.
+description: Use when observing or driving an iOS simulator for KMReader debugging — screenshots, accessibility tree, tap/swipe/gestures, hardware buttons, orientation, and unified logs via baguette. Build and install go through the Makefile + xcrun simctl.
 ---
 
 # simulator — iOS simulator interaction
 
 `baguette` (brew, Apple Silicon + Xcode 26+) is a CLI for headless iOS simulator control: screen capture, host-HID input injection, accessibility tree, and log streaming.
-
-## Tool routing: jevsim vs baguette
-
-Multi-step verified UI sequences (navigate to a screen, exercise a form, reproduce a flow) go through the `jevsim_*` MCP tools: `jevsim_status` → `jevsim_inspect` → `jevsim_run_steps` (tap/type/scroll/wait/assert, each step with an `expect`). One call replaces many describe-ui/tap/screenshot round trips. If the `jevsim_*` tools are absent from the toolset or `jevsim_status` reports not connected, run those sequences through the baguette interaction loop below instead.
-
-Stay on baguette for what jevsim cannot do:
-
-- screenshots / visual verification — jevsim reads the AX tree only
-- unified logs, recording, orientation, hardware buttons
-- swipe/pinch/pan — jevsim has tap/scroll only
-- non-ASCII text — jevsim iOS input is printable ASCII; use `baguette paste`
-
-During a `jevsim_run_steps` call the simulator is reserved; finish it before any baguette interaction on the same device.
-
-jevsim field notes (verified on this repo):
-
-- If jevsim actions ack but nothing happens, Device Hub is shadowing its input: `kill -9` it (SIGTERM is ignored) and reboot the simulator headlessly, then retry. baguette taps use a different HID path and are unaffected, which can mask this.
-- KMReader exposes SF-symbol identifiers on tabs and buttons (`house`, `gearshape`, `xmark`, …). Prefer exact `identifier` targets — they skip the Jev model (faster, fully local, and the only option when TYPESAFE_API_KEY is not configured).
-- Expect on text unique to the destination screen: the dashboard stays in the AX tree behind the full-screen reader, so `gone "Keep Reading"` never fires after opening a book; reader-only markers like `"Keyboard Shortcuts"` work.
-- Reader controls auto-hide — the first tap on the Close area only reveals them; the real close button carries identifier `xmark`.
-- The Jev model abstains below 0.9 confidence (`low_probability`); inspect and re-describe, or use the element's identifier.
 
 ## Boundaries
 

@@ -8,7 +8,9 @@ import SwiftUI
 
 enum NavDestination: Hashable {
   case home
-  case browse
+  /// Aggregate browse; only the `.all`/`.pinned` scopes occur (single
+  /// libraries are `browseLibrary`).
+  case browse(scope: LibraryBrowseScope)
   case browseSearch
   case browseCollections
   case browseReadLists
@@ -83,6 +85,27 @@ enum NavDestination: Hashable {
     return nil
   }
 
+  /// Scope binding for a shell-synced browse root: reads the destination's
+  /// own scope and forwards in-page picks to the shell's selection writer.
+  /// Nil for non-browse destinations — their pages keep a page-local session
+  /// scope.
+  func libraryScopeBinding(
+    apply: @escaping (LibraryBrowseScope) -> Void
+  ) -> Binding<LibraryBrowseScope>? {
+    switch self {
+    case .browse(let scope):
+      return Binding(
+        get: { scope },
+        set: { apply($0) })
+    case .browseLibrary(let selection):
+      return Binding(
+        get: { .library(selection.libraryId) },
+        set: { apply($0) })
+    default:
+      return nil
+    }
+  }
+
   @ViewBuilder
   func content(context: AppViewContext) -> some View {
     switch self {
@@ -91,7 +114,9 @@ enum NavDestination: Hashable {
         authViewModel: context.authViewModel,
         readerPresentation: context.readerPresentation
       )
-    case .browse:
+    case .browse(_):
+      // The scope is carried for the shell's selection mapping; the page
+      // reads it back through the shell-provided scope binding.
       BrowseView(authViewModel: context.authViewModel)
     case .browseSearch:
       BrowseView(

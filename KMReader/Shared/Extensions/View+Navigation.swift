@@ -37,6 +37,9 @@ private struct NavigationHandlingModifier: ViewModifier {
       .navigationDestination(for: NavDestination.self) { destination in
         destination.content(context: context)
           .environment(\.browseLibrarySelection, destination.librarySelection ?? browseLibrarySelection)
+          // Pushed pages keep a page-local session scope; the shell-owned
+          // scope binding belongs to the tab/split root that provided it.
+          .environment(\.libraryScopeBinding, nil)
           .environment(\.readerActions, context.readerActions)
           .navigationTransitionZoomIfAvailable(sourceID: destination.zoomSourceID, in: zoomNamespace)
       }

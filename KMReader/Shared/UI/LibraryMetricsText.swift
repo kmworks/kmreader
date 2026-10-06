@@ -18,6 +18,30 @@ enum LibraryMetricsText {
     ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .binary)
   }
 
+  /// Facts line: file size first, then series/books/sidecars counts.
+  static func sizeAndMetrics(for library: SidebarLibraryItem) -> Text? {
+    var parts: [Text] = []
+    if let fileSize = library.fileSize {
+      parts.append(Text(fileSize.humanReadableFileSize))
+    }
+    if let metrics = metrics(for: library) {
+      parts.append(metrics)
+    }
+    return join(parts, separator: " · ")
+  }
+
+  /// Scope caption trailing a content-type chip: the title in medium weight,
+  /// then the facts line in secondary.
+  static func scopeCaption(title: String, facts: Text?) -> Text {
+    var text = Text(title).fontWeight(.medium)
+    if let facts {
+      text =
+        text + Text(" · ").foregroundColor(.secondary)
+        + facts.foregroundColor(.secondary)
+    }
+    return text
+  }
+
   /// Per-library metrics: series, books, and sidecars on one line.
   static func metrics(for library: SidebarLibraryItem) -> Text? {
     var parts: [Text] = []

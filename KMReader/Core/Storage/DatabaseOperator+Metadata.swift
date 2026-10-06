@@ -602,6 +602,23 @@ extension DatabaseOperator {
     fetchBooksCount(instanceId: instanceId, status: "downloaded")
   }
 
+  /// Downloaded-books aggregate for the offline scope header: count and total
+  /// on-disk size, restricted to a library subset when ids are given.
+  func fetchDownloadedBooksStats(instanceId: String, libraryIds: [String]) -> (count: Int, sizeBytes: Int64) {
+    (try? read { db in
+      var sql = """
+        SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM \(KomgaBook.databaseTableName)
+        WHERE instance_id = ? AND download_status_raw = 'downloaded'
+        """
+      var arguments: StatementArguments = [instanceId]
+      Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)
+      guard let row = try Row.fetchOne(db, sql: sql, arguments: arguments) else { return (0, 0) }
+      let count: Int = row[0]
+      let sizeBytes: Int64 = row[1]
+      return (count, sizeBytes)
+    }) ?? (0, 0)
+  }
+
   func fetchDownloadedBooks(instanceId: String) -> [Book] {
     (try? read { db in
       try KomgaBook

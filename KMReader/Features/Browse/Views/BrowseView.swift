@@ -12,14 +12,21 @@ struct BrowseView: View {
   let fixedContent: BrowseContentType?
   let metadataFilter: MetadataFilterConfig?
   let focusesSearchOnAppear: Bool
-  /// iPhone Library tab root mode: no search field, and the library scope is
-  /// the global dashboard selection.
+  /// iPhone Library tab root mode: no search field; the root scope switches
+  /// between All Libraries, the pinned set, and a single library in place.
   let libraryTab: Bool
   /// Search-tab mode (iPhone): show a search placeholder until a query is
   /// entered instead of browsing all content.
   let searchOnly: Bool
+  /// Explicit library scope (empty = all libraries). When nil, the page's
+  /// session scope applies.
+  let libraryIds: [String]?
+  /// Tab root scope binding (iPhone Library/Search tabs): drives the scope
+  /// menu; the Library tab also renders the scope header from it.
+  let libraryTabScope: Binding<LibraryBrowseScope>?
 
   @Environment(\.browseLibrarySelection) private var librarySelection
+  @Environment(\.libraryScopeBinding) private var shellScope
 
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
@@ -37,6 +44,9 @@ struct BrowseView: View {
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
   @State private var scopeStore = LibraryScopeStore()
+  /// Page-local session scope for pages the shell does not sync (pushed
+  /// pages); a pushed sidebar selection is only its initial value.
+  @State private var browseScope: LibraryBrowseScope?
   @FocusState private var isSearchFocused: Bool
 
   init(
@@ -45,7 +55,9 @@ struct BrowseView: View {
     metadataFilter: MetadataFilterConfig? = nil,
     focusesSearchOnAppear: Bool = false,
     libraryTab: Bool = false,
-    searchOnly: Bool = false
+    searchOnly: Bool = false,
+    libraryIds: [String]? = nil,
+    libraryTabScope: Binding<LibraryBrowseScope>? = nil
   ) {
     self.authViewModel = authViewModel
     self.fixedContent = fixedContent
@@ -53,6 +65,8 @@ struct BrowseView: View {
     self.focusesSearchOnAppear = focusesSearchOnAppear
     self.libraryTab = libraryTab
     self.searchOnly = searchOnly
+    self.libraryIds = libraryIds
+    self.libraryTabScope = libraryTabScope
   }
 
   var title: String {
@@ -60,8 +74,10 @@ struct BrowseView: View {
       return String(localized: "tab.library", defaultValue: "Library")
     } else if searchOnly {
       return String(localized: "tab.search", defaultValue: "Search")
-    } else if let library = librarySelection {
-      return library.name
+    } else if librarySelection != nil || shellScope != nil {
+      return effectiveScope.title(pinnedIds: dashboard.libraryIds, libraries: scopeStore.libraries)
+        ?? librarySelection?.name
+        ?? String(localized: "title.browse")
     } else if let fixedContent {
       return fixedContent.displayName
     } else {
@@ -69,11 +85,33 @@ struct BrowseView: View {
     }
   }
 
-  private var resolvedLibraryIdsKey: String {
-    if let library = librarySelection {
-      return library.libraryId
+  /// The page's active scope: the shell-owned scope when the shell syncs one
+  /// (iPad/macOS roots), then the page-local session choice, then the pushed
+  /// single-library selection as the initial value, then the pinned set.
+  private var effectiveScope: LibraryBrowseScope {
+    if let shellScope { return shellScope.wrappedValue }
+    if let browseScope { return browseScope }
+    if let library = librarySelection { return .library(library.libraryId) }
+    return .pinned
+  }
+
+  /// The scope menu's binding: shell scope (writes through to the shell's
+  /// selection), else the iPhone tab root scope, else the session scope.
+  private var menuScopeBinding: Binding<LibraryBrowseScope> {
+    if let shellScope { return shellScope }
+    if let libraryTabScope { return libraryTabScope }
+    return Binding(get: { effectiveScope }, set: { browseScope = $0 })
+  }
+
+  private var resolvedLibraryIds: [String] {
+    if let libraryIds {
+      return libraryIds
     }
-    return dashboard.libraryIds.joined(separator: ",")
+    return effectiveScope.resolvedIds(pinned: dashboard.libraryIds)
+  }
+
+  private var resolvedLibraryIdsKey: String {
+    resolvedLibraryIds.joined(separator: ",")
   }
 
   var body: some View {
@@ -82,10 +120,13 @@ struct BrowseView: View {
       metadataFilter: metadataFilter,
       searchOnly: searchOnly,
       searchText: activeSearchText,
-      showsLibraryHeader: !libraryTab,
       refreshTrigger: refreshTrigger,
       showFilterSheet: $showFilterSheet,
-      showSavedFilters: $showSavedFilters
+      showSavedFilters: $showSavedFilters,
+      libraryIds: resolvedLibraryIds,
+      libraryScope: libraryTab ? libraryTabScope?.wrappedValue : (searchOnly ? nil : effectiveScope),
+      scopeLibraries: scopeStore.libraries,
+      allLibrariesEntry: scopeStore.allLibrariesEntry
     )
     .inlineLargeBarTitleStyle(enabled: libraryTab || searchOnly)
     .platformNavigationTitle(title)
@@ -108,25 +149,30 @@ struct BrowseView: View {
           }
         #endif
         #if os(macOS)
-          if librarySelection == nil {
-            ToolbarItem(placement: .navigation) {
-              LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
-            }
+          ToolbarItem(placement: .navigation) {
+            LibraryScopeMenu(
+              libraries: scopeStore.libraries,
+              showLibraryPicker: $showLibraryPicker,
+              scope: menuScopeBinding)
           }
         #endif
         #if os(iOS)
-          if librarySelection == nil {
-            if PlatformHelper.isPad {
-              ToolbarItem(placement: .cancellationAction) {
-                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
-              }
-            } else {
-              ToolbarItem(placement: .confirmationAction) {
-                LibraryScopeToolbarButton(libraries: scopeStore.libraries, isPresented: $showLibraryPicker)
-              }
-              if #available(iOS 26.0, *) {
-                ToolbarSpacer(.fixed, placement: .confirmationAction)
-              }
+          if PlatformHelper.isPad {
+            ToolbarItem(placement: .cancellationAction) {
+              LibraryScopeMenu(
+                libraries: scopeStore.libraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: menuScopeBinding)
+            }
+          } else if librarySelection == nil {
+            ToolbarItem(placement: .confirmationAction) {
+              LibraryScopeMenu(
+                libraries: scopeStore.libraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: menuScopeBinding)
+            }
+            if #available(iOS 26.0, *) {
+              ToolbarSpacer(.fixed, placement: .confirmationAction)
             }
           }
         #endif
@@ -162,6 +208,38 @@ struct BrowseView: View {
     .onChange(of: searchQuery) { _, newValue in
       if newValue.isEmpty {
         activeSearchText = ""
+      }
+    }
+    .onChange(of: librarySelection) { _, _ in
+      // A reused page (macOS split detail) must not keep the previous
+      // library's scope.
+      browseScope = nil
+    }
+    .onChange(of: scopeStore.libraries) { _, libraries in
+      // A scoped library that vanished falls back to the aggregate, for the
+      // page-local and the tab-root scope alike.
+      guard !libraries.isEmpty else { return }
+      if let scopedId = browseScope?.libraryId,
+        !libraries.contains(where: { $0.libraryId == scopedId })
+      {
+        browseScope = nil
+      }
+      if let tabScope = libraryTabScope,
+        let scopedId = tabScope.wrappedValue.libraryId,
+        !libraries.contains(where: { $0.libraryId == scopedId })
+      {
+        tabScope.wrappedValue = .pinned
+      }
+    }
+    .onChange(of: dashboard.libraryIds) { _, pinnedIds in
+      // The Pinned item only exists while pins do; an emptied pinned set is
+      // the full set, which All already represents.
+      guard pinnedIds.isEmpty else { return }
+      if libraryTabScope?.wrappedValue == .pinned {
+        libraryTabScope?.wrappedValue = .all
+      }
+      if browseScope == .pinned {
+        browseScope = .all
       }
     }
     .onChange(of: authViewModel.isSwitching) { oldValue, newValue in

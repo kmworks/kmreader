@@ -24,6 +24,10 @@ struct DashboardSectionDetailView: View {
     isQueueingLatestOffline || isQueueingAllOffline
   }
 
+  private var effectiveLibraryIds: [String] {
+    DashboardLibraryScopeStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds)
+  }
+
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
   }
@@ -312,7 +316,7 @@ struct DashboardSectionDetailView: View {
       }
     }
 
-    let libraryIds = dashboard.libraryIds
+    let libraryIds = effectiveLibraryIds
     let instanceId = AppConfig.current.instanceId
 
     if AppConfig.isOffline {
@@ -433,7 +437,7 @@ struct DashboardSectionDetailView: View {
     withAnimation {
       isQueueingLatestOffline = true
     }
-    let libraryIds = dashboard.libraryIds
+    let libraryIds = effectiveLibraryIds
     let instanceId = AppConfig.current.instanceId
 
     Task {
@@ -474,7 +478,7 @@ struct DashboardSectionDetailView: View {
     withAnimation {
       isQueueingAllOffline = true
     }
-    let libraryIds = dashboard.libraryIds
+    let libraryIds = effectiveLibraryIds
     let instanceId = AppConfig.current.instanceId
 
     Task {
@@ -594,7 +598,7 @@ struct DashboardSectionDetailView: View {
       }
     }
 
-    let libraryIds = dashboard.libraryIds
+    let libraryIds = effectiveLibraryIds
 
     if AppConfig.isOffline {
       let ids: [String]

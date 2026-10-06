@@ -7,14 +7,15 @@ import SwiftUI
 
 struct SidebarView: View {
   @Binding var selection: NavDestination?
+  let store: SidebarItemsStore
 
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("isOffline") private var isOffline: Bool = false
+  @AppStorage("dashboard") private var dashboard: DashboardConfiguration = .init()
 
   @AppStorage("sidebarLibrariesExpanded") private var librariesExpanded: Bool = true
 
   @State private var isRefreshing: Bool = false
-  @State private var store = SidebarItemsStore()
 
   private var showsSettingsLink: Bool {
     #if os(iOS)
@@ -125,6 +126,20 @@ struct SidebarView: View {
 
     if !store.libraries.isEmpty {
       Section(isExpanded: librariesExpandedBinding) {
+        NavigationLink(value: NavDestination.browse(scope: .all)) {
+          SidebarItemLabel(
+            title: String(localized: "All Libraries"),
+            count: nil
+          )
+        }
+        if !dashboard.libraryIds.isEmpty {
+          NavigationLink(value: NavDestination.browse(scope: .pinned)) {
+            SidebarItemLabel(
+              title: String(localized: "library.scope.pinned", defaultValue: "Pinned"),
+              count: nil
+            )
+          }
+        }
         ForEach(store.libraries) { library in
           let destination = NavDestination.browseLibrary(
             selection: LibrarySelection(sidebarItem: library))
@@ -147,7 +162,7 @@ struct SidebarView: View {
           }
         }
       } header: {
-        Label(String(localized: "Libraries"), systemImage: ContentIcon.library)
+        Text(String(localized: "Libraries"))
       }
     }
 

@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// The scrollable content of a browse page: optional library header, the
-/// content-type picker (when browsing across types), the search placeholder,
+/// content-type menu (when browsing across types), the search placeholder,
 /// and the per-type content. The chrome around it (search field, toolbar,
 /// navigation title, refresh triggers) belongs to the enclosing shell —
 /// `BrowseView` for standalone pages, `DashboardSearchResultsView` for the
@@ -20,10 +20,17 @@ struct BrowseContentView: View {
   /// The submitted query driving results; empty shows the placeholder in
   /// search mode, or all content otherwise.
   let searchText: String
-  let showsLibraryHeader: Bool
   let refreshTrigger: UUID
   @Binding var showFilterSheet: Bool
   @Binding var showSavedFilters: Bool
+  /// Explicit library scope (empty = all libraries). When nil, falls back to
+  /// the pushed single-library selection, then the pinned set.
+  let libraryIds: [String]?
+  /// In-place scope of the iPhone Library tab root; its header and the
+  /// single-library section counts come from `scopeLibraries`.
+  let libraryScope: LibraryBrowseScope?
+  let scopeLibraries: [SidebarLibraryItem]
+  let allLibrariesEntry: SidebarLibraryItem?
 
   @Environment(\.browseLibrarySelection) private var librarySelection
 
@@ -35,19 +42,25 @@ struct BrowseContentView: View {
     metadataFilter: MetadataFilterConfig? = nil,
     searchOnly: Bool = false,
     searchText: String = "",
-    showsLibraryHeader: Bool = true,
     refreshTrigger: UUID,
     showFilterSheet: Binding<Bool> = .constant(false),
-    showSavedFilters: Binding<Bool> = .constant(false)
+    showSavedFilters: Binding<Bool> = .constant(false),
+    libraryIds: [String]? = nil,
+    libraryScope: LibraryBrowseScope? = nil,
+    scopeLibraries: [SidebarLibraryItem] = [],
+    allLibrariesEntry: SidebarLibraryItem? = nil
   ) {
     self.fixedContent = fixedContent
     self.metadataFilter = metadataFilter
     self.searchOnly = searchOnly
     self.searchText = searchText
-    self.showsLibraryHeader = showsLibraryHeader
     self.refreshTrigger = refreshTrigger
     self._showFilterSheet = showFilterSheet
     self._showSavedFilters = showSavedFilters
+    self.libraryIds = libraryIds
+    self.libraryScope = libraryScope
+    self.scopeLibraries = scopeLibraries
+    self.allLibrariesEntry = allLibrariesEntry
   }
 
   /// Library browse (split view) offers only series/books; collections and
@@ -61,8 +74,8 @@ struct BrowseContentView: View {
     .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
   }
 
-  /// The picker reads the effective content so a persisted collections/read
-  /// lists selection still shows Series highlighted inside library browse,
+  /// The menu reads the effective content so a persisted collections/read
+  /// lists selection still shows Series selected inside library browse,
   /// where only series/books are offered.
   private var browseContentBinding: Binding<BrowseContentType> {
     Binding(
@@ -72,14 +85,26 @@ struct BrowseContentView: View {
   }
 
   private var resolvedLibraryIds: [String] {
+    if let libraryIds {
+      return libraryIds
+    }
     if let library = librarySelection {
       return [library.libraryId]
     }
     return dashboard.libraryIds
   }
 
+  /// The library whose section counts are shown: the in-place tab scope
+  /// first, then the pushed browse selection.
+  private var headerLibraryItem: SidebarLibraryItem? {
+    if let id = libraryScope?.libraryId {
+      return scopeLibraries.first(where: { $0.libraryId == id })
+    }
+    return librarySelection.map(SidebarLibraryItem.init(selection:))
+  }
+
   private func sectionCount(browseContent: BrowseContentType) -> Int? {
-    guard let library = librarySelection else { return nil }
+    guard let library = headerLibraryItem else { return nil }
     switch browseContent {
     case .series:
       return library.seriesCount.map { Int($0) }
@@ -90,43 +115,53 @@ struct BrowseContentView: View {
     }
   }
 
-  private func sectionTitle(browseContent: BrowseContentType) -> String {
-    if let count = sectionCount(browseContent: browseContent) {
-      return String(format: "%@ (%d)", browseContent.displayName, count)
+  private var sectionCounts: [BrowseContentType: Int] {
+    availableContentTypes.reduce(into: [:]) { result, type in
+      result[type] = sectionCount(browseContent: type)
     }
-    return browseContent.displayName
+  }
+
+  /// Caption trailing the content-type chip: the scope title in medium
+  /// weight, then the covered libraries' metrics in secondary. Nil on
+  /// unscoped pages (no tab scope and no pushed library selection).
+  private var chipCaption: Text? {
+    let title: String?
+    let facts: SidebarLibraryItem?
+    if let libraryScope {
+      title = libraryScope.title(pinnedIds: dashboard.libraryIds, libraries: scopeLibraries)
+      facts = libraryScope.facts(
+        pinnedIds: dashboard.libraryIds, libraries: scopeLibraries,
+        allLibrariesEntry: allLibrariesEntry)
+    } else if let selection = librarySelection {
+      title = selection.name
+      facts = SidebarLibraryItem(selection: selection)
+    } else {
+      return nil
+    }
+    guard let title else { return nil }
+    return LibraryMetricsText.scopeCaption(
+      title: title,
+      facts: facts.flatMap { LibraryMetricsText.sizeAndMetrics(for: $0) })
   }
 
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        if showsLibraryHeader, let library = librarySelection {
-          VStack(alignment: .leading) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-              Image(systemName: ContentIcon.library)
-              Text(library.name)
-                .font(.title2)
-              if let fileSize = library.fileSize {
-                Text(fileSize.humanReadableFileSize)
-                  .font(.subheadline)
-                  .foregroundColor(.secondary)
-              }
-              Spacer()
-            }
-          }.padding()
-        }
-
         if fixedContent == nil && !(searchOnly && searchText.isEmpty) {
-          Picker("", selection: browseContentBinding) {
-            ForEach(availableContentTypes) { type in
-              Label(sectionTitle(browseContent: type), systemImage: type.icon)
-                .labelStyle(.titleAndIcon)
-                .tag(type)
+          HStack {
+            BrowseContentTypeMenu(
+              selection: browseContentBinding,
+              types: availableContentTypes,
+              counts: sectionCounts
+            )
+            if let chipCaption {
+              chipCaption
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.tail)
             }
+            Spacer()
           }
-          .pickerStyle(.segmented)
-          .labelsHidden()
-          .frame(maxWidth: .infinity)
           .padding(.horizontal)
           .padding(.vertical, 8)
         }
