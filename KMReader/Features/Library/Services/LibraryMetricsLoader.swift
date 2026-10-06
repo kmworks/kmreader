@@ -43,7 +43,9 @@ struct LibraryMetricsLoader {
         fileSize: library.fileSize,
         seriesCount: library.series,
         booksCount: library.books,
-        sidecarsCount: library.sidecars
+        sidecarsCount: library.sidecars,
+        collectionsCount: library.collections,
+        readlistsCount: library.readlists
       )
     }
   }
@@ -182,8 +184,11 @@ nonisolated struct LibraryMetricValues: Equatable, Sendable {
   var seriesCount: Double?
   var booksCount: Double?
   var sidecarsCount: Double?
+  var collectionsCount: Double?
+  var readlistsCount: Double?
 
   var hasAnyValue: Bool {
     fileSize != nil || seriesCount != nil || booksCount != nil || sidecarsCount != nil
+      || collectionsCount != nil || readlistsCount != nil
   }
 }

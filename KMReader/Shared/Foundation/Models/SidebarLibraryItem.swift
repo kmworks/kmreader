@@ -62,7 +62,8 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
 
   /// Client-side sum of per-library metrics; a field stays nil when no
   /// library reports it. For the full set prefer the server's all-libraries
-  /// entry instead — overlapping library roots make sums overstate file size.
+  /// entry instead — overlapping library roots make sums overstate file size,
+  /// and a list spanning libraries counts once per touched library.
   static func aggregating(_ items: [SidebarLibraryItem]) -> SidebarLibraryItem {
     func sum(_ keyPath: KeyPath<SidebarLibraryItem, Double?>) -> Double? {
       let values = items.compactMap { $0[keyPath: keyPath] }
