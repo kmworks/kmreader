@@ -25,22 +25,12 @@ final class LibraryScopeStore {
   }
 
   /// Reloads the admin-only library metrics so scope headers follow the
-  /// dashboard refresh. The all-libraries entry refreshes every time;
-  /// per-library tagged metrics refresh for the displayed scope's libraries
-  /// and load whenever missing (new library or first load) — full reloads
-  /// stay with the library management surfaces.
-  /// No-op for non-admin users and offline mode.
-  func refreshMetrics(instanceId: String, displayedLibraryIds: [String] = []) async {
+  /// dashboard refresh. No-op for non-admin users and offline mode; servers
+  /// without the stats endpoints show no metrics at all.
+  func refreshMetrics(instanceId: String) async {
     if AppConfig.current.isAdmin, !AppConfig.isOffline, !instanceId.isEmpty {
       do {
-        let libraries = try await fetchLibraries(instanceId: instanceId)
-        let displayed = Set(displayedLibraryIds)
-        let refreshIds = libraries.filter { !hasMetrics($0) || displayed.contains($0.libraryId) }
-          .map(\.libraryId)
-        let metricsByLibrary = await LibraryMetricsLoader.shared.refreshMetrics(
-          instanceId: instanceId,
-          libraryIds: refreshIds
-        )
+        let metricsByLibrary = await LibraryMetricsLoader.shared.refreshMetrics(instanceId: instanceId)
         let database = try await DatabaseOperator.database()
         try await database.updateLibraryMetrics(
           instanceId: instanceId,
@@ -51,11 +41,6 @@ final class LibraryScopeStore {
       }
     }
     await load(instanceId: instanceId)
-  }
-
-  private func hasMetrics(_ library: SidebarLibraryItem) -> Bool {
-    library.seriesCount != nil || library.booksCount != nil || library.fileSize != nil
-      || library.sidecarsCount != nil
   }
 
   func load(instanceId: String) async {

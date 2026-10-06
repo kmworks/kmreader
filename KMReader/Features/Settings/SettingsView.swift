@@ -87,14 +87,7 @@ struct SettingsView: View {
             SettingsBadgeRow(
               title: ServerSection.serverInfo.title,
               icon: ServerSection.serverInfo.icon,
-              color: ServerSection.serverInfo.color
-            )
-          }
-          NavigationLink(value: NavDestination.settingsTasks) {
-            SettingsBadgeRow(
-              title: ServerSection.tasks.title,
-              icon: ServerSection.tasks.icon,
-              color: ServerSection.tasks.color,
+              color: ServerSection.serverInfo.color,
               badge: taskQueueStatus.count > 0 ? "\(taskQueueStatus.count)" : nil,
               badgeColor: .secondary
             )

@@ -10,7 +10,6 @@ enum ServerSection: String, CaseIterable {
   case libraries
   case readingStats
   case serverInfo
-  case tasks
   case history
   case media
 
@@ -27,8 +26,6 @@ enum ServerSection: String, CaseIterable {
       return "chart.bar.doc.horizontal"
     case .serverInfo:
       return "server.rack"
-    case .tasks:
-      return "list.bullet.clipboard"
     case .history:
       return "clock.arrow.circlepath"
     case .media:
@@ -54,8 +51,6 @@ enum ServerSection: String, CaseIterable {
       return .indigo
     case .serverInfo:
       return .gray
-    case .tasks:
-      return .orange
     case .history:
       return .brown
     case .media:
@@ -80,8 +75,6 @@ enum ServerSection: String, CaseIterable {
       return String(localized: "Reading Stats")
     case .serverInfo:
       return String(localized: "Server Info")
-    case .tasks:
-      return String(localized: "Tasks")
     case .history:
       return String(localized: "History")
     case .media:

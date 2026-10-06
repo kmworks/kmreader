@@ -211,12 +211,7 @@ struct LibraryListContent: View {
 
     isLoadingMetrics = true
 
-    let libraryIds = libraries.map(\.libraryId)
-
-    let metricsByLibrary = await metricsLoader.refreshMetrics(
-      instanceId: current.instanceId,
-      libraryIds: libraryIds
-    )
+    let metricsByLibrary = await metricsLoader.refreshMetrics(instanceId: current.instanceId)
 
     do {
       let database = try await DatabaseOperator.database()
