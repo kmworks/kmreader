@@ -129,16 +129,14 @@ struct SidebarView: View {
         NavigationLink(value: NavDestination.browse(scope: .all)) {
           SidebarItemLabel(
             title: String(localized: "All Libraries"),
-            count: nil,
-            systemImage: ContentIcon.library
+            count: nil
           )
         }
         if !dashboard.libraryIds.isEmpty {
           NavigationLink(value: NavDestination.browse(scope: .pinned)) {
             SidebarItemLabel(
               title: String(localized: "library.scope.pinned", defaultValue: "Pinned"),
-              count: nil,
-              systemImage: "pin"
+              count: nil
             )
           }
         }
@@ -164,7 +162,7 @@ struct SidebarView: View {
           }
         }
       } header: {
-        Label(String(localized: "Libraries"), systemImage: ContentIcon.library)
+        Text(String(localized: "Libraries"))
       }
     }
 

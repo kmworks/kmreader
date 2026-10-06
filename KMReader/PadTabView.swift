@@ -47,13 +47,16 @@ import SwiftUI
         // Sections always render after every plain tab in the sidebar,
         // regardless of declaration order.
         if !store.libraries.isEmpty {
+          // The aggregate tabs lead the Libraries section itself: splitting
+          // them into their own section makes the tab bar's Libraries item
+          // land on the first library instead of All Libraries.
           TabSection(String(localized: "Libraries")) {
             Tab(value: PadTab.libraries(.all)) {
               NavigationStack {
                 rootContent(for: .browse(scope: .all))
               }
             } label: {
-              Label(String(localized: "All Libraries"), systemImage: ContentIcon.library)
+              Text(String(localized: "All Libraries"))
             }
             if !dashboard.libraryIds.isEmpty {
               Tab(value: PadTab.libraries(.pinned)) {
@@ -61,9 +64,7 @@ import SwiftUI
                   rootContent(for: .browse(scope: .pinned))
                 }
               } label: {
-                Label(
-                  String(localized: "library.scope.pinned", defaultValue: "Pinned"),
-                  systemImage: "pin")
+                Text(String(localized: "library.scope.pinned", defaultValue: "Pinned"))
               }
             }
             ForEach(store.libraries) { library in
