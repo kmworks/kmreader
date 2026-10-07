@@ -70946,61 +70946,61 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1 free of %2"
+            "value" : "%1$@ free of %2$@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1 von %2 frei"
+            "value" : "%1$@ von %2$@ frei"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1 libres de %2"
+            "value" : "%1$@ libres de %2$@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1 libres sur %2"
+            "value" : "%1$@ libres sur %2$@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1 liberi di %2"
+            "value" : "%1$@ liberi di %2$@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%2 中 %1 空き"
+            "value" : "%2$@ 中 %1$@ 空き"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%2 중 %1 사용 가능"
+            "value" : "%2$@ 중 %1$@ 사용 가능"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Свободно %1 из %2"
+            "value" : "Свободно %1$@ из %2$@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "共 %2，剩余 %1"
+            "value" : "共 %2$@，剩余 %1$@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "共 %2，剩餘 %1"
+            "value" : "共 %2$@，剩餘 %1$@"
           }
         }
       }

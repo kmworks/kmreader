@@ -267,8 +267,15 @@ struct ServerInfoView: View {
   private func infoRow(_ label: String, _ value: String, _ icon: String, monospaced: Bool = false)
     -> some View
   {
-    InfoRow(label: label, value: value, icon: icon, monospaced: monospaced)
-      .tvFocusableHighlight()
+    LabeledContent {
+      Text(value)
+        .font(monospaced ? .system(.body, design: .monospaced) : .body)
+        .lineLimit(2)
+        .textSelectionIfAvailable()
+    } label: {
+      Label(label, systemImage: icon)
+    }
+    .tvFocusableHighlight()
   }
 
   private func loadServerInfo() async {
