@@ -55,19 +55,16 @@ struct ImageDecodeHelper {
     #endif
   }
 
-  /// Max pixel dimension (long edge) for decoded covers, per platform.
-  /// Covers are displayed at up to ~365pt (tvOS showcase) or ~240pt (iOS/macOS
-  /// detail); downsampling to display size × screen scale removes the extreme
+  /// Max pixel dimension (long edge) for decoded covers.
+  /// Covers are decoded once and shared across display sizes (45pt list rows up
+  /// to ~365pt tvOS showcase), so the cap is a compromise: 480px keeps the
+  /// residual GPU minification small enough (~1.5-2.2x on grid cards) that
+  /// bilinear sampling doesn't reintroduce moiré, while hero/detail images
+  /// upscale at most ~1.5x, which never moirés. This removes the extreme
   /// downscales — e.g. 1200px XLARGE Komga thumbnails shown at ~200px — that
   /// cause moiré on high-frequency artwork such as manga screentones.
   nonisolated static var maxCoverPixelDimension: CGFloat {
-    #if os(tvOS)
-      return 800  // 365pt × 2x
-    #elseif os(macOS)
-      return 500  // 240pt × 2x
-    #else
-      return 600  // 240pt × 2.5x; slight upscale on 3x iPhones never moirés
-    #endif
+    480
   }
 
   /// Decodes the image at `url`, downsampling to `maxPixelSize` (long edge,
