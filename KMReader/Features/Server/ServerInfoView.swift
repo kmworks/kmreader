@@ -5,27 +5,31 @@
 
 import SwiftUI
 
-/// Server snapshot from the kmrs stats endpoints plus the SSE task queue
-/// (which works on any server). Servers without the stats endpoints (Komga,
-/// older kmrs) hide the stats sections and get the unavailable state when
-/// there is nothing else to show.
+/// Server overview. On kmrs the stats endpoint answers process, totals, and
+/// task metrics in one request; elsewhere (Komga) the same rows are filled
+/// from the actuator metrics one by one. Servers without `/actuator/info`
+/// get the unavailable state; task queue, sessions, and scheduled tasks live
+/// in the sub-pages.
 struct ServerInfoView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
 
-  @State private var displayedTaskQueueStatus = TaskQueueSSEDto()
-  @State private var stats: ServerStatsResponse?
+  @State private var serverInfo: ActuatorInfoResponse?
+  @State private var process = ProcessInfo()
+  @State private var content = ContentCounts()
   @State private var isLoading = false
   @State private var isUnsupported = false
-  @State private var isCancelling = false
-  @State private var showCancelAllConfirmation = false
-  @State private var isLiveDotPulsing = false
+  @State private var logfileAvailable = false
+  @State private var showShutdownConfirmation = false
+  @State private var isShuttingDown = false
+  @State private var isDownloadingLogs = false
 
   var body: some View {
     Form {
       if !current.isAdmin {
         AdminRequiredView()
-      } else if isLoading && stats == nil && !isUnsupported {
+      } else if isLoading && serverInfo == nil && !isUnsupported {
         Section {
           HStack {
             Spacer()
@@ -33,255 +37,398 @@ struct ServerInfoView: View {
             Spacer()
           }
         }
-      } else {
-        #if os(tvOS) || os(macOS)
-          Section {
-            Button(role: .destructive) {
-              withAnimation {
-                showCancelAllConfirmation = true
-              }
-            } label: {
-              HStack {
-                Spacer()
-                if isCancelling {
-                  ProgressView()
-                } else {
-                  Label("Cancel All Tasks", systemImage: "xmark.circle")
-                }
-                Spacer()
-              }
-            }
-            .adaptiveButtonStyle(.borderedProminent)
-            .disabled(isCancelling || isLoading)
+      } else if isUnsupported {
+        Section {
+          ContentUnavailableView {
+            Label(
+              String(localized: "Server Info Unavailable"),
+              systemImage: ServerSection.serverInfo.icon)
+          } description: {
+            Text(String(localized: "This server does not provide server statistics."))
           }
-          .listRowBackground(Color.clear)
-        #endif
-
-        if displayedTaskQueueStatus.count > 0 {
-          Section {
-            VStack(spacing: 12) {
-              HStack {
-                Label(String(localized: "Total Tasks"), systemImage: "list.bullet.clipboard")
-                  .font(.headline)
-                Spacer()
-                Text("\(displayedTaskQueueStatus.count)")
-                  .font(.title2)
-                  .fontWeight(.bold)
-                  .foregroundColor(
-                    displayedTaskQueueStatus.count > 0 ? .primary : .secondary
-                  )
-                  .contentTransition(.numericText())
-              }
-              .padding(.vertical, 4)
-              .tvFocusableHighlight()
-
-              if !displayedTaskQueueStatus.countByType.isEmpty {
-                Divider()
-                ForEach(Array(displayedTaskQueueStatus.countByType.keys.sorted()), id: \.self) {
-                  taskType in
-                  if let count = displayedTaskQueueStatus.countByType[taskType] {
-                    HStack {
-                      Label(taskType, systemImage: "gearshape")
-                        .font(.subheadline)
-                      Spacer()
-                      Text("\(count)")
-                        .fontWeight(.semibold)
-                        .foregroundColor(count > 0 ? .primary : .secondary)
-                        .contentTransition(.numericText())
-                    }
-                    .padding(.vertical, 2)
-                    .tvFocusableHighlight()
-                  }
-                }
-              }
-            }
-            .padding(.vertical, 8)
-          } header: {
-            HStack {
-              Text(String(localized: "Task Queue Status"))
-                .font(.headline)
-              Spacer()
-              if displayedTaskQueueStatus.count > 0 {
-                Circle()
-                  .fill(Color.primary)
-                  .frame(width: 8, height: 8)
-                  .opacity(isLiveDotPulsing ? 0.25 : 1.0)
-                  .onAppear {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                      isLiveDotPulsing = true
-                    }
-                  }
-              }
-            }
-          }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 16)
         }
-
-        if isUnsupported {
-          if displayedTaskQueueStatus.count == 0 {
-            Section {
-              VStack(spacing: 4) {
-                ContentUnavailableView {
-                  Label(
-                    String(localized: "Server Info Unavailable"),
-                    systemImage: ServerSection.serverInfo.icon)
-                } description: {
-                  Text(String(localized: "This server does not provide server statistics."))
-                }
-                Text(
-                  String.localizedStringWithFormat(
-                    String(
-                      localized: "server.info.statsRequirement",
-                      defaultValue: "Server statistics require KMServer %@ or later."),
-                    ServerStatsService.minimumVersion)
-                )
-                .font(.footnote)
-                .foregroundColor(.secondary)
-                if let url = URL(string: "https://kmworks.date/server/") {
-                  Link(destination: url) {
-                    HStack(spacing: 4) {
-                      Text(verbatim: "kmworks.date/server")
-                      Image(systemName: AppIcon.externalLink)
-                        .imageScale(.small)
-                    }
-                    .font(.footnote)
-                  }
-                }
-              }
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 16)
-            }
+      } else if isOffline && serverInfo == nil {
+        Section {
+          ContentUnavailableView {
+            Label(
+              String(localized: "Server Info Unavailable"),
+              systemImage: ServerSection.serverInfo.icon)
+          } description: {
+            Text(String(localized: "Server info requires an online connection."))
           }
-        } else if let stats {
-          Section(header: Text(String(localized: "Process"))) {
-            if let startTime = Self.startTimeFormatter.date(from: stats.process.startTime) {
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 16)
+        }
+      } else {
+        if serverInfo != nil || process.hasAnyValue {
+          Section(header: Text(String(localized: "Server"))) {
+            if let version = serverInfo?.build?.version {
+              infoRow(String(localized: "Version"), version, "tag")
+            }
+            if let commit = commitDescription {
+              infoRow(String(localized: "Commit"), commit, "arrow.triangle.branch", monospaced: true)
+            }
+            if let os = osDescription {
+              infoRow(String(localized: "OS"), os, "desktopcomputer")
+            }
+            if let startTime = process.startTime {
               infoRow(
                 String(localized: "Start Time"),
                 startTime.formatted(date: .abbreviated, time: .shortened),
                 "clock")
             }
-            infoRow(
-              String(localized: "Uptime"),
-              Duration.seconds(stats.process.uptimeSeconds)
-                .formatted(
-                  .units(allowed: [.days, .hours, .minutes, .seconds], width: .wide, maximumUnitCount: 2)
-                ),
-              "timer")
-            infoRow(
-              String(localized: "CPU Usage"),
-              String(format: "%.1f %%", stats.process.cpuUsage),
-              "cpu")
-            infoRow(
-              String(localized: "Memory"),
-              stats.process.memoryBytes.humanReadableFileSize,
-              "memorychip")
-          }
-
-          Section(header: Text(String(localized: "Totals"))) {
-            infoRow(String(localized: "Libraries"), "\(Int(stats.totals.libraries))", ContentIcon.library)
-            infoRow(
-              String(localized: "Collections"), "\(Int(stats.totals.collections))", ContentIcon.collection)
-            infoRow(
-              String(localized: "Read Lists"), "\(Int(stats.totals.readlists))", ContentIcon.readList)
-            infoRow(
-              String(localized: "Sidecars"), "\(Int(stats.totals.sidecars))", "doc.badge.gearshape")
-          }
-
-          if !executedTaskTypes.isEmpty {
-            Section(header: Text(String(localized: "Tasks Executed"))) {
-              ForEach(executedTaskTypes, id: \.type) { task in
-                HStack {
-                  Label(task.type, systemImage: "gearshape")
-                  Spacer()
-                  Text("\(Int(task.executions))")
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
-              }
-            }
-
-            Section(header: Text(String(localized: "Tasks Total Time"))) {
-              ForEach(executedTaskTypes, id: \.type) { task in
-                HStack {
-                  Label(task.type, systemImage: "clock")
-                  Spacer()
-                  Text(String(format: "%.2f s", task.totalTimeMs / 1000))
-                    .foregroundColor(.secondary)
-                }
-                .tvFocusableHighlight()
-              }
+            if let uptimeSeconds = process.uptimeSeconds {
+              infoRow(
+                String(localized: "Uptime"),
+                Self.formatDuration(seconds: uptimeSeconds),
+                "timer")
             }
           }
+        }
 
-          if !failedTaskTypes.isEmpty {
-            Section(header: Text(String(localized: "Tasks Failed"))) {
-              ForEach(failedTaskTypes, id: \.type) { task in
-                HStack {
-                  Label(task.type, systemImage: "gearshape")
-                  Spacer()
-                  Text("\(Int(task.failures))")
-                    .foregroundColor(.red)
+        if process.cpuPercent != nil || process.memoryBytes != nil || process.diskFreeBytes != nil {
+          Section(header: Text(String(localized: "Resources"))) {
+            if let cpuPercent = process.cpuPercent {
+              infoRow(
+                String(localized: "CPU Usage"),
+                String(format: "%.1f %%", cpuPercent),
+                "cpu")
+            }
+            if let memoryBytes = process.memoryBytes {
+              infoRow(
+                String(localized: "Memory"),
+                memoryBytes.humanReadableFileSize,
+                "memorychip")
+            }
+            if let diskFreeBytes = process.diskFreeBytes {
+              let value =
+                if let diskTotalBytes = process.diskTotalBytes {
+                  String.localizedStringWithFormat(
+                    String(
+                      localized: "server.info.diskFreeOfTotal",
+                      defaultValue: "%@ free of %@"),
+                    diskFreeBytes.humanReadableFileSize, diskTotalBytes.humanReadableFileSize)
+                } else {
+                  String.localizedStringWithFormat(
+                    String(
+                      localized: "server.info.diskFree",
+                      defaultValue: "%@ free"),
+                    diskFreeBytes.humanReadableFileSize)
                 }
-                .tvFocusableHighlight()
+              infoRow(String(localized: "Disk"), value, "internaldrive")
+            }
+          }
+        }
+
+        if content.hasAnyValue {
+          Section(header: Text(String(localized: "Content"))) {
+            if let libraries = content.libraries {
+              infoRow(String(localized: "Libraries"), "\(Int(libraries))", ContentIcon.library)
+            }
+            if let series = content.series {
+              infoRow(String(localized: "Series"), "\(Int(series))", ContentIcon.series)
+            }
+            if let books = content.books {
+              infoRow(String(localized: "Books"), "\(Int(books))", ContentIcon.book)
+            }
+            if let collections = content.collections {
+              infoRow(
+                String(localized: "Collections"), "\(Int(collections))", ContentIcon.collection)
+            }
+            if let readlists = content.readlists {
+              infoRow(
+                String(localized: "Read Lists"), "\(Int(readlists))", ContentIcon.readList)
+            }
+            if let sidecars = content.sidecars {
+              infoRow(
+                String(localized: "Sidecars"), "\(Int(sidecars))", "doc.badge.gearshape")
+            }
+            if let fileSize = content.fileSize {
+              infoRow(
+                String(localized: "Total Size"),
+                fileSize.humanReadableFileSize,
+                "archivebox")
+            }
+          }
+        }
+
+        Section {
+          NavigationLink(value: NavDestination.settingsServerTasks) {
+            HStack {
+              Label(String(localized: "Tasks"), systemImage: "list.bullet.clipboard")
+              Spacer()
+              if taskQueueStatus.count > 0 {
+                Text("\(taskQueueStatus.count)")
+                  .foregroundColor(.secondary)
+                  .contentTransition(.numericText())
               }
             }
           }
+          NavigationLink(value: NavDestination.settingsServerSessions) {
+            Label(String(localized: "Sessions"), systemImage: "person.2")
+          }
+          NavigationLink(value: NavDestination.settingsServerScheduledTasks) {
+            Label(String(localized: "Scheduled Tasks"), systemImage: "calendar.badge.clock")
+          }
+        }
+
+        Section(header: Text(String(localized: "Maintenance"))) {
+          #if os(iOS) || os(macOS)
+            if logfileAvailable {
+              Button {
+                downloadLogFile()
+              } label: {
+                HStack {
+                  Label(String(localized: "Download Log File"), systemImage: "doc.text")
+                  Spacer()
+                  if isDownloadingLogs {
+                    ProgressView()
+                  }
+                }
+              }
+              .disabled(isDownloadingLogs)
+              .tvFocusableHighlight()
+            }
+          #endif
+
+          Button(role: .destructive) {
+            showShutdownConfirmation = true
+          } label: {
+            HStack {
+              Label(String(localized: "Shut Down Server"), systemImage: "power")
+              Spacer()
+              if isShuttingDown {
+                ProgressView()
+              }
+            }
+          }
+          .disabled(isShuttingDown)
+          .tvFocusableHighlight()
         }
       }
     }
     .formStyle(.grouped)
     .platformNavigationTitle(ServerSection.serverInfo.title)
-    #if os(iOS)
-      .toolbar {
-        ToolbarItem(placement: .primaryAction) {
-          Button(role: .destructive) {
-            withAnimation {
-              showCancelAllConfirmation = true
-            }
-          } label: {
-            Label(String(localized: "Cancel All Tasks"), systemImage: "xmark.circle")
-          }
-          .disabled(isCancelling || isLoading)
-        }
-      }
-    #endif
-    .alert(String(localized: "Cancel All Tasks"), isPresented: $showCancelAllConfirmation) {
+    .alert(String(localized: "Shut Down Server"), isPresented: $showShutdownConfirmation) {
       Button(String(localized: "Cancel"), role: .cancel) {}
-      Button(String(localized: "Confirm"), role: .destructive) {
-        cancelAllTasks()
+      Button(String(localized: "Shut Down"), role: .destructive) {
+        shutdownServer()
       }
     } message: {
       Text(
         String(
-          localized: "Are you sure you want to cancel all tasks? This action cannot be undone.")
+          localized: "The server will shut down and become unreachable until it is restarted.")
       )
     }
     .task {
       if current.isAdmin {
-        withAnimation {
-          displayedTaskQueueStatus = taskQueueStatus
-        }
-        await loadServerStats()
+        await loadServerInfo()
       }
     }
-    .onChange(of: taskQueueStatus) { _, newValue in
-      withAnimation {
-        displayedTaskQueueStatus = newValue
+    .onChange(of: isOffline) { oldValue, newValue in
+      if oldValue && !newValue && current.isAdmin {
+        Task {
+          await loadServerInfo()
+        }
       }
     }
     .refreshable {
       if current.isAdmin {
-        await loadServerStats()
+        await loadServerInfo()
       }
     }
   }
 
-  private var executedTaskTypes: [ServerStatsResponse.TaskTypeStats] {
-    stats?.tasks.types.filter { $0.executions > 0 } ?? []
+  private var commitDescription: String? {
+    guard let git = serverInfo?.git else { return nil }
+    let parts = [git.branch, git.commit?.id].compactMap { $0 }.filter { !$0.isEmpty }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
-  private var failedTaskTypes: [ServerStatsResponse.TaskTypeStats] {
-    stats?.tasks.types.filter { $0.failures > 0 } ?? []
+  private var osDescription: String? {
+    guard let os = serverInfo?.os else { return nil }
+    let parts = [os.name, os.version, os.arch].compactMap { $0 }.filter { !$0.isEmpty }
+    return parts.isEmpty ? nil : parts.joined(separator: " ")
   }
+
+  static func formatDuration(seconds: Double) -> String {
+    Duration.seconds(seconds)
+      .formatted(
+        .units(allowed: [.days, .hours, .minutes, .seconds], width: .wide, maximumUnitCount: 2)
+      )
+  }
+
+  private func infoRow(_ label: String, _ value: String, _ icon: String, monospaced: Bool = false)
+    -> some View
+  {
+    InfoRow(label: label, value: value, icon: icon, monospaced: monospaced)
+      .tvFocusableHighlight()
+  }
+
+  private func loadServerInfo() async {
+    guard !AppConfig.isOffline else { return }
+    isLoading = true
+
+    async let logfileProbe = Self.probeLogfile()
+
+    do {
+      serverInfo = try await ManagementService.getInfo()
+      isUnsupported = false
+    } catch let error as APIError {
+      if case .notFound = error {
+        isUnsupported = true
+        isLoading = false
+        return
+      }
+      ErrorManager.shared.alert(error: error)
+    } catch {
+      ErrorManager.shared.alert(error: error)
+    }
+
+    async let healthRequest = Self.loadHealth()
+
+    if ServerStatsService.shouldQueryServer(instanceId: current.instanceId) {
+      do {
+        let stats = try await ServerStatsService.getServerStats()
+        ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: true)
+        process = ProcessInfo(
+          startTime: Self.startTimeFormatter.date(from: stats.process.startTime),
+          uptimeSeconds: stats.process.uptimeSeconds,
+          cpuPercent: stats.process.cpuUsage,
+          memoryBytes: stats.process.memoryBytes
+        )
+        content = ContentCounts(
+          libraries: stats.totals.libraries,
+          series: stats.totals.series,
+          books: stats.totals.books,
+          collections: stats.totals.collections,
+          readlists: stats.totals.readlists,
+          sidecars: stats.totals.sidecars,
+          fileSize: stats.totals.fileSize
+        )
+      } catch let error as APIError {
+        if case .notFound = error {
+          ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: false)
+          await loadActuatorFallback()
+        } else {
+          ErrorManager.shared.alert(error: error)
+        }
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    } else {
+      await loadActuatorFallback()
+    }
+
+    process.diskFreeBytes = await healthRequest?.components?.diskSpace?.details?.free
+    process.diskTotalBytes = await healthRequest?.components?.diskSpace?.details?.total
+    logfileAvailable = await logfileProbe
+    isLoading = false
+  }
+
+  /// Komga path: the same rows one actuator metric at a time.
+  private func loadActuatorFallback() async {
+    do {
+      async let cpuRequest = ManagementService.getMetricOptional("process.cpu.usage")
+      async let memoryRequest = ManagementService.getMetricOptional("jvm.memory.used")
+      async let uptimeRequest = ManagementService.getMetricOptional("process.uptime")
+      async let startRequest = ManagementService.getMetricOptional("process.start.time")
+      async let librariesRequest = ManagementService.getMetricOptional("komga.libraries")
+      async let seriesRequest = ManagementService.getMetricOptional("komga.series")
+      async let booksRequest = ManagementService.getMetricOptional("komga.books")
+      async let collectionsRequest = ManagementService.getMetricOptional("komga.collections")
+      async let readlistsRequest = ManagementService.getMetricOptional("komga.readlists")
+      async let sidecarsRequest = ManagementService.getMetricOptional("komga.sidecars")
+      async let fileSizeRequest = ManagementService.getMetricOptional("komga.books.filesize")
+
+      let (cpu, memory, uptime, start) = try await (cpuRequest, memoryRequest, uptimeRequest, startRequest)
+      process = ProcessInfo(
+        startTime: start?.value("VALUE").map { Date(timeIntervalSince1970: $0 / 1000) },
+        uptimeSeconds: uptime?.value("VALUE"),
+        cpuPercent: cpu.flatMap(Self.cpuPercent),
+        memoryBytes: memory?.value("VALUE")
+      )
+
+      let gauges = try await (
+        librariesRequest, seriesRequest, booksRequest, collectionsRequest, readlistsRequest,
+        sidecarsRequest, fileSizeRequest
+      )
+      content = ContentCounts(
+        libraries: gauges.0?.value("VALUE"),
+        series: gauges.1?.value("VALUE"),
+        books: gauges.2?.value("VALUE"),
+        collections: gauges.3?.value("VALUE"),
+        readlists: gauges.4?.value("VALUE"),
+        sidecars: gauges.5?.value("VALUE"),
+        fileSize: gauges.6?.value("VALUE")
+      )
+    } catch {
+      ErrorManager.shared.alert(error: error)
+    }
+  }
+
+  /// kmrs reports percent directly; Spring's gauge is a 0-1 ratio with no
+  /// base unit (and -1 while unavailable).
+  private static func cpuPercent(from metric: Metric) -> Double? {
+    guard let value = metric.value("VALUE"), value >= 0 else { return nil }
+    return metric.baseUnit == "percent" ? value : value * 100
+  }
+
+  private static func loadHealth() async -> ActuatorHealthResponse? {
+    do {
+      return try await ManagementService.getHealth()
+    } catch let error as APIError {
+      if case .notFound = error { return nil }
+      ErrorManager.shared.alert(error: error)
+      return nil
+    } catch {
+      ErrorManager.shared.alert(error: error)
+      return nil
+    }
+  }
+
+  /// A probe failure keeps the button visible; the download surfaces errors.
+  private static func probeLogfile() async -> Bool {
+    do {
+      return try await ManagementService.isLogfileAvailable()
+    } catch {
+      return true
+    }
+  }
+
+  private func shutdownServer() {
+    guard !isShuttingDown else { return }
+    isShuttingDown = true
+    Task {
+      do {
+        try await ManagementService.shutdown()
+        ErrorManager.shared.notify(message: String(localized: "notification.server.shuttingDown"))
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+      isShuttingDown = false
+    }
+  }
+
+  #if os(iOS) || os(macOS)
+    private func downloadLogFile() {
+      guard !isDownloadingLogs else { return }
+      isDownloadingLogs = true
+      Task {
+        do {
+          let destinationURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("komga-server.log")
+          try await ManagementService.downloadLogFile(destinationURL: destinationURL)
+          FileShareHelper.share(url: destinationURL)
+        } catch {
+          ErrorManager.shared.alert(error: error)
+        }
+        isDownloadingLogs = false
+      }
+    }
+  #endif
 
   private static let startTimeFormatter: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
@@ -289,53 +436,31 @@ struct ServerInfoView: View {
     return formatter
   }()
 
-  private func infoRow(_ label: String, _ value: String, _ icon: String) -> some View {
-    InfoRow(label: label, value: value, icon: icon)
-      .tvFocusableHighlight()
+  private struct ProcessInfo {
+    var startTime: Date?
+    var uptimeSeconds: Double?
+    var cpuPercent: Double?
+    var memoryBytes: Double?
+    var diskFreeBytes: Double?
+    var diskTotalBytes: Double?
+
+    var hasAnyValue: Bool {
+      startTime != nil || uptimeSeconds != nil || cpuPercent != nil || memoryBytes != nil
+    }
   }
 
-  private func loadServerStats() async {
-    isLoading = true
+  private struct ContentCounts {
+    var libraries: Double?
+    var series: Double?
+    var books: Double?
+    var collections: Double?
+    var readlists: Double?
+    var sidecars: Double?
+    var fileSize: Double?
 
-    if ServerStatsService.shouldQueryServer(instanceId: current.instanceId) {
-      do {
-        let loaded = try await ServerStatsService.getServerStats()
-        ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: true)
-        stats = loaded
-        isUnsupported = false
-      } catch let error as APIError {
-        if case .notFound = error {
-          ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: false)
-          isUnsupported = true
-        } else {
-          ErrorManager.shared.alert(error: error)
-        }
-      } catch {
-        ErrorManager.shared.alert(error: error)
-      }
-    } else if !AppConfig.isOffline {
-      isUnsupported = true
-    }
-
-    isLoading = false
-  }
-
-  private func cancelAllTasks() {
-    guard !isCancelling else { return }
-    withAnimation {
-      isCancelling = true
-    }
-    Task {
-      do {
-        try await ManagementService.cancelAllTasks()
-        ErrorManager.shared.notify(message: String(localized: "notification.tasks.cancelled"))
-        await loadServerStats()
-      } catch {
-        ErrorManager.shared.alert(error: error)
-      }
-      withAnimation {
-        isCancelling = false
-      }
+    var hasAnyValue: Bool {
+      libraries != nil || series != nil || books != nil || collections != nil || readlists != nil
+        || sidecars != nil || fileSize != nil
     }
   }
 }

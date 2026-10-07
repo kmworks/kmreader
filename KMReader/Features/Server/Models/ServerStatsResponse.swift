@@ -20,6 +20,7 @@ nonisolated struct ServerStatsResponse: Decodable, Sendable {
     let type: String
     let executions: Double
     let totalTimeMs: Double
+    let maxTimeMs: Double
     let failures: Double
   }
 
@@ -37,5 +38,9 @@ nonisolated struct ServerStatsResponse: Decodable, Sendable {
     let collections: Double
     let readlists: Double
     let sidecars: Double
+    /// Content counts folded in later; older kmrs does not send them.
+    let series: Double?
+    let books: Double?
+    let fileSize: Double?
   }
 }
