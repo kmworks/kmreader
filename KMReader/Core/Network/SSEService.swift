@@ -228,6 +228,17 @@ actor SSEService {
         broadcastNotification(type: eventType, data: data)
         return
       }
+    case .smartListAdded, .smartListChanged, .smartListDeleted:
+      guard await handleSmartListProjectionSync(data: data) else {
+        broadcastNotification(type: eventType, data: data)
+        return
+      }
+    case .smartListThumbnailChanged:
+      guard let smartListId = stringValue("smartListId", from: data) else {
+        broadcastNotification(type: eventType, data: data)
+        return
+      }
+      try? await ThumbnailCache.refreshThumbnail(id: smartListId, type: .smartList)
     case .readProgressChanged, .readProgressDeleted:
       guard await postReadProgressDashboardRefresh(data: data) else {
         broadcastNotification(type: eventType, data: data)
@@ -308,12 +319,19 @@ actor SSEService {
     return true
   }
 
+  private func handleSmartListProjectionSync(data: String) async -> Bool {
+    guard let smartListId = stringValue("smartListId", from: data) else { return false }
+    await ListProjectionSyncService.shared.scheduleSmartListSync(smartListId: smartListId)
+    return true
+  }
+
   private func postReadProgressDashboardRefresh(data: String) async -> Bool {
     guard stringValue("bookId", from: data) != nil else { return false }
     await DashboardSectionRefreshNotifier.postReadStatusChanged(
       source: .auto,
       reason: "Remote read progress changed"
     )
+    await ListProjectionSyncService.shared.scheduleSmartListMembershipSync()
     return true
   }
 
@@ -323,6 +341,7 @@ actor SSEService {
       source: .auto,
       reason: "Remote series read progress changed"
     )
+    await ListProjectionSyncService.shared.scheduleSmartListMembershipSync()
     return true
   }
 

@@ -59,7 +59,7 @@ struct OfflineView: View {
     switch offlineBrowseContent {
     case .series, .books:
       return offlineBrowseContent
-    case .collections, .readlists:
+    case .collections, .readlists, .smartlists:
       return .series
     }
   }
@@ -305,7 +305,7 @@ struct OfflineView: View {
   @ViewBuilder
   private var browseContentView: some View {
     switch resolvedOfflineContent {
-    case .series, .collections, .readlists:
+    case .series, .collections, .readlists, .smartlists:
       OfflineSeriesBrowseView(
         libraryIds: resolvedLibraryIds,
         searchText: activeSearchText,
@@ -381,7 +381,7 @@ struct OfflineView: View {
     switch resolvedOfflineContent {
     case .books:
       await bookViewModel.refreshBrowse()
-    case .series, .collections, .readlists:
+    case .series, .collections, .readlists, .smartlists:
       await seriesViewModel.refreshBrowse()
     }
   }

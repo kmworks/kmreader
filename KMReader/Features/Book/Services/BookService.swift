@@ -23,19 +23,9 @@ nonisolated enum BookService {
     libraryIds: [String]? = nil
   ) async throws -> Page<Book> {
     let sort = browseOpts.sortQueryValues
-    let filters = BookSearchFilters(
-      libraryIds: libraryIds,
-      includeReadStatuses: Array(browseOpts.includeReadStatuses),
-      excludeReadStatuses: Array(browseOpts.excludeReadStatuses),
-      oneshot: browseOpts.oneshotFilter.effectiveBool,
-      deleted: browseOpts.deletedFilter.effectiveBool,
-      seriesId: seriesId,
-      readListId: nil,
-      authors: browseOpts.metadataFilter.authors,
-      authorsLogic: browseOpts.metadataFilter.authorsLogic,
-      tags: browseOpts.metadataFilter.tags,
-      tagsLogic: browseOpts.metadataFilter.tagsLogic
-    )
+    var filters = browseOpts.toSearchFilters()
+    filters.libraryIds = libraryIds
+    filters.seriesId = seriesId
     let condition = BookSearch.buildCondition(filters: filters)
     let search = BookSearch(condition: condition)
 
@@ -223,17 +213,8 @@ nonisolated enum BookService {
     searchTerm: String? = nil
   ) async throws -> Page<Book> {
     let sort = searchTerm?.isEmpty == false ? nil : browseOpts.sortQueryValues
-    let filters = BookSearchFilters(
-      libraryIds: libraryIds,
-      includeReadStatuses: Array(browseOpts.includeReadStatuses),
-      excludeReadStatuses: Array(browseOpts.excludeReadStatuses),
-      oneshot: browseOpts.oneshotFilter.effectiveBool,
-      deleted: browseOpts.deletedFilter.effectiveBool,
-      authors: browseOpts.metadataFilter.authors,
-      authorsLogic: browseOpts.metadataFilter.authorsLogic,
-      tags: browseOpts.metadataFilter.tags,
-      tagsLogic: browseOpts.metadataFilter.tagsLogic
-    )
+    var filters = browseOpts.toSearchFilters()
+    filters.libraryIds = libraryIds
     let condition = BookSearch.buildCondition(filters: filters)
     let search = BookSearch(
       condition: condition,

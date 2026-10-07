@@ -1175,6 +1175,20 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var serverSmartListCapability: ServerSmartListCapability {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverSmartListCapability"),
+        let capability = ServerSmartListCapability(rawValue: stored)
+      {
+        return capability
+      }
+      return ServerSmartListCapability()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverSmartListCapability")
+    }
+  }
+
   private static nonisolated var recentlyReadRecordTimeByInstance: [String: TimeInterval] {
     get {
       guard

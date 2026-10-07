@@ -29,6 +29,11 @@ enum SSEEventType: String, Codable, Sendable {
   case readListChanged = "ReadListChanged"
   case readListDeleted = "ReadListDeleted"
 
+  case smartListAdded = "SmartListAdded"
+  case smartListChanged = "SmartListChanged"
+  case smartListDeleted = "SmartListDeleted"
+  case smartListThumbnailChanged = "SmartListThumbnailChanged"
+
   case readProgressChanged = "ReadProgressChanged"
   case readProgressDeleted = "ReadProgressDeleted"
   case readProgressSeriesChanged = "ReadProgressSeriesChanged"
@@ -72,6 +77,10 @@ struct CollectionSSEDto: Codable, Sendable {
 struct ReadListSSEDto: Codable, Sendable {
   let readListId: String
   let bookIds: [String]
+}
+
+struct SmartListSSEDto: Codable, Sendable {
+  let smartListId: String
 }
 
 struct ReadProgressSSEDto: Codable, Sendable {

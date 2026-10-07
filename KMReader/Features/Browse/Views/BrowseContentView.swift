@@ -112,7 +112,7 @@ struct BrowseContentView: View {
       return facts.seriesCount.map { Int($0) }
     case .books:
       return facts.booksCount.map { Int($0) }
-    case .collections, .readlists:
+    case .collections, .readlists, .smartlists:
       return nil
     }
   }
@@ -215,6 +215,11 @@ struct BrowseContentView: View {
         searchText: searchText,
         refreshTrigger: refreshTrigger,
         showFilterSheet: $showFilterSheet
+      )
+    case .smartlists:
+      SmartListsBrowseView(
+        searchText: searchText,
+        refreshTrigger: refreshTrigger
       )
     }
   }

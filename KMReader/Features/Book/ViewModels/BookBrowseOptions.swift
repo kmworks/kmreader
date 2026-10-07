@@ -107,3 +107,20 @@ nonisolated struct BookBrowseOptions: Equatable, RawRepresentable, Sendable {
 
   init() {}
 }
+
+extension BookBrowseOptions {
+  /// Search filters for the condition-based book APIs; scoping ids (library,
+  /// series, …) stay with the caller, they vary per endpoint.
+  nonisolated func toSearchFilters() -> BookSearchFilters {
+    BookSearchFilters(
+      includeReadStatuses: Array(includeReadStatuses),
+      excludeReadStatuses: Array(excludeReadStatuses),
+      oneshot: oneshotFilter.effectiveBool,
+      deleted: deletedFilter.effectiveBool,
+      authors: metadataFilter.authors,
+      authorsLogic: metadataFilter.authorsLogic,
+      tags: metadataFilter.tags,
+      tagsLogic: metadataFilter.tagsLogic
+    )
+  }
+}

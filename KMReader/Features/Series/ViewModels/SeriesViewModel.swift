@@ -165,6 +165,49 @@ class SeriesViewModel {
     pagination.advance(moreAvailable: moreAvailable)
   }
 
+  func loadSmartListSeries(
+    smartListId: String,
+    browseOpts: SeriesBrowseOptions,
+    refresh: Bool = false
+  ) async {
+    guard let loadID = beginLoad(refresh: refresh) else { return }
+
+    defer {
+      if loadID == pagination.loadID {
+        withAnimation {
+          isLoading = false
+        }
+      }
+    }
+
+    // Smart lists are evaluated server-side; offline there is nothing to show.
+    if AppConfig.isOffline {
+      guard loadID == pagination.loadID else { return }
+      applyPage(ids: [], moreAvailable: false)
+      return
+    }
+
+    do {
+      let remoteOpts = normalizedRemoteBrowseOptions(browseOpts)
+      let search = SeriesSearch(
+        condition: SeriesSearch.buildCondition(filters: remoteOpts.toSearchFilters()))
+      let page = try await SyncService.syncSmartListSeries(
+        smartListId: smartListId,
+        page: pagination.currentPage,
+        size: pagination.pageSize,
+        search: search,
+        sort: [remoteOpts.sortString]
+      )
+
+      guard loadID == pagination.loadID else { return }
+      let ids = page.content.map { $0.id }
+      applyPage(ids: ids, moreAvailable: !page.last)
+    } catch {
+      guard loadID == pagination.loadID else { return }
+      ErrorManager.shared.alert(error: error)
+    }
+  }
+
   /// Re-fetches the already-loaded page window in place, preserving scroll
   /// position. Used for projection-change-driven refreshes; explicit user
   /// actions (filter changes) still use a full refresh.
@@ -173,15 +216,84 @@ class SeriesViewModel {
     browseOpts: CollectionSeriesBrowseOptions,
     libraryIds: [String]? = nil
   ) async {
+    await revalidateWindow(
+      fetchWindow: { windowSize in
+        if AppConfig.isOffline {
+          guard let database = try? await DatabaseOperator.database() else { return nil }
+          let ids = await database.fetchCollectionSeriesIds(
+            collectionId: collectionId,
+            browseOpts: browseOpts,
+            page: 0,
+            size: windowSize
+          )
+          return (ids, ids.count == windowSize)
+        }
+        do {
+          let page = try await SyncService.syncCollectionSeries(
+            collectionId: collectionId,
+            page: 0,
+            size: windowSize,
+            browseOpts: browseOpts,
+            libraryIds: libraryIds
+          )
+          return (page.content.map { $0.id }, !page.last)
+        } catch {
+          return nil
+        }
+      },
+      refreshFallback: {
+        await loadCollectionSeries(
+          collectionId: collectionId,
+          browseOpts: browseOpts,
+          libraryIds: libraryIds,
+          refresh: true
+        )
+      }
+    )
+  }
+
+  /// Re-fetches the already-loaded page window in place, preserving scroll
+  /// position. See `revalidateCollectionSeries`.
+  func revalidateSmartListSeries(
+    smartListId: String,
+    browseOpts: SeriesBrowseOptions
+  ) async {
+    await revalidateWindow(
+      fetchWindow: { windowSize in
+        guard !AppConfig.isOffline else { return nil }
+        do {
+          let remoteOpts = normalizedRemoteBrowseOptions(browseOpts)
+          let search = SeriesSearch(
+            condition: SeriesSearch.buildCondition(filters: remoteOpts.toSearchFilters()))
+          let page = try await SyncService.syncSmartListSeries(
+            smartListId: smartListId,
+            page: 0,
+            size: windowSize,
+            search: search,
+            sort: [remoteOpts.sortString]
+          )
+          return (page.content.map { $0.id }, !page.last)
+        } catch {
+          return nil
+        }
+      },
+      refreshFallback: {
+        await loadSmartListSeries(smartListId: smartListId, browseOpts: browseOpts, refresh: true)
+      }
+    )
+  }
+
+  /// Shared windowing for revalidation: re-fetches pages 0..<currentPage as a
+  /// single window and replaces the loaded items in place, keeping currentPage
+  /// and loadID so scroll position and item identity survive the update.
+  private func revalidateWindow(
+    fetchWindow: (Int) async -> (ids: [String], moreAvailable: Bool)?,
+    refreshFallback: () async -> Void
+  ) async {
     guard !isLoading else { return }
     let windowSize = pagination.currentPage * pagination.pageSize
     guard windowSize > 0 else {
-      await loadCollectionSeries(
-        collectionId: collectionId,
-        browseOpts: browseOpts,
-        libraryIds: libraryIds,
-        refresh: true
-      )
+      await refreshFallback()
       return
     }
 
@@ -197,32 +309,8 @@ class SeriesViewModel {
       }
     }
 
-    let result: (ids: [String], moreAvailable: Bool)?
-    if AppConfig.isOffline {
-      guard let database = try? await DatabaseOperator.database() else { return }
-      let ids = await database.fetchCollectionSeriesIds(
-        collectionId: collectionId,
-        browseOpts: browseOpts,
-        page: 0,
-        size: windowSize
-      )
-      result = (ids, ids.count == windowSize)
-    } else {
-      do {
-        let page = try await SyncService.syncCollectionSeries(
-          collectionId: collectionId,
-          page: 0,
-          size: windowSize,
-          browseOpts: browseOpts,
-          libraryIds: libraryIds
-        )
-        result = (page.content.map { $0.id }, !page.last)
-      } catch {
-        return
-      }
-    }
-
-    guard loadID == pagination.loadID, let result else { return }
+    guard let result = await fetchWindow(windowSize) else { return }
+    guard loadID == pagination.loadID else { return }
     let wrappedIds = result.ids.map(IdentifiedString.init)
     withAnimation {
       _ = pagination.replaceItems(wrappedIds, moreAvailable: result.moreAvailable)

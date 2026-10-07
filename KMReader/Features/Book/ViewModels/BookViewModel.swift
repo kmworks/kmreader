@@ -406,4 +406,78 @@ class BookViewModel {
       }
     )
   }
+
+  func loadSmartListBooks(
+    smartListId: String,
+    browseOpts: BookBrowseOptions,
+    refresh: Bool = false
+  ) async {
+    guard let loadID = beginLoad(refresh: refresh) else { return }
+
+    defer {
+      if loadID == pagination.loadID {
+        withAnimation {
+          isLoading = false
+        }
+      }
+    }
+
+    // Smart lists are evaluated server-side; offline there is nothing to show.
+    if AppConfig.isOffline {
+      guard loadID == pagination.loadID else { return }
+      applyPage(ids: [], moreAvailable: false)
+      return
+    }
+
+    do {
+      let remoteOpts = normalizedRemoteBrowseOptions(browseOpts)
+      let search = BookSearch(
+        condition: BookSearch.buildCondition(filters: remoteOpts.toSearchFilters()))
+      let page = try await SyncService.syncSmartListBooks(
+        smartListId: smartListId,
+        page: pagination.currentPage,
+        size: pagination.pageSize,
+        search: search,
+        sort: remoteOpts.sortQueryValues
+      )
+
+      guard loadID == pagination.loadID else { return }
+      let ids = page.content.map { $0.id }
+      applyPage(ids: ids, moreAvailable: !page.last)
+    } catch {
+      guard loadID == pagination.loadID else { return }
+      ErrorManager.shared.alert(error: error)
+    }
+  }
+
+  /// Re-fetches the already-loaded page window in place, preserving scroll
+  /// position. See `revalidateSeriesBooks`.
+  func revalidateSmartListBooks(
+    smartListId: String,
+    browseOpts: BookBrowseOptions
+  ) async {
+    await revalidateWindow(
+      fetchWindow: { windowSize in
+        guard !AppConfig.isOffline else { return nil }
+        do {
+          let remoteOpts = normalizedRemoteBrowseOptions(browseOpts)
+          let search = BookSearch(
+            condition: BookSearch.buildCondition(filters: remoteOpts.toSearchFilters()))
+          let page = try await SyncService.syncSmartListBooks(
+            smartListId: smartListId,
+            page: 0,
+            size: windowSize,
+            search: search,
+            sort: remoteOpts.sortQueryValues
+          )
+          return (page.content.map { $0.id }, !page.last)
+        } catch {
+          return nil
+        }
+      },
+      refreshFallback: {
+        await loadSmartListBooks(smartListId: smartListId, browseOpts: browseOpts, refresh: true)
+      }
+    )
+  }
 }

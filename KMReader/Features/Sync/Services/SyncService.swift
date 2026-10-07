@@ -542,6 +542,46 @@ nonisolated enum SyncService {
     return result
   }
 
+  static func syncSmartListBooks(
+    smartListId: String,
+    page: Int,
+    size: Int,
+    search: BookSearch,
+    sort: [String]?
+  ) async throws -> Page<Book> {
+    let database = try await DatabaseOperator.database()
+    let result = try await SmartListService.getSmartListBooks(
+      smartListId: smartListId,
+      search: search,
+      page: page,
+      size: size,
+      sort: sort
+    )
+    let instanceId = AppConfig.current.instanceId
+    await database.upsertBooks(result.content, instanceId: instanceId)
+    return result
+  }
+
+  static func syncSmartListSeries(
+    smartListId: String,
+    page: Int,
+    size: Int,
+    search: SeriesSearch,
+    sort: [String]?
+  ) async throws -> Page<Series> {
+    let database = try await DatabaseOperator.database()
+    let result = try await SmartListService.getSmartListSeries(
+      smartListId: smartListId,
+      search: search,
+      page: page,
+      size: size,
+      sort: sort
+    )
+    let instanceId = AppConfig.current.instanceId
+    await database.upsertSeriesList(result.content, instanceId: instanceId)
+    return result
+  }
+
   static func syncBookReadLists(bookId: String) async {
     do {
       let database = try await DatabaseOperator.database()

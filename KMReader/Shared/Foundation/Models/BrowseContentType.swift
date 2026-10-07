@@ -10,6 +10,7 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
   case books
   case collections
   case readlists
+  case smartlists
 
   var id: String { rawValue }
 
@@ -19,6 +20,7 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
     case .books: return String(localized: "browse.content.books")
     case .collections: return String(localized: "browse.content.collections")
     case .readlists: return String(localized: "browse.content.readlists")
+    case .smartlists: return String(localized: "browse.content.smartlists", defaultValue: "Smart Lists")
     }
   }
 
@@ -28,6 +30,7 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
     case .books: return ContentIcon.book
     case .collections: return ContentIcon.collection
     case .readlists: return ContentIcon.readList
+    case .smartlists: return ContentIcon.smartList
     }
   }
 
@@ -35,7 +38,7 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
     switch self {
     case .series, .books:
       return true
-    case .collections, .readlists:
+    case .collections, .readlists, .smartlists:
       return false
     }
   }
@@ -48,7 +51,7 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
     switch self {
     case .series, .books:
       return true
-    case .collections, .readlists:
+    case .collections, .readlists, .smartlists:
       return false
     }
   }

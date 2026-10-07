@@ -25,7 +25,7 @@ struct CardPlaceholder: View {
     switch kind {
     case .series:
       return 80
-    case .book, .collection, .readList:
+    case .book, .collection, .readList, .smartList:
       return 60
     }
   }
@@ -165,6 +165,11 @@ struct CardPlaceholder: View {
         (textStyle: .footnote, text: "Read List Name", width: 0.75, opacity: 0.2),
         (textStyle: .footnote, text: "12 books", width: 0.5, opacity: 0.15),
       ]
+    case .smartList:
+      return [
+        (textStyle: .footnote, text: "Smart List Name", width: 0.75, opacity: 0.2),
+        (textStyle: .footnote, text: "Books", width: 0.5, opacity: 0.15),
+      ]
     }
   }
 
@@ -197,6 +202,13 @@ struct CardPlaceholder: View {
       return [
         (textStyle: .callout, text: "Read List Name", width: 0.8, opacity: 0.2),
         (textStyle: .footnote, text: "12 books", width: 0.5, opacity: 0.15),
+        (textStyle: .caption, text: "Last Updated", width: 0.6, opacity: 0.15),
+        (textStyle: .caption, text: "Short summary", width: 0.75, opacity: 0.15),
+      ]
+    case .smartList:
+      return [
+        (textStyle: .callout, text: "Smart List Name", width: 0.8, opacity: 0.2),
+        (textStyle: .footnote, text: "Books", width: 0.5, opacity: 0.15),
         (textStyle: .caption, text: "Last Updated", width: 0.6, opacity: 0.15),
         (textStyle: .caption, text: "Short summary", width: 0.75, opacity: 0.15),
       ]

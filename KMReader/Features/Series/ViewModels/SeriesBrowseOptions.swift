@@ -137,3 +137,34 @@ nonisolated struct SeriesBrowseOptions: Equatable, RawRepresentable, Sendable {
 
   init() {}
 }
+
+extension SeriesBrowseOptions {
+  /// Search filters for the condition-based series APIs; scoping ids (library,
+  /// collection, …) stay with the caller, they vary per endpoint.
+  nonisolated func toSearchFilters() -> SeriesSearchFilters {
+    SeriesSearchFilters(
+      includeReadStatuses: Array(includeReadStatuses),
+      excludeReadStatuses: Array(excludeReadStatuses),
+      includeSeriesStatuses: includeSeriesStatuses.map { $0.apiValue }.filter { !$0.isEmpty },
+      excludeSeriesStatuses: excludeSeriesStatuses.map { $0.apiValue }.filter { !$0.isEmpty },
+      seriesStatusLogic: seriesStatusLogic,
+      oneshot: oneshotFilter.effectiveBool,
+      deleted: deletedFilter.effectiveBool,
+      complete: completeFilter.effectiveBool,
+      publishers: metadataFilter.publishers,
+      publishersLogic: metadataFilter.publishersLogic,
+      authors: metadataFilter.authors,
+      authorsLogic: metadataFilter.authorsLogic,
+      genres: metadataFilter.genres,
+      genresLogic: metadataFilter.genresLogic,
+      tags: metadataFilter.tags,
+      tagsLogic: metadataFilter.tagsLogic,
+      languages: metadataFilter.languages,
+      languagesLogic: metadataFilter.languagesLogic,
+      ageRatings: metadataFilter.ageRatings?.compactMap { Int($0) },
+      ageRatingsLogic: metadataFilter.ageRatingsLogic,
+      releaseYears: metadataFilter.releaseYears?.compactMap { Int($0) },
+      releaseYearsLogic: metadataFilter.releaseYearsLogic
+    )
+  }
+}

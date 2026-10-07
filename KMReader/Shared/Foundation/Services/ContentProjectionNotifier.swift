@@ -10,6 +10,8 @@ extension Notification.Name {
   static let seriesProjectionDidChange = Notification.Name("SeriesProjectionDidChange")
   static let collectionProjectionDidChange = Notification.Name("CollectionProjectionDidChange")
   static let readListProjectionDidChange = Notification.Name("ReadListProjectionDidChange")
+  static let smartListsDidChange = Notification.Name("SmartListsDidChange")
+  static let smartListMembershipDidChange = Notification.Name("SmartListMembershipDidChange")
 }
 
 nonisolated enum ContentProjectionChangeReason: String, Sendable {
@@ -126,6 +128,34 @@ nonisolated enum ContentProjectionNotifier {
     guard !ids.isEmpty else { return }
 
     await enqueueReadListIds(ids, refreshDelay: refreshDelay)
+  }
+
+  /// Smart lists are not mirrored locally, so there is no projection batching:
+  /// observers re-fetch the (small, unpaged) list on every post.
+  static func postSmartListsDidChange(
+    smartListId: String,
+    refreshDelay: UInt64 = localRefreshDelay
+  ) async {
+    guard !smartListId.isEmpty else { return }
+
+    if refreshDelay > 0 {
+      try? await Task.sleep(nanoseconds: refreshDelay)
+    }
+    await MainActor.run {
+      NotificationCenter.default.post(
+        name: .smartListsDidChange,
+        object: nil,
+        userInfo: ["smartListId": smartListId]
+      )
+    }
+  }
+
+  /// Posted when reading progress moves smart-list membership server-side;
+  /// member lists revalidate their loaded window against the server.
+  static func postSmartListMembershipDidChange() async {
+    await MainActor.run {
+      NotificationCenter.default.post(name: .smartListMembershipDidChange, object: nil)
+    }
   }
 
   static func postBookAndSeriesDidChange(
