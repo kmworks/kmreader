@@ -24,6 +24,12 @@ struct OldTabView: View {
         }
         .tabItem { TabItem.library.label }
         .tag(TabItem.library)
+
+        NavigationStack {
+          rootContent(for: .lists)
+        }
+        .tabItem { TabItem.lists.label }
+        .tag(TabItem.lists)
       #endif
 
       NavigationStack {
@@ -38,13 +44,13 @@ struct OldTabView: View {
         }
         .tabItem { TabItem.server.label }
         .tag(TabItem.server)
-      #endif
 
-      NavigationStack {
-        rootContent(for: .settings)
-      }
-      .tabItem { TabItem.settings.label }
-      .tag(TabItem.settings)
+        NavigationStack {
+          rootContent(for: .settings)
+        }
+        .tabItem { TabItem.settings.label }
+        .tag(TabItem.settings)
+      #endif
 
       NavigationStack {
         rootContent(for: .browse)

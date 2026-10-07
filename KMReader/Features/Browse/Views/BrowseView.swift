@@ -18,6 +18,9 @@ struct BrowseView: View {
   /// Search-tab mode (iPhone): show a search placeholder until a query is
   /// entered instead of browsing all content.
   let searchOnly: Bool
+  /// Search surfaces keep collections/read lists as result types; every
+  /// other surface browses series/books only (they live on the Lists page).
+  let includesListTypes: Bool
   /// Explicit library scope (empty = all libraries). When nil, the page's
   /// session scope applies.
   let libraryIds: [String]?
@@ -56,6 +59,7 @@ struct BrowseView: View {
     focusesSearchOnAppear: Bool = false,
     libraryTab: Bool = false,
     searchOnly: Bool = false,
+    includesListTypes: Bool = false,
     libraryIds: [String]? = nil,
     libraryTabScope: Binding<LibraryBrowseScope>? = nil,
     initialScope: LibraryBrowseScope? = nil
@@ -66,6 +70,7 @@ struct BrowseView: View {
     self.focusesSearchOnAppear = focusesSearchOnAppear
     self.libraryTab = libraryTab
     self.searchOnly = searchOnly
+    self.includesListTypes = includesListTypes
     self.libraryIds = libraryIds
     self.libraryTabScope = libraryTabScope
     _browseScope = State(initialValue: initialScope)
@@ -125,6 +130,7 @@ struct BrowseView: View {
       refreshTrigger: refreshTrigger,
       showFilterSheet: $showFilterSheet,
       showSavedFilters: $showSavedFilters,
+      includesListTypes: includesListTypes,
       libraryIds: resolvedLibraryIds,
       libraryScope: libraryTab ? libraryTabScope?.wrappedValue : (searchOnly ? nil : effectiveScope),
       scopeLibraries: scopeStore.libraries,
@@ -260,7 +266,11 @@ struct BrowseView: View {
   }
 
   private var effectiveContent: BrowseContentType {
-    .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
+    .effective(
+      fixed: fixedContent,
+      offered: BrowseContentType.offered(
+        includesListTypes: includesListTypes, libraryScoped: librarySelection != nil),
+      persisted: browseContent)
   }
 
   private var browseLayoutBinding: Binding<BrowseLayoutMode> {

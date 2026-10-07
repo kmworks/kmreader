@@ -21,6 +21,8 @@ struct ListsBrowseView: View {
   @State private var showLibraryPicker = false
   @State private var initialLoadDone = false
   @State private var initializedLoadKey: String?
+  @State private var collectionsReloadTask: Task<Void, Never>?
+  @State private var readListsReloadTask: Task<Void, Never>?
 
   private var effectiveScope: LibraryBrowseScope {
     browseScope ?? .pinned
@@ -158,13 +160,20 @@ struct ListsBrowseView: View {
       }
     }
     .onReceive(NotificationCenter.default.publisher(for: .collectionProjectionDidChange)) { _ in
-      Task {
+      // Projection posts arrive per id; coalesce a burst into one reload.
+      collectionsReloadTask?.cancel()
+      collectionsReloadTask = Task {
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        guard !Task.isCancelled else { return }
         await collectionsViewModel.loadCollections(
           libraryIds: resolvedLibraryIds, refresh: true)
       }
     }
     .onReceive(NotificationCenter.default.publisher(for: .readListProjectionDidChange)) { _ in
-      Task {
+      readListsReloadTask?.cancel()
+      readListsReloadTask = Task {
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        guard !Task.isCancelled else { return }
         await readListsViewModel.loadReadLists(
           libraryIds: resolvedLibraryIds, refresh: true)
       }

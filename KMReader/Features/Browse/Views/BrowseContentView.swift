@@ -23,6 +23,9 @@ struct BrowseContentView: View {
   let refreshTrigger: UUID
   @Binding var showFilterSheet: Bool
   @Binding var showSavedFilters: Bool
+  /// Search surfaces keep collections/read lists as result types; every
+  /// other surface browses series/books only (they live on the Lists page).
+  let includesListTypes: Bool
   /// Explicit library scope (empty = all libraries). When nil, falls back to
   /// the pushed single-library selection, then the pinned set.
   let libraryIds: [String]?
@@ -45,6 +48,7 @@ struct BrowseContentView: View {
     refreshTrigger: UUID,
     showFilterSheet: Binding<Bool> = .constant(false),
     showSavedFilters: Binding<Bool> = .constant(false),
+    includesListTypes: Bool = false,
     libraryIds: [String]? = nil,
     libraryScope: LibraryBrowseScope? = nil,
     scopeLibraries: [SidebarLibraryItem] = [],
@@ -57,21 +61,19 @@ struct BrowseContentView: View {
     self.refreshTrigger = refreshTrigger
     self._showFilterSheet = showFilterSheet
     self._showSavedFilters = showSavedFilters
+    self.includesListTypes = includesListTypes
     self.libraryIds = libraryIds
     self.libraryScope = libraryScope
     self.scopeLibraries = scopeLibraries
     self.allLibrariesEntry = allLibrariesEntry
   }
 
-  /// Library browse (split view) offers only series/books; collections and
-  /// read lists live at the sidebar's top level.
   private var availableContentTypes: [BrowseContentType] {
-    guard librarySelection == nil else { return [.series, .books] }
-    return BrowseContentType.allCases
+    BrowseContentType.offered(includesListTypes: includesListTypes, libraryScoped: librarySelection != nil)
   }
 
   private var effectiveContent: BrowseContentType {
-    .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
+    .effective(fixed: fixedContent, offered: availableContentTypes, persisted: browseContent)
   }
 
   /// The menu reads the effective content so a persisted collections/read

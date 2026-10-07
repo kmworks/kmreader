@@ -340,10 +340,10 @@ struct DashboardView: View {
                 Label(ServerSection.readingStats.title, systemImage: "chart.bar.doc.horizontal")
               }
 
-              // iPhone has no Settings tab on iOS 18+ (tab-bar capacity);
-              // its entry lives here instead.
+              // iPhone has no Settings tab (tab-bar capacity); its entry
+              // lives here instead.
               #if os(iOS)
-                if !PlatformHelper.isPad, #available(iOS 18.0, *) {
+                if !PlatformHelper.isPad {
                   NavigationLink(value: NavDestination.settings) {
                     Label(TabItem.settings.title, systemImage: TabItem.settings.icon)
                   }

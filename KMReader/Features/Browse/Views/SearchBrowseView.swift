@@ -18,6 +18,7 @@ struct SearchBrowseView: View {
     BrowseView(
       authViewModel: authViewModel,
       searchOnly: true,
+      includesListTypes: true,
       libraryIds: scope.resolvedIds(pinned: dashboard.libraryIds),
       libraryTabScope: $scope
     )
