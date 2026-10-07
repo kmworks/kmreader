@@ -9,8 +9,9 @@ Read comics and books with DIVINA on iOS, macOS, and tvOS, plus EPUB and PDF on 
 Rotate individual pages, crop empty page borders in DIVINA, tune preloading for memory or smoother page turns, keep lightweight progress visible while reading, and choose native PDF presentation modes that adapt cleanly between portrait and landscape.
 
 - Browse and discover
-Use Keep Reading, On Deck, Recently Added, Recently Updated, Read Lists in Progress, pinned collections/read lists, reading history, an adjustable pages-read heatmap, saved filters, advanced metadata filters including age rating and release year with all/any matching, optional unread-cover blur, batch read-status updates from series pages, Spotlight indexing, widgets, and Home Screen quick actions. Dashboard sections offer per-section card styles, and ordered read lists can continue like series with reading state synced across devices.
-iPhone offers a dedicated Library tab for content-first browsing and a focused Search tab. KMReader keeps a local database for responsive browsing, dashboards, logs, and downloaded-library workflows, including large libraries. Dashboard library scopes stay tied to each saved server, and widgets mirror refreshed dashboard content.
+Use Keep Reading, On Deck, Recently Added, Recently Updated, Read Lists in Progress, reading history, an adjustable pages-read heatmap, saved filters, advanced metadata filters including age rating and release year with all/any matching, optional unread-cover blur, Spotlight indexing, widgets, and Home Screen quick actions. Dashboard sections offer per-section card styles, and ordered read lists can continue like series with reading state synced across devices.
+One Lists page unifies collections and read lists on every platform, with pinned items first. On supported servers, smart lists evaluate saved searches live and can be created and edited in the app, and reading stats come from the server with current and longest streaks, falling back to on-device data otherwise. Select multiple books and series to mark them read or unread, or add them to a list in one go.
+iPhone offers dedicated Library, Lists, and Search tabs for content-first browsing. KMReader keeps a local database for responsive browsing, dashboards, logs, and downloaded-library workflows, including large libraries. Dashboard library scopes stay tied to each saved server, and widgets mirror refreshed dashboard content.
 
 - Offline and sync
 Download books for offline reading, set per-series and per-read-list download policies, browse downloaded items with count and storage summaries, queue dashboard sections, keep reading with iOS background downloads and Live Activities, prepare local pages on demand with offline-first reading, and sync progress when you reconnect.
@@ -18,8 +19,8 @@ Sync missing covers for downloaded books, series, read lists, and collections so
 
 - Multi-server and admin tools
 Save multiple Komga servers, protect private servers with device authentication, and switch instantly.
-Sign in with password or API key, set up a brand-new Komga server right from the login screen, and manage API keys in the app.
-Edit metadata, manage libraries and media, find missing posters or duplicates, monitor tasks, and browse, export, or clear paginated logs.
+Sign in with password or API key — the login screen can create a key for you — set up a brand-new Komga server right from the login screen, and manage API keys in the app.
+Edit metadata, manage libraries and media, find missing posters or duplicates, and browse, export, or clear paginated logs. A Server Info overview reports version, uptime, CPU, memory, disk, and content totals, with live task queue, sessions, and scheduled-task pages, on stock Komga servers too. On servers with the komf integration, Identify, Match, and Reset Metadata fetch metadata without leaving the app.
 
 KMReader targets Komga 1.20.0+ and supports API v1/v2.
 KMReader UI is localized in English, German, French, Japanese, Korean, Simplified Chinese, Traditional Chinese, Italian, Russian, and Spanish.

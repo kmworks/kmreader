@@ -29,10 +29,12 @@
 
 ### Browse and Discovery
 
-- Dashboard sections for Keep Reading, On Deck, Recently Added, Recently Updated, Read Lists in Progress, and pinned collections/read lists, with per-section card styles, cover-tinted horizontal cards, and quick offline actions for current or full book sections where supported.
+- Dashboard sections for Keep Reading, On Deck, Recently Added, Recently Updated, and Read Lists in Progress, with per-section card styles, cover-tinted horizontal cards, and quick offline actions for current or full book sections where supported.
+- A dedicated Lists page unifies collections and read lists on every platform, with pinned items first; on supported servers, smart lists evaluate saved searches live and can be created and edited in the app.
 - Ordered read lists can continue like series: books navigate in list order from any entry point, and per-list reading state syncs across devices.
-- Browse Series, Books, Collections, and Read Lists with metadata filters including age rating and release year, all/any matching, saved filters, reading history, an adjustable pages-read heatmap, dashboard search access on larger layouts, optional unread-cover blur, and batch read-status updates from series pages.
-- iPhone gets a dedicated Library tab for content-first browsing plus a focused Search tab.
+- Browse series and books with metadata filters including age rating and release year, all/any matching, saved filters, reading history, an adjustable pages-read heatmap, optional unread-cover blur, and batch selection to mark read status or add items to lists.
+- Reading stats aggregate on the server when available — with current and longest streaks — and fall back to on-device data otherwise.
+- iPhone gets dedicated Library, Lists, and Search tabs for content-first browsing.
 - Local database storage keeps large libraries, dashboards, logs, downloaded content, and offline browsing responsive.
 - Server-specific dashboard library scopes, refreshed widget payloads, Spotlight indexing for downloaded content, plus iOS widgets and Home Screen quick actions for Keep Reading, Search, and Downloads.
 
@@ -48,12 +50,13 @@
 ### Multi-Server and Management
 
 - Save multiple Komga servers, protect private servers with device authentication, and switch instantly.
-- Sign in with username/password or API key, set up a brand-new Komga server right from the login screen, and manage Komga API keys inside the app.
-- Admin tools cover metadata editing, library management, media analysis, missing posters, duplicate files/pages, task monitoring, and paginated log viewing, export, and clearing.
+- Sign in with username/password or API key — the login screen can create a key for you — set up a brand-new Komga server right from the login screen, and manage Komga API keys inside the app.
+- Admin tools cover metadata editing, library management, media analysis, missing posters, duplicate files/pages, and paginated log viewing, export, and clearing.
+- A Server Info overview reports version, uptime, CPU, memory, disk, and content totals, with live task queue, sessions, and scheduled-task pages — on stock Komga servers too. On servers with the komf integration, Identify, Match, and Reset Metadata fetch metadata without leaving the app.
 
 ### Platform Highlights
 
-- iOS/iPadOS: widgets, quick actions, Spotlight search, Dynamic Island Live Activities, background downloads, Live Text, and reader keyboard shortcuts.
+- iOS/iPadOS: adaptable sidebar tabs on iPad, widgets, quick actions, Spotlight search, Dynamic Island Live Activities, background downloads, Live Text, and reader keyboard shortcuts.
 - macOS: dedicated reader windows, menu bar reader actions, Spotlight search, keyboard shortcuts, and keyboard help.
 - tvOS: remote-first DIVINA reading and TV-optimized browsing.
 

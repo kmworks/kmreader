@@ -1,29 +1,24 @@
 New
-- Ordered read lists can now continue like series: opt in once, and any book in a list navigates in list order, with a Read Lists in Progress dashboard section showing each list's next book. Reading state syncs across your devices.
-- Dashboard sections get their own card styles: switch any section between large, small, and horizontal cards right from its header, with a new medium size in between, plus a setting to hide the style menu.
-- Browse pages get a three-way layout menu: Row, Medium, or Large grid.
-- Detail pages are redesigned around a compact hero and a single action card, with a two-column layout on iPad and Mac, collapsible metadata sections, and a prominent two-line Read button showing your progress.
-- Failed page loads in the reader now explain what went wrong and offer Retry instead of spinning forever.
-- Reading progress is only recorded after a few pages are turned (configurable), so accidentally opening a book no longer marks it as started or wipes a finished book's state.
-- Fresh default app icon: gradient glyph on white, with Classic and Legacy alternates still available.
-- Oneshot cards now show a book icon and the primary author instead of a bare label.
+- One Lists home on every platform: Collections and Read Lists now live together on a single Lists page (a new tab on iPhone and Apple TV, one merged row in sidebars), with your pinned items always first.
+- Smart Lists on KMServer: saved searches evaluated live on the server. Browse them from the Lists page, and create, edit, or delete them right in the app.
+- One library scope menu everywhere: switch between All Libraries, your Pinned set, or a single library from a single dropdown shared by the Dashboard, Offline, and every browse page, with an info line showing the scope's size and counts.
+- Server Info is rebuilt as an overview with server identity, uptime, CPU, memory, disk, and content totals, plus new Tasks, Sessions, and Scheduled Tasks pages with a live task queue. It now works on stock Komga servers too.
+- Reading stats now come from the server when it supports them, including new Current and Longest Streak cards, with the on-device stats as a fallback.
+- Fetch metadata with komf: Identify, Match, and Reset Metadata actions for series and oneshots when your KMServer has the komf integration connected (admin only).
+- Select multiple books and series on browse pages to mark them read or unread, or add them to a read list or collection in one go.
+- The iPad interface is rebuilt around adaptable tabs with a sidebar, replacing the old split view.
+- Sign in faster: the login screen can create an API key for you automatically.
+
+Reader
+- Pan smoothly across wide spreads instead of paging their halves, with a Scroll split mode for joined pages.
+- The end page now tells you how many unread books remain in the series, and finishing a book suggests the next unread one.
+- Split wide pages are border-cropped before splitting, so joined spreads realign perfectly at the seam.
+- Fixed reading progress not being recorded on books you had already started.
 
 Improvements
-- Horizontal dashboard cards are tinted by the cover color, carry download status and a menu button, and match Apple Books sizing; card text and badges scale with card size.
-- The custom theme color is retired in favor of a clean monochrome look that follows the system.
-- Offline-first reading and auto-delete toggles moved into Reader settings, and section downloads moved onto each dashboard section's page with Download Latest 20 and Download All.
-- The API keys page now only protects the key this device actually uses, instead of locking keys created on your other devices.
-- Metadata edit sheets refresh the page right after saving, and their add buttons work reliably.
-- Filter and saved filters are now direct toolbar buttons on Browse and Offline pages.
-- Smoother pull-to-refresh, and iPad/macOS sidebars reload the whole page when switching collections or read lists.
-- KMReader now requires Komga 1.20.0 or later.
-
-Fixes
-- Fixed the Show More toggle disappearing on long summaries.
-- Fixed dashboard rows going stale on iPad after switching back to Home.
-- Fixed the reader's page dimension warning, which could not be dismissed.
-- Fixed book lists losing their sort order on some servers.
-- Fixed offline next/previous navigation disagreeing with the server for books sharing the same series number.
-- Fixed dark-mode cover shadows glowing white and oversized badges on small cards.
-- Fixed long-press menus not working on card covers.
-- Fixed returning to a detail page resetting its list back to the top.
+- Offline mode is now a simple toggle, and the offline banner on the Dashboard retries the connection with one tap.
+- Dashboard cards are polished to match Apple Books sizing, covers stop flashing placeholders while scrolling, and corner badges stay consistent at any size.
+- Download failures are surfaced clearly with counts, and Sync Data lives in Offline Tasks with real per-stage progress.
+- Settings are reorganized into flatter groups, server management entries are admin-only, and About now links to the Discord community.
+- The default and legacy app icons get the new glass look.
+- Browse pages get a unified toolbar, content-type counts move onto the chips (and hide when zero), and iPhone tab roots show clean inline titles.
