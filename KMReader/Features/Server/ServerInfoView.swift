@@ -7,9 +7,8 @@ import SwiftUI
 
 /// Server overview. On kmrs the stats endpoint answers process, totals, and
 /// task metrics in one request; elsewhere (Komga) the same rows are filled
-/// from the actuator metrics one by one. Servers without `/actuator/info`
-/// get the unavailable state; task queue, sessions, and scheduled tasks live
-/// in the sub-pages.
+/// from the actuator metrics one by one. Task queue, sessions, and scheduled
+/// tasks live in the sub-pages.
 struct ServerInfoView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("isOffline") private var isOffline: Bool = false
@@ -19,7 +18,6 @@ struct ServerInfoView: View {
   @State private var process = ProcessInfo()
   @State private var content = ContentCounts()
   @State private var isLoading = false
-  @State private var isUnsupported = false
   @State private var loadedInstanceId: String?
   @State private var logfileAvailable = false
   @State private var showShutdownConfirmation = false
@@ -30,25 +28,13 @@ struct ServerInfoView: View {
     Form {
       if !current.isAdmin {
         AdminRequiredView()
-      } else if isLoading && serverInfo == nil && !isUnsupported {
+      } else if isLoading && serverInfo == nil {
         Section {
           HStack {
             Spacer()
             ProgressView()
             Spacer()
           }
-        }
-      } else if isUnsupported {
-        Section {
-          ContentUnavailableView {
-            Label(
-              String(localized: "Server Info Unavailable"),
-              systemImage: ServerSection.serverInfo.icon)
-          } description: {
-            Text(String(localized: "This server does not provide server statistics."))
-          }
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 16)
         }
       } else if isOffline && serverInfo == nil {
         Section {
@@ -284,15 +270,6 @@ struct ServerInfoView: View {
 
     do {
       serverInfo = try await ManagementService.getInfo()
-      isUnsupported = false
-    } catch let error as APIError {
-      if case .notFound = error {
-        isUnsupported = true
-      } else {
-        ErrorManager.shared.alert(error: error)
-      }
-      isLoading = false
-      return
     } catch {
       ErrorManager.shared.alert(error: error)
       isLoading = false
