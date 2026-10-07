@@ -35,6 +35,75 @@ nonisolated enum SmartListService {
     return try await apiClient.request(path: "/api/v1/smart-lists/\(id)")
   }
 
+  static func getShareTargets() async throws -> [SmartListShareTarget] {
+    return try await apiClient.request(path: "/api/v1/smart-lists/share-targets")
+  }
+
+  static func createSmartList(
+    name: String,
+    summary: String,
+    target: SmartList.Target,
+    visibility: SmartList.Visibility?,
+    sharedWithUserIds: [String]?,
+    search: [String: Any]
+  ) async throws -> SmartList {
+    var body: [String: Any] = [
+      "name": name,
+      "summary": summary,
+      "target": target.rawValue,
+      "search": search,
+    ]
+    // Admin-only fields stay absent for non-admins; the server 403s otherwise.
+    if let visibility {
+      body["visibility"] = visibility.rawValue
+    }
+    if let sharedWithUserIds {
+      body["sharedWithUserIds"] = sharedWithUserIds
+    }
+    let jsonData = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+    let result: SmartList = try await apiClient.request(
+      path: "/api/v1/smart-lists",
+      method: "POST",
+      body: jsonData
+    )
+    await ContentProjectionNotifier.postSmartListsDidChange(
+      smartListId: result.id, refreshDelay: 0)
+    return result
+  }
+
+  static func updateSmartList(
+    smartListId: String,
+    name: String,
+    summary: String,
+    visibility: SmartList.Visibility?,
+    sharedWithUserIds: [String]?,
+    search: [String: Any]?
+  ) async throws {
+    var body: [String: Any] = [
+      "name": name,
+      "summary": summary,
+    ]
+    if let visibility {
+      body["visibility"] = visibility.rawValue
+    }
+    if let sharedWithUserIds {
+      body["sharedWithUserIds"] = sharedWithUserIds
+    }
+    // A nil search means the editor never touched the filters; omitting it keeps
+    // the stored document, which protects filters the editor cannot represent.
+    if let search {
+      body["search"] = search
+    }
+    let jsonData = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+    let _: EmptyResponse = try await apiClient.request(
+      path: "/api/v1/smart-lists/\(smartListId)",
+      method: "PATCH",
+      body: jsonData
+    )
+    await ContentProjectionNotifier.postSmartListsDidChange(
+      smartListId: smartListId, refreshDelay: 0)
+  }
+
   static func getSmartListBooks(
     smartListId: String,
     search: BookSearch,

@@ -15,6 +15,7 @@ nonisolated struct SmartList: Codable, Identifiable, Sendable, Equatable, Hashab
   let target: Target
   let visibility: Visibility
   let sharedWithUserIds: [String]
+  let search: [String: JSONAny]?
   let createdDate: Date
   let lastModifiedDate: Date
 
@@ -23,10 +24,24 @@ nonisolated struct SmartList: Codable, Identifiable, Sendable, Equatable, Hashab
     case series = "SERIES"
   }
 
-  enum Visibility: String, Codable, Sendable {
+  enum Visibility: String, Codable, CaseIterable, Sendable {
     case `private` = "PRIVATE"
     case `public` = "PUBLIC"
     case shared = "SHARED"
+
+    var displayName: String {
+      switch self {
+      case .private: return String(localized: "smartlist.visibility.private")
+      case .public: return String(localized: "smartlist.visibility.public")
+      case .shared: return String(localized: "smartlist.visibility.shared")
+      }
+    }
+  }
+
+  // JSONAny is not Hashable; the search document is excluded from hashing.
+  // Equal lists still hash equally, only collisions get more likely.
+  func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
   }
 
   var targetDisplayName: String {
@@ -38,10 +53,6 @@ nonisolated struct SmartList: Codable, Identifiable, Sendable, Equatable, Hashab
 
   /// Private is the common case and gets no badge.
   var visibilityDisplayName: String? {
-    switch visibility {
-    case .private: return nil
-    case .public: return String(localized: "smartlist.visibility.public")
-    case .shared: return String(localized: "smartlist.visibility.shared")
-    }
+    visibility == .private ? nil : visibility.displayName
   }
 }

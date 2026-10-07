@@ -17,6 +17,7 @@ struct SmartListDetailView: View {
   @State private var loadedSmartListId: String?
   @State private var hasError = false
   @State private var showDeleteConfirmation = false
+  @State private var showEditSheet = false
   /// Measured detail-column width driving the single/two-column layout switch.
   /// Defaults wide where the wide layout can engage (iPad, macOS) so the first
   /// frame doesn't flash the single column.
@@ -115,6 +116,11 @@ struct SmartListDetailView: View {
     } message: {
       Text("This will permanently delete \(smartList?.name ?? "this smart list") from the server.")
     }
+    .sheet(isPresented: $showEditSheet) {
+      if let smartList {
+        SmartListEditSheet(mode: .edit(smartList))
+      }
+    }
     #if os(iOS) || os(macOS)
       .toolbar {
         ToolbarItem(placement: .automatic) {
@@ -194,6 +200,14 @@ extension SmartListDetailView {
   @ViewBuilder
   private var smartListToolbarContent: some View {
     Menu {
+      if canDelete {
+        Button {
+          deferMenuActionPresentation { showEditSheet = true }
+        } label: {
+          Label("Edit", systemImage: AppIcon.edit)
+        }
+      }
+
       Button {
         refreshCover()
       } label: {

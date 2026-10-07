@@ -9,6 +9,7 @@ struct SmartListRowView: View {
   let smartList: SmartList
 
   @State private var showDeleteConfirmation = false
+  @State private var showEditSheet = false
 
   var body: some View {
     HStack(spacing: 12) {
@@ -47,6 +48,9 @@ struct SmartListRowView: View {
           EllipsisMenuButton {
             SmartListContextMenu(
               smartList: smartList,
+              onEditRequested: {
+                showEditSheet = true
+              },
               onDeleteRequested: {
                 showDeleteConfirmation = true
               }
@@ -55,6 +59,9 @@ struct SmartListRowView: View {
           }
         }
       }
+    }
+    .sheet(isPresented: $showEditSheet) {
+      SmartListEditSheet(mode: .edit(smartList))
     }
     .alert("Delete Smart List", isPresented: $showDeleteConfirmation) {
       Button("Cancel", role: .cancel) {}

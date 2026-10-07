@@ -7,11 +7,12 @@ import SwiftUI
 
 struct SmartListContextMenu: View {
   let smartList: SmartList
+  var onEditRequested: (() -> Void)? = nil
   var onDeleteRequested: (() -> Void)? = nil
 
   @AppStorage("currentAccount") private var current: Current = .init()
 
-  private var canDelete: Bool {
+  private var canManage: Bool {
     smartList.ownerId == current.userId || current.isAdmin
   }
 
@@ -22,13 +23,22 @@ struct SmartListContextMenu: View {
       }
 
       Divider()
+
+      if canManage, onEditRequested != nil {
+        Button {
+          deferMenuActionPresentation { onEditRequested?() }
+        } label: {
+          Label("Edit Smart List", systemImage: AppIcon.edit)
+        }
+      }
+
       Button {
         refreshCover()
       } label: {
         Label("Refresh Cover", systemImage: AppIcon.refresh)
       }
 
-      if canDelete, onDeleteRequested != nil {
+      if canManage, onDeleteRequested != nil {
         Divider()
         Button(role: .destructive) {
           deferMenuActionPresentation { onDeleteRequested?() }

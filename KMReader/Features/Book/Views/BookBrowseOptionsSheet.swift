@@ -16,6 +16,9 @@ struct BookBrowseOptionsSheet: View {
   let includeOfflineSorts: Bool
   let usesRelevanceSort: Bool
   let ignoresFiltersForSearch: Bool
+  /// Smart lists store no sort (chosen at browse time); hiding sort also hides
+  /// Save Filter, since presets write the shared browse-options keys.
+  let showsSort: Bool
 
   private var availableSortFields: [BookSortField] {
     includeOfflineSorts ? BookSortField.offlineCases : BookSortField.onlineCases
@@ -40,7 +43,8 @@ struct BookBrowseOptionsSheet: View {
     libraryIds: [String]? = nil,
     includeOfflineSorts: Bool = false,
     usesRelevanceSort: Bool = false,
-    ignoresFiltersForSearch: Bool = false
+    ignoresFiltersForSearch: Bool = false,
+    showsSort: Bool = true
   ) {
     var initialOpts = browseOpts.wrappedValue
     let availableSortFields = includeOfflineSorts ? BookSortField.offlineCases : BookSortField.onlineCases
@@ -56,6 +60,7 @@ struct BookBrowseOptionsSheet: View {
     self.includeOfflineSorts = includeOfflineSorts
     self.usesRelevanceSort = usesRelevanceSort
     self.ignoresFiltersForSearch = ignoresFiltersForSearch
+    self.showsSort = showsSort
   }
 
   var body: some View {
@@ -126,12 +131,14 @@ struct BookBrowseOptionsSheet: View {
 
       }
     } controls: {
-      Button {
-        withAnimation {
-          showSaveFilterSheet = true
+      if showsSort {
+        Button {
+          withAnimation {
+            showSaveFilterSheet = true
+          }
+        } label: {
+          Label(String(localized: "Save Filter"), systemImage: "bookmark")
         }
-      } label: {
-        Label(String(localized: "Save Filter"), systemImage: "bookmark")
       }
       Button(action: applyChanges) {
         Label(String(localized: "Done"), systemImage: AppIcon.confirm)
@@ -157,17 +164,19 @@ struct BookBrowseOptionsSheet: View {
 
   @ViewBuilder
   private var sortSection: some View {
-    if usesRelevanceSort {
-      Section(String(localized: "Sort")) {
-        Label(String(localized: "sort.relevance"), systemImage: AppIcon.search)
-          .foregroundStyle(.secondary)
+    if showsSort {
+      if usesRelevanceSort {
+        Section(String(localized: "Sort")) {
+          Label(String(localized: "sort.relevance"), systemImage: AppIcon.search)
+            .foregroundStyle(.secondary)
+        }
+      } else {
+        SortOptionView(
+          sortField: $tempOpts.sortField,
+          sortDirection: $tempOpts.sortDirection,
+          sortFields: availableSortFields
+        )
       }
-    } else {
-      SortOptionView(
-        sortField: $tempOpts.sortField,
-        sortDirection: $tempOpts.sortDirection,
-        sortFields: availableSortFields
-      )
     }
   }
 

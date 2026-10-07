@@ -12,6 +12,7 @@ struct SmartListsBrowseView: View {
   @AppStorage("smartListBrowseLayout") private var browseLayout: BrowseLayoutMode = .grid
   @State private var viewModel = SmartListsViewModel()
   @State private var hasInitialized = false
+  @State private var showCreateSheet = false
 
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
@@ -30,19 +31,31 @@ struct SmartListsBrowseView: View {
 
   private var emptyMessage: LocalizedStringKey {
     searchText.isEmpty
-      ? LocalizedStringKey("Smart lists are created in the web UI.")
+      ? LocalizedStringKey("Smart lists are saved searches kept up to date by the server.")
       : LocalizedStringKey("Try a different search.")
   }
 
   var body: some View {
     VStack {
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 6) {
-          LayoutModeMenu(selection: $browseLayout)
+      HStack(spacing: 8) {
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 6) {
+            LayoutModeMenu(selection: $browseLayout)
+          }
+          .padding(4)
         }
-        .padding(4)
+        .scrollClipDisabled()
+
+        if viewModel.isSupported {
+          Button {
+            showCreateSheet = true
+          } label: {
+            Image(systemName: AppIcon.add)
+          }
+          .adaptiveButtonStyle(.bordered)
+          .optimizedControlSize()
+        }
       }
-      .scrollClipDisabled()
       .padding(.horizontal)
 
       if !viewModel.isSupported {
@@ -68,6 +81,16 @@ struct SmartListsBrowseView: View {
           onRetry: {
             Task {
               await loadSmartLists(refresh: true)
+            }
+          },
+          emptyActions: {
+            if searchText.isEmpty {
+              Button {
+                showCreateSheet = true
+              } label: {
+                Label("New Smart List", systemImage: AppIcon.add)
+              }
+              .adaptiveButtonStyle(.borderedProminent)
             }
           }
         ) {
@@ -95,6 +118,9 @@ struct SmartListsBrowseView: View {
           }
         }
       }
+    }
+    .sheet(isPresented: $showCreateSheet) {
+      SmartListEditSheet(mode: .create)
     }
     .task {
       guard !hasInitialized else { return }
