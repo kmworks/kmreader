@@ -27,17 +27,49 @@ struct SmartListEditSheet: View {
   @State private var visibility: SmartList.Visibility = .private
   @State private var shareTargets: [SmartListShareTarget] = []
   @State private var shareTargetsLoaded = false
+  @State private var shareTargetsFailed = false
   @State private var selectedShareUserIds: Set<String> = []
-  /// Edit mode only: while false the update omits `search`, so filters the
-  /// editor cannot represent (e.g. built in the web UI) survive a rename.
-  @State private var filtersDirty = false
   @State private var lossyFilter = false
   @State private var showLibraryPicker = false
   @State private var showFilterSheet = false
   @State private var isSaving = false
+  /// Edit-mode baseline for the filter subsection; `search` is only sent when
+  /// the current state differs from it, so reverting an edit by hand never
+  /// rewrites the stored document.
+  private let initialFullTextSearch: String
+  private let initialLibraryIds: Set<String>
+  private let initialBookBrowseOpts: BookBrowseOptions
+  private let initialSeriesBrowseOpts: SeriesBrowseOptions
 
   init(mode: Mode) {
     self.mode = mode
+    let lossy: Bool
+    switch mode {
+    case .create:
+      initialFullTextSearch = ""
+      initialLibraryIds = []
+      initialBookBrowseOpts = BookBrowseOptions()
+      initialSeriesBrowseOpts = SeriesBrowseOptions()
+      lossy = false
+    case .edit(let smartList):
+      switch smartList.target {
+      case .book:
+        let state = SmartListFilterMapper.bookFilterState(from: smartList.search)
+        initialFullTextSearch = state.fullTextSearch
+        initialLibraryIds = Set(state.libraryIds)
+        initialBookBrowseOpts = state.browseOpts
+        initialSeriesBrowseOpts = SeriesBrowseOptions()
+        lossy = state.lossy
+      case .series:
+        let state = SmartListFilterMapper.seriesFilterState(from: smartList.search)
+        initialFullTextSearch = state.fullTextSearch
+        initialLibraryIds = Set(state.libraryIds)
+        initialBookBrowseOpts = BookBrowseOptions()
+        initialSeriesBrowseOpts = state.browseOpts
+        lossy = state.lossy
+      }
+    }
+    _lossyFilter = State(initialValue: lossy)
     guard case .edit(let smartList) = mode else { return }
     _name = State(initialValue: smartList.name)
     _summary = State(initialValue: smartList.summary)
@@ -46,18 +78,21 @@ struct SmartListEditSheet: View {
     _selectedShareUserIds = State(initialValue: Set(smartList.sharedWithUserIds))
     switch smartList.target {
     case .book:
-      let state = SmartListFilterMapper.bookFilterState(from: smartList.search)
-      _selectedLibraryIds = State(initialValue: Set(state.libraryIds))
-      _bookBrowseOpts = State(initialValue: state.browseOpts)
-      _fullTextSearch = State(initialValue: state.fullTextSearch)
-      _lossyFilter = State(initialValue: state.lossy)
+      _selectedLibraryIds = State(initialValue: initialLibraryIds)
+      _bookBrowseOpts = State(initialValue: initialBookBrowseOpts)
+      _fullTextSearch = State(initialValue: initialFullTextSearch)
     case .series:
-      let state = SmartListFilterMapper.seriesFilterState(from: smartList.search)
-      _selectedLibraryIds = State(initialValue: Set(state.libraryIds))
-      _seriesBrowseOpts = State(initialValue: state.browseOpts)
-      _fullTextSearch = State(initialValue: state.fullTextSearch)
-      _lossyFilter = State(initialValue: state.lossy)
+      _selectedLibraryIds = State(initialValue: initialLibraryIds)
+      _seriesBrowseOpts = State(initialValue: initialSeriesBrowseOpts)
+      _fullTextSearch = State(initialValue: initialFullTextSearch)
     }
+  }
+
+  private var filtersModified: Bool {
+    fullTextSearch != initialFullTextSearch
+      || selectedLibraryIds != initialLibraryIds
+      || bookBrowseOpts != initialBookBrowseOpts
+      || seriesBrowseOpts != initialSeriesBrowseOpts
   }
 
   private var isCreating: Bool {
@@ -199,7 +234,14 @@ struct SmartListEditSheet: View {
             .pickerStyle(.segmented)
 
             if visibility == .shared {
-              if !shareTargetsLoaded {
+              if shareTargetsFailed {
+                Button(String(localized: "Retry")) {
+                  Task {
+                    await loadShareTargets()
+                  }
+                }
+                .adaptiveButtonStyle(.bordered)
+              } else if !shareTargetsLoaded {
                 LoadingIcon()
                   .frame(maxWidth: .infinity)
               } else if shareTargets.isEmpty {
@@ -272,18 +314,6 @@ struct SmartListEditSheet: View {
       bookBrowseOpts = BookBrowseOptions()
       seriesBrowseOpts = SeriesBrowseOptions()
     }
-    .onChange(of: fullTextSearch) { _, _ in
-      filtersDirty = true
-    }
-    .onChange(of: selectedLibraryIds) { _, _ in
-      filtersDirty = true
-    }
-    .onChange(of: bookBrowseOpts) { _, _ in
-      filtersDirty = true
-    }
-    .onChange(of: seriesBrowseOpts) { _, _ in
-      filtersDirty = true
-    }
   }
 
   private func metadataValueCount(_ config: MetadataFilterConfig, seriesKinds: Bool) -> Int {
@@ -313,10 +343,12 @@ struct SmartListEditSheet: View {
   }
 
   private func loadShareTargets() async {
+    shareTargetsFailed = false
     do {
       shareTargets = try await SmartListService.getShareTargets()
       shareTargetsLoaded = true
     } catch {
+      shareTargetsFailed = true
       ErrorManager.shared.alert(error: error)
     }
   }
@@ -373,7 +405,7 @@ struct SmartListEditSheet: View {
             summary: summary.trimmingCharacters(in: .whitespacesAndNewlines),
             visibility: visibilityPayload,
             sharedWithUserIds: sharedWithUserIds,
-            search: filtersDirty ? buildSearchDocument() : nil
+            search: filtersModified ? buildSearchDocument() : nil
           )
           ErrorManager.shared.notify(
             message: String(

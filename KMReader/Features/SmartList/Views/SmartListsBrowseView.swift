@@ -10,6 +10,7 @@ struct SmartListsBrowseView: View {
   let refreshTrigger: UUID
 
   @AppStorage("smartListBrowseLayout") private var browseLayout: BrowseLayoutMode = .grid
+  @AppStorage("isOffline") private var isOffline: Bool = false
   @State private var viewModel = SmartListsViewModel()
   @State private var hasInitialized = false
   @State private var showCreateSheet = false
@@ -46,7 +47,7 @@ struct SmartListsBrowseView: View {
         }
         .scrollClipDisabled()
 
-        if viewModel.isSupported {
+        if viewModel.isSupported && !isOffline {
           Button {
             showCreateSheet = true
           } label: {
@@ -58,16 +59,20 @@ struct SmartListsBrowseView: View {
       }
       .padding(.horizontal)
 
-      if !viewModel.isSupported {
+      if !viewModel.isSupported || isOffline {
         ContentUnavailableView {
           Label(
             String(localized: "smartlist.unavailable.title", defaultValue: "Smart Lists"),
             systemImage: ContentIcon.smartList)
         } description: {
           Text(
-            String(
-              localized: "smartlist.unavailable.description",
-              defaultValue: "This feature requires a kmrs server."))
+            isOffline
+              ? String(
+                localized: "smartlist.unavailable.offline",
+                defaultValue: "Smart lists are unavailable offline.")
+              : String(
+                localized: "smartlist.unavailable.description",
+                defaultValue: "This feature requires a kmrs server."))
         }
         .frame(maxWidth: .infinity)
         .padding()

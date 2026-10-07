@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-// Series member list of a series-targeted smart list
 struct SmartListSeriesListView: View {
   let smartListId: String
 
@@ -103,6 +102,9 @@ struct SmartListSeriesListView: View {
       }
     }
     .onReceive(NotificationCenter.default.publisher(for: .seriesProjectionDidChange)) { _ in
+      Task { await revalidateSeries() }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .smartListMembershipDidChange)) { _ in
       Task { await revalidateSeries() }
     }
     .onReceive(NotificationCenter.default.publisher(for: .smartListsDidChange)) { notification in

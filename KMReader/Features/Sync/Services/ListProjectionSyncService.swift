@@ -18,7 +18,8 @@ final class ListProjectionSyncService {
   private var pendingReadListSyncTask: Task<Void, Never>?
   private var pendingReadListSyncIds: Set<String> = []
   private var pendingSmartListSyncTask: Task<Void, Never>?
-  private var pendingSmartListSyncId: String?
+  private var pendingSmartListSyncIds: Set<String> = []
+  private var pendingSmartListMembershipTask: Task<Void, Never>?
 
   private init() {}
 
@@ -49,17 +50,32 @@ final class ListProjectionSyncService {
   }
 
   /// Smart lists have no GRDB mirror, so the debounced event goes straight to
-  /// the notification; only the latest id survives a collapse.
+  /// the notification. Ids accumulate like the other families: observers
+  /// (detail pages, member lists) filter the post by smartListId, so dropping
+  /// an id here strands that surface until the next visit.
   func scheduleSmartListSync(smartListId: String) {
-    pendingSmartListSyncId = smartListId
+    pendingSmartListSyncIds.insert(smartListId)
     pendingSmartListSyncTask?.cancel()
     pendingSmartListSyncTask = Task {
       try? await Task.sleep(nanoseconds: debounceInterval)
       guard !Task.isCancelled else { return }
-      guard let smartListId = pendingSmartListSyncId else { return }
-      pendingSmartListSyncId = nil
-      await ContentProjectionNotifier.postSmartListsDidChange(
-        smartListId: smartListId, refreshDelay: 0)
+      let ids = pendingSmartListSyncIds.sorted()
+      pendingSmartListSyncIds = []
+      for id in ids {
+        await ContentProjectionNotifier.postSmartListsDidChange(
+          smartListId: id, refreshDelay: 0)
+      }
+    }
+  }
+
+  /// Read-status changes move smart-list membership without naming a list, so
+  /// this collapse carries no id at all; member lists revalidate their window.
+  func scheduleSmartListMembershipSync() {
+    pendingSmartListMembershipTask?.cancel()
+    pendingSmartListMembershipTask = Task {
+      try? await Task.sleep(nanoseconds: debounceInterval)
+      guard !Task.isCancelled else { return }
+      await ContentProjectionNotifier.postSmartListMembershipDidChange()
     }
   }
 }

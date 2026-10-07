@@ -5,7 +5,6 @@
 
 import SwiftUI
 
-// Books member list of a book-targeted smart list
 struct SmartListBooksListView: View {
   let smartListId: String
 
@@ -105,6 +104,9 @@ struct SmartListBooksListView: View {
       }
     }
     .onReceive(NotificationCenter.default.publisher(for: .bookProjectionDidChange)) { _ in
+      Task { await revalidateBooks() }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .smartListMembershipDidChange)) { _ in
       Task { await revalidateBooks() }
     }
     .onReceive(NotificationCenter.default.publisher(for: .smartListsDidChange)) { notification in

@@ -53530,18 +53530,17 @@
       }
     },
     "notification.smartList.created" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Smart list created"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Smarte Liste erstellt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart list created"
           }
         },
         "es" : {
@@ -53659,18 +53658,17 @@
       }
     },
     "notification.smartList.updated" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Smart list updated"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Smarte Liste aktualisiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart list updated"
           }
         },
         "es" : {
@@ -79263,18 +79261,17 @@
       }
     },
     "smartlist.create.title" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New Smart List"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue smarte Liste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Smart List"
           }
         },
         "es" : {
@@ -79328,18 +79325,17 @@
       }
     },
     "smartlist.edit.title" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Edit Smart List"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Smarte Liste bearbeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit Smart List"
           }
         },
         "es" : {
@@ -79393,18 +79389,17 @@
       }
     },
     "smartlist.filters.activeCount" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld filters active"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Filter aktiv"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld filters active"
           }
         },
         "es" : {
@@ -79458,18 +79453,17 @@
       }
     },
     "smartlist.filters.none" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No filters — matches everything"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Filter — stimmt mit allem überein"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No filters — matches everything"
           }
         },
         "es" : {
@@ -79523,18 +79517,17 @@
       }
     },
     "smartlist.filters.searchText" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search text"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suchtext"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search text"
           }
         },
         "es" : {
@@ -79588,18 +79581,17 @@
       }
     },
     "smartlist.libraryPicker.empty" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No libraries."
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Bibliotheken."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No libraries."
           }
         },
         "es" : {
@@ -79653,18 +79645,17 @@
       }
     },
     "smartlist.lossyWarning" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The stored filter contains conditions the app cannot edit. Changing any filter replaces the whole stored filter."
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der gespeicherte Filter enthält Bedingungen, die die App nicht bearbeiten kann. Das Ändern eines Filters ersetzt den gesamten gespeicherten Filter."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The stored filter contains conditions the app cannot edit. Changing any filter replaces the whole stored filter."
           }
         },
         "es" : {
@@ -79718,18 +79709,17 @@
       }
     },
     "smartlist.name" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Smart List Name"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name der smarten Liste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart List Name"
           }
         },
         "es" : {
@@ -79783,18 +79773,17 @@
       }
     },
     "smartlist.sharedWith.empty" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No other users on this server."
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine anderen Benutzer auf diesem Server."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No other users on this server."
           }
         },
         "es" : {
@@ -79848,18 +79837,17 @@
       }
     },
     "smartlist.target" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Target"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ziel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target"
           }
         },
         "es" : {
@@ -79976,6 +79964,71 @@
         }
       }
     },
+    "smartlist.unavailable.offline" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart lists are unavailable offline."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smarte Listen sind offline nicht verfügbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las listas inteligentes no están disponibles sin conexión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les listes intelligentes ne sont pas disponibles hors ligne."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le liste intelligenti non sono disponibili offline."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スマートリストはオフラインでは利用できません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스마트 리스트는 오프라인에서 사용할 수 없습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Умные списки недоступны в офлайн-режиме."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智能列表在离线时不可用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智慧清單在離線時不可用。"
+          }
+        }
+      }
+    },
     "smartlist.unavailable.title" : {
       "localizations" : {
         "de" : {
@@ -80041,18 +80094,17 @@
       }
     },
     "smartlist.visibility" : {
-      "extractionState" : "extracted_with_value",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Visibility"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sichtbarkeit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visibility"
           }
         },
         "es" : {

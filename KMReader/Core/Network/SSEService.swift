@@ -331,6 +331,7 @@ actor SSEService {
       source: .auto,
       reason: "Remote read progress changed"
     )
+    await ListProjectionSyncService.shared.scheduleSmartListMembershipSync()
     return true
   }
 
@@ -340,6 +341,7 @@ actor SSEService {
       source: .auto,
       reason: "Remote series read progress changed"
     )
+    await ListProjectionSyncService.shared.scheduleSmartListMembershipSync()
     return true
   }
 

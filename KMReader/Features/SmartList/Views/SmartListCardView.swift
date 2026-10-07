@@ -36,28 +36,10 @@ struct SmartListCardView: View {
       Text(smartList.targetDisplayName)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .sheet(isPresented: $showEditSheet) {
-      SmartListEditSheet(mode: .edit(smartList))
-    }
-    .alert("Delete Smart List", isPresented: $showDeleteConfirmation) {
-      Button("Cancel", role: .cancel) {}
-      Button("Delete", role: .destructive) {
-        deleteSmartList()
-      }
-    } message: {
-      Text("Are you sure you want to delete this smart list? This action cannot be undone.")
-    }
-  }
-
-  private func deleteSmartList() {
-    Task {
-      do {
-        try await SmartListService.deleteSmartList(smartListId: smartList.id)
-        ErrorManager.shared.notify(
-          message: String(localized: "notification.smartList.deleted", defaultValue: "Smart list deleted"))
-      } catch {
-        ErrorManager.shared.alert(error: error)
-      }
-    }
+    .smartListItemActions(
+      smartList: smartList,
+      showEditSheet: $showEditSheet,
+      showDeleteConfirmation: $showDeleteConfirmation
+    )
   }
 }

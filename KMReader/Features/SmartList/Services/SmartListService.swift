@@ -167,12 +167,6 @@ nonisolated enum SmartListService {
       smartListId: smartListId, refreshDelay: 0)
   }
 
-  static func getSmartListThumbnailURL(id: String) -> URL? {
-    let baseURL = AppConfig.current.serverURL
-    guard !baseURL.isEmpty else { return nil }
-    return URL(string: baseURL + "/api/v1/smart-lists/\(id)/thumbnail")
-  }
-
   static func isMarkedUnsupported(instanceId: String) -> Bool {
     guard let record = AppConfig.serverSmartListCapability.record(instanceId: instanceId),
       !record.supported

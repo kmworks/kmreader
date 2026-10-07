@@ -11,6 +11,7 @@ extension Notification.Name {
   static let collectionProjectionDidChange = Notification.Name("CollectionProjectionDidChange")
   static let readListProjectionDidChange = Notification.Name("ReadListProjectionDidChange")
   static let smartListsDidChange = Notification.Name("SmartListsDidChange")
+  static let smartListMembershipDidChange = Notification.Name("SmartListMembershipDidChange")
 }
 
 nonisolated enum ContentProjectionChangeReason: String, Sendable {
@@ -146,6 +147,14 @@ nonisolated enum ContentProjectionNotifier {
         object: nil,
         userInfo: ["smartListId": smartListId]
       )
+    }
+  }
+
+  /// Posted when reading progress moves smart-list membership server-side;
+  /// member lists revalidate their loaded window against the server.
+  static func postSmartListMembershipDidChange() async {
+    await MainActor.run {
+      NotificationCenter.default.post(name: .smartListMembershipDidChange, object: nil)
     }
   }
 
