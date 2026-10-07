@@ -102,7 +102,7 @@ struct ListsBrowseView: View {
     }
     .inlineLargeBarTitleStyle()
     .platformNavigationTitle(String(localized: "tab.lists", defaultValue: "Lists"))
-    .refreshable {
+    .refreshableWithMinimumHold {
       await reloadAll()
     }
     .toolbar {
