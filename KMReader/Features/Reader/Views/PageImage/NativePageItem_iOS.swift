@@ -319,14 +319,14 @@
         borderCropMode: borderCropMode
       ) {
         let rotatedImage = image.rotated(for: rotation)
-        let splitImage =
-          splitMode == .none ? rotatedImage : cropImageForSplitMode(image: rotatedImage, splitMode: splitMode)
-        return cropBordersIfNeeded(splitImage, mode: borderCropMode)
+        // Crop the whole page before splitting so the halves of a wide page
+        // share one crop rect and rejoin seamlessly.
+        let croppedImage = cropBordersIfNeeded(rotatedImage, mode: borderCropMode)
+        return splitMode == .none ? croppedImage : cropImageForSplitMode(image: croppedImage, splitMode: splitMode)
       }
     }
 
-    private func cropBordersIfNeeded(_ image: UIImage?, mode: ReaderPageBorderCropMode) -> UIImage? {
-      guard let image else { return nil }
+    private func cropBordersIfNeeded(_ image: UIImage, mode: ReaderPageBorderCropMode) -> UIImage {
       guard mode != .disabled, let cgImage = image.cgImage else { return image }
       guard let cropped = ReaderPageBorderCropper.crop(cgImage, mode: mode) else { return image }
       return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)

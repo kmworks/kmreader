@@ -28,6 +28,10 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 - Both page hosts (`NativePagedPageContentView`, `NativeImagePageViewController`) keep their zoom scroll view in a `PageScrollController`, which owns the content wiring, the spread's width, placement, panning, and resting edge; hosts supply only the displayed image size, whether they show the committed page, and what to do on zoom. A spread keeps its resting edge in reading order across item, viewport, and content-size changes, and a flipped start side moves it to where that edge now is.
 - The shared controller reports the edges the spread rests at (`recordWholeSpreadPosition(pageID:restingEdges:)`) whenever it places the spread, a pan settles, or the host starts showing the committed item, but only while the host shows the committed page; a single resting edge becomes the committed split side, so rebuilds reopen the spread there. A host starting to show a spread opens it at `wholeSpreadArrivalEdge(for:relativeTo:)`: an explicit target's edge, the committed side for the current item, the end edge for the item right before the current one, else the start edge.
 
+### Page Image Preparation
+
+- `NativePageItem` prepares a displayed page in one fixed order: rotate, border-crop the whole page, then split into halves. Border cropping never runs on an individual split half — the halves of a wide page must share the whole page's crop rect so a rejoined spread (`fillEqually` slots, one per half) stays seamless.
+
 ### Page Curl & Cover Adapters
 
 - Page Curl adapters must not publish a position while mounting or dismantling.
