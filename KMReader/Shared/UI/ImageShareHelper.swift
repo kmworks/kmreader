@@ -50,30 +50,11 @@ import SwiftUI
     }
 
     static func shareMultiple(images: [UIImage], fileNames: [String]) {
-      guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-        let rootVC = windowScene.windows.first?.rootViewController
-      else { return }
-
-      var topVC = rootVC
-      while let presented = topVC.presentedViewController {
-        topVC = presented
-      }
-
-      let activityItems: [Any] = images.enumerated().map { index, image in
+      let items: [Any] = images.enumerated().map { index, image in
         let name = index < fileNames.count ? fileNames[index] : nil
         return ImageActivityItemSource(image: image, fileName: name)
       }
-
-      let activityVC = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-
-      if let popover = activityVC.popoverPresentationController {
-        popover.sourceView = topVC.view
-        popover.sourceRect = CGRect(
-          x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
-        popover.permittedArrowDirections = []
-      }
-
-      topVC.present(activityVC, animated: true)
+      ShareHelper.share(items: items)
     }
   }
 
@@ -86,16 +67,11 @@ import SwiftUI
     }
 
     static func shareMultiple(images: [NSImage], fileNames: [String]) {
-      guard let contentView = NSApp.keyWindow?.contentView else { return }
-
       let items: [Any] = images.enumerated().compactMap { index, image in
         let name = index < fileNames.count ? fileNames[index] : nil
         return createTempImageFile(image: image, fileName: name) ?? image
       }
-
-      let picker = NSSharingServicePicker(items: items)
-      let rect = CGRect(x: contentView.bounds.midX, y: contentView.bounds.midY, width: 1, height: 1)
-      picker.show(relativeTo: rect, of: contentView, preferredEdge: .minY)
+      ShareHelper.share(items: items)
     }
 
     private static func createTempImageFile(image: NSImage, fileName: String?) -> URL? {

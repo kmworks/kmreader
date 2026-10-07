@@ -21,6 +21,10 @@ nonisolated struct Metric: Codable, Sendable {
     let tag: String
     let values: [String]
   }
+
+  func value(_ statistic: String) -> Double? {
+    measurements.first(where: { $0.statistic == statistic })?.value
+  }
 }
 
 nonisolated struct MetricTag: Codable, Sendable {
