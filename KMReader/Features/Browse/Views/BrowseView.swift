@@ -55,8 +55,7 @@ struct BrowseView: View {
     libraryTab: Bool = false,
     searchOnly: Bool = false,
     libraryIds: [String]? = nil,
-    libraryTabScope: Binding<LibraryBrowseScope>? = nil,
-    initialScope: LibraryBrowseScope? = nil
+    libraryTabScope: Binding<LibraryBrowseScope>? = nil
   ) {
     self.authViewModel = authViewModel
     self.fixedContent = fixedContent
@@ -66,7 +65,7 @@ struct BrowseView: View {
     self.searchOnly = searchOnly
     self.libraryIds = libraryIds
     self.libraryTabScope = libraryTabScope
-    _browseScope = State(initialValue: initialScope)
+    _browseScope = State(initialValue: nil)
   }
 
   var title: String {
@@ -267,7 +266,8 @@ struct BrowseView: View {
     switch effectiveContent {
     case .series: return $seriesBrowseLayout
     case .books: return $bookBrowseLayout
-    // effectiveContent is series/books by construction (effective() clamps).
+    // effectiveContent is series/books here: fixedContent is only ever
+    // series/books on this page since the list types split out.
     default: return $seriesBrowseLayout
     }
   }

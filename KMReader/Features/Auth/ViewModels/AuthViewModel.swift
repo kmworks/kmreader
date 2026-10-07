@@ -196,6 +196,17 @@ class AuthViewModel {
     }
   }
 
+  /// User explicitly opted into offline mode: drop pending dashboard
+  /// auto-refreshes, persist the manual flag (no automatic recovery), and
+  /// disconnect SSE. Reconnecting stays an explicit user action.
+  func enterOfflineMode() {
+    DashboardRefreshCoordinator.shared.cancelPendingAutoRefresh(clearDeferred: true)
+    AppConfig.enterManualOfflineMode()
+    Task {
+      await SSEService.shared.disconnect(notify: false)
+    }
+  }
+
   /// Manual exit from offline mode: probe the server first, and stay offline
   /// when it does not answer — a failed retry keeps the current offline
   /// classification (manual or auto) instead of reclassifying. On success

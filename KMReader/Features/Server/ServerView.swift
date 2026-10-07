@@ -28,7 +28,7 @@ struct ServerView: View {
               await reconnect()
             }
           } else {
-            OfflineManager.enterManualOfflineMode()
+            authViewModel.enterOfflineMode()
           }
         } label: {
           if isCheckingConnection {

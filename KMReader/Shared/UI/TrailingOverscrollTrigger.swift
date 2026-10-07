@@ -51,10 +51,13 @@ import SwiftUI
         .onScrollPhaseChange { oldPhase, newPhase in
           let wasDragging = oldPhase == .tracking || oldPhase == .interacting
           isDragging = newPhase == .tracking || newPhase == .interacting
-          if wasDragging, !isDragging, isArmed, !hasFired {
-            hasFired = true
+          if wasDragging, !isDragging {
+            let shouldFire = isArmed && !hasFired
             isArmed = false
-            onTrigger()
+            if shouldFire {
+              hasFired = true
+              onTrigger()
+            }
           }
         }
         .overlay(alignment: .trailing) {
