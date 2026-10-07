@@ -44,11 +44,6 @@ final class DashboardSectionViewModel {
     }
   }
 
-  func loadMoreIfNeeded(after item: IdentifiedString, libraryIds: [String]) {
-    guard loadTask == nil, pagination.hasMorePages, pagination.shouldLoadMore(after: item) else { return }
-    startLoad(libraryIds: libraryIds)
-  }
-
   func removeItem(id: String) {
     withAnimation {
       _ = pagination.removeItems(withIDs: [id])

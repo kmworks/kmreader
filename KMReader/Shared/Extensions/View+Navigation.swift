@@ -22,6 +22,22 @@ extension View {
     #endif
   }
 
+  /// Set a visible title on every platform: the small inline system title on
+  /// iOS, the window title on macOS. For pushed detail pages whose identity no
+  /// hero or section header carries — unlike `platformNavigationTitle`, which
+  /// stays untitled on iOS/tvOS. Never inline-large: that overlaps the root's
+  /// own large title during the push transition.
+  func inlineNavigationTitle(_ title: String) -> some View {
+    #if os(iOS)
+      return self.navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    #elseif os(macOS)
+      return self.navigationTitle(title)
+    #else
+      return self
+    #endif
+  }
+
   func handleNavigation(context: AppViewContext) -> some View {
     self.modifier(NavigationHandlingModifier(context: context))
   }

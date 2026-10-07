@@ -15,37 +15,37 @@ import SwiftUI
     var body: some View {
       TabView(selection: $selectedTab) {
         Tab(TabItem.home.title, systemImage: TabItem.home.icon, value: TabItem.home) {
-          NavigationStack(path: $homePath) {
+          PushableNavigationStack(path: $homePath) {
             rootContent(for: .home)
           }
         }
 
         Tab(TabItem.offline.title, systemImage: TabItem.offline.icon, value: TabItem.offline) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .offline)
           }
         }
 
         Tab(TabItem.lists.title, systemImage: TabItem.lists.icon, value: TabItem.lists) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .lists)
           }
         }
 
         Tab(TabItem.server.title, systemImage: TabItem.server.icon, value: TabItem.server) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .server)
           }
         }
 
         Tab(TabItem.settings.title, systemImage: TabItem.settings.icon, value: TabItem.settings) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .settings)
           }
         }
 
         Tab(TabItem.browse.title, systemImage: TabItem.browse.icon, value: TabItem.browse) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .browse)
           }
         }

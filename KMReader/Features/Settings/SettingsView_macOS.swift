@@ -20,6 +20,10 @@ import SwiftUI
           }
 
           Section {
+            SettingsSectionRow(section: .readingStats)
+          }
+
+          Section {
             SettingsSectionRow(section: .reading)
             SettingsSectionRow(section: .divinaReader)
             SettingsSectionRow(section: .pdfReader)
@@ -88,6 +92,8 @@ import SwiftUI
         SettingsNetworkView()
       case .logs:
         SettingsLogsView()
+      case .readingStats:
+        ServerReadingStatsView()
       case .about:
         SettingsAboutView()
       }

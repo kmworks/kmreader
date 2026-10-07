@@ -33,12 +33,12 @@ import SwiftUI
     var body: some View {
       TabView(selection: $selection) {
         Tab(TabItem.home.title, systemImage: TabItem.home.icon, value: PadTab.home) {
-          NavigationStack(path: $homePath) {
+          PushableNavigationStack(path: $homePath) {
             rootContent(for: .home)
           }
         }
         Tab(TabItem.offline.title, systemImage: TabItem.offline.icon, value: PadTab.offline) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .offline)
           }
         }
@@ -51,7 +51,7 @@ import SwiftUI
           // land on the first library instead of All Libraries.
           TabSection(String(localized: "Libraries")) {
             Tab(value: PadTab.libraries(.all)) {
-              NavigationStack {
+              PushableNavigationStack {
                 rootContent(for: .browse(scope: .all))
               }
             } label: {
@@ -59,7 +59,7 @@ import SwiftUI
             }
             if !dashboard.libraryIds.isEmpty {
               Tab(value: PadTab.libraries(.pinned)) {
-                NavigationStack {
+                PushableNavigationStack {
                   rootContent(for: .browse(scope: .pinned))
                 }
               } label: {
@@ -68,7 +68,7 @@ import SwiftUI
             }
             ForEach(store.libraries) { library in
               Tab(value: PadTab.library(library.libraryId)) {
-                NavigationStack {
+                PushableNavigationStack {
                   rootContent(for: .browseLibrary(selection: LibrarySelection(sidebarItem: library)))
                 }
               } label: {
@@ -82,19 +82,19 @@ import SwiftUI
           String(localized: "tab.lists", defaultValue: "Lists"), systemImage: ContentIcon.lists,
           value: PadTab.lists
         ) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .browseLists)
           }
         }
 
         Tab(TabItem.server.title, systemImage: TabItem.server.icon, value: PadTab.server) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .server)
           }
         }
 
         Tab(TabItem.settings.title, systemImage: TabItem.settings.icon, value: PadTab.settings) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .settings)
           }
         }

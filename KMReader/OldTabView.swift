@@ -12,53 +12,53 @@ struct OldTabView: View {
 
   var body: some View {
     TabView(selection: $selectedTab) {
-      NavigationStack(path: $homePath) {
+      PushableNavigationStack(path: $homePath) {
         rootContent(for: .home)
       }
       .tabItem { TabItem.home.label }
       .tag(TabItem.home)
 
       #if os(iOS)
-        NavigationStack {
+        PushableNavigationStack {
           rootContent(for: .library)
         }
         .tabItem { TabItem.library.label }
         .tag(TabItem.library)
 
-        NavigationStack {
+        PushableNavigationStack {
           rootContent(for: .lists)
         }
         .tabItem { TabItem.lists.label }
         .tag(TabItem.lists)
       #endif
 
-      NavigationStack {
+      PushableNavigationStack {
         rootContent(for: .offline)
       }
       .tabItem { TabItem.offline.label }
       .tag(TabItem.offline)
 
       #if os(tvOS)
-        NavigationStack {
+        PushableNavigationStack {
           rootContent(for: .lists)
         }
         .tabItem { TabItem.lists.label }
         .tag(TabItem.lists)
 
-        NavigationStack {
+        PushableNavigationStack {
           rootContent(for: .server)
         }
         .tabItem { TabItem.server.label }
         .tag(TabItem.server)
 
-        NavigationStack {
+        PushableNavigationStack {
           rootContent(for: .settings)
         }
         .tabItem { TabItem.settings.label }
         .tag(TabItem.settings)
       #endif
 
-      NavigationStack {
+      PushableNavigationStack {
         rootContent(for: .browse)
       }
       .tabItem { TabItem.browse.label }

@@ -49,9 +49,6 @@ struct DashboardSectionView: View {
           itemView(for: item.id)
             .id(item.id)
             .frame(width: itemWidth)
-            .onAppear {
-              viewModel.loadMoreIfNeeded(after: item, libraryIds: effectiveLibraryIds)
-            }
         }
       }
     }
@@ -102,13 +99,6 @@ struct DashboardSectionView: View {
   private func handleReloadCommand(_ command: DashboardSectionReloadCommand) {
     guard command.includes(section) else {
       logger.debug("Dashboard section \(section) skipping reload: targeted other sections")
-      return
-    }
-
-    if command.source == .auto, viewModel.pagination.currentPage > 1 {
-      logger.debug(
-        "Dashboard section \(section) skipping auto-refresh: deep in pagination (page \(viewModel.pagination.currentPage))"
-      )
       return
     }
 

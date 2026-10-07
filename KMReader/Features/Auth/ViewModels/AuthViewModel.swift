@@ -196,6 +196,32 @@ class AuthViewModel {
     }
   }
 
+  /// User explicitly opted into offline mode: drop pending dashboard
+  /// auto-refreshes, persist the manual flag (no automatic recovery), and
+  /// disconnect SSE. Reconnecting stays an explicit user action.
+  func enterOfflineMode() {
+    DashboardRefreshCoordinator.shared.cancelPendingAutoRefresh(clearDeferred: true)
+    AppConfig.enterManualOfflineMode()
+    Task {
+      await SSEService.shared.disconnect(notify: false)
+    }
+  }
+
+  /// Manual exit from offline mode: probe the server first, and stay offline
+  /// when it does not answer — a failed retry keeps the current offline
+  /// classification (manual or auto) instead of reclassifying. On success
+  /// flip back online, reconnect SSE, and reload dashboard sections.
+  func reconnect() async -> Bool {
+    let serverReachable = await loadCurrentUser()
+    let reconnected = serverReachable && AppConfig.isLoggedIn
+    guard reconnected else { return false }
+    AppConfig.exitOfflineMode()
+    await SSEService.shared.connect()
+    ErrorManager.shared.notify(message: String(localized: "settings.connection_restored"))
+    await DashboardSectionRefreshNotifier.postAll(source: .manual, reason: "Reconnected")
+    return true
+  }
+
   func switchTo(instance: ServerDisplayItem) async -> Bool {
     if instance.protected {
       let authenticated = await LocalDeviceAuthenticationService.shared.authenticateProtectedAccess(

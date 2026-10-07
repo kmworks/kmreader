@@ -10,7 +10,9 @@ struct ServerView: View {
   let authViewModel: AuthViewModel
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
+  @AppStorage("isOffline") private var isOffline: Bool = false
   @State private var showingUpdatePassword = false
+  @State private var isCheckingConnection = false
 
   var body: some View {
     ScrollView {
@@ -20,11 +22,36 @@ struct ServerView: View {
           managementSection
         }
         accountSection
+        Button {
+          if isOffline {
+            Task {
+              await reconnect()
+            }
+          } else {
+            authViewModel.enterOfflineMode()
+          }
+        } label: {
+          if isCheckingConnection {
+            LoadingIcon()
+          } else {
+            Label(
+              String(localized: isOffline ? "Check Server Connection" : "Enter Offline Mode"),
+              systemImage: isOffline ? "wifi" : "wifi.slash")
+          }
+        }
+        .adaptiveButtonStyle(.bordered)
+        .disabled(isCheckingConnection)
       }
       .padding(.horizontal)
       .padding(.vertical, 12)
     }
     .platformNavigationTitle(String(localized: "tab.server"))
+  }
+
+  private func reconnect() async {
+    isCheckingConnection = true
+    _ = await authViewModel.reconnect()
+    isCheckingConnection = false
   }
 
   private var managementSection: some View {

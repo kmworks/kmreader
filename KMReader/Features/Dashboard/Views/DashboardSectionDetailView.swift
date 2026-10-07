@@ -105,7 +105,7 @@ struct DashboardSectionDetailView: View {
       }
       .padding()
     }
-    .platformNavigationTitle(section.displayName)
+    .inlineNavigationTitle(section.displayName)
     .task {
       guard !hasLoadedInitial else { return }
       hasLoadedInitial = true

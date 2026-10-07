@@ -132,19 +132,19 @@ enum NavDestination: Hashable {
         focusesSearchOnAppear: true
       )
     case .browseCollections(let scope):
-      BrowseView(
+      ListsBrowseDetailView(
         authViewModel: context.authViewModel,
         fixedContent: .collections,
         initialScope: scope
       )
     case .browseReadLists(let scope):
-      BrowseView(
+      ListsBrowseDetailView(
         authViewModel: context.authViewModel,
         fixedContent: .readlists,
         initialScope: scope
       )
     case .browseSmartLists:
-      BrowseView(
+      ListsBrowseDetailView(
         authViewModel: context.authViewModel,
         fixedContent: .smartlists
       )
@@ -155,7 +155,7 @@ enum NavDestination: Hashable {
     case .server:
       ServerView(authViewModel: context.authViewModel)
     case .settings:
-      SettingsView()
+      SettingsView(authViewModel: context.authViewModel)
 
     // NOTE: library selection passed via environment
     case .browseLibrary(_):

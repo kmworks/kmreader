@@ -33,7 +33,7 @@ import SwiftUI
       NavigationSplitView(columnVisibility: $columnVisibility) {
         SidebarView(selection: $nav, store: store)
       } detail: {
-        NavigationStack(path: $detailPath) {
+        PushableNavigationStack(path: $detailPath) {
           if let nav {
             // Recreate the detail root per selection: same-type swaps
             // (collection A → B) otherwise keep the previous view's state,
