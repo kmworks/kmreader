@@ -16,6 +16,8 @@ enum NavDestination: Hashable {
   /// from the surface that linked here (nil keeps the pinned default).
   case browseCollections(scope: LibraryBrowseScope?)
   case browseReadLists(scope: LibraryBrowseScope?)
+  /// Smart lists have no library filter, hence no scope.
+  case browseSmartLists
   case browseLists
   case offline
   case server
@@ -36,6 +38,7 @@ enum NavDestination: Hashable {
   case oneshotDetail(seriesId: String)
   case collectionDetail(collectionId: String)
   case readListDetail(readListId: String)
+  case smartListDetail(smartListId: String)
   case dashboardSectionDetail(section: DashboardSection)
 
   case settingsAppearance
@@ -140,6 +143,11 @@ enum NavDestination: Hashable {
         fixedContent: .readlists,
         initialScope: scope
       )
+    case .browseSmartLists:
+      BrowseView(
+        authViewModel: context.authViewModel,
+        fixedContent: .smartlists
+      )
     case .browseLists:
       ListsBrowseView(authViewModel: context.authViewModel)
     case .offline:
@@ -200,6 +208,8 @@ enum NavDestination: Hashable {
       CollectionDetailView(collectionId: collectionId)
     case .readListDetail(let readListId):
       ReadListDetailView(readListId: readListId)
+    case .smartListDetail(let smartListId):
+      SmartListDetailView(smartListId: smartListId)
     case .dashboardSectionDetail(let section):
       DashboardSectionDetailView(section: section)
 

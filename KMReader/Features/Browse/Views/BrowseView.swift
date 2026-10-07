@@ -35,6 +35,7 @@ struct BrowseView: View {
   @AppStorage("bookBrowseLayout") private var bookBrowseLayout: BrowseLayoutMode = .grid
   @AppStorage("collectionBrowseLayout") private var collectionBrowseLayout: BrowseLayoutMode = .grid
   @AppStorage("readListBrowseLayout") private var readListBrowseLayout: BrowseLayoutMode = .grid
+  @AppStorage("smartListBrowseLayout") private var smartListBrowseLayout: BrowseLayoutMode = .grid
 
   @State private var refreshTrigger = UUID()
   @State private var initializedLibraryIdsKey: String?
@@ -151,22 +152,26 @@ struct BrowseView: View {
           }
         #endif
         #if os(macOS)
-          ToolbarItem(placement: .navigation) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: menuScopeBinding)
-          }
-        #endif
-        #if os(iOS)
-          if PlatformHelper.isPad {
-            ToolbarItem(placement: .cancellationAction) {
+          if effectiveContent != .smartlists {
+            ToolbarItem(placement: .navigation) {
               LibraryScopeMenu(
                 libraries: scopeStore.libraries,
                 showLibraryPicker: $showLibraryPicker,
                 scope: menuScopeBinding)
             }
-          } else if librarySelection == nil {
+          }
+        #endif
+        #if os(iOS)
+          if PlatformHelper.isPad {
+            if effectiveContent != .smartlists {
+              ToolbarItem(placement: .cancellationAction) {
+                LibraryScopeMenu(
+                  libraries: scopeStore.libraries,
+                  showLibraryPicker: $showLibraryPicker,
+                  scope: menuScopeBinding)
+              }
+            }
+          } else if librarySelection == nil && effectiveContent != .smartlists {
             ToolbarItem(placement: .confirmationAction) {
               LibraryScopeMenu(
                 libraries: scopeStore.libraries,
@@ -182,7 +187,8 @@ struct BrowseView: View {
           BrowseActionsMenu(
             layoutMode: browseLayoutBinding,
             showsPresets: effectiveContent == .series || effectiveContent == .books,
-            isFilterEnabled: !searchOnly || !activeSearchText.isEmpty,
+            isFilterEnabled: effectiveContent != .smartlists
+              && (!searchOnly || !activeSearchText.isEmpty),
             onShowPresets: { showSavedFilters = true },
             onShowFilter: { showFilterSheet = true }
           )
@@ -269,6 +275,7 @@ struct BrowseView: View {
     case .books: return $bookBrowseLayout
     case .collections: return $collectionBrowseLayout
     case .readlists: return $readListBrowseLayout
+    case .smartlists: return $smartListBrowseLayout
     }
   }
 

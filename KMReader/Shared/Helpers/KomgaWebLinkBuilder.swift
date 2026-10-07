@@ -26,6 +26,10 @@ enum KomgaWebLinkBuilder {
     build(serverURL: serverURL, path: "/readlists/\(readListId)")
   }
 
+  static func smartList(serverURL: String, smartListId: String) -> URL? {
+    build(serverURL: serverURL, path: "/smart-lists/\(smartListId)")
+  }
+
   static func bookReader(
     serverURL: String,
     bookId: String,

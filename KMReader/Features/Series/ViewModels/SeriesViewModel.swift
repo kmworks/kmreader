@@ -165,6 +165,49 @@ class SeriesViewModel {
     pagination.advance(moreAvailable: moreAvailable)
   }
 
+  func loadSmartListSeries(
+    smartListId: String,
+    browseOpts: SeriesBrowseOptions,
+    refresh: Bool = false
+  ) async {
+    guard let loadID = beginLoad(refresh: refresh) else { return }
+
+    defer {
+      if loadID == pagination.loadID {
+        withAnimation {
+          isLoading = false
+        }
+      }
+    }
+
+    // Smart lists are evaluated server-side; offline there is nothing to show.
+    if AppConfig.isOffline {
+      guard loadID == pagination.loadID else { return }
+      applyPage(ids: [], moreAvailable: false)
+      return
+    }
+
+    do {
+      let remoteOpts = normalizedRemoteBrowseOptions(browseOpts)
+      let search = SeriesSearch(
+        condition: SeriesSearch.buildCondition(filters: remoteOpts.toSearchFilters()))
+      let page = try await SyncService.syncSmartListSeries(
+        smartListId: smartListId,
+        page: pagination.currentPage,
+        size: pagination.pageSize,
+        search: search,
+        sort: [remoteOpts.sortString]
+      )
+
+      guard loadID == pagination.loadID else { return }
+      let ids = page.content.map { $0.id }
+      applyPage(ids: ids, moreAvailable: !page.last)
+    } catch {
+      guard loadID == pagination.loadID else { return }
+      ErrorManager.shared.alert(error: error)
+    }
+  }
+
   /// Re-fetches the already-loaded page window in place, preserving scroll
   /// position. Used for projection-change-driven refreshes; explicit user
   /// actions (filter changes) still use a full refresh.
@@ -220,6 +263,57 @@ class SeriesViewModel {
       } catch {
         return
       }
+    }
+
+    guard loadID == pagination.loadID, let result else { return }
+    let wrappedIds = result.ids.map(IdentifiedString.init)
+    withAnimation {
+      _ = pagination.replaceItems(wrappedIds, moreAvailable: result.moreAvailable)
+    }
+  }
+
+  /// Re-fetches the already-loaded page window in place, preserving scroll
+  /// position. See `revalidateCollectionSeries`.
+  func revalidateSmartListSeries(
+    smartListId: String,
+    browseOpts: SeriesBrowseOptions
+  ) async {
+    guard !isLoading else { return }
+    let windowSize = pagination.currentPage * pagination.pageSize
+    guard windowSize > 0 else {
+      await loadSmartListSeries(smartListId: smartListId, browseOpts: browseOpts, refresh: true)
+      return
+    }
+
+    let loadID = pagination.loadID
+    withAnimation {
+      isLoading = true
+    }
+    defer {
+      if loadID == pagination.loadID {
+        withAnimation {
+          isLoading = false
+        }
+      }
+    }
+
+    guard !AppConfig.isOffline else { return }
+
+    let result: (ids: [String], moreAvailable: Bool)?
+    do {
+      let remoteOpts = normalizedRemoteBrowseOptions(browseOpts)
+      let search = SeriesSearch(
+        condition: SeriesSearch.buildCondition(filters: remoteOpts.toSearchFilters()))
+      let page = try await SyncService.syncSmartListSeries(
+        smartListId: smartListId,
+        page: 0,
+        size: windowSize,
+        search: search,
+        sort: [remoteOpts.sortString]
+      )
+      result = (page.content.map { $0.id }, !page.last)
+    } catch {
+      return
     }
 
     guard loadID == pagination.loadID, let result else { return }

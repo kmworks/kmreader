@@ -16,38 +16,9 @@ nonisolated enum SeriesService {
     searchTerm: String? = nil
   ) async throws -> Page<Series> {
     let sort = searchTerm?.isEmpty == false ? nil : browseOpts.sortString
-    let effectiveMetadataFilter = browseOpts.metadataFilter
-
-    let condition = SeriesSearch.buildCondition(
-      filters: SeriesSearchFilters(
-        libraryIds: libraryIds,
-        includeReadStatuses: Array(browseOpts.includeReadStatuses),
-        excludeReadStatuses: Array(browseOpts.excludeReadStatuses),
-        includeSeriesStatuses: browseOpts.includeSeriesStatuses.map { $0.apiValue }.filter {
-          !$0.isEmpty
-        },
-        excludeSeriesStatuses: browseOpts.excludeSeriesStatuses.map { $0.apiValue }.filter {
-          !$0.isEmpty
-        },
-        seriesStatusLogic: browseOpts.seriesStatusLogic,
-        oneshot: browseOpts.oneshotFilter.effectiveBool,
-        deleted: browseOpts.deletedFilter.effectiveBool,
-        complete: browseOpts.completeFilter.effectiveBool,
-        publishers: effectiveMetadataFilter.publishers,
-        publishersLogic: effectiveMetadataFilter.publishersLogic,
-        authors: effectiveMetadataFilter.authors,
-        authorsLogic: effectiveMetadataFilter.authorsLogic,
-        genres: effectiveMetadataFilter.genres,
-        genresLogic: effectiveMetadataFilter.genresLogic,
-        tags: effectiveMetadataFilter.tags,
-        tagsLogic: effectiveMetadataFilter.tagsLogic,
-        languages: effectiveMetadataFilter.languages,
-        languagesLogic: effectiveMetadataFilter.languagesLogic,
-        ageRatings: effectiveMetadataFilter.ageRatings?.compactMap { Int($0) },
-        ageRatingsLogic: effectiveMetadataFilter.ageRatingsLogic,
-        releaseYears: effectiveMetadataFilter.releaseYears?.compactMap { Int($0) },
-        releaseYearsLogic: effectiveMetadataFilter.releaseYearsLogic
-      ))
+    var filters = browseOpts.toSearchFilters()
+    filters.libraryIds = libraryIds
+    let condition = SeriesSearch.buildCondition(filters: filters)
 
     let search = SeriesSearch(
       condition: condition,

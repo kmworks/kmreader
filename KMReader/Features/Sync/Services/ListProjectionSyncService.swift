@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// Debounced projection sync for collections and read lists: remote SSE
-/// changes collapse into one full sync per family per window, then the
+/// Debounced projection sync for collections, read lists, and smart lists:
+/// remote SSE changes collapse into one sync per family per window, then the
 /// affected ids post so every surface reading the projection updates.
 @MainActor
 final class ListProjectionSyncService {
@@ -17,6 +17,8 @@ final class ListProjectionSyncService {
   private var pendingCollectionSyncIds: Set<String> = []
   private var pendingReadListSyncTask: Task<Void, Never>?
   private var pendingReadListSyncIds: Set<String> = []
+  private var pendingSmartListSyncTask: Task<Void, Never>?
+  private var pendingSmartListSyncId: String?
 
   private init() {}
 
@@ -43,6 +45,21 @@ final class ListProjectionSyncService {
       pendingReadListSyncIds = []
       await SyncService.syncReadLists(instanceId: AppConfig.current.instanceId)
       await ContentProjectionNotifier.postReadListsDidChange(readListIds: ids)
+    }
+  }
+
+  /// Smart lists have no GRDB mirror, so the debounced event goes straight to
+  /// the notification; only the latest id survives a collapse.
+  func scheduleSmartListSync(smartListId: String) {
+    pendingSmartListSyncId = smartListId
+    pendingSmartListSyncTask?.cancel()
+    pendingSmartListSyncTask = Task {
+      try? await Task.sleep(nanoseconds: debounceInterval)
+      guard !Task.isCancelled else { return }
+      guard let smartListId = pendingSmartListSyncId else { return }
+      pendingSmartListSyncId = nil
+      await ContentProjectionNotifier.postSmartListsDidChange(
+        smartListId: smartListId, refreshDelay: 0)
     }
   }
 }

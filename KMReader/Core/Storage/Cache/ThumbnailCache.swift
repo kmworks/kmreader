@@ -23,6 +23,7 @@ nonisolated enum ThumbnailType: String, CaseIterable, Hashable, Sendable {
   case series
   case collection
   case readlist
+  case smartList
   case page
 
   var pathSegment: String {
@@ -31,6 +32,7 @@ nonisolated enum ThumbnailType: String, CaseIterable, Hashable, Sendable {
     case .series: return "series"
     case .collection: return "collections"
     case .readlist: return "readlists"
+    case .smartList: return "smart-lists"
     case .page: return "pages"
     }
   }

@@ -15,6 +15,9 @@ struct BookFilterView: View {
   let includeOfflineSorts: Bool
   let usesRelevanceSort: Bool
   let ignoresFiltersForSearch: Bool
+  /// Off for contexts whose options are not the shared books key: applying a
+  /// preset writes `bookBrowseOptions`, which such a context never reads.
+  let showsPresets: Bool
   let layoutMode: Binding<BrowseLayoutMode>?
 
   init(
@@ -27,6 +30,7 @@ struct BookFilterView: View {
     includeOfflineSorts: Bool = false,
     usesRelevanceSort: Bool = false,
     ignoresFiltersForSearch: Bool = false,
+    showsPresets: Bool = true,
     layoutMode: Binding<BrowseLayoutMode>? = nil
   ) {
     self._browseOpts = browseOpts
@@ -38,6 +42,7 @@ struct BookFilterView: View {
     self.includeOfflineSorts = includeOfflineSorts
     self.usesRelevanceSort = usesRelevanceSort
     self.ignoresFiltersForSearch = ignoresFiltersForSearch
+    self.showsPresets = showsPresets
     self.layoutMode = layoutMode
   }
 
@@ -60,13 +65,15 @@ struct BookFilterView: View {
           LayoutModeMenu(selection: layoutMode)
         }
 
-        FilterChip(
-          label: String(localized: "Presets"),
-          systemImage: "bookmark",
-          variant: .preset,
-          isEnabled: !ignoresFiltersForSearch,
-          openSheet: $showSavedFilters
-        )
+        if showsPresets {
+          FilterChip(
+            label: String(localized: "Presets"),
+            systemImage: "bookmark",
+            variant: .preset,
+            isEnabled: !ignoresFiltersForSearch,
+            openSheet: $showSavedFilters
+          )
+        }
 
         FilterChip(
           label: sortString,

@@ -5,9 +5,11 @@
 
 import SwiftUI
 
-/// Lists page: Collections and Read Lists as two horizontal strips, pinned
-/// items first, fed by the same view models as the full single-type pages the
-/// section headers link to. The library scope filters both strips.
+/// Lists page: Collections, Read Lists, and Smart Lists as horizontal strips,
+/// pinned items first, fed by the same view models as the full single-type
+/// pages the section headers link to. The library scope filters the
+/// collections/read lists strips; smart lists have no library filter, and
+/// their strip hides on Komga servers (no smart-list API) and offline.
 struct ListsBrowseView: View {
   let authViewModel: AuthViewModel
 
@@ -16,6 +18,7 @@ struct ListsBrowseView: View {
 
   @State private var collectionsViewModel = CollectionsViewModel(pageSize: 20)
   @State private var readListsViewModel = ReadListsViewModel(pageSize: 20)
+  @State private var smartListsViewModel = SmartListsViewModel()
   @State private var scopeStore = LibraryScopeStore()
   @State private var browseScope: LibraryBrowseScope?
   @State private var showLibraryPicker = false
@@ -23,6 +26,7 @@ struct ListsBrowseView: View {
   @State private var initializedLoadKey: String?
   @State private var collectionsReloadTask: Task<Void, Never>?
   @State private var readListsReloadTask: Task<Void, Never>?
+  @State private var smartListsReloadTask: Task<Void, Never>?
 
   private var effectiveScope: LibraryBrowseScope {
     browseScope ?? .pinned
@@ -47,7 +51,9 @@ struct ListsBrowseView: View {
   private var isCompletelyEmpty: Bool {
     initialLoadDone
       && !collectionsViewModel.isLoading && !readListsViewModel.isLoading
+      && !smartListsViewModel.isLoading
       && collectionsViewModel.pagination.isEmpty && readListsViewModel.pagination.isEmpty
+      && smartListsViewModel.smartLists.isEmpty
   }
 
   var body: some View {
@@ -95,6 +101,17 @@ struct ListsBrowseView: View {
               )
               .id(item.id)
               .frame(width: LayoutConfig.gridCardWidth)
+            }
+          }
+          section(
+            title: BrowseContentType.smartlists.displayName,
+            destination: .browseSmartLists,
+            isEmpty: !smartListsViewModel.isSupported || smartListsViewModel.smartLists.isEmpty
+          ) {
+            ForEach(smartListsViewModel.smartLists.prefix(20)) { smartList in
+              SmartListCardView(smartList: smartList)
+                .id(smartList.id)
+                .frame(width: LayoutConfig.gridCardWidth)
             }
           }
         }
@@ -178,6 +195,14 @@ struct ListsBrowseView: View {
           libraryIds: resolvedLibraryIds, refresh: true)
       }
     }
+    .onReceive(NotificationCenter.default.publisher(for: .smartListsDidChange)) { _ in
+      smartListsReloadTask?.cancel()
+      smartListsReloadTask = Task {
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        guard !Task.isCancelled else { return }
+        await smartListsViewModel.loadSmartLists(refresh: true)
+      }
+    }
     .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
       // Refresh when the server switch completes; loading mid-switch races it.
       if oldValue && !newValue {
@@ -247,6 +272,7 @@ struct ListsBrowseView: View {
       libraryIds: resolvedLibraryIds, refresh: true)
     async let loadReadLists: Void = readListsViewModel.loadReadLists(
       libraryIds: resolvedLibraryIds, refresh: true)
-    _ = await (loadCollections, loadReadLists)
+    async let loadSmartLists: Void = smartListsViewModel.loadSmartLists(refresh: true)
+    _ = await (loadCollections, loadReadLists, loadSmartLists)
   }
 }
