@@ -20,6 +20,7 @@ struct ServerInfoView: View {
   @State private var content = ContentCounts()
   @State private var isLoading = false
   @State private var isUnsupported = false
+  @State private var loadedInstanceId: String?
   @State private var logfileAvailable = false
   @State private var showShutdownConfirmation = false
   @State private var isShuttingDown = false
@@ -187,6 +188,7 @@ struct ServerInfoView: View {
                     ProgressView()
                   }
                 }
+                .contentShape(Rectangle())
               }
               .disabled(isDownloadingLogs)
               .tvFocusableHighlight()
@@ -203,6 +205,7 @@ struct ServerInfoView: View {
                 ProgressView()
               }
             }
+            .contentShape(Rectangle())
           }
           .disabled(isShuttingDown)
           .tvFocusableHighlight()
@@ -223,7 +226,8 @@ struct ServerInfoView: View {
       )
     }
     .task {
-      if current.isAdmin {
+      // .task re-fires when a sub-page pops back; only reload for a new instance.
+      if current.isAdmin, loadedInstanceId != current.instanceId {
         await loadServerInfo()
       }
     }
@@ -271,28 +275,32 @@ struct ServerInfoView: View {
     guard !AppConfig.isOffline else { return }
     isLoading = true
 
-    async let logfileProbe = Self.probeLogfile()
-
     do {
       serverInfo = try await ManagementService.getInfo()
       isUnsupported = false
     } catch let error as APIError {
       if case .notFound = error {
         isUnsupported = true
-        isLoading = false
-        return
+      } else {
+        ErrorManager.shared.alert(error: error)
       }
-      ErrorManager.shared.alert(error: error)
+      isLoading = false
+      return
     } catch {
       ErrorManager.shared.alert(error: error)
+      isLoading = false
+      return
     }
 
+    #if os(iOS) || os(macOS)
+      async let logfileProbe = Self.probeLogfile()
+    #endif
     async let healthRequest = Self.loadHealth()
 
-    if ServerStatsService.shouldQueryServer(instanceId: current.instanceId) {
-      do {
-        let stats = try await ServerStatsService.getServerStats()
-        ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: true)
+    do {
+      if let stats = try await ServerStatsService.getServerStatsIfSupported(
+        instanceId: current.instanceId)
+      {
         process = ProcessInfo(
           startTime: Self.startTimeFormatter.date(from: stats.process.startTime),
           uptimeSeconds: stats.process.uptimeSeconds,
@@ -308,23 +316,21 @@ struct ServerInfoView: View {
           sidecars: stats.totals.sidecars,
           fileSize: stats.totals.fileSize
         )
-      } catch let error as APIError {
-        if case .notFound = error {
-          ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: false)
-          await loadActuatorFallback()
-        } else {
-          ErrorManager.shared.alert(error: error)
-        }
-      } catch {
-        ErrorManager.shared.alert(error: error)
+      } else {
+        await loadActuatorFallback()
       }
-    } else {
-      await loadActuatorFallback()
+    } catch {
+      ErrorManager.shared.alert(error: error)
     }
 
-    process.diskFreeBytes = await healthRequest?.components?.diskSpace?.details?.free
-    process.diskTotalBytes = await healthRequest?.components?.diskSpace?.details?.total
-    logfileAvailable = await logfileProbe
+    if let health = await healthRequest {
+      process.diskFreeBytes = health.components?.diskSpace?.details?.free
+      process.diskTotalBytes = health.components?.diskSpace?.details?.total
+    }
+    #if os(iOS) || os(macOS)
+      logfileAvailable = await logfileProbe
+    #endif
+    loadedInstanceId = current.instanceId
     isLoading = false
   }
 
@@ -419,9 +425,9 @@ struct ServerInfoView: View {
       Task {
         do {
           let destinationURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("komga-server.log")
+            .appendingPathComponent("server.log")
           try await ManagementService.downloadLogFile(destinationURL: destinationURL)
-          FileShareHelper.share(url: destinationURL)
+          ShareHelper.share(items: [destinationURL])
         } catch {
           ErrorManager.shared.alert(error: error)
         }

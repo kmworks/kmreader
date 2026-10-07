@@ -77,11 +77,14 @@ struct ServerSessionsView: View {
                 Button(role: .destructive) {
                   kick(session)
                 } label: {
-                  if kickingSessionId == session.id {
-                    ProgressView()
-                  } else {
-                    Text(String(localized: "Kick"))
+                  Group {
+                    if kickingSessionId == session.id {
+                      ProgressView()
+                    } else {
+                      Text(String(localized: "Kick"))
+                    }
                   }
+                  .contentShape(Rectangle())
                 }
                 .disabled(kickingSessionId != nil)
               }
@@ -114,7 +117,10 @@ struct ServerSessionsView: View {
       let response = try await ManagementService.getSessions()
       apply(response)
     } catch let error as APIError {
+      // Komga rejects the cross-user listing (400/404); retry per-user.
       if case .notFound = error, !current.username.isEmpty {
+        await loadOwnSessions()
+      } else if case .badRequest = error, !current.username.isEmpty {
         await loadOwnSessions()
       } else {
         ErrorManager.shared.alert(error: error)

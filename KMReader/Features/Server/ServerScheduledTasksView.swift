@@ -58,7 +58,7 @@ struct ServerScheduledTasksView: View {
   private static func formatInterval(ms: Double) -> String {
     Duration.milliseconds(ms)
       .formatted(
-        .units(allowed: [.days, .hours, .minutes], width: .wide, maximumUnitCount: 1)
+        .units(allowed: [.days, .hours, .minutes, .seconds], width: .wide, maximumUnitCount: 1)
       )
   }
 

@@ -188,25 +188,20 @@ struct ServerTasksView: View {
   }
 
   private func loadTaskMetrics() async {
+    // The queue display works offline from the persisted SSE snapshot.
+    guard !AppConfig.isOffline else { return }
     isLoading = true
 
-    if ServerStatsService.shouldQueryServer(instanceId: current.instanceId) {
-      do {
-        let stats = try await ServerStatsService.getServerStats()
-        ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: true)
+    do {
+      if let stats = try await ServerStatsService.getServerStatsIfSupported(
+        instanceId: current.instanceId)
+      {
         taskMetrics = Self.metrics(from: stats)
-      } catch let error as APIError {
-        if case .notFound = error {
-          ServerStatsService.recordServerCapability(instanceId: current.instanceId, supported: false)
-          await loadActuatorTaskMetrics()
-        } else {
-          ErrorManager.shared.alert(error: error)
-        }
-      } catch {
-        ErrorManager.shared.alert(error: error)
+      } else {
+        await loadActuatorTaskMetrics()
       }
-    } else {
-      await loadActuatorTaskMetrics()
+    } catch {
+      ErrorManager.shared.alert(error: error)
     }
 
     isLoading = false

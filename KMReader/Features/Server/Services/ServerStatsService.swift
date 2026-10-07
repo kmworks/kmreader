@@ -42,4 +42,20 @@ nonisolated enum ServerStatsService {
     }
     return try await apiClient.request(path: "/api/v1/stats/server")
   }
+
+  /// `getServerStats` behind the capability probe: nil means the server has
+  /// no stats endpoints (verdict recorded) and the caller should fall back to
+  /// the actuator metrics; other failures propagate.
+  static func getServerStatsIfSupported(instanceId: String) async throws -> ServerStatsResponse? {
+    guard shouldQueryServer(instanceId: instanceId) else { return nil }
+    do {
+      let stats = try await getServerStats()
+      recordServerCapability(instanceId: instanceId, supported: true)
+      return stats
+    } catch let error as APIError {
+      guard case .notFound = error else { throw error }
+      recordServerCapability(instanceId: instanceId, supported: false)
+      return nil
+    }
+  }
 }

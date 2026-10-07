@@ -1,5 +1,5 @@
 //
-// FileShareHelper.swift
+// ShareHelper.swift
 //
 //
 
@@ -8,8 +8,9 @@ import SwiftUI
 #if os(iOS)
   import UIKit
 
-  enum FileShareHelper {
-    static func share(url: URL) {
+  /// Presents the system share sheet over the top-most controller.
+  enum ShareHelper {
+    static func share(items: [Any]) {
       guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
         let rootVC = windowScene.windows.first?.rootViewController
       else { return }
@@ -19,7 +20,7 @@ import SwiftUI
         topVC = presented
       }
 
-      let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+      let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
       if let popover = activityVC.popoverPresentationController {
         popover.sourceView = topVC.view
         popover.sourceRect = CGRect(
@@ -32,10 +33,10 @@ import SwiftUI
 #elseif os(macOS)
   import AppKit
 
-  enum FileShareHelper {
-    static func share(url: URL) {
+  enum ShareHelper {
+    static func share(items: [Any]) {
       guard let contentView = NSApp.keyWindow?.contentView else { return }
-      let picker = NSSharingServicePicker(items: [url])
+      let picker = NSSharingServicePicker(items: items)
       let rect = CGRect(x: contentView.bounds.midX, y: contentView.bounds.midY, width: 1, height: 1)
       picker.show(relativeTo: rect, of: contentView, preferredEdge: .minY)
     }

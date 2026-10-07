@@ -60,13 +60,17 @@ nonisolated enum ManagementService {
     return try await apiClient.request(path: "/actuator/sessions")
   }
 
-  /// Spring's per-user variant (`/actuator/sessions/{username}`): Komga has
-  /// no cross-user listing, kmrs serves the full list from `getSessions`.
+  /// Spring's per-user variant: the username is a required query parameter
+  /// (400 when absent). kmrs answers the same request, and also accepts an
+  /// absent username for the cross-user listing in `getSessions`.
   static func getSessions(username: String) async throws -> ActuatorSessionsResponse {
     guard AppConfig.current.isAdmin else {
       throw AppErrorType.operationNotAllowed(message: "Admin access required")
     }
-    return try await apiClient.request(path: "/actuator/sessions/\(username)")
+    return try await apiClient.request(
+      path: "/actuator/sessions",
+      queryItems: [URLQueryItem(name: "username", value: username)]
+    )
   }
 
   static func deleteSession(id: String) async throws {

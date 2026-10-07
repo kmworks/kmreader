@@ -17,7 +17,7 @@ nonisolated struct ActuatorScheduledTasksResponse: Decodable, Sendable {
     /// Milliseconds.
     let interval: Double
 
-    var id: String { runnable.target }
+    var id: String { "\(runnable.target)#\(interval)" }
 
     struct Runnable: Decodable, Sendable {
       let target: String
