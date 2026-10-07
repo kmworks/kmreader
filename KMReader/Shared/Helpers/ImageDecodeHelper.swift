@@ -54,4 +54,56 @@ struct ImageDecodeHelper {
       return image
     #endif
   }
+
+  /// Max pixel dimension (long edge) for decoded covers, per platform.
+  /// Covers are displayed at up to ~365pt (tvOS showcase) or ~240pt (iOS/macOS
+  /// detail); downsampling to display size × screen scale removes the extreme
+  /// downscales — e.g. 1200px XLARGE Komga thumbnails shown at ~200px — that
+  /// cause moiré on high-frequency artwork such as manga screentones.
+  nonisolated static var maxCoverPixelDimension: CGFloat {
+    #if os(tvOS)
+      return 800  // 365pt × 2x
+    #elseif os(macOS)
+      return 500  // 240pt × 2x
+    #else
+      return 600  // 240pt × 2.5x; slight upscale on 3x iPhones never moirés
+    #endif
+  }
+
+  /// Decodes the image at `url`, downsampling to `maxPixelSize` (long edge,
+  /// aspect preserved) via ImageIO when the source exceeds the cap.
+  /// - Returns: the downsampled image, or nil when the source is already at or
+  ///   below the cap (the caller should take the normal decode path) or when
+  ///   the image can't be read.
+  /// - Note: The dimension probe reads image headers only; no decode happens
+  ///   unless downsampling is actually needed.
+  nonisolated static func decodeDownsampledIfNeeded(at url: URL, maxPixelSize: CGFloat) async
+    -> PlatformImage?
+  {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    guard
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+      let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
+      width > 0, height > 0
+    else { return nil }
+    guard max(width, height) > Double(maxPixelSize) else { return nil }
+
+    let options: CFDictionary = [
+      kCGImageSourceCreateThumbnailFromImageAlways: true,
+      kCGImageSourceShouldCache: false,
+      kCGImageSourceCreateThumbnailWithTransform: true,
+      kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+    ] as CFDictionary
+    guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
+
+    #if os(iOS) || os(tvOS)
+      let image = UIImage(cgImage: cgImage)
+      return await image.byPreparingForDisplay() ?? image
+    #elseif os(macOS)
+      return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    #else
+      return nil
+    #endif
+  }
 }
