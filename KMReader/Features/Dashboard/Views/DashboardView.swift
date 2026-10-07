@@ -9,6 +9,7 @@ struct DashboardView: View {
   let authViewModel: AuthViewModel
   let readerPresentation: ReaderPresentationManager
 
+  // Gates the tvOS header refresh button against duplicate taps.
   @State private var isRefreshing = false
   @State private var showLibraryPicker = false
   @State private var showLibraryAddSheet = false
@@ -105,8 +106,52 @@ struct DashboardView: View {
     #endif
   }
 
+  /// Offline status row at the top of the dashboard content; tapping it
+  /// retries the server connection. iOS/macOS only — tvOS keeps the
+  /// reconnect button in its header.
+  @ViewBuilder
+  private var offlineStatusBanner: some View {
+    #if os(iOS) || os(macOS)
+      if isOffline {
+        Button {
+          Task {
+            await tryReconnect()
+          }
+        } label: {
+          HStack(alignment: .firstTextBaseline, spacing: 8) {
+            if isCheckingConnection {
+              LoadingIcon()
+            } else {
+              Image(systemName: "wifi.slash")
+                .font(.body)
+                .imageScale(.small)
+            }
+            Text(String(localized: "settings.offline"))
+              .font(.body)
+              .lineLimit(1)
+            Text(String(localized: "Check Server Connection"))
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+            Spacer()
+          }
+          .foregroundStyle(.orange)
+          .padding(.horizontal)
+          .padding(.top, LayoutConfig.dashboardScopeHeaderPadding)
+          .contentShape(Rectangle())
+          #if os(macOS)
+            .padding(.leading, 16)
+          #endif
+        }
+        .buttonStyle(.plain)
+        .disabled(isCheckingConnection)
+        .help(String(localized: "Check Server Connection"))
+      }
+    #endif
+  }
+
   @MainActor
-  private func refreshDashboard(reason: String, showsToolbarIndicator: Bool = true) async {
+  private func refreshDashboard(reason: String) async {
     logger.debug("Dashboard refresh requested: \(reason)")
 
     // Check SSE connection status and reconnect if disconnected
@@ -114,18 +159,10 @@ struct DashboardView: View {
       await SSEService.shared.connect()
     }
 
-    if showsToolbarIndicator {
-      withAnimation {
-        isRefreshing = true
-      }
-    }
+    isRefreshing = true
     await scopeStore.refreshMetrics(instanceId: current.instanceId)
     await DashboardSectionRefreshNotifier.postAll(source: .manual, reason: reason)
-    if showsToolbarIndicator {
-      withAnimation {
-        isRefreshing = false
-      }
-    }
+    isRefreshing = false
   }
 
   private func handleSSEEvent(_ info: SSEEventInfo) {
@@ -146,6 +183,8 @@ struct DashboardView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         dashboardHeader
+
+        offlineStatusBanner
 
         scopedLibraryHeader
 
@@ -312,70 +351,40 @@ struct DashboardView: View {
           }
         #endif
 
+        // The menu never swaps out: it carries the iPhone Settings entry,
+        // which must stay reachable in offline mode.
         ToolbarItem(placement: .confirmationAction) {
-          if isOffline {
-            Button {
-              Task {
-                await tryReconnect()
-              }
-            } label: {
-              if isCheckingConnection {
-                LoadingIcon()
-              } else {
-                Image(systemName: "wifi.slash")
-                .foregroundStyle(.orange)
-              }
+          Menu {
+            NavigationLink(value: NavDestination.settingsReadingStats) {
+              Label(ServerSection.readingStats.title, systemImage: "chart.bar.doc.horizontal")
             }
-            .disabled(isCheckingConnection)
-            .help(String(localized: "Check Server Connection"))
-            .accessibilityLabel(String(localized: "Check Server Connection"))
-          } else if isRefreshing {
-            Button {
-            } label: {
-              LoadingIcon()
-            }
-          } else {
-            Menu {
-              NavigationLink(value: NavDestination.settingsReadingStats) {
-                Label(ServerSection.readingStats.title, systemImage: "chart.bar.doc.horizontal")
-              }
 
-              // iPhone has no Settings tab (tab-bar capacity); its entry
-              // lives here instead.
-              #if os(iOS)
-                if !PlatformHelper.isPad {
-                  NavigationLink(value: NavDestination.settings) {
-                    Label(TabItem.settings.title, systemImage: TabItem.settings.icon)
-                  }
+            // iPhone has no Settings tab (tab-bar capacity); its entry
+            // lives here instead.
+            #if os(iOS)
+              if !PlatformHelper.isPad {
+                NavigationLink(value: NavDestination.settings) {
+                  Label(TabItem.settings.title, systemImage: TabItem.settings.icon)
                 }
-              #endif
+              }
+            #endif
 
+            if !isOffline {
               Divider()
-
-              Button {
-                Task {
-                  await refreshDashboard(reason: "Manual toolbar button")
-                }
-              } label: {
-                Label(String(localized: "Refresh Dashboard"), systemImage: AppIcon.refresh)
-              }
 
               Button {
                 enterOfflineMode()
               } label: {
                 Label(String(localized: "Enter Offline Mode"), systemImage: "wifi.slash")
               }
-            } label: {
-              Image(systemName: AppIcon.more)
             }
+          } label: {
+            Image(systemName: AppIcon.more)
           }
         }
       }
       .refreshableWithMinimumHold {
-        // The refresh control is the pull gesture's own indicator, so the
-        // toolbar stays untouched; swapping it mid-gesture stutters the
-        // pin and bounce-back animations.
-        await refreshDashboard(reason: "Pull to refresh", showsToolbarIndicator: false)
+        await refreshDashboard(reason: "Pull to refresh")
       }
       .sheet(isPresented: $showLibraryPicker) {
         LibraryPickerSheet()
