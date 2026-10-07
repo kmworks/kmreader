@@ -55,16 +55,25 @@ struct ImageDecodeHelper {
     #endif
   }
 
-  /// Max pixel dimension (long edge) for decoded covers.
-  /// Covers are decoded once and shared across display sizes (45pt list rows up
-  /// to ~365pt tvOS showcase), so the cap is a compromise: 480px keeps the
-  /// residual GPU minification small enough (~1.5-2.2x on grid cards) that
-  /// bilinear sampling doesn't reintroduce moiré, while hero/detail images
-  /// upscale at most ~1.5x, which never moirés. This removes the extreme
-  /// downscales — e.g. 1200px XLARGE Komga thumbnails shown at ~200px — that
-  /// cause moiré on high-frequency artwork such as manga screentones.
+  /// Max pixel dimension (long edge) for decoded covers, per platform.
+  /// Covers are decoded once and shared across display sizes, so the cap is
+  /// derived from the grid — where moiré was observed — targeting k2 ≈ 2 for
+  /// the GPU bilinear stage (at ≤2x minification every source texel is sampled
+  /// at least once; beyond that texels get skipped and aliasing starts).
+  /// Since k2 = cap / (pt × screen scale), the cap scales with pixel density:
+  /// - tvOS: 2 × 190pt × 2x = 760 (the 365pt showcase needs 730px, so no upscale)
+  /// - iOS: 2 × 108pt × 3x = 650 (iPhone grid lands right on the line)
+  /// - macOS: 2 × 104pt × 2x = 450
+  /// Detail/hero images upscale at most ~1.1x, which never moirés. Covers at or
+  /// below the cap skip downsampling entirely via the header-only probe.
   nonisolated static var maxCoverPixelDimension: CGFloat {
-    480
+    #if os(tvOS)
+      return 760
+    #elseif os(macOS)
+      return 450
+    #else
+      return 650
+    #endif
   }
 
   /// Decodes the image at `url`, downsampling to `maxPixelSize` (long edge,
