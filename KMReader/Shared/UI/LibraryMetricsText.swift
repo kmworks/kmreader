@@ -71,35 +71,4 @@ enum LibraryMetricsText {
 
     return join(parts, separator: " · ")
   }
-
-  /// All-libraries metrics: the per-library line plus a collections/read lists
-  /// line below it.
-  static func allLibrariesMetrics(for entry: SidebarLibraryItem) -> Text? {
-    var lines: [Text] = []
-
-    if let firstLine = metrics(for: entry) {
-      lines.append(firstLine)
-    }
-
-    var secondLineParts: [Text] = []
-    if let collectionsCount = entry.collectionsCount {
-      secondLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.collections", defaultValue: "%lld collections"),
-            Int(collectionsCount))))
-    }
-    if let readlistsCount = entry.readlistsCount {
-      secondLineParts.append(
-        Text(
-          String.localizedStringWithFormat(
-            String(localized: "library.list.metrics.readlists", defaultValue: "%lld read lists"),
-            Int(readlistsCount))))
-    }
-    if let secondLine = join(secondLineParts, separator: " · ") {
-      lines.append(secondLine)
-    }
-
-    return join(lines, separator: "\n")
-  }
 }

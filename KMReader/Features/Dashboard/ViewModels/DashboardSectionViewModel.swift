@@ -101,8 +101,6 @@ final class DashboardSectionViewModel {
           offset: page * pageSize,
           limit: pageSize
         )
-      case .collections, .readLists:
-        ids = []
       }
       guard loadID == pagination.loadID else { return }
       applyPage(ids: ids, moreAvailable: ids.count == pageSize)
@@ -139,8 +137,6 @@ final class DashboardSectionViewModel {
           section.widgetDataTarget?.update(series: result.content, instanceId: instanceId, libraryIds: libraryIds)
         }
         applyPage(ids: ids, moreAvailable: !result.last)
-      case .collections, .readLists:
-        applyPage(ids: [], moreAvailable: false)
       }
     } catch {
       // A superseded load was cancelled on purpose; only the newest reports.

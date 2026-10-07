@@ -50,8 +50,6 @@ nonisolated extension KomgaLibrary: FetchableRecord, MutablePersistableRecord {
     case booksCount = "books_count"
     case seriesCount = "series_count"
     case sidecarsCount = "sidecars_count"
-    case collectionsCount = "collections_count"
-    case readlistsCount = "readlists_count"
   }
 }
 

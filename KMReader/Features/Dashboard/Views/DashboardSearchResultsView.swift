@@ -13,8 +13,6 @@ import SwiftUI
 struct DashboardSearchResultsView: View {
   let searchText: String
 
-  @Environment(\.browseLibrarySelection) private var librarySelection
-
   @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
 
@@ -27,7 +25,7 @@ struct DashboardSearchResultsView: View {
   @State private var showSavedFilters = false
 
   private var effectiveContent: BrowseContentType {
-    .effective(fixed: nil, libraryScoped: librarySelection != nil, persisted: browseContent)
+    .effective(fixed: nil, persisted: browseContent)
   }
 
   var body: some View {

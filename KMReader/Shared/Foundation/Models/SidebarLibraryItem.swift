@@ -13,8 +13,6 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
   let booksCount: Double?
   let seriesCount: Double?
   let sidecarsCount: Double?
-  let collectionsCount: Double?
-  let readlistsCount: Double?
 
   init(
     libraryId: String,
@@ -22,9 +20,7 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
     fileSize: Double?,
     booksCount: Double?,
     seriesCount: Double?,
-    sidecarsCount: Double?,
-    collectionsCount: Double?,
-    readlistsCount: Double?
+    sidecarsCount: Double?
   ) {
     id = libraryId
     self.libraryId = libraryId
@@ -33,8 +29,6 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
     self.booksCount = booksCount
     self.seriesCount = seriesCount
     self.sidecarsCount = sidecarsCount
-    self.collectionsCount = collectionsCount
-    self.readlistsCount = readlistsCount
   }
 
   init(selection: LibrarySelection) {
@@ -44,9 +38,7 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
       fileSize: selection.fileSize,
       booksCount: selection.booksCount,
       seriesCount: selection.seriesCount,
-      sidecarsCount: selection.sidecarsCount,
-      collectionsCount: selection.collectionsCount,
-      readlistsCount: selection.readlistsCount
+      sidecarsCount: selection.sidecarsCount
     )
   }
 
@@ -57,7 +49,6 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
   /// Whether any admin metrics are present.
   var hasAnyMetrics: Bool {
     fileSize != nil || seriesCount != nil || booksCount != nil || sidecarsCount != nil
-      || collectionsCount != nil || readlistsCount != nil
   }
 
   /// Client-side sum of per-library metrics; a field stays nil when no
@@ -75,9 +66,7 @@ nonisolated struct SidebarLibraryItem: Hashable, Identifiable, Sendable {
       fileSize: sum(\.fileSize),
       booksCount: sum(\.booksCount),
       seriesCount: sum(\.seriesCount),
-      sidecarsCount: sum(\.sidecarsCount),
-      collectionsCount: sum(\.collectionsCount),
-      readlistsCount: sum(\.readlistsCount)
+      sidecarsCount: sum(\.sidecarsCount)
     )
   }
 }

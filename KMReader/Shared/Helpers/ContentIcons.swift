@@ -12,4 +12,5 @@ nonisolated enum ContentIcon {
   static let oneshot = "book.closed"
   static let collection = "square.stack.3d.down.right"
   static let readList = "list.bullet.rectangle"
+  static let lists = "list.bullet"
 }

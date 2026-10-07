@@ -63,15 +63,14 @@ struct BrowseContentView: View {
     self.allLibrariesEntry = allLibrariesEntry
   }
 
-  /// Library browse (split view) offers only series/books; collections and
-  /// read lists live at the sidebar's top level.
+  /// Browse surfaces offer only series/books; collections and read lists
+  /// live on the Lists page.
   private var availableContentTypes: [BrowseContentType] {
-    guard librarySelection == nil else { return [.series, .books] }
-    return BrowseContentType.allCases
+    [.series, .books]
   }
 
   private var effectiveContent: BrowseContentType {
-    .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
+    .effective(fixed: fixedContent, persisted: browseContent)
   }
 
   /// The menu reads the effective content so a persisted collections/read
@@ -113,10 +112,8 @@ struct BrowseContentView: View {
       return facts.seriesCount.map { Int($0) }
     case .books:
       return facts.booksCount.map { Int($0) }
-    case .collections:
-      return facts.collectionsCount.map { Int($0) }
-    case .readlists:
-      return facts.readlistsCount.map { Int($0) }
+    case .collections, .readlists:
+      return nil
     }
   }
 

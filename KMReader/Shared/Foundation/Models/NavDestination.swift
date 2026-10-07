@@ -12,8 +12,11 @@ enum NavDestination: Hashable {
   /// libraries are `browseLibrary`).
   case browse(scope: LibraryBrowseScope)
   case browseSearch
-  case browseCollections
-  case browseReadLists
+  /// Full single-type lists; `scope` seeds the pushed page's session scope
+  /// from the surface that linked here (nil keeps the pinned default).
+  case browseCollections(scope: LibraryBrowseScope?)
+  case browseReadLists(scope: LibraryBrowseScope?)
+  case browseLists
   case offline
   case server
   case settings
@@ -125,16 +128,20 @@ enum NavDestination: Hashable {
         authViewModel: context.authViewModel,
         focusesSearchOnAppear: true
       )
-    case .browseCollections:
+    case .browseCollections(let scope):
       BrowseView(
         authViewModel: context.authViewModel,
-        fixedContent: .collections
+        fixedContent: .collections,
+        initialScope: scope
       )
-    case .browseReadLists:
+    case .browseReadLists(let scope):
       BrowseView(
         authViewModel: context.authViewModel,
-        fixedContent: .readlists
+        fixedContent: .readlists,
+        initialScope: scope
       )
+    case .browseLists:
+      ListsBrowseView(authViewModel: context.authViewModel)
     case .offline:
       OfflineView(authViewModel: context.authViewModel)
     case .server:

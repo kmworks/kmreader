@@ -11,11 +11,15 @@ import SwiftUI
 class CollectionsViewModel {
   var isLoading = false
 
-  private(set) var pagination = PaginationState<IdentifiedString>(pageSize: 50)
+  private(set) var pagination: PaginationState<IdentifiedString>
   private var pinnedIds: [String] = []
   private var serverPage = 0
   private var offlineIds: [String] = []
   private var offlineLoadKey: String?
+
+  init(pageSize: Int = 50) {
+    pagination = PaginationState<IdentifiedString>(pageSize: pageSize)
+  }
 
   func loadCollections(
     libraryIds: [String]? = nil,

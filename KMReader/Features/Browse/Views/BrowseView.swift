@@ -57,7 +57,8 @@ struct BrowseView: View {
     libraryTab: Bool = false,
     searchOnly: Bool = false,
     libraryIds: [String]? = nil,
-    libraryTabScope: Binding<LibraryBrowseScope>? = nil
+    libraryTabScope: Binding<LibraryBrowseScope>? = nil,
+    initialScope: LibraryBrowseScope? = nil
   ) {
     self.authViewModel = authViewModel
     self.fixedContent = fixedContent
@@ -67,6 +68,7 @@ struct BrowseView: View {
     self.searchOnly = searchOnly
     self.libraryIds = libraryIds
     self.libraryTabScope = libraryTabScope
+    _browseScope = State(initialValue: initialScope)
   }
 
   var title: String {
@@ -258,7 +260,7 @@ struct BrowseView: View {
   }
 
   private var effectiveContent: BrowseContentType {
-    .effective(fixed: fixedContent, libraryScoped: librarySelection != nil, persisted: browseContent)
+    .effective(fixed: fixedContent, persisted: browseContent)
   }
 
   private var browseLayoutBinding: Binding<BrowseLayoutMode> {

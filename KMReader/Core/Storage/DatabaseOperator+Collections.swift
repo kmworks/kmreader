@@ -7,19 +7,6 @@ import Foundation
 import GRDB
 
 extension DatabaseOperator {
-  func fetchSidebarCollectionsCount(instanceId: String) throws -> Int {
-    try read { db in
-      try Int.fetchOne(
-        db,
-        sql: """
-          SELECT COUNT(*) FROM \(KomgaCollection.databaseTableName)
-          WHERE instance_id = ?
-          """,
-        arguments: [instanceId]
-      ) ?? 0
-    }
-  }
-
   func fetchSidebarCollections(instanceId: String, collectionIds: Set<String>) throws -> [SidebarCollectionItem] {
     try read { db in
       let items = try sidebarCollectionRows(db: db, instanceId: instanceId)
@@ -69,14 +56,6 @@ extension DatabaseOperator {
       createdDate: { $0.createdDate },
       lastModifiedDate: { $0.lastModifiedDate }
     )
-  }
-
-  func fetchPinnedCollectionDisplayItems(instanceId: String) throws -> [CollectionDisplayItem] {
-    try read { db in
-      try orderedCollections(db: db, instanceId: instanceId)
-        .filter(\.isPinned)
-        .map(Self.makeCollectionDisplayItem)
-    }
   }
 
   func fetchCollectionDisplayItems(instanceId: String) throws -> [CollectionDisplayItem] {
@@ -249,19 +228,6 @@ extension DatabaseOperator {
 }
 
 extension DatabaseOperator {
-  func fetchSidebarReadListsCount(instanceId: String) throws -> Int {
-    try read { db in
-      try Int.fetchOne(
-        db,
-        sql: """
-          SELECT COUNT(*) FROM \(KomgaReadList.databaseTableName)
-          WHERE instance_id = ?
-          """,
-        arguments: [instanceId]
-      ) ?? 0
-    }
-  }
-
   func fetchSidebarReadLists(instanceId: String, readListIds: Set<String>) throws -> [SidebarReadListItem] {
     try read { db in
       let items = try sidebarReadListRows(db: db, instanceId: instanceId)
@@ -315,14 +281,6 @@ extension DatabaseOperator {
       createdDate: { $0.createdDate },
       lastModifiedDate: { $0.lastModifiedDate }
     )
-  }
-
-  func fetchPinnedReadListDisplayItems(instanceId: String) throws -> [ReadListDisplayItem] {
-    try read { db in
-      try orderedReadLists(db: db, instanceId: instanceId)
-        .filter(\.isPinned)
-        .map(Self.makeReadListDisplayItem)
-    }
   }
 
   func fetchReadListDisplayItems(instanceId: String) throws -> [ReadListDisplayItem] {

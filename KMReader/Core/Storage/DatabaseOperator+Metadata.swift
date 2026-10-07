@@ -39,8 +39,6 @@ extension DatabaseOperator {
         libraries[index].booksCount = metrics.booksCount
         libraries[index].seriesCount = metrics.seriesCount
         libraries[index].sidecarsCount = metrics.sidecarsCount
-        libraries[index].collectionsCount = metrics.collectionsCount
-        libraries[index].readlistsCount = metrics.readlistsCount
         try save(libraries[index], db: db)
       }
     }
@@ -57,8 +55,6 @@ extension DatabaseOperator {
         libraries[index].booksCount = nil
         libraries[index].seriesCount = nil
         libraries[index].sidecarsCount = nil
-        libraries[index].collectionsCount = nil
-        libraries[index].readlistsCount = nil
         try save(libraries[index], db: db)
       }
     }
@@ -126,9 +122,7 @@ extension DatabaseOperator {
     fileSize: Double?,
     booksCount: Double?,
     seriesCount: Double?,
-    sidecarsCount: Double?,
-    collectionsCount: Double?,
-    readlistsCount: Double?
+    sidecarsCount: Double?
   ) throws {
     try write { db in
       let allLibrariesId = KomgaLibrary.allLibrariesId
@@ -144,8 +138,6 @@ extension DatabaseOperator {
       library.booksCount = booksCount
       library.seriesCount = seriesCount
       library.sidecarsCount = sidecarsCount
-      library.collectionsCount = collectionsCount
-      library.readlistsCount = readlistsCount
       try save(library, db: db)
     }
   }
@@ -1115,9 +1107,7 @@ extension DatabaseOperator {
       fileSize: library.fileSize,
       booksCount: library.booksCount,
       seriesCount: library.seriesCount,
-      sidecarsCount: library.sidecarsCount,
-      collectionsCount: library.collectionsCount,
-      readlistsCount: library.readlistsCount
+      sidecarsCount: library.sidecarsCount
     )
   }
 

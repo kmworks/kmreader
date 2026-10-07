@@ -55,14 +55,6 @@ nonisolated enum DashboardSectionRefreshNotifier {
     await post(sections: readStatusSections, source: source, reason: reason)
   }
 
-  static func postCollectionContentChanged(source: DashboardRefreshSource, reason: String) async {
-    await post(sections: [.pinnedCollections], source: source, reason: reason)
-  }
-
-  static func postReadListContentChanged(source: DashboardRefreshSource, reason: String) async {
-    await post(sections: [.pinnedReadLists], source: source, reason: reason)
-  }
-
   static func post(
     sections: Set<DashboardSection>,
     source: DashboardRefreshSource,

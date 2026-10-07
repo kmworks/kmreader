@@ -26,6 +26,12 @@ import SwiftUI
           }
         }
 
+        Tab(TabItem.lists.title, systemImage: TabItem.lists.icon, value: TabItem.lists) {
+          NavigationStack {
+            rootContent(for: .lists)
+          }
+        }
+
         Tab(TabItem.server.title, systemImage: TabItem.server.icon, value: TabItem.server) {
           NavigationStack {
             rootContent(for: .server)

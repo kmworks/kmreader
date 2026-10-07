@@ -96,6 +96,13 @@ nonisolated enum LocalDatabase {
       }
     }
 
+    migrator.registerMigration("00010_drop_library_list_counts") { db in
+      try db.alter(table: KomgaLibrary.databaseTableName) { table in
+        table.drop(column: "collections_count")
+        table.drop(column: "readlists_count")
+      }
+    }
+
     try migrator.migrate(writer)
   }
 

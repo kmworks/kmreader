@@ -16,8 +16,6 @@ nonisolated struct KomgaLibrary: Codable, Equatable, Sendable {
   var booksCount: Double?
   var seriesCount: Double?
   var sidecarsCount: Double?
-  var collectionsCount: Double?
-  var readlistsCount: Double?
 
   init(
     id: UUID = UUID(),
@@ -28,9 +26,7 @@ nonisolated struct KomgaLibrary: Codable, Equatable, Sendable {
     fileSize: Double? = nil,
     booksCount: Double? = nil,
     seriesCount: Double? = nil,
-    sidecarsCount: Double? = nil,
-    collectionsCount: Double? = nil,
-    readlistsCount: Double? = nil
+    sidecarsCount: Double? = nil
   ) {
     self.id = id
     self.instanceId = instanceId
@@ -41,7 +37,5 @@ nonisolated struct KomgaLibrary: Codable, Equatable, Sendable {
     self.booksCount = booksCount
     self.seriesCount = seriesCount
     self.sidecarsCount = sidecarsCount
-    self.collectionsCount = collectionsCount
-    self.readlistsCount = readlistsCount
   }
 }
