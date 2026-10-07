@@ -17,8 +17,7 @@ import SwiftUI
       case server
       case libraries(LibraryBrowseScope)
       case library(String)
-      case collections
-      case readLists
+      case lists
       case settings
     }
 
@@ -80,19 +79,11 @@ import SwiftUI
         }
 
         Tab(
-          String(localized: "tab.collections"), systemImage: ContentIcon.collection,
-          value: PadTab.collections
+          String(localized: "tab.lists", defaultValue: "Lists"), systemImage: ContentIcon.lists,
+          value: PadTab.lists
         ) {
           NavigationStack {
-            rootContent(for: .browseCollections)
-          }
-        }
-        Tab(
-          String(localized: "tab.readLists"), systemImage: ContentIcon.readList,
-          value: PadTab.readLists
-        ) {
-          NavigationStack {
-            rootContent(for: .browseReadLists)
+            rootContent(for: .browseLists)
           }
         }
 

@@ -33,7 +33,7 @@ struct ReadListsInProgressSectionView: View {
   var body: some View {
     DashboardSectionLayout(
       section: section,
-      destination: .browseReadLists,
+      destination: .browseReadLists(scope: DashboardLibraryScopeStore.shared.scope),
       showsCardKindMenu: true,
       isEmpty: continuations.isEmpty,
       itemIds: continuations.map(\.readListId)

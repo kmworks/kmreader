@@ -167,18 +167,11 @@ struct SidebarView: View {
     }
 
     Section {
-      NavigationLink(value: NavDestination.browseCollections) {
+      NavigationLink(value: NavDestination.browseLists) {
         SidebarItemLabel(
-          title: String(localized: "tab.collections"),
-          count: store.collectionsCount,
-          systemImage: ContentIcon.collection
-        )
-      }
-      NavigationLink(value: NavDestination.browseReadLists) {
-        SidebarItemLabel(
-          title: String(localized: "tab.readLists"),
-          count: store.readListsCount,
-          systemImage: ContentIcon.readList
+          title: String(localized: "tab.lists", defaultValue: "Lists"),
+          count: nil,
+          systemImage: ContentIcon.lists
         )
       }
     }

@@ -307,16 +307,6 @@ final class DashboardRefreshCoordinator {
   private func startProjectionObservers() {
     observeBookProjection()
     observeSeriesProjection()
-    observeProjection(
-      named: .collectionProjectionDidChange,
-      sections: [.pinnedCollections],
-      reason: "Collection projection changed"
-    )
-    observeProjection(
-      named: .readListProjectionDidChange,
-      sections: [.pinnedReadLists],
-      reason: "Read list projection changed"
-    )
   }
 
   private func observeBookProjection() {
@@ -340,20 +330,6 @@ final class DashboardRefreshCoordinator {
           let sections = DashboardSectionRefreshNotifier.sectionsForSeriesProjectionChange(reasons: reasons)
           guard !sections.isEmpty else { continue }
           await self?.requestRefresh(sections: sections, source: .projection, reason: "Series projection changed")
-        }
-      }
-    )
-  }
-
-  private func observeProjection(
-    named name: Notification.Name,
-    sections: Set<DashboardSection>,
-    reason: String
-  ) {
-    projectionObserverTasks.append(
-      Task { @MainActor [weak self] in
-        for await _ in NotificationCenter.default.notifications(named: name) {
-          await self?.requestRefresh(sections: sections, source: .projection, reason: reason)
         }
       }
     )

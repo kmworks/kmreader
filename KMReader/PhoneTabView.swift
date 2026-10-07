@@ -59,15 +59,15 @@ import SwiftUI
           }
         }
 
-        Tab(TabItem.offline.title, systemImage: TabItem.offline.icon, value: TabItem.offline) {
+        Tab(TabItem.lists.title, systemImage: TabItem.lists.icon, value: TabItem.lists) {
           NavigationStack {
-            rootContent(for: .offline)
+            rootContent(for: .lists)
           }
         }
 
-        Tab(TabItem.settings.title, systemImage: TabItem.settings.icon, value: TabItem.settings) {
+        Tab(TabItem.offline.title, systemImage: TabItem.offline.icon, value: TabItem.offline) {
           NavigationStack {
-            rootContent(for: .settings)
+            rootContent(for: .offline)
           }
         }
 

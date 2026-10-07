@@ -245,7 +245,7 @@ struct LibraryListContent: View {
         name: String(localized: "All Libraries"),
         fileSize: allLibrariesEntry?.fileSize,
         metricsText: current.isAdmin
-          ? allLibrariesEntry.flatMap { LibraryMetricsText.allLibrariesMetrics(for: $0) } : nil
+          ? allLibrariesEntry.flatMap { LibraryMetricsText.metrics(for: $0) } : nil
       )
 
       Spacer()
@@ -338,8 +338,7 @@ struct LibraryListContent: View {
   private func hasAllLibrariesMetrics(_ entry: SidebarLibraryItem?) -> Bool {
     guard let entry else { return false }
     return entry.seriesCount != nil || entry.booksCount != nil || entry.fileSize != nil
-      || entry.sidecarsCount != nil || entry.collectionsCount != nil
-      || entry.readlistsCount != nil
+      || entry.sidecarsCount != nil
   }
 
   // MARK: - Library Actions

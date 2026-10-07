@@ -18,8 +18,6 @@ nonisolated struct ServerLibrariesStatsResponse: Decodable, Sendable {
     let series: Double
     let books: Double
     let fileSize: Double
-    let readlists: Double
-    let collections: Double
     let sidecars: Double?
   }
 
@@ -27,8 +25,6 @@ nonisolated struct ServerLibrariesStatsResponse: Decodable, Sendable {
     let series: Double
     let books: Double
     let fileSize: Double
-    let readlists: Double
-    let collections: Double
     let sidecars: Double?
   }
 }

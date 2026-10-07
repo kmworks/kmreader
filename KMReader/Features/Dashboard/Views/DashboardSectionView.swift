@@ -96,8 +96,6 @@ struct DashboardSectionView: View {
           viewModel.removeItem(id: itemId)
         }
       )
-    case .collections, .readLists:
-      EmptyView()
     }
   }
 

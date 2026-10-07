@@ -113,10 +113,8 @@ struct BrowseContentView: View {
       return facts.seriesCount.map { Int($0) }
     case .books:
       return facts.booksCount.map { Int($0) }
-    case .collections:
-      return facts.collectionsCount.map { Int($0) }
-    case .readlists:
-      return facts.readlistsCount.map { Int($0) }
+    case .collections, .readlists:
+      return nil
     }
   }
 

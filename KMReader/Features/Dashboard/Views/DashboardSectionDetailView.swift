@@ -49,10 +49,6 @@ struct DashboardSectionDetailView: View {
       return ContentIcon.book
     case .series:
       return ContentIcon.series
-    case .collections:
-      return ContentIcon.collection
-    case .readLists:
-      return ContentIcon.readList
     }
   }
 
@@ -62,31 +58,22 @@ struct DashboardSectionDetailView: View {
       return LocalizedStringKey("No books found")
     case .series:
       return LocalizedStringKey("No series found")
-    case .collections:
-      return LocalizedStringKey("No collections found")
-    case .readLists:
-      return LocalizedStringKey("No read lists found")
     }
   }
 
   private var emptyStateMessage: LocalizedStringKey {
-    if section.isLocalSection {
-      return LocalizedStringKey("Nothing here yet.")
-    }
-    return LocalizedStringKey("Try selecting a different library.")
+    LocalizedStringKey("Try selecting a different library.")
   }
 
   var body: some View {
     ScrollView {
       #if os(tvOS)
-        if !section.isLocalSection {
-          HStack {
-            LayoutModeMenu(selection: browseLayoutBinding)
-            Spacer()
-          }
-          .padding(.horizontal)
-          .padding(.vertical, 4)
+        HStack {
+          LayoutModeMenu(selection: browseLayoutBinding)
+          Spacer()
         }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
 
         if section.supportsDownloadLatest {
           Menu {
@@ -136,32 +123,26 @@ struct DashboardSectionDetailView: View {
     }
     #if os(iOS) || os(macOS)
       .toolbar {
-        if !section.isLocalSection || section.supportsDownloadLatest {
-          ToolbarItem(placement: .confirmationAction) {
-            Menu {
-              if !section.isLocalSection {
-                Picker(selection: browseLayoutBinding) {
-                  ForEach(BrowseLayoutMode.allCases) { mode in
-                    Label(mode.displayName, systemImage: mode.iconName).tag(mode)
-                  }
-                } label: {
-                  EmptyView()
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-              }
-              if section.supportsDownloadLatest {
-                if !section.isLocalSection {
-                  Divider()
-                }
-                downloadMenuItems
+        ToolbarItem(placement: .confirmationAction) {
+          Menu {
+            Picker(selection: browseLayoutBinding) {
+              ForEach(BrowseLayoutMode.allCases) { mode in
+                Label(mode.displayName, systemImage: mode.iconName).tag(mode)
               }
             } label: {
-              if isQueueingOffline {
-                LoadingIcon()
-              } else {
-                Image(systemName: AppIcon.more)
-              }
+              EmptyView()
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+            if section.supportsDownloadLatest {
+              Divider()
+              downloadMenuItems
+            }
+          } label: {
+            if isQueueingOffline {
+              LoadingIcon()
+            } else {
+              Image(systemName: AppIcon.more)
             }
           }
         }
@@ -201,8 +182,6 @@ struct DashboardSectionDetailView: View {
       bookContentView
     case .series:
       seriesContentView
-    case .collections, .readLists:
-      EmptyView()
     }
   }
 
@@ -334,8 +313,6 @@ struct DashboardSectionDetailView: View {
           offset: pagination.currentPage * pagination.pageSize,
           limit: pagination.pageSize
         )
-      case .collections, .readLists:
-        ids = []
       }
       applyPage(ids: ids, moreAvailable: ids.count == pagination.pageSize)
       updateWidgetDataIfNeeded(
@@ -379,8 +356,6 @@ struct DashboardSectionDetailView: View {
               )
             }
           }
-        case .collections, .readLists:
-          applyPage(ids: [], moreAvailable: false)
         }
       } catch {
         ErrorManager.shared.alert(error: error)
@@ -615,8 +590,6 @@ struct DashboardSectionDetailView: View {
           offset: 0,
           limit: windowSize
         )
-      case .collections, .readLists:
-        ids = []
       }
       guard loadID == pagination.loadID else { return }
       applyRevalidatedWindow(ids: ids, moreAvailable: ids.count == windowSize)
@@ -641,8 +614,6 @@ struct DashboardSectionDetailView: View {
             guard loadID == pagination.loadID else { return }
             applyRevalidatedWindow(ids: page.content.map { $0.id }, moreAvailable: !page.last)
           }
-        case .collections, .readLists:
-          break
         }
       } catch {
         // Silent: notification-driven revalidation must not interrupt with alerts.

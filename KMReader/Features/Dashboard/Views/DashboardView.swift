@@ -159,8 +159,6 @@ struct DashboardView: View {
               if readListContinuationEnabled {
                 ReadListsInProgressSectionView(section: section)
               }
-            } else if section.isLocalSection {
-              DashboardPinnedSectionView(section: section)
             } else {
               DashboardSectionView(section: section)
             }
@@ -341,6 +339,16 @@ struct DashboardView: View {
               NavigationLink(value: NavDestination.settingsReadingStats) {
                 Label(ServerSection.readingStats.title, systemImage: "chart.bar.doc.horizontal")
               }
+
+              // iPhone has no Settings tab (tab-bar capacity); its entry
+              // lives here instead.
+              #if os(iOS)
+                if !PlatformHelper.isPad {
+                  NavigationLink(value: NavDestination.settings) {
+                    Label(TabItem.settings.title, systemImage: TabItem.settings.icon)
+                  }
+                }
+              #endif
 
               Divider()
 

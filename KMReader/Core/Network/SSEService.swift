@@ -219,12 +219,12 @@ actor SSEService {
         return
       }
     case .collectionAdded, .collectionChanged, .collectionDeleted:
-      guard await postCollectionDashboardRefresh(data: data) else {
+      guard await handleCollectionProjectionSync(data: data) else {
         broadcastNotification(type: eventType, data: data)
         return
       }
     case .readListAdded, .readListChanged, .readListDeleted:
-      guard await postReadListDashboardRefresh(data: data) else {
+      guard await handleReadListProjectionSync(data: data) else {
         broadcastNotification(type: eventType, data: data)
         return
       }
@@ -294,21 +294,17 @@ actor SSEService {
     return true
   }
 
-  private func postCollectionDashboardRefresh(data: String) async -> Bool {
+  /// Remote collection/read-list changes have no dashboard section to refresh;
+  /// sync the projection directly so every surface reading it updates.
+  private func handleCollectionProjectionSync(data: String) async -> Bool {
     guard stringValue("collectionId", from: data) != nil else { return false }
-    await DashboardSectionRefreshNotifier.postCollectionContentChanged(
-      source: .auto,
-      reason: "Remote collection changed"
-    )
+    await SyncService.syncCollections(instanceId: AppConfig.current.instanceId)
     return true
   }
 
-  private func postReadListDashboardRefresh(data: String) async -> Bool {
+  private func handleReadListProjectionSync(data: String) async -> Bool {
     guard stringValue("readListId", from: data) != nil else { return false }
-    await DashboardSectionRefreshNotifier.postReadListContentChanged(
-      source: .auto,
-      reason: "Remote read-list changed"
-    )
+    await SyncService.syncReadLists(instanceId: AppConfig.current.instanceId)
     return true
   }
 

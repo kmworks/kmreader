@@ -12,8 +12,6 @@ struct LibrarySelection: Hashable {
   let booksCount: Double?
   let seriesCount: Double?
   let sidecarsCount: Double?
-  let collectionsCount: Double?
-  let readlistsCount: Double?
 
   init(library: KomgaLibrary) {
     libraryId = library.libraryId
@@ -22,8 +20,6 @@ struct LibrarySelection: Hashable {
     booksCount = library.booksCount
     seriesCount = library.seriesCount
     sidecarsCount = library.sidecarsCount
-    collectionsCount = library.collectionsCount
-    readlistsCount = library.readlistsCount
   }
 
   init(sidebarItem: SidebarLibraryItem) {
@@ -33,7 +29,5 @@ struct LibrarySelection: Hashable {
     booksCount = sidebarItem.booksCount
     seriesCount = sidebarItem.seriesCount
     sidecarsCount = sidebarItem.sidecarsCount
-    collectionsCount = sidebarItem.collectionsCount
-    readlistsCount = sidebarItem.readlistsCount
   }
 }

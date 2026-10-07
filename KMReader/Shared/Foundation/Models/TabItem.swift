@@ -8,6 +8,7 @@ import SwiftUI
 enum TabItem: Hashable, Identifiable {
   case home
   case library
+  case lists
   case browse
   case offline
   case server
@@ -17,6 +18,7 @@ enum TabItem: Hashable, Identifiable {
     switch self {
     case .home: return "home"
     case .library: return "library"
+    case .lists: return "lists"
     case .browse: return "browse"
     case .offline: return "offline"
     case .server: return "server"
@@ -30,6 +32,8 @@ enum TabItem: Hashable, Identifiable {
       return String(localized: "title.dashboard")
     case .library:
       return String(localized: "tab.library", defaultValue: "Library")
+    case .lists:
+      return String(localized: "tab.lists", defaultValue: "Lists")
     case .browse:
       #if os(iOS)
         return String(localized: "tab.search", defaultValue: "Search")
@@ -51,6 +55,8 @@ enum TabItem: Hashable, Identifiable {
       return "house"
     case .library:
       return ContentIcon.library
+    case .lists:
+      return ContentIcon.lists
     case .browse:
       return AppIcon.search
     case .offline:
@@ -76,6 +82,8 @@ enum TabItem: Hashable, Identifiable {
       )
     case .library:
       LibraryBrowseView(authViewModel: context.authViewModel)
+    case .lists:
+      ListsBrowseView()
     case .browse:
       #if os(iOS)
         // iPhone Search tab: search-first, content browses in the Library tab.

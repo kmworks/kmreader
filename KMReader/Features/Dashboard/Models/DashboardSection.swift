@@ -9,8 +9,6 @@ import SwiftUI
 enum DashboardSectionContentKind: Sendable {
   case books
   case series
-  case collections
-  case readLists
 }
 
 /// Card presentation of a dashboard section: large showcase cards, medium and
@@ -68,8 +66,6 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
   case readListsInProgress = "readListsInProgress"
   case keepReading = "keepReading"
   case onDeck = "onDeck"
-  case pinnedCollections = "pinnedCollections"
-  case pinnedReadLists = "pinnedReadLists"
   case recentlyReleasedBooks = "recentlyReleasedBooks"
   case recentlyAddedBooks = "recentlyAddedBooks"
   case recentlyAddedSeries = "recentlyAddedSeries"
@@ -86,10 +82,6 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
       return String(localized: "dashboard.onDeck")
     case .readListsInProgress:
       return String(localized: "dashboard.readListsInProgress")
-    case .pinnedCollections:
-      return String(localized: "dashboard.pinnedCollections")
-    case .pinnedReadLists:
-      return String(localized: "dashboard.pinnedReadLists")
     case .recentlyReleasedBooks:
       return String(localized: "dashboard.recentlyReleasedBooks")
     case .recentlyAddedBooks:
@@ -111,10 +103,6 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
       return "bookmark.fill"
     case .readListsInProgress:
       return "list.number"
-    case .pinnedCollections:
-      return ContentIcon.collection
-    case .pinnedReadLists:
-      return ContentIcon.readList
     case .recentlyReleasedBooks:
       return "calendar.badge.clock"
     case .recentlyAddedBooks:
@@ -135,16 +123,12 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
       return .books
     case .recentlyUpdatedSeries, .recentlyAddedSeries:
       return .series
-    case .pinnedCollections:
-      return .collections
-    case .pinnedReadLists:
-      return .readLists
     }
   }
 
   var cardKind: DashboardCardKind {
     switch self {
-    case .keepReading, .readListsInProgress, .pinnedCollections, .pinnedReadLists:
+    case .keepReading, .readListsInProgress:
       return .horizontal
     case .onDeck, .recentlyReleasedBooks, .recentlyAddedBooks, .recentlyUpdatedSeries:
       return .large
@@ -154,24 +138,13 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
   }
 
   /// Card kinds the user can pick for this section. Series has no horizontal
-  /// card; pinned sections only render as horizontal cards.
+  /// card.
   var availableCardKinds: [DashboardCardKind] {
     switch contentKind {
     case .books:
       return [.large, .medium, .small, .horizontal]
     case .series:
       return [.large, .medium, .small]
-    case .collections, .readLists:
-      return [.horizontal]
-    }
-  }
-
-  var isLocalSection: Bool {
-    switch contentKind {
-    case .collections, .readLists:
-      return true
-    default:
-      return false
     }
   }
 
