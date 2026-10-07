@@ -83,7 +83,7 @@ enum TabItem: Hashable, Identifiable {
     case .library:
       LibraryBrowseView(authViewModel: context.authViewModel)
     case .lists:
-      ListsBrowseView()
+      ListsBrowseView(authViewModel: context.authViewModel)
     case .browse:
       #if os(iOS)
         // iPhone Search tab: search-first, content browses in the Library tab.

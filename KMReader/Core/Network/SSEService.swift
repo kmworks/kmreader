@@ -297,14 +297,16 @@ actor SSEService {
   /// Remote collection/read-list changes have no dashboard section to refresh;
   /// sync the projection directly so every surface reading it updates.
   private func handleCollectionProjectionSync(data: String) async -> Bool {
-    guard stringValue("collectionId", from: data) != nil else { return false }
+    guard let collectionId = stringValue("collectionId", from: data) else { return false }
     await SyncService.syncCollections(instanceId: AppConfig.current.instanceId)
+    await ContentProjectionNotifier.postCollectionDidChange(collectionId: collectionId)
     return true
   }
 
   private func handleReadListProjectionSync(data: String) async -> Bool {
-    guard stringValue("readListId", from: data) != nil else { return false }
+    guard let readListId = stringValue("readListId", from: data) else { return false }
     await SyncService.syncReadLists(instanceId: AppConfig.current.instanceId)
+    await ContentProjectionNotifier.postReadListDidChange(readListId: readListId)
     return true
   }
 

@@ -9,6 +9,8 @@ import SwiftUI
 /// items first, fed by the same view models as the full single-type pages the
 /// section headers link to. The library scope filters both strips.
 struct ListsBrowseView: View {
+  let authViewModel: AuthViewModel
+
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = .init()
 
@@ -18,6 +20,7 @@ struct ListsBrowseView: View {
   @State private var browseScope: LibraryBrowseScope?
   @State private var showLibraryPicker = false
   @State private var initialLoadDone = false
+  @State private var initializedLoadKey: String?
 
   private var effectiveScope: LibraryBrowseScope {
     browseScope ?? .pinned
@@ -25,6 +28,10 @@ struct ListsBrowseView: View {
 
   private var resolvedLibraryIds: [String] {
     effectiveScope.resolvedIds(pinned: dashboard.libraryIds)
+  }
+
+  private var loadKey: String {
+    "\(current.instanceId)|\(resolvedLibraryIdsKey)"
   }
 
   private var resolvedLibraryIdsKey: String {
@@ -133,7 +140,11 @@ struct ListsBrowseView: View {
     .sheet(isPresented: $showLibraryPicker) {
       LibraryPickerSheet()
     }
-    .task(id: "\(current.instanceId)|\(resolvedLibraryIdsKey)") {
+    .task(id: loadKey) {
+      // Returning from a pushed child re-fires this task; skip re-fires for
+      // the same key so the strips don't re-sync or reset pagination.
+      guard !authViewModel.isSwitching, initializedLoadKey != loadKey else { return }
+      initializedLoadKey = loadKey
       await reloadAll()
       initialLoadDone = true
     }
@@ -156,6 +167,16 @@ struct ListsBrowseView: View {
       Task {
         await readListsViewModel.loadReadLists(
           libraryIds: resolvedLibraryIds, refresh: true)
+      }
+    }
+    .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
+      // Refresh when the server switch completes; loading mid-switch races it.
+      if oldValue && !newValue {
+        Task {
+          initializedLoadKey = loadKey
+          await reloadAll()
+          initialLoadDone = true
+        }
       }
     }
     .onChange(of: scopeStore.libraries) { _, libraries in

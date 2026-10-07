@@ -141,7 +141,7 @@ enum NavDestination: Hashable {
         initialScope: scope
       )
     case .browseLists:
-      ListsBrowseView()
+      ListsBrowseView(authViewModel: context.authViewModel)
     case .offline:
       OfflineView(authViewModel: context.authViewModel)
     case .server:
