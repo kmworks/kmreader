@@ -26,6 +26,17 @@ struct SettingsView: View {
       if showsServerSections {
         Section {
           SettingsServerCardView()
+          if !isOffline {
+            Button {
+              OfflineManager.enterManualOfflineMode()
+            } label: {
+              SettingsBadgeRow(
+                title: String(localized: "Enter Offline Mode"),
+                icon: "wifi.slash",
+                color: .orange
+              )
+            }
+          }
         }
 
         Section {
@@ -57,6 +68,12 @@ struct SettingsView: View {
         }
         NavigationLink(value: NavDestination.settingsDashboard) {
           SettingsSectionRow(section: .dashboard)
+        }
+      }
+
+      Section {
+        NavigationLink(value: NavDestination.settingsReadingStats) {
+          SettingsSectionRow(section: .readingStats)
         }
       }
 
@@ -133,23 +150,6 @@ struct SettingsView: View {
 
         NavigationLink(value: NavDestination.settingsLogs) {
           SettingsSectionRow(section: .logs)
-        }
-      }
-
-      Section {
-        NavigationLink(value: NavDestination.settingsReadingStats) {
-          SettingsSectionRow(section: .readingStats)
-        }
-        if !isOffline {
-          Button {
-            OfflineManager.enterManualOfflineMode()
-          } label: {
-            SettingsBadgeRow(
-              title: String(localized: "Enter Offline Mode"),
-              icon: "wifi.slash",
-              color: .orange
-            )
-          }
         }
       }
 

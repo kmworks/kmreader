@@ -10,12 +10,25 @@ struct ServerView: View {
   let authViewModel: AuthViewModel
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
+  @AppStorage("isOffline") private var isOffline: Bool = false
   @State private var showingUpdatePassword = false
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
         ServerCardView()
+        if !isOffline {
+          Button {
+            OfflineManager.enterManualOfflineMode()
+          } label: {
+            ServerActionTile(
+              title: String(localized: "Enter Offline Mode"),
+              systemImage: "wifi.slash",
+              color: .orange
+            )
+          }
+          .adaptiveButtonStyle(.plain)
+        }
         if current.isAdmin {
           managementSection
         }

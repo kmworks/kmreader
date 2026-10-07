@@ -10,8 +10,6 @@ import SwiftUI
     @State private var selectedSection: SettingsSection? = .appearance
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
-    @AppStorage("isOffline") private var isOffline: Bool = false
-
     var body: some View {
       NavigationSplitView(columnVisibility: $columnVisibility) {
         List(selection: $selectedSection) {
@@ -19,6 +17,10 @@ import SwiftUI
             SettingsSectionRow(section: .appearance)
             SettingsSectionRow(section: .browse)
             SettingsSectionRow(section: .dashboard)
+          }
+
+          Section {
+            SettingsSectionRow(section: .readingStats)
           }
 
           Section {
@@ -38,17 +40,6 @@ import SwiftUI
             SettingsSectionRow(section: .network)
             SettingsSectionRow(section: .cache)
             SettingsSectionRow(section: .logs)
-          }
-
-          Section {
-            SettingsSectionRow(section: .readingStats)
-            if !isOffline {
-              Button {
-                OfflineManager.enterManualOfflineMode()
-              } label: {
-                Label(String(localized: "Enter Offline Mode"), systemImage: "wifi.slash")
-              }
-            }
           }
 
           Section {
