@@ -58,7 +58,8 @@ struct ListsBrowseDetailView: View {
     case .collections: return $collectionBrowseLayout
     case .readlists: return $readListBrowseLayout
     case .smartlists: return $smartListBrowseLayout
-    default: return $collectionBrowseLayout
+    case .series, .books:
+      fatalError("ListsBrowseDetailView only supports list content types")
     }
   }
 
@@ -73,71 +74,72 @@ struct ListsBrowseDetailView: View {
       allLibrariesEntry: scopeStore.allLibrariesEntry
     )
     .platformNavigationTitle(fixedContent.displayName)
-    #if os(iOS)
-      .navigationTitle(fixedContent.displayName)
-    #endif
+    // macOS treats this as the window title; setting it twice is harmless.
+    .navigationTitle(fixedContent.displayName)
     .searchableIfNeeded(text: $searchQuery, enabled: true)
-    .toolbar {
-      #if os(macOS)
-        if fixedContent != .smartlists {
-          ToolbarItem(placement: .navigation) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: menuScopeBinding)
-          }
-        }
-      #endif
-      #if os(iOS)
-        if PlatformHelper.isPad {
+    #if os(iOS) || os(macOS)
+      .toolbar {
+        #if os(macOS)
           if fixedContent != .smartlists {
-            ToolbarItem(placement: .cancellationAction) {
+            ToolbarItem(placement: .navigation) {
               LibraryScopeMenu(
                 libraries: scopeStore.libraries,
                 showLibraryPicker: $showLibraryPicker,
                 scope: menuScopeBinding)
             }
           }
-        } else if fixedContent != .smartlists {
-          ToolbarItem(placement: .confirmationAction) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: menuScopeBinding)
+        #endif
+        #if os(iOS)
+          if PlatformHelper.isPad {
+            if fixedContent != .smartlists {
+              ToolbarItem(placement: .cancellationAction) {
+                LibraryScopeMenu(
+                  libraries: scopeStore.libraries,
+                  showLibraryPicker: $showLibraryPicker,
+                  scope: menuScopeBinding)
+              }
+            }
+          } else if fixedContent != .smartlists {
+            ToolbarItem(placement: .confirmationAction) {
+              LibraryScopeMenu(
+                libraries: scopeStore.libraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: menuScopeBinding)
+            }
+            if #available(iOS 26.0, *) {
+              ToolbarSpacer(.fixed, placement: .confirmationAction)
+            }
           }
-          if #available(iOS 26.0, *) {
-            ToolbarSpacer(.fixed, placement: .confirmationAction)
-          }
+        #endif
+        ToolbarItem(placement: .confirmationAction) {
+          BrowseActionsMenu(
+            layoutMode: browseLayoutBinding,
+            showsPresets: false,
+            isFilterEnabled: fixedContent != .smartlists,
+            onShowPresets: {},
+            onShowFilter: { showFilterSheet = true }
+          )
         }
-      #endif
-      ToolbarItem(placement: .confirmationAction) {
-        BrowseActionsMenu(
-          layoutMode: browseLayoutBinding,
-          showsPresets: false,
-          isFilterEnabled: fixedContent != .smartlists,
-          onShowPresets: {},
-          onShowFilter: { showFilterSheet = true }
-        )
       }
-    }
-    .sheet(isPresented: $showLibraryPicker) {
-      LibraryPickerSheet()
-    }
+      .sheet(isPresented: $showLibraryPicker) {
+        LibraryPickerSheet()
+      }
+      .task(id: current.instanceId) {
+        await scopeStore.refresh(instanceId: current.instanceId)
+      }
+      .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
+        guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
+        Task {
+          await scopeStore.load(instanceId: current.instanceId)
+        }
+      }
+    #endif
     .onSubmit(of: .search) {
       activeSearchText = searchQuery
     }
     .onChange(of: searchQuery) { _, newValue in
       if newValue.isEmpty {
         activeSearchText = ""
-      }
-    }
-    .task(id: current.instanceId) {
-      await scopeStore.refresh(instanceId: current.instanceId)
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
-      guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
-      Task {
-        await scopeStore.load(instanceId: current.instanceId)
       }
     }
     .task(id: resolvedLibraryIdsKey) {

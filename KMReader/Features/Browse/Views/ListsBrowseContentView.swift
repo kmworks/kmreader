@@ -9,7 +9,6 @@ import SwiftUI
 /// view models directly so refresh-driven mutations re-render only this child;
 /// the parent `ListsBrowseView` carries `.refreshable` and must stay untouched
 /// by them (an active refresh action is cancelled once its view re-renders).
-@MainActor
 struct ListsBrowseContentView: View {
   let collectionsViewModel: CollectionsViewModel
   let readListsViewModel: ReadListsViewModel

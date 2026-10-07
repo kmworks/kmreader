@@ -15,6 +15,7 @@ import SwiftUI
     let onTrigger: () -> Void
 
     @State private var overscroll: CGFloat = 0
+    @State private var isDragging = false
     @State private var isArmed = false
     @State private var hasFired = false
 
@@ -34,10 +35,14 @@ import SwiftUI
           return geometry.contentOffset.x - maxOffsetX
         } action: { _, newValue in
           overscroll = max(0, newValue)
-          let armed = overscroll >= triggerThreshold
-          if armed != isArmed {
-            isArmed = armed
-            if armed { HapticFeedback.light() }
+          // Arming only happens under a finger: a momentum bounce past the
+          // threshold after release must not arm.
+          if isDragging {
+            let armed = overscroll >= triggerThreshold
+            if armed != isArmed {
+              isArmed = armed
+              if armed { HapticFeedback.light() }
+            }
           }
           if overscroll < hintThreshold {
             hasFired = false
@@ -45,9 +50,10 @@ import SwiftUI
         }
         .onScrollPhaseChange { oldPhase, newPhase in
           let wasDragging = oldPhase == .tracking || oldPhase == .interacting
-          let isDragging = newPhase == .tracking || newPhase == .interacting
+          isDragging = newPhase == .tracking || newPhase == .interacting
           if wasDragging, !isDragging, isArmed, !hasFired {
             hasFired = true
+            isArmed = false
             onTrigger()
           }
         }
