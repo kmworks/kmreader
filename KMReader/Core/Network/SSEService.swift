@@ -23,11 +23,6 @@ actor SSEService {
 
   private var isConnected = false
   private var streamTask: Task<Void, Never>?
-  private static let projectionSyncDebounce: UInt64 = 5_000_000_000
-  private var pendingCollectionSyncTask: Task<Void, Never>?
-  private var pendingCollectionSyncIds: Set<String> = []
-  private var pendingReadListSyncTask: Task<Void, Never>?
-  private var pendingReadListSyncIds: Set<String> = []
 
   var connected: Bool {
     isConnected
@@ -300,34 +295,16 @@ actor SSEService {
   }
 
   /// Remote collection/read-list changes have no dashboard section to refresh;
-  /// debounce a full projection sync so every surface reading it updates.
+  /// the projection syncs debounced through its own service instead.
   private func handleCollectionProjectionSync(data: String) async -> Bool {
     guard let collectionId = stringValue("collectionId", from: data) else { return false }
-    pendingCollectionSyncIds.insert(collectionId)
-    pendingCollectionSyncTask?.cancel()
-    pendingCollectionSyncTask = Task {
-      try? await Task.sleep(nanoseconds: Self.projectionSyncDebounce)
-      guard !Task.isCancelled else { return }
-      let ids = Array(pendingCollectionSyncIds)
-      pendingCollectionSyncIds = []
-      await SyncService.syncCollections(instanceId: AppConfig.current.instanceId)
-      await ContentProjectionNotifier.postCollectionsDidChange(collectionIds: ids)
-    }
+    await ListProjectionSyncService.shared.scheduleCollectionSync(collectionId: collectionId)
     return true
   }
 
   private func handleReadListProjectionSync(data: String) async -> Bool {
     guard let readListId = stringValue("readListId", from: data) else { return false }
-    pendingReadListSyncIds.insert(readListId)
-    pendingReadListSyncTask?.cancel()
-    pendingReadListSyncTask = Task {
-      try? await Task.sleep(nanoseconds: Self.projectionSyncDebounce)
-      guard !Task.isCancelled else { return }
-      let ids = Array(pendingReadListSyncIds)
-      pendingReadListSyncIds = []
-      await SyncService.syncReadLists(instanceId: AppConfig.current.instanceId)
-      await ContentProjectionNotifier.postReadListsDidChange(readListIds: ids)
-    }
+    await ListProjectionSyncService.shared.scheduleReadListSync(readListId: readListId)
     return true
   }
 
