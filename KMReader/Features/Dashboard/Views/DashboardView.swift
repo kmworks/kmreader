@@ -22,6 +22,10 @@ struct DashboardView: View {
   @State private var submittedSearchText = ""
   @State private var isSearchPresented = false
 
+  #if os(macOS)
+    @Environment(\.openSettings) private var openSettings
+  #endif
+
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("enableSSEAutoRefresh") private var enableSSEAutoRefresh: Bool = true
@@ -351,36 +355,19 @@ struct DashboardView: View {
           }
         #endif
 
-        // The menu never swaps out: it carries the iPhone Settings entry,
-        // which must stay reachable in offline mode.
+        // Settings stays reachable in offline mode.
         ToolbarItem(placement: .confirmationAction) {
-          Menu {
-            NavigationLink(value: NavDestination.settingsReadingStats) {
-              Label(ServerSection.readingStats.title, systemImage: "chart.bar.doc.horizontal")
+          #if os(macOS)
+            Button {
+              openSettings()
+            } label: {
+              Image(systemName: AppIcon.settings)
             }
-
-            // iPhone has no Settings tab (tab-bar capacity); its entry
-            // lives here instead.
-            #if os(iOS)
-              if !PlatformHelper.isPad {
-                NavigationLink(value: NavDestination.settings) {
-                  Label(TabItem.settings.title, systemImage: TabItem.settings.icon)
-                }
-              }
-            #endif
-
-            if !isOffline {
-              Divider()
-
-              Button {
-                enterOfflineMode()
-              } label: {
-                Label(String(localized: "Enter Offline Mode"), systemImage: "wifi.slash")
-              }
+          #else
+            NavigationLink(value: NavDestination.settings) {
+              Image(systemName: AppIcon.settings)
             }
-          } label: {
-            Image(systemName: AppIcon.more)
-          }
+          #endif
         }
       }
       .refreshableWithMinimumHold {
@@ -418,17 +405,6 @@ struct DashboardView: View {
       await sseService.connect()
       ErrorManager.shared.notify(message: String(localized: "settings.connection_restored"))
       await refreshDashboard(reason: "Reconnected")
-    }
-  }
-
-  private func enterOfflineMode() {
-    guard !isOffline else { return }
-
-    DashboardRefreshCoordinator.shared.cancelPendingAutoRefresh(clearDeferred: true)
-    AppConfig.enterManualOfflineMode()
-
-    Task {
-      await sseService.disconnect(notify: false)
     }
   }
 }

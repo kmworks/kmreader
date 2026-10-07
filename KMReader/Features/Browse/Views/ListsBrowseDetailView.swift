@@ -12,7 +12,7 @@ import SwiftUI
 /// smart lists), layout/filter actions, and a plain inline navigation title.
 struct ListsBrowseDetailView: View {
   let authViewModel: AuthViewModel
-  let fixedContent: BrowseContentType
+  let fixedContent: ListsBrowseContentType
   let initialScope: LibraryBrowseScope?
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -30,7 +30,7 @@ struct ListsBrowseDetailView: View {
   @State private var scopeStore = LibraryScopeStore()
   @State private var browseScope: LibraryBrowseScope?
 
-  init(authViewModel: AuthViewModel, fixedContent: BrowseContentType, initialScope: LibraryBrowseScope? = nil) {
+  init(authViewModel: AuthViewModel, fixedContent: ListsBrowseContentType, initialScope: LibraryBrowseScope? = nil) {
     self.authViewModel = authViewModel
     self.fixedContent = fixedContent
     self.initialScope = initialScope
@@ -58,14 +58,12 @@ struct ListsBrowseDetailView: View {
     case .collections: return $collectionBrowseLayout
     case .readlists: return $readListBrowseLayout
     case .smartlists: return $smartListBrowseLayout
-    case .series, .books:
-      fatalError("ListsBrowseDetailView only supports list content types")
     }
   }
 
   var body: some View {
     BrowseContentView(
-      fixedContent: fixedContent,
+      fixedContent: fixedContent.browseContentType,
       searchText: activeSearchText,
       refreshTrigger: refreshTrigger,
       showFilterSheet: $showFilterSheet,
@@ -73,14 +71,12 @@ struct ListsBrowseDetailView: View {
       scopeLibraries: scopeStore.libraries,
       allLibrariesEntry: scopeStore.allLibrariesEntry
     )
-    .platformNavigationTitle(fixedContent.displayName)
-    // macOS treats this as the window title; setting it twice is harmless.
-    .navigationTitle(fixedContent.displayName)
+    .inlineNavigationTitle(fixedContent.displayName)
     .searchableIfNeeded(text: $searchQuery, enabled: true)
     #if os(iOS) || os(macOS)
       .toolbar {
         #if os(macOS)
-          if fixedContent != .smartlists {
+          if fixedContent.supportsLibraryScope {
             ToolbarItem(placement: .navigation) {
               LibraryScopeMenu(
                 libraries: scopeStore.libraries,
@@ -91,7 +87,7 @@ struct ListsBrowseDetailView: View {
         #endif
         #if os(iOS)
           if PlatformHelper.isPad {
-            if fixedContent != .smartlists {
+            if fixedContent.supportsLibraryScope {
               ToolbarItem(placement: .cancellationAction) {
                 LibraryScopeMenu(
                   libraries: scopeStore.libraries,
@@ -99,7 +95,7 @@ struct ListsBrowseDetailView: View {
                   scope: menuScopeBinding)
               }
             }
-          } else if fixedContent != .smartlists {
+          } else if fixedContent.supportsLibraryScope {
             ToolbarItem(placement: .confirmationAction) {
               LibraryScopeMenu(
                 libraries: scopeStore.libraries,
@@ -115,7 +111,7 @@ struct ListsBrowseDetailView: View {
           BrowseActionsMenu(
             layoutMode: browseLayoutBinding,
             showsPresets: false,
-            isFilterEnabled: fixedContent != .smartlists,
+            isFilterEnabled: fixedContent.supportsLibraryScope,
             onShowPresets: {},
             onShowFilter: { showFilterSheet = true }
           )

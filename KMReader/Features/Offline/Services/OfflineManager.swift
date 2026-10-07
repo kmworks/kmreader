@@ -959,6 +959,18 @@ actor OfflineManager {
     }
   }
 
+  /// User explicitly opted into offline mode: drop pending dashboard
+  /// auto-refreshes, persist the manual flag (no automatic recovery), and
+  /// disconnect SSE. Reconnecting stays an explicit user action.
+  @MainActor
+  static func enterManualOfflineMode() {
+    DashboardRefreshCoordinator.shared.cancelPendingAutoRefresh(clearDeferred: true)
+    AppConfig.enterManualOfflineMode()
+    Task {
+      await SSEService.shared.disconnect(notify: false)
+    }
+  }
+
   private func performDebouncedSync(instanceId: String, restart: Bool) async {
     syncTask?.cancel()
 

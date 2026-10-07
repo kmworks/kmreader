@@ -8,6 +8,7 @@ import SwiftUI
 struct SettingsView: View {
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
+  @AppStorage("isOffline") private var isOffline: Bool = false
 
   /// iPhone has no Server tab; the current-server card and server
   /// management/account entries live in Settings instead.
@@ -132,6 +133,23 @@ struct SettingsView: View {
 
         NavigationLink(value: NavDestination.settingsLogs) {
           SettingsSectionRow(section: .logs)
+        }
+      }
+
+      Section {
+        NavigationLink(value: NavDestination.settingsReadingStats) {
+          SettingsSectionRow(section: .readingStats)
+        }
+        if !isOffline {
+          Button {
+            OfflineManager.enterManualOfflineMode()
+          } label: {
+            SettingsBadgeRow(
+              title: String(localized: "Enter Offline Mode"),
+              icon: "wifi.slash",
+              color: .orange
+            )
+          }
         }
       }
 

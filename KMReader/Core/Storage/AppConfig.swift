@@ -237,9 +237,9 @@ enum AppConfig {
     isOffline = true
   }
 
-  /// Transition to offline mode because the user explicitly opted in via the
-  /// dashboard menu. NOT eligible for automatic recovery — the user has to
-  /// explicitly tap to reconnect.
+  /// Transition to offline mode because the user explicitly opted in.
+  /// NOT eligible for automatic recovery — the user has to explicitly tap to
+  /// reconnect.
   static nonisolated func enterManualOfflineMode() {
     offlineWasAutomatic = false
     isOffline = true

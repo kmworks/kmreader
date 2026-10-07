@@ -24,6 +24,7 @@ enum SettingsSection: String, CaseIterable {
   case systemFeatures
   case network
   case logs
+  case readingStats
 
   var icon: String {
     switch self {
@@ -59,6 +60,8 @@ enum SettingsSection: String, CaseIterable {
       return "network"
     case .logs:
       return "doc.text.magnifyingglass"
+    case .readingStats:
+      return ServerSection.readingStats.icon
     }
   }
 
@@ -96,6 +99,8 @@ enum SettingsSection: String, CaseIterable {
       return .teal
     case .logs:
       return .brown
+    case .readingStats:
+      return ServerSection.readingStats.color
     }
   }
 
@@ -133,6 +138,8 @@ enum SettingsSection: String, CaseIterable {
       return String(localized: "Network")
     case .logs:
       return String(localized: "Logs")
+    case .readingStats:
+      return ServerSection.readingStats.title
     }
   }
 }

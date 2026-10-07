@@ -105,9 +105,7 @@ struct DashboardSectionDetailView: View {
       }
       .padding()
     }
-    .platformNavigationTitle(section.displayName)
-    // macOS treats this as the window title; setting it twice is harmless.
-    .navigationTitle(section.displayName)
+    .inlineNavigationTitle(section.displayName)
     .task {
       guard !hasLoadedInitial else { return }
       hasLoadedInitial = true
