@@ -14,7 +14,7 @@ struct BrowseContentTypeMenu: View {
   let counts: [BrowseContentType: Int]
 
   private func title(for type: BrowseContentType) -> String {
-    if let count = counts[type] {
+    if let count = counts[type], count > 0 {
       return String(format: "%@ (%d)", type.displayName, count)
     }
     return type.displayName
