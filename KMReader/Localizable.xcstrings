@@ -68128,61 +68128,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Serien, Bücher, Sammlungen und Leselisten suchen."
+            "value" : "Serien und Bücher suchen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Search series, books, collections, and read lists."
+            "value" : "Search series and books."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Busca series, libros, colecciones y listas de lectura."
+            "value" : "Busca series y libros."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher des séries, des livres, des collections et des listes de lecture."
+            "value" : "Rechercher des séries et des livres."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cerca serie, libri, raccolte e liste di lettura."
+            "value" : "Cerca serie e libri."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "シリーズ、書籍、コレクション、リードリストを検索します。"
+            "value" : "シリーズと書籍を検索します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "시리즈, 책, 컬렉션, 읽기 목록을 검색하세요."
+            "value" : "시리즈와 책을 검색하세요."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поиск серий, книг, коллекций и списков чтения."
+            "value" : "Поиск серий и книг."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜索系列、书籍、合集和阅读列表。"
+            "value" : "搜索系列和书籍。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜尋系列、書籍、合集和閱讀列表。"
+            "value" : "搜尋系列和書籍。"
           }
         }
       }

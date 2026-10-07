@@ -53,27 +53,18 @@ enum BrowseContentType: String, CaseIterable, Identifiable {
     }
   }
 
-  /// The content types a surface offers. Collections and read lists browse
-  /// lives on the Lists page, so only search surfaces offer them;
-  /// single-library browse never does.
-  static func offered(includesListTypes: Bool, libraryScoped: Bool) -> [BrowseContentType] {
-    guard includesListTypes, !libraryScoped else { return [.series, .books] }
-    return allCases
-  }
-
-  /// A persisted pick outside the offered set resolves to the first offered
-  /// type (e.g. a persisted collections/read lists pick on a series/books-only
-  /// surface).
+  /// Browse surfaces offer only series/books — collections and read lists
+  /// live on the Lists page — so a persisted collections/read lists pick
+  /// resolves to series.
   static func effective(
     fixed: BrowseContentType?,
-    offered: [BrowseContentType],
     persisted: BrowseContentType
   ) -> BrowseContentType {
     if let fixed {
       return fixed
     }
-    if !offered.contains(persisted), let first = offered.first {
-      return first
+    if persisted != .series, persisted != .books {
+      return .series
     }
     return persisted
   }

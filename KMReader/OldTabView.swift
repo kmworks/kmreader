@@ -40,6 +40,12 @@ struct OldTabView: View {
 
       #if os(tvOS)
         NavigationStack {
+          rootContent(for: .lists)
+        }
+        .tabItem { TabItem.lists.label }
+        .tag(TabItem.lists)
+
+        NavigationStack {
           rootContent(for: .server)
         }
         .tabItem { TabItem.server.label }
