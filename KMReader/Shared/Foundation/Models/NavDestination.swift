@@ -155,7 +155,7 @@ enum NavDestination: Hashable {
     case .server:
       ServerView(authViewModel: context.authViewModel)
     case .settings:
-      SettingsView()
+      SettingsView(authViewModel: context.authViewModel)
 
     // NOTE: library selection passed via environment
     case .browseLibrary(_):

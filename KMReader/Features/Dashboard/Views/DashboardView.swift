@@ -33,7 +33,6 @@ struct DashboardView: View {
   @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("readListContinuationEnabled") private var readListContinuationEnabled: Bool = false
 
-  private let sseService = SSEService.shared
   private let logger = AppLogger(.dashboard)
 
   private var showsEmptyLibraryGuidance: Bool {
@@ -388,23 +387,13 @@ struct DashboardView: View {
     withAnimation {
       isCheckingConnection = true
     }
-    let serverReachable = await authViewModel.loadCurrentUser()
-    let reconnected = serverReachable && AppConfig.isLoggedIn
-    if reconnected {
-      AppConfig.exitOfflineMode()
-    }
-    // If unreachable: stay in current offline mode. We deliberately do not call
-    // `enterAutoOfflineMode()` here — the user invoked the reconnect manually
-    // from a state that may have been either auto or manual, and a failed retry
-    // should preserve that classification rather than reclassifying as auto.
+    let reconnected = await authViewModel.reconnect()
     withAnimation {
       isCheckingConnection = false
     }
 
     if reconnected {
-      await sseService.connect()
-      ErrorManager.shared.notify(message: String(localized: "settings.connection_restored"))
-      await refreshDashboard(reason: "Reconnected")
+      await scopeStore.refreshMetrics(instanceId: current.instanceId)
     }
   }
 }

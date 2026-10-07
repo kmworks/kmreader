@@ -6,9 +6,13 @@
 import SwiftUI
 
 struct SettingsView: View {
+  let authViewModel: AuthViewModel
+
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
   @AppStorage("isOffline") private var isOffline: Bool = false
+
+  @State private var isCheckingConnection = false
 
   /// iPhone has no Server tab; the current-server card and server
   /// management/account entries live in Settings instead.
@@ -26,20 +30,6 @@ struct SettingsView: View {
       if showsServerSections {
         Section {
           SettingsServerCardView()
-        }
-
-        if !isOffline {
-          Section {
-            Button {
-              OfflineManager.enterManualOfflineMode()
-            } label: {
-              SettingsBadgeRow(
-                title: String(localized: "Enter Offline Mode"),
-                icon: "wifi.slash",
-                color: .orange
-              )
-            }
-          }
         }
 
         Section {
@@ -164,5 +154,35 @@ struct SettingsView: View {
     }
     .formStyle(.grouped)
     .platformNavigationTitle(String(localized: "title.settings"))
+    #if os(iOS)
+      .toolbar {
+        if !PlatformHelper.isPad {
+          ToolbarItem(placement: .confirmationAction) {
+            Button {
+              if isOffline {
+                Task {
+                  await reconnect()
+                }
+              } else {
+                OfflineManager.enterManualOfflineMode()
+              }
+            } label: {
+              if isCheckingConnection {
+                LoadingIcon()
+              } else {
+                Image(systemName: isOffline ? "wifi" : "wifi.slash")
+              }
+            }
+            .disabled(isCheckingConnection)
+          }
+        }
+      }
+    #endif
+  }
+
+  private func reconnect() async {
+    isCheckingConnection = true
+    _ = await authViewModel.reconnect()
+    isCheckingConnection = false
   }
 }
