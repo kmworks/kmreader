@@ -28,11 +28,11 @@ extension View {
   /// must sit under the page's `.inline` pin or the item is dropped), the
   /// bar background and the top scroll-edge blur stay hidden even when
   /// content scrolls under them, so only the floating buttons remain.
-  /// No-op on iPad and before iOS 26, where the title item is not shown.
+  /// No-op before iOS 26 and outside iOS, where the title item is not shown.
   @ViewBuilder
   func inlineLargeBarTitleStyle(enabled: Bool = true) -> some View {
     #if os(iOS)
-      if enabled, #available(iOS 26.0, *), !PlatformHelper.isPad {
+      if enabled, #available(iOS 26.0, *) {
         self
           .toolbarTitleDisplayMode(.inlineLarge)
           .toolbarBackgroundVisibility(.hidden, for: .navigationBar)

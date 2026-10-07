@@ -205,7 +205,7 @@ struct DashboardView: View {
         }
       }
     }
-    .inlineLargeBarTitleStyle()
+    .inlineLargeBarTitleStyle(enabled: !PlatformHelper.isPad)
     .platformNavigationTitle(String(localized: "title.dashboard"))
     .overlay {
       // The dashboard stays mounted underneath, so cancelling a search never

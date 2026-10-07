@@ -106,6 +106,11 @@ struct DashboardSectionDetailView: View {
       .padding()
     }
     .platformNavigationTitle(section.displayName)
+    #if os(iOS)
+      // Pushed pages get the small inline system title; the inline-large bar
+      // title overlaps the Dashboard's own during the push transition.
+      .navigationTitle(section.displayName)
+    #endif
     .task {
       guard !hasLoadedInitial else { return }
       hasLoadedInitial = true

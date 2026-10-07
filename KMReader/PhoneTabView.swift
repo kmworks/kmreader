@@ -48,25 +48,25 @@ import SwiftUI
     private var tabContent: some View {
       TabView(selection: $selectedTab) {
         Tab(TabItem.home.title, systemImage: TabItem.home.icon, value: TabItem.home) {
-          NavigationStack(path: $homePath) {
+          PushableNavigationStack(path: $homePath) {
             rootContent(for: .home)
           }
         }
 
         Tab(TabItem.library.title, systemImage: TabItem.library.icon, value: TabItem.library) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .library)
           }
         }
 
         Tab(TabItem.lists.title, systemImage: TabItem.lists.icon, value: TabItem.lists) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .lists)
           }
         }
 
         Tab(TabItem.offline.title, systemImage: TabItem.offline.icon, value: TabItem.offline) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .offline)
           }
         }
@@ -75,7 +75,7 @@ import SwiftUI
           TabItem.browse.title, systemImage: TabItem.browse.icon, value: TabItem.browse,
           role: .search
         ) {
-          NavigationStack {
+          PushableNavigationStack {
             rootContent(for: .browse)
           }
         }

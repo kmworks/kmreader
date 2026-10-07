@@ -132,19 +132,19 @@ enum NavDestination: Hashable {
         focusesSearchOnAppear: true
       )
     case .browseCollections(let scope):
-      BrowseView(
+      ListsBrowseDetailView(
         authViewModel: context.authViewModel,
         fixedContent: .collections,
         initialScope: scope
       )
     case .browseReadLists(let scope):
-      BrowseView(
+      ListsBrowseDetailView(
         authViewModel: context.authViewModel,
         fixedContent: .readlists,
         initialScope: scope
       )
     case .browseSmartLists:
-      BrowseView(
+      ListsBrowseDetailView(
         authViewModel: context.authViewModel,
         fixedContent: .smartlists
       )

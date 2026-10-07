@@ -131,7 +131,9 @@ struct BrowseView: View {
       scopeLibraries: scopeStore.libraries,
       allLibrariesEntry: scopeStore.allLibrariesEntry
     )
-    .inlineLargeBarTitleStyle(enabled: libraryTab || searchOnly)
+    .inlineLargeBarTitleStyle(
+      enabled: (libraryTab || searchOnly) && !PlatformHelper.isPad
+    )
     .platformNavigationTitle(title)
     .searchableIfNeeded(text: $searchQuery, enabled: !libraryTab)
     .browseSearchFocus($isSearchFocused, when: focusesSearchOnAppear)

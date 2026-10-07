@@ -17,6 +17,8 @@ struct DashboardSectionLayout<Content: View>: View {
   let itemIds: [String]
   @ViewBuilder let content: () -> Content
 
+  @Environment(\.pushNavDestination) private var pushNavDestination
+
   @AppStorage("showDashboardSectionGradientBackground")
   private var showGradientBackground: Bool =
     AppConfig.showDashboardSectionGradientBackground
@@ -97,6 +99,9 @@ struct DashboardSectionLayout<Content: View>: View {
           }
           .contentMargins(.horizontal, LayoutConfig.defaultSpacing, for: .scrollContent)
           .scrollClipDisabled()
+          .trailingOverscrollTrigger {
+            pushNavDestination(destination)
+          }
           #if os(macOS)
             .macHorizontalScrollButtons(
               scrollProxy: proxy,

@@ -174,7 +174,7 @@ struct OfflineView: View {
       }
       .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { shortcutsWidth = $0 }
     }
-    .inlineLargeBarTitleStyle(enabled: librarySelection == nil)
+    .inlineLargeBarTitleStyle(enabled: librarySelection == nil && !PlatformHelper.isPad)
     .platformNavigationTitle(title)
     .searchable(text: $searchQuery, placement: searchPlacement)
     #if os(iOS) || os(macOS)

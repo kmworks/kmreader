@@ -10,6 +10,11 @@ import SwiftUI
 /// pages the section headers link to. The library scope filters the
 /// collections/read lists strips; smart lists have no library filter, and
 /// their strip hides on Komga servers (no smart-list API) and offline.
+///
+/// The view models live here, but the strip content that reads them is
+/// `ListsBrowseContentView`: an active refresh action is cancelled as soon
+/// as the view carrying `.refreshable` re-renders, so this body's only job is
+/// chrome (toolbar/sheets) plus the awaited `reloadAll()`.
 struct ListsBrowseView: View {
   let authViewModel: AuthViewModel
 
@@ -48,76 +53,15 @@ struct ListsBrowseView: View {
     Binding(get: { effectiveScope }, set: { browseScope = $0 })
   }
 
-  private var isCompletelyEmpty: Bool {
-    initialLoadDone
-      && !collectionsViewModel.isLoading && !readListsViewModel.isLoading
-      && !smartListsViewModel.isLoading
-      && collectionsViewModel.pagination.isEmpty && readListsViewModel.pagination.isEmpty
-      && smartListsViewModel.smartLists.isEmpty
-  }
-
   var body: some View {
-    ScrollView {
-      if !initialLoadDone {
-        ProgressView()
-          .frame(maxWidth: .infinity, minHeight: 320)
-      } else if isCompletelyEmpty {
-        ContentUnavailableView {
-          Label(
-            String(localized: "tab.lists", defaultValue: "Lists"), systemImage: ContentIcon.lists)
-        } description: {
-          Text(LocalizedStringKey("Try selecting a different library."))
-        }
-        .frame(maxWidth: .infinity, minHeight: 320)
-      } else {
-        VStack(spacing: 0) {
-          section(
-            title: BrowseContentType.collections.displayName,
-            destination: .browseCollections(scope: effectiveScope),
-            isEmpty: collectionsViewModel.pagination.isEmpty
-          ) {
-            ForEach(collectionsViewModel.pagination.items) { item in
-              CollectionQueryItemView(
-                collectionId: item.id,
-                onItemMissing: {
-                  collectionsViewModel.removeCollection(id: item.id)
-                }
-              )
-              .id(item.id)
-              .frame(width: LayoutConfig.gridCardWidth)
-            }
-          }
-          section(
-            title: BrowseContentType.readlists.displayName,
-            destination: .browseReadLists(scope: effectiveScope),
-            isEmpty: readListsViewModel.pagination.isEmpty
-          ) {
-            ForEach(readListsViewModel.pagination.items) { item in
-              ReadListQueryItemView(
-                readListId: item.id,
-                onItemMissing: {
-                  readListsViewModel.removeReadList(id: item.id)
-                }
-              )
-              .id(item.id)
-              .frame(width: LayoutConfig.gridCardWidth)
-            }
-          }
-          section(
-            title: BrowseContentType.smartlists.displayName,
-            destination: .browseSmartLists,
-            isEmpty: !smartListsViewModel.isSupported || smartListsViewModel.smartLists.isEmpty
-          ) {
-            ForEach(smartListsViewModel.smartLists.prefix(20)) { smartList in
-              SmartListCardView(smartList: smartList)
-                .id(smartList.id)
-                .frame(width: LayoutConfig.gridCardWidth)
-            }
-          }
-        }
-      }
-    }
-    .inlineLargeBarTitleStyle()
+    ListsBrowseContentView(
+      collectionsViewModel: collectionsViewModel,
+      readListsViewModel: readListsViewModel,
+      smartListsViewModel: smartListsViewModel,
+      initialLoadDone: initialLoadDone,
+      effectiveScope: effectiveScope
+    )
+    .inlineLargeBarTitleStyle(enabled: !PlatformHelper.isPad)
     .platformNavigationTitle(String(localized: "tab.lists", defaultValue: "Lists"))
     .refreshableWithMinimumHold {
       await reloadAll()
@@ -227,43 +171,6 @@ struct ListsBrowseView: View {
       // the full set, which All already represents.
       guard pinnedIds.isEmpty, browseScope == .pinned else { return }
       browseScope = .all
-    }
-  }
-
-  @ViewBuilder
-  private func section<Content: View>(
-    title: String,
-    destination: NavDestination,
-    isEmpty: Bool,
-    @ViewBuilder content: () -> Content
-  ) -> some View {
-    if !isEmpty {
-      VStack(alignment: .leading, spacing: 0) {
-        NavigationLink(value: destination) {
-          HStack {
-            Text(title)
-              .font(.title2)
-              .bold()
-              .fontDesign(.serif)
-            Image(systemName: "chevron.right")
-              .foregroundStyle(.secondary)
-          }
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal)
-        .padding(.top, LayoutConfig.dashboardSectionTopPadding)
-
-        ScrollView(.horizontal, showsIndicators: false) {
-          LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
-            content()
-          }
-          .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-          .padding(.bottom, LayoutConfig.dashboardSectionBottomPadding(gradientBackground: false))
-        }
-        .contentMargins(.horizontal, LayoutConfig.defaultSpacing, for: .scrollContent)
-        .scrollClipDisabled()
-      }
     }
   }
 
