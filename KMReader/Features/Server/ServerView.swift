@@ -21,13 +21,9 @@ struct ServerView: View {
           Button {
             OfflineManager.enterManualOfflineMode()
           } label: {
-            ServerActionTile(
-              title: String(localized: "Enter Offline Mode"),
-              systemImage: "wifi.slash",
-              color: .orange
-            )
+            Label(String(localized: "Enter Offline Mode"), systemImage: "wifi.slash")
           }
-          .adaptiveButtonStyle(.plain)
+          .adaptiveButtonStyle(.bordered)
         }
         if current.isAdmin {
           managementSection
