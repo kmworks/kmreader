@@ -30,8 +30,14 @@ struct SettingsView: View {
 
         if !isOffline {
           Section {
-            Button(String(localized: "Enter Offline Mode")) {
+            Button {
               OfflineManager.enterManualOfflineMode()
+            } label: {
+              SettingsBadgeRow(
+                title: String(localized: "Enter Offline Mode"),
+                icon: "wifi.slash",
+                color: .orange
+              )
             }
           }
         }
