@@ -46,7 +46,12 @@ struct DetailHeroView<Info: View>: View {
   var body: some View {
     if isCentered {
       VStack(spacing: 16) {
-        DetailCoverView(id: id, type: type, contentBlurRadius: contentBlurRadius, width: 180)
+        DetailCoverView(
+          id: id,
+          type: type,
+          contentBlurRadius: contentBlurRadius,
+          width: LayoutConfig.detailHeroCoverWidth
+        )
         info
           .frame(maxWidth: .infinity)
       }

@@ -30,14 +30,20 @@ final class ThumbnailMemoryCache {
   private let cache = NSCache<NSString, Entry>()
 
   private init() {
-    // Covers are ~240KB decoded (≤300px); 512 of them ≈ 120MB, inside the
-    // 128MB cost budget, which stays the binding constraint for larger covers.
+    // The byte budget binds first: a decoded cover runs ~240KB at ≤300px and
+    // ~1.3MB at the iPad downsample cap, so the 512-count limit only comes
+    // into play for small-cover servers.
     cache.countLimit = 512
     cache.totalCostLimit = 128 * 1024 * 1024
   }
 
-  static nonisolated func key(id: String, type: ThumbnailType, page: Int? = nil) -> String {
-    let base = "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)"
+  static nonisolated func key(id: String, type: ThumbnailType, page: Int? = nil, centerCropped: Bool)
+    -> String
+  {
+    // The decode size depends on the display mode; keying on it makes a mode
+    // switch miss and re-decode instead of serving the other mode's size.
+    let mode = centerCropped ? "crop" : "fit"
+    let base = "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)#\(mode)"
     return page != nil ? "\(base)#\(page!)" : base
   }
 

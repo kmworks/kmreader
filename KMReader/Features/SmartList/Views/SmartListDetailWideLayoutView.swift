@@ -13,7 +13,7 @@ struct SmartListDetailWideLayoutView: View {
   let availableWidth: CGFloat
 
   /// Cover stays narrower than the rail instead of filling it edge to edge.
-  private let coverWidth: CGFloat = 240
+  private let coverWidth: CGFloat = LayoutConfig.detailWideCoverWidth
 
   var body: some View {
     DetailWideLayoutView(availableWidth: availableWidth) { _ in

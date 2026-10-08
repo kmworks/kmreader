@@ -233,9 +233,13 @@ actor ThumbnailCache {
       }
 
       if force {
-        let memoryKey = ThumbnailMemoryCache.key(id: id, type: type, page: page)
-        imageTasks[memoryKey] = nil
-        await ThumbnailMemoryCache.shared.remove(forKey: memoryKey)
+        // Decodes exist per display mode; drop both.
+        for centerCropped in [true, false] {
+          let memoryKey = ThumbnailMemoryCache.key(
+            id: id, type: type, page: page, centerCropped: centerCropped)
+          imageTasks[memoryKey] = nil
+          await ThumbnailMemoryCache.shared.remove(forKey: memoryKey)
+        }
       }
 
       return fileURL
@@ -284,13 +288,17 @@ actor ThumbnailCache {
   /// The memory tier holds covers only: page thumbnails stream through jump
   /// sheets by the hundreds and would churn the cover cache out.
   func image(id: String, type: ThumbnailType, page: Int? = nil) async -> PlatformImage? {
-    let memoryKey = type != .page ? ThumbnailMemoryCache.key(id: id, type: type, page: page) : nil
+    let centerCropped = Self.centerCroppedCovers
+    let memoryKey =
+      type != .page
+      ? ThumbnailMemoryCache.key(id: id, type: type, page: page, centerCropped: centerCropped)
+      : nil
     if let memoryKey, let cached = await ThumbnailMemoryCache.shared.image(forKey: memoryKey) {
       return cached
     }
     // Page thumbnails skip the memory tier, so they never join here either.
     guard let memoryKey else {
-      return await loadImage(id: id, type: type, page: page)
+      return await loadImage(id: id, type: type, page: page, centerCropped: centerCropped)
     }
     // Cover loads join one in-flight task: cells recreated while a load is
     // running share it instead of decoding twice, and their cancellation
@@ -300,7 +308,8 @@ actor ThumbnailCache {
     }
     let taskID = UUID()
     let task = Task<PlatformImage?, Never> {
-      let decoded = await self.loadImage(id: id, type: type, page: page)
+      let decoded = await self.loadImage(
+        id: id, type: type, page: page, centerCropped: centerCropped)
       // A force refresh or cache clear drops the registration; without the
       // check the stale decode would be written back over the fresh state.
       if let decoded, self.imageTasks[memoryKey]?.id == taskID {
@@ -314,16 +323,26 @@ actor ThumbnailCache {
     return loaded
   }
 
-  private func loadImage(id: String, type: ThumbnailType, page: Int?) async -> PlatformImage? {
+  /// Covers render center-cropped when preserve-aspect is off, and on grid
+  /// cards regardless of it in text-overlay mode. The decode target and the
+  /// memory keys follow this, so a mode switch re-decodes instead of serving
+  /// the other mode's size.
+  static nonisolated var centerCroppedCovers: Bool {
+    !AppConfig.thumbnailPreserveAspectRatio || AppConfig.cardTextOverlayMode
+  }
+
+  private func loadImage(
+    id: String, type: ThumbnailType, page: Int?, centerCropped: Bool
+  ) async -> PlatformImage? {
     guard let url = try? await ensureThumbnail(id: id, type: type, page: page) else {
       return nil
     }
-    let maxPixelSize = await ImageDecodeHelper.maxCoverPixelDimension
+    let widthPixels = await ImageDecodeHelper.maxCoverWidthPixels
     return await Task.detached(priority: .userInitiated) {
       // Downsample oversized covers (e.g. 1200px XLARGE Komga thumbnails) to the
-      // device display cap; smaller covers take the normal full-decode path.
+      // device display requirement; smaller covers take the normal full-decode path.
       if let downsampled = await ImageDecodeHelper.decodeDownsampledIfNeeded(
-        at: url, maxPixelSize: maxPixelSize
+        at: url, widthPixels: widthPixels, centerCropped: centerCropped
       ) {
         return downsampled
       }
@@ -334,7 +353,9 @@ actor ThumbnailCache {
 
   /// Synchronous memory-tier lookup for view initializers; never touches disk.
   @MainActor static func cachedImage(id: String, type: ThumbnailType) -> PlatformImage? {
-    ThumbnailMemoryCache.shared.image(forKey: ThumbnailMemoryCache.key(id: id, type: type))
+    ThumbnailMemoryCache.shared.image(
+      forKey: ThumbnailMemoryCache.key(
+        id: id, type: type, centerCropped: centerCroppedCovers))
   }
 
   private func shouldRetryStandardDownload(

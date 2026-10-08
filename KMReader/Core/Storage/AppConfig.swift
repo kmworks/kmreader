@@ -605,6 +605,18 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var cardTextOverlayMode: Bool {
+    get {
+      if UserDefaults.standard.object(forKey: "cardTextOverlayMode") != nil {
+        return UserDefaults.standard.bool(forKey: "cardTextOverlayMode")
+      }
+      return false
+    }
+    set {
+      UserDefaults.standard.set(newValue, forKey: "cardTextOverlayMode")
+    }
+  }
+
   static nonisolated var privacyProtection: Bool {
     get {
       UserDefaults.standard.bool(forKey: "privacyProtection")
