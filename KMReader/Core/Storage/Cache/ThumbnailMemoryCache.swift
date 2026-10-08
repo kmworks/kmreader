@@ -30,8 +30,9 @@ final class ThumbnailMemoryCache {
   private let cache = NSCache<NSString, Entry>()
 
   private init() {
-    // Covers are ~240KB decoded (≤300px); 512 of them ≈ 120MB, inside the
-    // 128MB cost budget, which stays the binding constraint for larger covers.
+    // The byte budget binds first: a decoded cover runs ~240KB at ≤300px and
+    // ~1.3MB at the iPad downsample cap, so the 512-count limit only comes
+    // into play for small-cover servers.
     cache.countLimit = 512
     cache.totalCostLimit = 128 * 1024 * 1024
   }
