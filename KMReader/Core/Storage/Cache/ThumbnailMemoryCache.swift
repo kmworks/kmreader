@@ -37,8 +37,13 @@ final class ThumbnailMemoryCache {
     cache.totalCostLimit = 128 * 1024 * 1024
   }
 
-  static nonisolated func key(id: String, type: ThumbnailType, page: Int? = nil) -> String {
-    let base = "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)"
+  static nonisolated func key(id: String, type: ThumbnailType, page: Int? = nil, centerCropped: Bool)
+    -> String
+  {
+    // The decode size depends on the display mode; keying on it makes a mode
+    // switch miss and re-decode instead of serving the other mode's size.
+    let mode = centerCropped ? "crop" : "fit"
+    let base = "\(CacheNamespace.identifier())#\(type.rawValue)#\(id)#\(mode)"
     return page != nil ? "\(base)#\(page!)" : base
   }
 

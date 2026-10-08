@@ -76,17 +76,20 @@ struct ImageDecodeHelper {
 
   /// Decodes the image at `url`, downsampling via ImageIO when the source
   /// exceeds the display requirement (aspect preserved).
-  /// The requirement compares the source aspect with the √2 cover frame: a
-  /// cover taller than the frame binds on the frame width (`widthPixels`),
-  /// a squatter one on the frame height (`widthPixels`·√2) — center-crop
-  /// fills the frame and cuts its sides. ImageIO only accepts a long-edge
-  /// maximum, so the satisfying scale is applied to the long edge.
+  /// The requirement compares the source aspect with the √2 cover frame and
+  /// follows the display mode: center-crop fills the frame (a taller cover
+  /// binds its width `widthPixels`, a squatter one its height
+  /// `widthPixels`·√2); fit shows the whole cover inside the frame, swapping
+  /// the binding axis. ImageIO only accepts a long-edge maximum, so the
+  /// satisfying scale is applied to the long edge.
   /// - Returns: the downsampled image, or nil when the source is already
   ///   below the requirement (the caller should take the normal decode
   ///   path) or when the image can't be read.
   /// - Note: The dimension probe reads image headers only; no decode happens
   ///   unless downsampling is actually needed.
-  nonisolated static func decodeDownsampledIfNeeded(at url: URL, widthPixels: CGFloat) async
+  nonisolated static func decodeDownsampledIfNeeded(
+    at url: URL, widthPixels: CGFloat, centerCropped: Bool
+  ) async
     -> PlatformImage?
   {
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
@@ -105,11 +108,14 @@ struct ImageDecodeHelper {
 
     let frameAspect = Double(CoverAspectRatio.heightToWidth)
     let target = Double(widthPixels)
-    // Taller than the frame: width binds. Squatter: frame height binds.
+    // Fit keeps the whole cover inside the frame: a tall cover is capped by
+    // the frame height, a squat one by the width. Center-crop fills the
+    // frame instead, swapping the binding axis.
+    let bindsHeight = (displayHeight / displayWidth >= frameAspect) != centerCropped
     let scale =
-      displayHeight / displayWidth >= frameAspect
-      ? target / displayWidth
-      : target * frameAspect / displayHeight
+      bindsHeight
+      ? target * frameAspect / displayHeight
+      : target / displayWidth
     guard scale < 1 else { return nil }
 
     let maxPixelSize = scale * max(displayWidth, displayHeight)
