@@ -54,4 +54,55 @@ struct ImageDecodeHelper {
       return image
     #endif
   }
+
+  /// Max pixel dimension (long edge) for decoded covers.
+  /// Targets 2x residual GPU minification on the smallest grid cards. Larger
+  /// surfaces may upscale because one decoded cover is shared across sizes.
+  @MainActor
+  static var maxCoverPixelDimension: CGFloat {
+    #if os(iOS)
+      let displayScale: CGFloat = PlatformHelper.isPad ? 2 : 3
+    #else
+      let displayScale: CGFloat = 2
+    #endif
+    return 2 * LayoutConfig.gridCardWidth * displayScale
+  }
+
+  /// Decodes the image at `url`, downsampling to `maxPixelSize` (long edge,
+  /// aspect preserved) via ImageIO when the source exceeds the cap.
+  /// - Returns: the downsampled image, or nil when the source is already at or
+  ///   below the cap (the caller should take the normal decode path) or when
+  ///   the image can't be read.
+  /// - Note: The dimension probe reads image headers only; no decode happens
+  ///   unless downsampling is actually needed.
+  nonisolated static func decodeDownsampledIfNeeded(at url: URL, maxPixelSize: CGFloat) async
+    -> PlatformImage?
+  {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    guard
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+      let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
+      width > 0, height > 0
+    else { return nil }
+    guard max(width, height) > Double(maxPixelSize) else { return nil }
+
+    let options: CFDictionary =
+      [
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        kCGImageSourceShouldCache: false,
+        kCGImageSourceCreateThumbnailWithTransform: true,
+        kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+      ] as CFDictionary
+    guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
+
+    #if os(iOS) || os(tvOS)
+      let image = UIImage(cgImage: cgImage)
+      return await image.byPreparingForDisplay() ?? image
+    #elseif os(macOS)
+      return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+    #else
+      return nil
+    #endif
+  }
 }
