@@ -55,25 +55,17 @@ struct ImageDecodeHelper {
     #endif
   }
 
-  /// Max pixel dimension (long edge) for decoded covers, per platform.
-  /// Covers are decoded once and shared across display sizes, so the cap is
-  /// derived from the grid — where moiré was observed — targeting k2 ≈ 2 for
-  /// the GPU bilinear stage (at ≤2x minification every source texel is sampled
-  /// at least once; beyond that texels get skipped and aliasing starts).
-  /// Since k2 = cap / (pt × screen scale), the cap scales with pixel density:
-  /// - tvOS: 2 × 190pt × 2x = 760 (the 365pt showcase needs 730px, so no upscale)
-  /// - iOS: 2 × 108pt × 3x = 650 (iPhone grid lands right on the line)
-  /// - macOS: 2 × 104pt × 2x = 450
-  /// Detail/hero images upscale at most ~1.1x, which never moirés. Covers at or
-  /// below the cap skip downsampling entirely via the header-only probe.
-  nonisolated static var maxCoverPixelDimension: CGFloat {
-    #if os(tvOS)
-      return 760
-    #elseif os(macOS)
-      return 450
+  /// Max pixel dimension (long edge) for decoded covers.
+  /// Targets 2x residual GPU minification on the smallest grid cards. Larger
+  /// surfaces may upscale because one decoded cover is shared across sizes.
+  @MainActor
+  static var maxCoverPixelDimension: CGFloat {
+    #if os(iOS)
+      let displayScale: CGFloat = PlatformHelper.isPad ? 2 : 3
     #else
-      return 650
+      let displayScale: CGFloat = 2
     #endif
+    return 2 * LayoutConfig.gridCardWidth * displayScale
   }
 
   /// Decodes the image at `url`, downsampling to `maxPixelSize` (long edge,
@@ -95,12 +87,13 @@ struct ImageDecodeHelper {
     else { return nil }
     guard max(width, height) > Double(maxPixelSize) else { return nil }
 
-    let options: CFDictionary = [
-      kCGImageSourceCreateThumbnailFromImageAlways: true,
-      kCGImageSourceShouldCache: false,
-      kCGImageSourceCreateThumbnailWithTransform: true,
-      kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
-    ] as CFDictionary
+    let options: CFDictionary =
+      [
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        kCGImageSourceShouldCache: false,
+        kCGImageSourceCreateThumbnailWithTransform: true,
+        kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+      ] as CFDictionary
     guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
 
     #if os(iOS) || os(tvOS)
