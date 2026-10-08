@@ -318,12 +318,12 @@ actor ThumbnailCache {
     guard let url = try? await ensureThumbnail(id: id, type: type, page: page) else {
       return nil
     }
-    let maxPixelSize = await ImageDecodeHelper.maxCoverPixelDimension
+    let widthPixels = await ImageDecodeHelper.maxCoverWidthPixels
     return await Task.detached(priority: .userInitiated) {
       // Downsample oversized covers (e.g. 1200px XLARGE Komga thumbnails) to the
-      // device display cap; smaller covers take the normal full-decode path.
+      // device display requirement; smaller covers take the normal full-decode path.
       if let downsampled = await ImageDecodeHelper.decodeDownsampledIfNeeded(
-        at: url, maxPixelSize: maxPixelSize
+        at: url, widthPixels: widthPixels
       ) {
         return downsampled
       }

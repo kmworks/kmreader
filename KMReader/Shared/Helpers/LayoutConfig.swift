@@ -20,6 +20,15 @@ struct LayoutConfig {
   /// the two-column layout).
   static let detailWideLayoutMinimumWidth: CGFloat = 960
 
+  /// Cover width of the centered detail hero on narrow layouts; the largest
+  /// fixed cover surface on iPhone.
+  static let detailHeroCoverWidth: CGFloat = 180
+
+  /// Cover width of the wide detail layout's rail (series/read
+  /// list/collection/smart list); the largest fixed cover surface on
+  /// iPad/macOS.
+  static let detailWideCoverWidth: CGFloat = 240
+
   /// Neutral fill for quiet chips, capsules, and row backgrounds (detail-page
   /// chips, action cards, membership rows, count badges).
   static var neutralFillColor: Color {

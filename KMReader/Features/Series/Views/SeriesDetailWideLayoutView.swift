@@ -23,7 +23,7 @@ struct SeriesDetailWideLayoutView<Actions: View>: View {
   @AppStorage("thumbnailBlurUnreadCovers") private var thumbnailBlurUnreadCovers: Bool = false
 
   /// Cover stays narrower than the rail instead of filling it edge to edge.
-  private let coverWidth: CGFloat = 240
+  private let coverWidth: CGFloat = LayoutConfig.detailWideCoverWidth
 
   /// Action card caps its width inside the rail, like the cover.
   private let cardWidthCap: CGFloat = 400
