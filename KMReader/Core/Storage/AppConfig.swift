@@ -82,7 +82,7 @@ enum AppConfig {
     set { UserDefaults.standard.set(newValue, forKey: "userAgent") }
   }
 
-  // UserDefaults key keeps the pre-solo name.
+  // Renaming the key would silently reset existing users' preference.
   static nonisolated var soloCoverPage: Bool {
     get {
       if UserDefaults.standard.object(forKey: "isolateCoverPage") != nil {
@@ -171,7 +171,7 @@ enum AppConfig {
     set { UserDefaults.standard.set(newValue.rawValue, forKey: "pdfPagePresentation") }
   }
 
-  // UserDefaults key keeps the pre-solo name.
+  // Renaming the key would silently reset existing users' preference.
   static nonisolated var pdfSoloCoverPage: Bool {
     get {
       if UserDefaults.standard.object(forKey: "pdfIsolateCoverPage") != nil {

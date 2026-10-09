@@ -77084,18 +77084,18 @@
         }
       }
     },
-    "Show a context menu on page images for quick actions like share or solo page. On iOS, Live Text keeps the long-press gesture while it is enabled." : {
+    "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt auf Seitenbildern ein Kontextmenü für Schnellaktionen wie Teilen oder Seite solo anzeigen an. Auf iOS bleibt die Geste für langes Drücken bei aktiviertem Live Text reserviert."
+            "value" : "Zeigt auf Seitenbildern ein Kontextmenü für Schnellaktionen wie Teilen oder die Solo-Anzeige einer Seite an. Auf iOS bleibt die Geste für langes Drücken bei aktiviertem Live Text reserviert."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show a context menu on page images for quick actions like share or solo page. On iOS, Live Text keeps the long-press gesture while it is enabled."
+            "value" : "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled."
           }
         },
         "es" : {
@@ -77131,7 +77131,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывает контекстное меню на изображениях страниц для быстрых действий, таких как отправка или показ страницы отдельно. На iOS при включенном Live Text жест долгого нажатия остается за Live Text."
+            "value" : "Показывает контекстное меню на изображениях страниц для быстрых действий, таких как отправка или отдельный показ страницы. На iOS при включенном Live Text жест долгого нажатия остается за Live Text."
           }
         },
         "zh-Hans" : {

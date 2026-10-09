@@ -470,7 +470,7 @@ struct DivinaPreferencesView: View {
             VStack(alignment: .leading, spacing: 4) {
               Text("Enable Image Context Menu")
               Text(
-                "Show a context menu on page images for quick actions like share or solo page. On iOS, Live Text keeps the long-press gesture while it is enabled."
+                "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled."
               )
               .font(.caption)
               .foregroundColor(.secondary)
