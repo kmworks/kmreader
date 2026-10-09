@@ -737,6 +737,13 @@ final class ReaderPageLoadScheduler {
       return cachedUpscaledURL
     }
 
+    // A fresh @2x whose short edge exceeds the decode budget decodes straight
+    // back down to it, so the model run would be wasted.
+    if min(sourcePixelSize.width, sourcePixelSize.height) * 2 > pageShortEdgeCapPixels {
+      logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): @2x output exceeds the decode budget")
+      return sourceFileURL
+    }
+
     if let existingTask = upscalingTasks[pageID] {
       logger.debug("⏳ [Upscale] Await running upscale task for page \(page.number + 1)")
       if let cachedURL = await existingTask.task.value {
@@ -837,6 +844,11 @@ final class ReaderPageLoadScheduler {
       return nil
     }
 
+    // Compare with the screen in display orientation: EXIF 5–8 swap the axes.
+    let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+    if (5...8).contains(orientation) {
+      return CGSize(width: pixelHeight, height: pixelWidth)
+    }
     return CGSize(width: pixelWidth, height: pixelHeight)
   }
 

@@ -658,7 +658,7 @@
             await viewModel?.originalPageImage(for: pageID)
             ?? viewModel?.preloadedImage(for: pageID) ?? imageView.image
           guard let image else { return }
-          ImageShareHelper.share(image: image, fileName: viewModel?.page(for: pageID)?.fileName)
+          await ImageShareHelper.share(image: image, fileName: viewModel?.page(for: pageID)?.fileName)
         }
       }
 

@@ -158,7 +158,7 @@ struct PageJumpSheetView: View {
       guard let fileURL = await viewModel.getPageImageFileURL(pageID: preview.pageID) else { return }
       guard let image = PlatformImage(contentsOfFile: fileURL.path) else { return }
 
-      ImageShareHelper.shareMultiple(images: [image], fileNames: [readerPage.page.fileName])
+      await ImageShareHelper.shareMultiple(images: [image], fileNames: [readerPage.page.fileName])
     }
   #endif
 

@@ -131,12 +131,21 @@ func webtoonProbePixelSize(at fileURL: URL) -> CGSize? {
     return nil
   }
 
+  // Layout must match the displayed bitmap: EXIF 5–8 swap the axes.
+  let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+  if (5...8).contains(orientation) {
+    return CGSize(width: pixelHeight, height: pixelWidth)
+  }
   return CGSize(width: pixelWidth, height: pixelHeight)
 }
 
 func webtoonPixelSize(from image: PlatformImage) -> CGSize? {
   #if os(iOS) || os(tvOS)
     if let cgImage = image.cgImage {
+      // cgImage dims are raw; the ±90° orientations swap the display axes.
+      if [.left, .right, .leftMirrored, .rightMirrored].contains(image.imageOrientation) {
+        return CGSize(width: cgImage.height, height: cgImage.width)
+      }
       return CGSize(width: cgImage.width, height: cgImage.height)
     }
     if let ciImage = image.ciImage {
