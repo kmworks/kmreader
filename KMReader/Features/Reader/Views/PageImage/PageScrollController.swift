@@ -121,8 +121,10 @@
     /// Pans the whole spread to `edge` for a navigation command.
     func panSpread(to edge: ReaderSpreadEdge, animated: Bool) {
       guard wholeSpread != nil, scrollView.isAtBaseZoom else { return }
-      restingEdge = edge
+      // A pan that cuts a glide short settles the spread where it is first,
+      // so the edge is taken once the pan has started.
       scrollView.panSpread(to: edge, animated: animated)
+      restingEdge = edge
       reportPosition()
     }
 
@@ -135,11 +137,12 @@
     /// Reports where the whole spread rests while the host shows the
     /// committed page.
     func reportPosition() {
+      report(restingEdges: scrollView.restingSpreadEdges)
+    }
+
+    private func report(restingEdges: Set<ReaderSpreadEdge>) {
       guard let wholeSpread, let viewModel, host?.showsCommittedPage == true else { return }
-      viewModel.recordWholeSpreadPosition(
-        pageID: wholeSpread.pageID,
-        restingEdges: scrollView.restingSpreadEdges
-      )
+      viewModel.recordWholeSpreadPosition(pageID: wholeSpread.pageID, restingEdges: restingEdges)
     }
 
     private func spreadImageSize() -> CGSize? {
@@ -172,6 +175,22 @@
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
       self.scrollView.clearPendingSpreadPan()
+      // Under a finger and while it glides, the spread rests at no edge, so a
+      // step taken meanwhile pans to the edge it leaves through instead of
+      // turning the page from where the spread last rested.
+      if self.scrollView.isPanningSpread {
+        report(restingEdges: [])
+      }
+    }
+
+    func scrollViewWillEndDragging(
+      _ scrollView: UIScrollView,
+      withVelocity velocity: CGPoint,
+      targetContentOffset: UnsafeMutablePointer<CGPoint>
+    ) {
+      targetContentOffset.pointee.x = self.scrollView.spreadRestingOffset(
+        forTarget: targetContentOffset.pointee.x
+      )
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {

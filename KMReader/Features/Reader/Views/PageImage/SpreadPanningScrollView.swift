@@ -20,6 +20,16 @@
     private var pendingSpreadEdge: ReaderSpreadEdge?
 
     private static let edgeTolerance: CGFloat = 1
+    // A pan that would stop this close to an edge looks like it rests there,
+    // so it settles on the edge and behaves like it.
+    private static let edgeSnapDistance: CGFloat = 12
+
+    /// Whether `recognizer` is the pan of a page host's scroll view. Tap zones
+    /// wait for it to fail: a touch that catches a gliding page begins it at
+    /// once, so that tap only stops the glide.
+    static func isPagePan(_ recognizer: UIGestureRecognizer) -> Bool {
+      (recognizer.view as? SpreadPanningScrollView)?.panGestureRecognizer === recognizer
+    }
 
     var isAtBaseZoom: Bool {
       zoomScale <= minimumZoomScale + 0.01
@@ -51,6 +61,19 @@
       return endDistance < startDistance ? .end : .start
     }
 
+    /// Where a pan heading for `x` should come to rest: on an edge when it
+    /// would stop just short of one, else at `x`.
+    func spreadRestingOffset(forTarget x: CGFloat) -> CGFloat {
+      guard isPanningSpread else { return x }
+      for edge in [ReaderSpreadEdge.start, .end] {
+        let edgeX = spreadOffset(for: edge)
+        if abs(x - edgeX) <= Self.edgeSnapDistance {
+          return edgeX
+        }
+      }
+      return x
+    }
+
     private var maxSpreadOffset: CGFloat {
       max(contentSize.width - bounds.width, 0)
     }
@@ -77,8 +100,10 @@
         pendingSpreadEdge = nil
         return false
       }
-      pendingSpreadEdge = animated ? edge : nil
+      // Cutting a glide short ends its deceleration first, which settles the
+      // spread where it is; the edge this pan heads to is marked after that.
       setContentOffset(target, animated: animated)
+      pendingSpreadEdge = animated ? edge : nil
       return true
     }
 
