@@ -579,22 +579,24 @@ final class ReaderPageLoadScheduler {
     return nil
   }
 
-  /// Decoded page bitmaps are capped at this zoom headroom times the current
-  /// screen width; oversized scans downsample to it, pages within budget
-  /// decode untouched.
+  /// Decode budget in multiples of the current screen width; 2 keeps
+  /// downsampled pages sharp through a 2× zoom.
   private static let pageDecodeZoomHeadroom: CGFloat = 2
+
+  private var mainScreenPixelSize: CGSize? {
+    #if os(iOS) || os(tvOS)
+      return ReaderUpscaleDecision.screenPixelSize(for: UIScreen.main)
+    #elseif os(macOS)
+      guard let mainScreen = NSScreen.main else { return nil }
+      return ReaderUpscaleDecision.screenPixelSize(for: mainScreen)
+    #endif
+  }
 
   /// Short-edge pixel budget for decoded pages. A short-edge cap serves both
   /// fit-screen (paged) and fit-width (webtoon) display and survives 90°
   /// rotation, which swaps the binding axis.
   private var pageShortEdgeCapPixels: CGFloat {
-    #if os(iOS) || os(tvOS)
-      let screenWidthPixels = ReaderUpscaleDecision.screenPixelSize(for: UIScreen.main).width
-    #elseif os(macOS)
-      guard let mainScreen = NSScreen.main else { return .infinity }
-      let screenWidthPixels = ReaderUpscaleDecision.screenPixelSize(for: mainScreen).width
-    #endif
-    return screenWidthPixels * Self.pageDecodeZoomHeadroom
+    (mainScreenPixelSize?.width ?? .infinity) * Self.pageDecodeZoomHeadroom
   }
 
   private func loadImageFromFile(fileURL: URL) async -> PlatformImage? {
@@ -696,16 +698,10 @@ final class ReaderPageLoadScheduler {
 
     let autoTriggerScale = CGFloat(AppConfig.imageUpscaleAutoTriggerScale)
     let alwaysMaxScreenScale = CGFloat(AppConfig.imageUpscaleAlwaysMaxScreenScale)
-    let screenPixelSize: CGSize
-    #if os(iOS) || os(tvOS)
-      screenPixelSize = ReaderUpscaleDecision.screenPixelSize(for: UIScreen.main)
-    #elseif os(macOS)
-      guard let mainScreen = NSScreen.main else {
-        logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): unable to resolve current screen")
-        return sourceFileURL
-      }
-      screenPixelSize = ReaderUpscaleDecision.screenPixelSize(for: mainScreen)
-    #endif
+    guard let screenPixelSize = mainScreenPixelSize else {
+      logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): unable to resolve current screen")
+      return sourceFileURL
+    }
 
     let decision = ReaderUpscaleDecision.evaluate(
       mode: mode,
