@@ -7,8 +7,9 @@
   import UIKit
 
   /// A page host's zoom scroll view that also pans a whole spread at base zoom.
-  /// Its pan begins only for horizontal drags the spread can still follow, so
-  /// a drag pushing past a spread edge is left to the engine's page turn.
+  /// Its pan begins for a touch that catches the gliding spread, and otherwise
+  /// only for horizontal drags the spread can still follow, so a drag pushing
+  /// past a spread edge is left to the engine's page turn.
   final class SpreadPanningScrollView: UIScrollView {
     /// Whether the spread's start edge, in reading order, is on the left.
     var spreadStartsAtLeft = true
@@ -98,7 +99,10 @@
     }
 
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-      guard gestureRecognizer === panGestureRecognizer, isPanningSpread else {
+      // A touch on a gliding spread catches it: UIKit begins that pan at
+      // touch-down, before there is a direction to judge, and the drag that
+      // follows keeps panning the spread.
+      guard gestureRecognizer === panGestureRecognizer, isPanningSpread, !isDecelerating else {
         return super.gestureRecognizerShouldBegin(gestureRecognizer)
       }
       guard let dragX = panGestureRecognizer.horizontalDrag(in: self),
