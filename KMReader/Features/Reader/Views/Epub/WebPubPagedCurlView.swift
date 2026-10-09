@@ -1742,6 +1742,16 @@
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
+    func scrollToPageIndex(_ pageIndex: Int) {
+      currentSubPageIndex = pageIndex
+      if isContentLoaded {
+        scrollToPage(pageIndex)
+      } else {
+        pendingPageIndex = pageIndex
+      }
+      updateOverlayLabels()
+    }
+
     func userContentController(
       _ userContentController: WKUserContentController,
       didReceive message: WKScriptMessage
