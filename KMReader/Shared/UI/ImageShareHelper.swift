@@ -45,11 +45,13 @@ import SwiftUI
   }
 
   enum ImageShareHelper {
-    static func share(image: UIImage, fileName: String? = nil) {
-      shareMultiple(images: [image], fileNames: fileName.map { [$0] } ?? [])
+    @MainActor
+    static func share(image: UIImage, fileName: String? = nil) async {
+      await shareMultiple(images: [image], fileNames: fileName.map { [$0] } ?? [])
     }
 
-    static func shareMultiple(images: [UIImage], fileNames: [String]) {
+    @MainActor
+    static func shareMultiple(images: [UIImage], fileNames: [String]) async {
       let items: [Any] = images.enumerated().map { index, image in
         let name = index < fileNames.count ? fileNames[index] : nil
         return ImageActivityItemSource(image: image, fileName: name)
@@ -62,19 +64,27 @@ import SwiftUI
   import AppKit
 
   enum ImageShareHelper {
-    static func share(image: NSImage, fileName: String? = nil) {
-      shareMultiple(images: [image], fileNames: fileName.map { [$0] } ?? [])
+    @MainActor
+    static func share(image: NSImage, fileName: String? = nil) async {
+      await shareMultiple(images: [image], fileNames: fileName.map { [$0] } ?? [])
     }
 
-    static func shareMultiple(images: [NSImage], fileNames: [String]) {
-      let items: [Any] = images.enumerated().compactMap { index, image in
+    @MainActor
+    static func shareMultiple(images: [NSImage], fileNames: [String]) async {
+      var items: [Any] = []
+      for (index, image) in images.enumerated() {
         let name = index < fileNames.count ? fileNames[index] : nil
-        return createTempImageFile(image: image, fileName: name) ?? image
+        // Full-resolution pages make the TIFF→PNG encode expensive; keep it
+        // off the main actor.
+        let fileURL = await Task.detached(priority: .userInitiated) {
+          createTempImageFile(image: image, fileName: name)
+        }.value
+        items.append(fileURL ?? image)
       }
       ShareHelper.share(items: items)
     }
 
-    private static func createTempImageFile(image: NSImage, fileName: String?) -> URL? {
+    nonisolated private static func createTempImageFile(image: NSImage, fileName: String?) -> URL? {
       guard let tiffData = image.tiffRepresentation,
         let bitmap = NSBitmapImageRep(data: tiffData),
         let pngData = bitmap.representation(using: .png, properties: [:])

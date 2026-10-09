@@ -1699,9 +1699,13 @@ struct DivinaReaderView: View {
     }
 
     private func sharePageFromCommand(_ pageID: ReaderPageID) {
-      guard let image = viewModel.preloadedImage(for: pageID) else { return }
-      let fileName = viewModel.page(for: pageID)?.fileName
-      ImageShareHelper.share(image: image, fileName: fileName)
+      Task {
+        let image =
+          await viewModel.originalPageImage(for: pageID)
+          ?? viewModel.preloadedImage(for: pageID)
+        guard let image else { return }
+        await ImageShareHelper.share(image: image, fileName: viewModel.page(for: pageID)?.fileName)
+      }
     }
 
     private var readerCommandState: ReaderCommandState {

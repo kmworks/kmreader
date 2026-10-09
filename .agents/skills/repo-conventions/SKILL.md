@@ -30,6 +30,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Page Image Preparation
 
+- `ReaderPageLoadScheduler` decodes page bitmaps under a short-edge budget: screen width in pixels × a fixed zoom headroom (`pageDecodeZoomHeadroom`, 2), via ImageIO in `loadImageFromFile`. Pages within budget decode at full resolution; larger ones downsample uniformly, staying sharp through a 2× zoom. The short edge is the binding axis so the same decode stays valid for paged fit-screen, webtoon fit-width, split halves, and 90° rotation, and aspect preservation keeps `webtoonPixelSize` layout and the rotate → border-crop → split preparation unchanged. The budget applies to whatever file the pipeline resolves, including cached upscaled @2x pages (auto mode only fires on pages smaller than the screen, so a fresh upscale always lands inside the budget). Originals on disk are never rewritten, and Share actions export original pixels via `ReaderViewModel.originalPageImage`, which reloads from the resolved source file and bypasses the preloaded bitmap. Animated-page posters decode at full size — the inline player streams frames from the source file anyway.
 - `NativePageItem` prepares a displayed page in one fixed order: rotate, border-crop the whole page, then split into halves. Border cropping never runs on an individual split half — the halves of a wide page must share the whole page's crop rect so a rejoined spread (`fillEqually` slots, one per half) stays seamless.
 
 ### Page Curl & Cover Adapters

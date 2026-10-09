@@ -369,7 +369,7 @@
           defer { self?.sizeProbeTasks[pageID] = nil }
           guard let self, let viewModel else { return }
           guard let fileURL = await viewModel.getPageImageFileURL(pageID: pageID) else { return }
-          guard let pixelSize = webtoonProbePixelSize(at: fileURL) else { return }
+          guard let pixelSize = ImageDecodeHelper.displayPixelSize(at: fileURL) else { return }
           self.applyMeasuredHeightIfNeeded(for: pageID, pixelSize: pixelSize)
         }
       }

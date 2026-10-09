@@ -118,25 +118,13 @@ func webtoonMeasuredHeight(pixelSize: CGSize, pageWidth: CGFloat) -> CGFloat? {
   return targetHeight
 }
 
-func webtoonProbePixelSize(at fileURL: URL) -> CGSize? {
-  let options = [kCGImageSourceShouldCache: false] as CFDictionary
-  guard
-    let source = CGImageSourceCreateWithURL(fileURL as CFURL, options),
-    let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-    let pixelWidth = properties[kCGImagePropertyPixelWidth] as? CGFloat,
-    let pixelHeight = properties[kCGImagePropertyPixelHeight] as? CGFloat,
-    pixelWidth > 0,
-    pixelHeight > 0
-  else {
-    return nil
-  }
-
-  return CGSize(width: pixelWidth, height: pixelHeight)
-}
-
 func webtoonPixelSize(from image: PlatformImage) -> CGSize? {
   #if os(iOS) || os(tvOS)
     if let cgImage = image.cgImage {
+      // cgImage dims are raw; the ±90° orientations swap the display axes.
+      if [.left, .right, .leftMirrored, .rightMirrored].contains(image.imageOrientation) {
+        return CGSize(width: cgImage.height, height: cgImage.width)
+      }
       return CGSize(width: cgImage.width, height: cgImage.height)
     }
     if let ciImage = image.ciImage {

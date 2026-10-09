@@ -650,11 +650,16 @@
       }
 
       private func shareCurrentImage(for pageID: ReaderPageID) {
-        // Share the original decoded page (no rotation/split/border crop); fall back
-        // to the displayed image only if the preloaded original is unavailable.
-        guard let image = viewModel?.preloadedImage(for: pageID) ?? imageView.image else { return }
-        let fileName = viewModel?.page(for: pageID)?.fileName
-        ImageShareHelper.share(image: image, fileName: fileName)
+        // Export original pixels (no rotation/split/border crop); the preloaded
+        // bitmap may be downsampled, so it is only the fallback.
+        Task { [weak self] in
+          guard let self else { return }
+          let image =
+            await viewModel?.originalPageImage(for: pageID)
+            ?? viewModel?.preloadedImage(for: pageID) ?? imageView.image
+          guard let image else { return }
+          await ImageShareHelper.share(image: image, fileName: viewModel?.page(for: pageID)?.fileName)
+        }
       }
 
       private func makePreview() -> UITargetedPreview? {

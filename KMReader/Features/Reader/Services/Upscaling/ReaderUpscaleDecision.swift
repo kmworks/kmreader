@@ -10,7 +10,6 @@ nonisolated struct ReaderUpscaleDecision: Sendable {
   enum SkipReason: Sendable {
     case disabled
     case belowAutoTriggerScale
-    case exceedsAlwaysMaxScreenScale
     case invalidSourceSize
   }
 
@@ -22,8 +21,7 @@ nonisolated struct ReaderUpscaleDecision: Sendable {
     mode: ReaderImageUpscalingMode,
     sourcePixelSize: CGSize,
     screenPixelSize: CGSize,
-    autoTriggerScale: CGFloat,
-    alwaysMaxScreenScale: CGFloat
+    autoTriggerScale: CGFloat
   ) -> ReaderUpscaleDecision {
     guard sourcePixelSize.width > 0, sourcePixelSize.height > 0 else {
       return ReaderUpscaleDecision(
@@ -46,34 +44,13 @@ nonisolated struct ReaderUpscaleDecision: Sendable {
       )
     }
 
-    switch mode {
-    case .disabled:
+    let safeAutoTriggerScale = max(autoTriggerScale, 1.0)
+    guard requiredScale > safeAutoTriggerScale else {
       return ReaderUpscaleDecision(
         shouldUpscale: false,
         requiredScale: requiredScale,
-        reason: .disabled
+        reason: .belowAutoTriggerScale
       )
-    case .auto:
-      let safeAutoTriggerScale = max(autoTriggerScale, 1.0)
-      guard requiredScale > safeAutoTriggerScale else {
-        return ReaderUpscaleDecision(
-          shouldUpscale: false,
-          requiredScale: requiredScale,
-          reason: .belowAutoTriggerScale
-        )
-      }
-    case .always:
-      let safeAlwaysMaxScale = max(alwaysMaxScreenScale, 1.0)
-      let maxAllowedWidth = screenPixelSize.width * safeAlwaysMaxScale
-      let maxAllowedHeight = screenPixelSize.height * safeAlwaysMaxScale
-      guard sourcePixelSize.width <= maxAllowedWidth, sourcePixelSize.height <= maxAllowedHeight
-      else {
-        return ReaderUpscaleDecision(
-          shouldUpscale: false,
-          requiredScale: requiredScale,
-          reason: .exceedsAlwaysMaxScreenScale
-        )
-      }
     }
 
     return ReaderUpscaleDecision(

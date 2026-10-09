@@ -579,7 +579,39 @@ final class ReaderPageLoadScheduler {
     return nil
   }
 
+  /// Decode budget in multiples of the current screen width; 2 keeps
+  /// downsampled pages sharp through a 2× zoom.
+  private static let pageDecodeZoomHeadroom: CGFloat = 2
+
+  private var mainScreenPixelSize: CGSize? {
+    #if os(iOS) || os(tvOS)
+      return ReaderUpscaleDecision.screenPixelSize(for: UIScreen.main)
+    #elseif os(macOS)
+      guard let mainScreen = NSScreen.main else { return nil }
+      return ReaderUpscaleDecision.screenPixelSize(for: mainScreen)
+    #endif
+  }
+
+  /// Short-edge pixel budget for decoded pages. A short-edge cap serves both
+  /// fit-screen (paged) and fit-width (webtoon) display and survives 90°
+  /// rotation, which swaps the binding axis.
+  private var pageShortEdgeCapPixels: CGFloat {
+    (mainScreenPixelSize?.width ?? .infinity) * Self.pageDecodeZoomHeadroom
+  }
+
   private func loadImageFromFile(fileURL: URL) async -> PlatformImage? {
+    let shortEdgeCapPixels = pageShortEdgeCapPixels
+    let downsampled = await Task.detached(priority: .userInitiated) {
+      await ImageDecodeHelper.decodeDownsampledIfNeeded(
+        at: fileURL, shortEdgePixels: shortEdgeCapPixels)
+    }.value
+    if let downsampled {
+      logger.debug(
+        "🔽 [Decode] Downsampled \(fileURL.lastPathComponent) to shortEdge≤\(Int(shortEdgeCapPixels))px"
+      )
+      return downsampled
+    }
+
     let image = await Task.detached(priority: .userInitiated) {
       #if os(macOS)
         return NSImage(contentsOf: fileURL)
@@ -665,41 +697,31 @@ final class ReaderPageLoadScheduler {
     }
 
     let autoTriggerScale = CGFloat(AppConfig.imageUpscaleAutoTriggerScale)
-    let alwaysMaxScreenScale = CGFloat(AppConfig.imageUpscaleAlwaysMaxScreenScale)
-    let screenPixelSize: CGSize
-    #if os(iOS) || os(tvOS)
-      screenPixelSize = ReaderUpscaleDecision.screenPixelSize(for: UIScreen.main)
-    #elseif os(macOS)
-      guard let mainScreen = NSScreen.main else {
-        logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): unable to resolve current screen")
-        return sourceFileURL
-      }
-      screenPixelSize = ReaderUpscaleDecision.screenPixelSize(for: mainScreen)
-    #endif
+    guard let screenPixelSize = mainScreenPixelSize else {
+      logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): unable to resolve current screen")
+      return sourceFileURL
+    }
 
     let decision = ReaderUpscaleDecision.evaluate(
       mode: mode,
       sourcePixelSize: sourcePixelSize,
       screenPixelSize: screenPixelSize,
-      autoTriggerScale: autoTriggerScale,
-      alwaysMaxScreenScale: alwaysMaxScreenScale
+      autoTriggerScale: autoTriggerScale
     )
     guard decision.shouldUpscale else {
       let skipReasonText = Self.upscaleSkipReasonText(decision.reason)
       logger.debug(
         String(
           format:
-            "⏭️ [Upscale] Skip page %d: reason=%@ mode=%@ requiredScale=%.2f source=%dx%d screen=%dx%d auto=%.2f always=%.2f",
+            "⏭️ [Upscale] Skip page %d: reason=%@ requiredScale=%.2f source=%dx%d screen=%dx%d auto=%.2f",
           page.number + 1,
           skipReasonText,
-          mode.rawValue,
           decision.requiredScale,
           Int(sourcePixelSize.width),
           Int(sourcePixelSize.height),
           Int(screenPixelSize.width),
           Int(screenPixelSize.height),
-          autoTriggerScale,
-          alwaysMaxScreenScale
+          autoTriggerScale
         )
       )
       return sourceFileURL
@@ -798,20 +820,7 @@ final class ReaderPageLoadScheduler {
     if let width = page.width, let height = page.height, width > 0, height > 0 {
       return CGSize(width: width, height: height)
     }
-
-    let options = [kCGImageSourceShouldCache: false] as CFDictionary
-    guard
-      let source = CGImageSourceCreateWithURL(fileURL as CFURL, options),
-      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-      let pixelWidth = properties[kCGImagePropertyPixelWidth] as? CGFloat,
-      let pixelHeight = properties[kCGImagePropertyPixelHeight] as? CGFloat,
-      pixelWidth > 0,
-      pixelHeight > 0
-    else {
-      return nil
-    }
-
-    return CGSize(width: pixelWidth, height: pixelHeight)
+    return ImageDecodeHelper.displayPixelSize(at: fileURL)
   }
 
   nonisolated private static func upscaledImageFileURLs(from sourceFileURL: URL) -> [URL] {
@@ -874,8 +883,6 @@ final class ReaderPageLoadScheduler {
       return "disabled"
     case .belowAutoTriggerScale:
       return "below-auto-trigger-threshold"
-    case .exceedsAlwaysMaxScreenScale:
-      return "exceeds-always-max-source-size"
     case .invalidSourceSize:
       return "invalid-source-size"
     case nil:
