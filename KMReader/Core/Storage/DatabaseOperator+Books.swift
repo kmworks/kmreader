@@ -666,15 +666,15 @@ extension DatabaseOperator {
     }
   }
 
-  func fetchIsolatePages(id: String) -> [Int]? {
+  func fetchSoloPages(id: String) -> [Int]? {
     try? read { db in
-      try fetchBookRecord(db: db, id: id)?.isolatePages
+      try fetchBookRecord(db: db, id: id)?.soloPages
     }
   }
 
-  func updateIsolatePages(bookId: String, pages: [Int]) {
+  func updateSoloPages(bookId: String, pages: [Int]) {
     updateBookRecord(bookId: bookId) { book in
-      book.isolatePages = pages
+      book.soloPages = pages
     }
   }
 

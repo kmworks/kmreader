@@ -19,7 +19,7 @@
       readerBackground: .system,
       enableLiveText: false,
       enableImageContextMenu: false,
-      supportsPageIsolationActions: false,
+      supportsPageSoloActions: false,
       doubleTapZoomScale: 3.0,
       doubleTapZoomMode: .enabled
     )

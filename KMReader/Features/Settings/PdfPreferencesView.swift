@@ -11,7 +11,7 @@
     @AppStorage("pdfPagePresentation")
     private var pagePresentation: PdfPagePresentation = AppConfig.pdfPagePresentation
     @AppStorage("pdfIsolateCoverPage")
-    private var isolateCoverPage: Bool = true
+    private var soloCoverPage: Bool = true
     @AppStorage("pdfShowKeyboardHelpOverlay")
     private var showKeyboardHelpOverlay: Bool = AppConfig.pdfShowKeyboardHelpOverlay
     @AppStorage("showPdfControlsGradientBackground")
@@ -78,10 +78,10 @@
                 .foregroundColor(.secondary)
             }
 
-            if pagePresentation.supportsCoverIsolation {
-              Toggle(isOn: $isolateCoverPage) {
+            if pagePresentation.supportsCoverSolo {
+              Toggle(isOn: $soloCoverPage) {
                 VStack(alignment: .leading, spacing: 4) {
-                  Text("Isolate Cover Page")
+                  Text("Solo Cover Page")
                   Text("Show the first page alone before entering dual-page spread")
                     .font(.caption)
                     .foregroundColor(.secondary)

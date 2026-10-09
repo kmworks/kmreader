@@ -43,7 +43,7 @@ nonisolated struct KomgaBook: Codable, Equatable, Sendable {
   var downloadAt: Date?
   var downloadedSize: Int64
   var readListIdsRaw: Data?
-  var isolatePagesRaw: Data?
+  var soloPagesRaw: Data?
   var epubPreferencesRaw: String?
 
   init(
@@ -105,7 +105,7 @@ nonisolated struct KomgaBook: Codable, Equatable, Sendable {
     self.downloadAt = nil
     self.downloadedSize = downloadedSize
     self.readListIdsRaw = try? JSONEncoder().encode([] as [String])
-    self.isolatePagesRaw = try? JSONEncoder().encode([] as [Int])
+    self.soloPagesRaw = try? JSONEncoder().encode([] as [Int])
     self.epubPreferencesRaw = nil
   }
 }
@@ -123,9 +123,9 @@ nonisolated extension KomgaBook {
     set { readListIdsRaw = try? JSONEncoder().encode(newValue) }
   }
 
-  var isolatePages: [Int] {
-    get { isolatePagesRaw.flatMap { try? JSONDecoder().decode([Int].self, from: $0) } ?? [] }
-    set { isolatePagesRaw = try? JSONEncoder().encode(newValue) }
+  var soloPages: [Int] {
+    get { soloPagesRaw.flatMap { try? JSONDecoder().decode([Int].self, from: $0) } ?? [] }
+    set { soloPagesRaw = try? JSONEncoder().encode(newValue) }
   }
 
   var epubThemePreferences: EpubThemePreferences? {

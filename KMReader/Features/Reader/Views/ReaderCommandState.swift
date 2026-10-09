@@ -13,8 +13,8 @@ struct ReaderCommandState: Equatable {
   var readingDirection: ReadingDirection = .ltr
   var availableReadingDirections: [ReadingDirection] = ReadingDirection.availableCases
   var pageLayout: PageLayout = .auto
-  var isolateCoverPage: Bool = true
-  var pageIsolationActions: [ReaderPageIsolationActions.Action] = []
+  var soloCoverPage: Bool = true
+  var pageSoloActions: [ReaderPageSoloActions.Action] = []
   var commandPageIDs: [ReaderPageID] = []
   var displayPageNumbersByID: [ReaderPageID: Int] = [:]
   var rotation: ReaderRotation = .none

@@ -161,7 +161,7 @@ nonisolated extension KomgaBook: FetchableRecord, MutablePersistableRecord {
     case downloadAt = "download_at"
     case downloadedSize = "downloaded_size"
     case readListIdsRaw = "read_list_ids_raw"
-    case isolatePagesRaw = "isolate_pages_raw"
+    case soloPagesRaw = "isolate_pages_raw"
     case epubPreferencesRaw = "epub_preferences_raw"
   }
 }

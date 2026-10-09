@@ -8,7 +8,7 @@ import SwiftUI
 struct DivinaControlsOverlayView: View {
   @Binding var readingDirection: ReadingDirection
   @Binding var pageLayout: PageLayout
-  @Binding var isolateCoverPage: Bool
+  @Binding var soloCoverPage: Bool
   @Binding var splitWidePageMode: SplitWidePageMode
   @Binding var rotation: ReaderRotation
 
@@ -121,15 +121,15 @@ struct DivinaControlsOverlayView: View {
     return readingDirection != .webtoon && readingDirection != .vertical && pageLayout.supportsDualPageOptions
   }
 
-  private var pageIsolationActions: [ReaderPageIsolationActions.Action] {
-    ReaderPageIsolationActions.resolve(
+  private var pageSoloActions: [ReaderPageSoloActions.Action] {
+    ReaderPageSoloActions.resolve(
       supportsDualPageOptions: enableDualPageOptions,
       dualPage: dualPage,
       readingDirection: readingDirection,
       currentPageID: currentPageID,
       currentPairIDs: viewModel.currentViewItem()?.pagePairIDs,
       isCurrentPageWide: viewModel.isCurrentPageWide,
-      isCurrentPageIsolated: viewModel.isCurrentPageIsolated,
+      isCurrentPageSolo: viewModel.isCurrentPageSolo,
       displayPageNumber: displayPageNumber(for:)
     )
   }
@@ -633,11 +633,11 @@ struct DivinaControlsOverlayView: View {
           Label(String(localized: "Share"), systemImage: AppIcon.share)
         }
 
-        if let isolationAction = pageIsolationAction(for: pageID) {
+        if let soloAction = pageSoloAction(for: pageID) {
           Button {
-            viewModel.toggleIsolatePage(isolationAction.pageID)
+            viewModel.toggleSoloPage(soloAction.pageID)
           } label: {
-            Label(pageIsolationMenuTitle(for: isolationAction), systemImage: isolationAction.systemImage)
+            Label(pageSoloMenuTitle(for: soloAction), systemImage: soloAction.systemImage)
           }
         }
       } label: {
@@ -648,15 +648,15 @@ struct DivinaControlsOverlayView: View {
       }
     }
 
-    private func pageIsolationAction(for pageID: ReaderPageID) -> ReaderPageIsolationActions.Action? {
-      pageIsolationActions.first { $0.pageID == pageID }
+    private func pageSoloAction(for pageID: ReaderPageID) -> ReaderPageSoloActions.Action? {
+      pageSoloActions.first { $0.pageID == pageID }
     }
 
-    private func pageIsolationMenuTitle(for action: ReaderPageIsolationActions.Action) -> String {
-      if action.title == String(localized: "Cancel Isolation") {
+    private func pageSoloMenuTitle(for action: ReaderPageSoloActions.Action) -> String {
+      if action.title == String(localized: "Cancel Solo") {
         return action.title
       }
-      return String(localized: "Isolate")
+      return String(localized: "Show Solo")
     }
   #endif
 }

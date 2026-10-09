@@ -50,7 +50,7 @@ struct DivinaReaderView: View {
 
   @State private var readingDirection: ReadingDirection
   @State private var pageLayout: PageLayout
-  @State private var isolateCoverPage: Bool
+  @State private var soloCoverPage: Bool
   @State private var splitWidePageMode: SplitWidePageMode
   @State private var rotation: ReaderRotation
 
@@ -123,12 +123,12 @@ struct DivinaReaderView: View {
     self._currentBook = State(initialValue: book)
     self._readingDirection = State(initialValue: AppConfig.defaultReadingDirection)
     self._pageLayout = State(initialValue: AppConfig.pageLayout)
-    self._isolateCoverPage = State(initialValue: AppConfig.isolateCoverPage)
+    self._soloCoverPage = State(initialValue: AppConfig.soloCoverPage)
     self._splitWidePageMode = State(initialValue: AppConfig.splitWidePageMode)
     self._rotation = State(initialValue: .none)
     self._viewModel = State(
       initialValue: ReaderViewModel(
-        isolateCoverPage: AppConfig.isolateCoverPage,
+        soloCoverPage: AppConfig.soloCoverPage,
         pageLayout: AppConfig.pageLayout,
         splitWidePageMode: AppConfig.splitWidePageMode,
         pageTransitionStyle: AppConfig.pageTransitionStyle,
@@ -152,7 +152,7 @@ struct DivinaReaderView: View {
       readerBackground: readerBackground,
       enableLiveText: enableLiveText,
       enableImageContextMenu: enableDivinaImageContextMenu,
-      supportsPageIsolationActions: readingDirection != .webtoon
+      supportsPageSoloActions: readingDirection != .webtoon
         && readingDirection != .vertical
         && pageLayout.supportsDualPageOptions,
       doubleTapZoomScale: doubleTapZoomScale,
@@ -363,7 +363,7 @@ struct DivinaReaderView: View {
   private func resetReaderPreferencesForCurrentBook() {
     pageLayout = AppConfig.pageLayout
     viewModel.updatePageLayout(pageLayout)
-    isolateCoverPage = AppConfig.isolateCoverPage
+    soloCoverPage = AppConfig.soloCoverPage
     splitWidePageMode = AppConfig.splitWidePageMode
     viewModel.updateSplitWidePageMode(splitWidePageMode)
     readingDirection = AppConfig.defaultReadingDirection
@@ -397,7 +397,7 @@ struct DivinaReaderView: View {
       readingDirection.rawValue,
       pageTransitionStyle.rawValue,
       pageLayout.rawValue,
-      isolateCoverPage.description,
+      soloCoverPage.description,
       splitWidePageMode.rawValue,
       String(useDualPage),
     ].joined(separator: "-")
@@ -644,13 +644,13 @@ struct DivinaReaderView: View {
       series: currentSeries
     )
     .onAppear {
-      viewModel.updateDualPageSettings(noCover: !isolateCoverPage)
+      viewModel.updateDualPageSettings(noCover: !soloCoverPage)
       updateHandoff()
       #if os(macOS)
         configureReaderCommands()
       #endif
     }
-    .onChange(of: isolateCoverPage) { _, newValue in
+    .onChange(of: soloCoverPage) { _, newValue in
       viewModel.updateDualPageSettings(noCover: !newValue)
     }
     .onChange(of: pageLayout) { _, newValue in
@@ -1004,7 +1004,7 @@ struct DivinaReaderView: View {
     DivinaControlsOverlayView(
       readingDirection: $readingDirection,
       pageLayout: $pageLayout,
-      isolateCoverPage: $isolateCoverPage,
+      soloCoverPage: $soloCoverPage,
       splitWidePageMode: $splitWidePageMode,
       rotation: $rotation,
       showingPageJumpSheet: $showingPageJumpSheet,
@@ -1668,8 +1668,8 @@ struct DivinaReaderView: View {
   }
 
   #if os(macOS)
-    private var macPageIsolationActions: [ReaderPageIsolationActions.Action] {
-      ReaderPageIsolationActions.resolve(
+    private var macPageSoloActions: [ReaderPageSoloActions.Action] {
+      ReaderPageSoloActions.resolve(
         supportsDualPageOptions: readingDirection != .webtoon
           && readingDirection != .vertical
           && pageLayout.supportsDualPageOptions,
@@ -1678,7 +1678,7 @@ struct DivinaReaderView: View {
         currentPageID: viewModel.currentReaderPage?.id,
         currentPairIDs: viewModel.currentViewItem()?.pagePairIDs,
         isCurrentPageWide: viewModel.isCurrentPageWide,
-        isCurrentPageIsolated: viewModel.isCurrentPageIsolated,
+        isCurrentPageSolo: viewModel.isCurrentPageSolo,
         displayPageNumber: displayPageNumber(for:)
       )
     }
@@ -1730,8 +1730,8 @@ struct DivinaReaderView: View {
         readingDirection: readingDirection,
         availableReadingDirections: ReadingDirection.availableCases,
         pageLayout: pageLayout,
-        isolateCoverPage: isolateCoverPage,
-        pageIsolationActions: macPageIsolationActions,
+        soloCoverPage: soloCoverPage,
+        pageSoloActions: macPageSoloActions,
         commandPageIDs: macCommandPageIDs,
         displayPageNumbersByID: macDisplayPageNumbersByID,
         rotation: rotation,
@@ -1785,11 +1785,11 @@ struct DivinaReaderView: View {
           setPageLayout: { layout in
             pageLayout = layout
           },
-          toggleIsolateCoverPage: {
-            isolateCoverPage.toggle()
+          toggleSoloCoverPage: {
+            soloCoverPage.toggle()
           },
-          toggleIsolatePage: { pageID in
-            viewModel.toggleIsolatePage(pageID)
+          toggleSoloPage: { pageID in
+            viewModel.toggleSoloPage(pageID)
           },
           sharePage: { pageID in
             sharePageFromCommand(pageID)
@@ -2036,7 +2036,7 @@ struct DivinaReaderView: View {
     preserveReaderOptions = true
     currentBookId = bookId
     viewModel = ReaderViewModel(
-      isolateCoverPage: isolateCoverPage,
+      soloCoverPage: soloCoverPage,
       pageLayout: pageLayout,
       splitWidePageMode: splitWidePageMode,
       rotation: rotation,

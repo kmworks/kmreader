@@ -298,12 +298,12 @@ struct MainApp: App {
 
         if state.supportsDualPageOptions {
           Button {
-            readerPresentation.toggleIsolateCoverPageFromCommand()
+            readerPresentation.toggleSoloCoverPageFromCommand()
           } label: {
-            if state.isolateCoverPage {
-              Label(String(localized: "Isolate Cover Page"), systemImage: AppIcon.confirm)
+            if state.soloCoverPage {
+              Label(String(localized: "Solo Cover Page"), systemImage: AppIcon.confirm)
             } else {
-              Text(String(localized: "Isolate Cover Page"))
+              Text(String(localized: "Solo Cover Page"))
             }
           }
           .disabled(!state.isActive)
@@ -368,10 +368,10 @@ struct MainApp: App {
               }
               .disabled(!state.isActive)
 
-              if let isolationAction = state.pageIsolationActions.first(where: { $0.pageID == pageID }) {
+              if let soloAction = state.pageSoloActions.first(where: { $0.pageID == pageID }) {
                 Divider()
-                Button(readerPageIsolationTitle(for: isolationAction)) {
-                  readerPresentation.toggleIsolatePageFromCommand(isolationAction.pageID)
+                Button(readerPageSoloTitle(for: soloAction)) {
+                  readerPresentation.toggleSoloPageFromCommand(soloAction.pageID)
                 }
                 .disabled(!state.isActive)
               }
@@ -382,11 +382,11 @@ struct MainApp: App {
       }
     }
 
-    private func readerPageIsolationTitle(for action: ReaderPageIsolationActions.Action) -> String {
-      if action.title == String(localized: "Cancel Isolation") {
+    private func readerPageSoloTitle(for action: ReaderPageSoloActions.Action) -> String {
+      if action.title == String(localized: "Cancel Solo") {
         return action.title
       }
-      return String(localized: "Isolate")
+      return String(localized: "Show Solo")
     }
 
   #endif

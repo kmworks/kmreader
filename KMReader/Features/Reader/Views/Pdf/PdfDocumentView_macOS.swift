@@ -5,7 +5,7 @@
   struct PdfDocumentView: NSViewRepresentable {
     let documentURL: URL
     let pagePresentation: PdfPagePresentation
-    let isolateCoverPage: Bool
+    let soloCoverPage: Bool
     let readingDirection: ReadingDirection
     let initialPageNumber: Int
     let targetPageNumber: Int?
@@ -86,7 +86,7 @@
 
       if coordinator.lastResolvedPagePresentation == pagePresentation,
         coordinator.lastResolvedReadingDirection == direction,
-        coordinator.lastResolvedIsolateCoverPage == isolateCoverPage
+        coordinator.lastResolvedSoloCoverPage == soloCoverPage
       {
         return
       }
@@ -108,11 +108,11 @@
       pdfView.displayMode = displayMode
       pdfView.displayDirection = direction == .vertical ? .vertical : .horizontal
       pdfView.displaysRTL = direction == .rtl
-      pdfView.displaysAsBook = pagePresentation == .dualContinuous && isolateCoverPage
+      pdfView.displaysAsBook = pagePresentation == .dualContinuous && soloCoverPage
 
       coordinator.lastResolvedPagePresentation = pagePresentation
       coordinator.lastResolvedReadingDirection = direction
-      coordinator.lastResolvedIsolateCoverPage = isolateCoverPage
+      coordinator.lastResolvedSoloCoverPage = soloCoverPage
 
       if pdfView.document != nil {
         goToPage(targetPageAfterConfiguration, in: pdfView)
@@ -174,7 +174,7 @@
       var lastNavigationToken: UUID?
       var lastResolvedPagePresentation: PdfPagePresentation?
       var lastResolvedReadingDirection: ReadingDirection?
-      var lastResolvedIsolateCoverPage: Bool?
+      var lastResolvedSoloCoverPage: Bool?
       private weak var observedPDFView: PDFView?
       private var positioningTarget: (page: Int, generation: Int)?
       private var positioningGeneration = 0

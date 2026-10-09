@@ -71,7 +71,7 @@ enum PdfPagePresentation: String, CaseIterable, Hashable, Sendable {
     }
   }
 
-  var supportsCoverIsolation: Bool {
+  var supportsCoverSolo: Bool {
     self == .auto || self == .dualContinuous
   }
 }

@@ -314,12 +314,12 @@ final class ReaderPresentationManager {
       readerCommandHandlers?.setPageLayout(layout)
     }
 
-    func toggleIsolateCoverPageFromCommand() {
-      readerCommandHandlers?.toggleIsolateCoverPage()
+    func toggleSoloCoverPageFromCommand() {
+      readerCommandHandlers?.toggleSoloCoverPage()
     }
 
-    func toggleIsolatePageFromCommand(_ pageID: ReaderPageID) {
-      readerCommandHandlers?.toggleIsolatePage(pageID)
+    func toggleSoloPageFromCommand(_ pageID: ReaderPageID) {
+      readerCommandHandlers?.toggleSoloPage(pageID)
     }
 
     func sharePageFromCommand(_ pageID: ReaderPageID) {

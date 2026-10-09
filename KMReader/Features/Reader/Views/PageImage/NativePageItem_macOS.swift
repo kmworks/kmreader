@@ -29,8 +29,8 @@
     private var showPageShadow = true
     private var enableLiveText = false
     private var enableImageContextMenu = false
-    private var supportsPageIsolationActions = false
-    private var canIsolatePageFromCurrentPresentation = false
+    private var supportsPageSoloActions = false
+    private var canSoloPageFromCurrentPresentation = false
     private weak var readerViewModel: ReaderViewModel?
     private let logger = AppLogger(.reader)
     private var analysisSourceImage: NSImage?
@@ -242,8 +242,8 @@
       showPageShadow: Bool,
       enableLiveText: Bool,
       enableImageContextMenu: Bool,
-      supportsPageIsolationActions: Bool,
-      canIsolatePageFromCurrentPresentation: Bool,
+      supportsPageSoloActions: Bool,
+      canSoloPageFromCurrentPresentation: Bool,
       background: ReaderBackground,
       readingDirection: ReadingDirection,
       displayMode: PageDisplayMode,
@@ -258,8 +258,8 @@
       let shouldEnableLiveText = enableLiveText && !viewModel.isAnimatedPage(for: data.pageID)
       self.enableLiveText = shouldEnableLiveText
       self.enableImageContextMenu = enableImageContextMenu
-      self.supportsPageIsolationActions = supportsPageIsolationActions
-      self.canIsolatePageFromCurrentPresentation = canIsolatePageFromCurrentPresentation
+      self.supportsPageSoloActions = supportsPageSoloActions
+      self.canSoloPageFromCurrentPresentation = canSoloPageFromCurrentPresentation
 
       let pageSourceImage = preparedImage(
         from: image,
@@ -619,9 +619,9 @@
       let menu = NSMenu()
       menu.addItem(makeShareMenuItem(for: currentData.pageID))
 
-      if let isolationItem = makePageIsolationMenuItem(for: currentData.pageID) {
+      if let soloItem = makePageSoloMenuItem(for: currentData.pageID) {
         menu.addItem(.separator())
-        menu.addItem(isolationItem)
+        menu.addItem(soloItem)
       }
 
       return menu.items.isEmpty ? nil : menu
@@ -634,24 +634,24 @@
       return item
     }
 
-    private func makePageIsolationMenuItem(for pageID: ReaderPageID) -> NSMenuItem? {
-      guard supportsPageIsolationActions, let readerViewModel else { return nil }
+    private func makePageSoloMenuItem(for pageID: ReaderPageID) -> NSMenuItem? {
+      guard supportsPageSoloActions, let readerViewModel else { return nil }
       guard readerViewModel.isPageEffectivelyPortrait(pageID) else { return nil }
 
-      if readerViewModel.isPageIsolated(pageID) {
+      if readerViewModel.isPageSolo(pageID) {
         let item = NSMenuItem(
-          title: String(localized: "Cancel Isolation"),
-          action: #selector(handleTogglePageIsolationContextMenuAction),
+          title: String(localized: "Cancel Solo"),
+          action: #selector(handleTogglePageSoloContextMenuAction),
           keyEquivalent: ""
         )
         item.target = self
         return item
       }
 
-      guard canIsolatePageFromCurrentPresentation else { return nil }
+      guard canSoloPageFromCurrentPresentation else { return nil }
       let item = NSMenuItem(
-        title: String(localized: "Isolate"),
-        action: #selector(handleTogglePageIsolationContextMenuAction),
+        title: String(localized: "Show Solo"),
+        action: #selector(handleTogglePageSoloContextMenuAction),
         keyEquivalent: ""
       )
       item.target = self
@@ -672,9 +672,9 @@
       }
     }
 
-    @objc private func handleTogglePageIsolationContextMenuAction() {
+    @objc private func handleTogglePageSoloContextMenuAction() {
       guard let pageID = currentData?.pageID else { return }
-      readerViewModel?.toggleIsolatePage(pageID)
+      readerViewModel?.toggleSoloPage(pageID)
       updateContextMenu()
     }
 
