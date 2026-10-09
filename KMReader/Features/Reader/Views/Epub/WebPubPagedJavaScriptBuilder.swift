@@ -192,8 +192,15 @@
                 currentPage: finalTarget
               });
             }
-          }, 60);
+          }, 16);
         };
+
+        var fontsSettled = false;
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(function() { fontsSettled = true; });
+        } else {
+          fontsSettled = true;
+        }
 
         var startLayoutCheck = function() {
           var lastW = measurePagination().currentWidth;
@@ -215,7 +222,7 @@
               lastW = currentW;
             }
 
-            var isProbablyReady = (stableCount >= 4);
+            var isProbablyReady = (stableCount >= 4) || (fontsSettled && stableCount >= 2);
             if ((preferLast || target > 0) && currentW <= pageWidth && attempt < 40) {
               isProbablyReady = false;
             }
@@ -251,7 +258,7 @@
         } else {
           if (document.readyState === 'interactive' || document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
-              setTimeout(startOnce, 500);
+              startOnce();
             });
           }
           window.addEventListener('load', function() {
