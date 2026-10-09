@@ -401,7 +401,7 @@
       private var pendingControllers: Set<ObjectIdentifier> = []  // Track controllers in transition
       private var reservedControllers: Set<ObjectIdentifier> = []
       private var reserveCleanupTask: DispatchWorkItem?
-      private let maxCachedBacksideSnapshots = 16
+      private let maxCachedBacksideSnapshots = 6
       private var cachedBacksideImages: [String: UIImage] = [:]
       private var cachedBacksideImageOrder: [String] = []
 
@@ -1497,10 +1497,13 @@
 
       let format = UIGraphicsImageRendererFormat.preferred()
       format.opaque = false
-      format.scale = view.window?.screen.scale ?? UIScreen.main.scale
+      // Half scale: the backside is mirrored and only exposed while the curl is moving.
+      format.scale = (view.window?.screen.scale ?? UIScreen.main.scale) / 2
       let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
-      return renderer.image { context in
-        view.layer.render(in: context.cgContext)
+      return renderer.image { _ in
+        // drawHierarchy goes through the render server, so WKWebView content is
+        // captured reliably; layer.render can produce blank images offscreen.
+        view.drawHierarchy(in: bounds, afterScreenUpdates: false)
       }
     }
 
