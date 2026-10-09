@@ -31,21 +31,20 @@
       let initialPageCount = viewModel.chapterPageCount(at: initialChapterIndex) ?? 1
       let initialPageIndex = max(0, min(viewModel.currentPageIndex, initialPageCount - 1))
 
-      if let initialVC = context.coordinator.makePageViewController(
+      if let initialVC = context.coordinator.makeChapterViewController(
         chapterIndex: initialChapterIndex,
         subPageIndex: initialPageIndex
       ) {
-        context.coordinator.rebuildDeck(
+        context.coordinator.installDeck(
           around: initialVC,
           chapterIndex: initialChapterIndex,
           subPageIndex: initialPageIndex
         )
-        context.coordinator.currentChapterIndex = initialChapterIndex
-        context.coordinator.currentPageIndex = initialPageIndex
-        Task { @MainActor in
-          viewModel.currentChapterIndex = initialChapterIndex
-          viewModel.currentPageIndex = initialPageIndex
-        }
+        context.coordinator.commitLocation(
+          chapterIndex: initialChapterIndex,
+          pageIndex: initialPageIndex,
+          notify: false
+        )
       }
 
       return container
@@ -60,26 +59,30 @@
       let initialPageCount = viewModel.chapterPageCount(at: initialChapterIndex) ?? 1
       let initialPageIndex = max(0, min(viewModel.currentPageIndex, initialPageCount - 1))
 
-      if context.coordinator.frontController == nil,
+      if context.coordinator.currentController == nil,
         initialChapterIndex >= 0,
         initialChapterIndex < viewModel.chapterCount,
-        let initialVC = context.coordinator.makePageViewController(
+        let initialVC = context.coordinator.makeChapterViewController(
           chapterIndex: initialChapterIndex,
           subPageIndex: initialPageIndex
         )
       {
-        context.coordinator.rebuildDeck(
+        context.coordinator.installDeck(
           around: initialVC,
           chapterIndex: initialChapterIndex,
           subPageIndex: initialPageIndex
         )
-        context.coordinator.currentChapterIndex = initialChapterIndex
-        context.coordinator.currentPageIndex = initialPageIndex
+        context.coordinator.commitLocation(
+          chapterIndex: initialChapterIndex,
+          pageIndex: initialPageIndex,
+          notify: false
+        )
       }
 
       if let targetChapterIndex = viewModel.targetChapterIndex,
         let targetPageIndex = viewModel.targetPageIndex,
         !context.coordinator.isAnimating,
+        context.coordinator.session == nil,
         targetChapterIndex >= 0,
         targetChapterIndex < viewModel.chapterCount,
         targetChapterIndex != context.coordinator.currentChapterIndex
@@ -92,49 +95,30 @@
           ? max(0, pageCount - 1)
           : max(0, min(targetPageIndex, pageCount - 1))
 
-        guard
-          let targetVC = context.coordinator.makePageViewController(
-            chapterIndex: targetChapterIndex,
-            subPageIndex: normalizedPageIndex,
-            preferLastPageOnReady: isLastPageRequest
-          )
-        else { return }
-
-        let isForward =
-          targetChapterIndex > context.coordinator.currentChapterIndex
-          || (targetChapterIndex == context.coordinator.currentChapterIndex
-            && normalizedPageIndex > context.coordinator.currentPageIndex)
-
-        let shouldAnimate = context.coordinator.hasCompletedInitialUpdate && animateTapTurns
-
-        if shouldAnimate {
-          context.coordinator.animateTransition(
-            to: targetVC,
-            chapterIndex: targetChapterIndex,
-            subPageIndex: normalizedPageIndex,
-            forward: isForward
-          )
-        } else {
-          context.coordinator.rebuildDeck(
-            around: targetVC,
-            chapterIndex: targetChapterIndex,
-            subPageIndex: normalizedPageIndex
-          )
-          context.coordinator.currentChapterIndex = targetChapterIndex
-          context.coordinator.currentPageIndex = normalizedPageIndex
-          Task { @MainActor in
-            viewModel.currentChapterIndex = targetChapterIndex
-            viewModel.currentPageIndex = normalizedPageIndex
-            viewModel.targetChapterIndex = nil
-            viewModel.targetPageIndex = nil
-            viewModel.pageDidChange()
+        if let target = context.coordinator.prepareTurnTarget(
+          chapterIndex: targetChapterIndex,
+          subPageIndex: normalizedPageIndex,
+          preferLastPageOnReady: isLastPageRequest
+        ) {
+          let shouldAnimate = context.coordinator.hasCompletedInitialUpdate && animateTapTurns
+          if shouldAnimate {
+            context.coordinator.animateTransition(to: target)
+          } else {
+            context.coordinator.installDeck(
+              around: target.host,
+              chapterIndex: target.chapterIndex,
+              subPageIndex: target.subPageIndex
+            )
+            context.coordinator.commitLocation(
+              chapterIndex: target.chapterIndex,
+              pageIndex: target.subPageIndex,
+              notify: true
+            )
           }
         }
       }
 
-      if let frontVC = context.coordinator.frontController {
-        context.coordinator.configureVisibleController(frontVC)
-      }
+      context.coordinator.reconfigureHosts()
     }
 
     // MARK: - Coordinator
@@ -147,7 +131,7 @@
       var hasCompletedInitialUpdate = false
       weak var containerViewController: CoverEpubContainerViewController?
 
-      private(set) var frontController: EpubPageViewController?
+      private(set) var currentController: EpubPageViewController?
       private var nextController: EpubPageViewController?
       private var previousController: EpubPageViewController?
 
@@ -155,12 +139,31 @@
       private var tapRecognizer: UITapGestureRecognizer?
       private var longPressRecognizer: UILongPressGestureRecognizer?
 
-      private var transitionDirection: Int?
-      private var dragOffset: CGFloat = 0
+      enum SlideDirection {
+        case forward
+        case backward
+      }
 
-      private let maxCachedControllers = 5
-      private var cachedControllers: [String: EpubPageViewController] = [:]
-      private var controllerKeys: [ObjectIdentifier: String] = [:]
+      struct TurnTarget {
+        let host: EpubPageViewController
+        let chapterIndex: Int
+        let subPageIndex: Int
+        let isCrossChapter: Bool
+        let isForward: Bool
+      }
+
+      private(set) var session: SlideSession?
+
+      struct SlideSession {
+        let direction: SlideDirection
+        let target: TurnTarget
+        let originPage: Int
+        let overlay: UIView
+        var offset: CGFloat = 0
+      }
+
+      private var rubberOffset: CGFloat = 0
+      private var lastLayoutSize: CGSize = .zero
 
       private enum Metrics {
         static let minimumDragDistance: CGFloat = 1
@@ -223,11 +226,9 @@
         pan.require(toFail: longPress)
       }
 
-      private func cacheKey(chapterIndex: Int, pageIndex: Int) -> String {
-        "\(chapterIndex)-\(pageIndex)"
-      }
+      // MARK: - Chapter hosts
 
-      func makePageViewController(
+      func makeChapterViewController(
         chapterIndex: Int,
         subPageIndex: Int,
         preferLastPageOnReady: Bool = false
@@ -276,81 +277,6 @@
         )
         let initialProgression = parent.viewModel.initialProgression(for: chapterIndex)
 
-        let key = cacheKey(chapterIndex: chapterIndex, pageIndex: subPageIndex)
-        if let cached = cachedControllers[key] {
-          cached.configure(
-            chapterURL: chapterURL,
-            chapterMediaType: chapterMediaType,
-            rootURL: rootURL,
-            mediaTypesByRelativePath: parent.viewModel.mediaTypesByRelativePath,
-            containerInsets: containerInsets,
-            theme: theme,
-            contentCSS: readiumPayload.css,
-            readiumProperties: readiumPayload.properties,
-            publicationLanguage: parent.viewModel.publicationLanguage,
-            publicationReadingProgression: parent.viewModel.publicationReadingProgression,
-            chapterIndex: chapterIndex,
-            subPageIndex: subPageIndex,
-            totalPages: pageCount,
-            bookTitle: parent.bookTitle,
-            chapterTitle: location.title,
-            totalProgression: totalProgression,
-            overlayPreferences: parent.overlayPreferences,
-            showingControls: parent.showingControls,
-            labelTopOffset: parent.viewModel.labelTopOffset,
-            labelBottomOffset: parent.viewModel.labelBottomOffset,
-            useSafeArea: parent.viewModel.useSafeArea,
-            preferLastPageOnReady: preferLastPageOnReady,
-            targetProgressionOnReady: initialProgression,
-            onPageCountReady: onPageCountReady
-          )
-          configurePageController(cached)
-          cached.loadViewIfNeeded()
-          return cached
-        }
-
-        let protectedIDs = Set(
-          [frontController, nextController, previousController].compactMap {
-            $0.map { ObjectIdentifier($0) }
-          })
-        if let reusable = cachedControllers.values.first(where: {
-          !protectedIDs.contains(ObjectIdentifier($0))
-        }) {
-          reusable.configure(
-            chapterURL: chapterURL,
-            chapterMediaType: chapterMediaType,
-            rootURL: rootURL,
-            mediaTypesByRelativePath: parent.viewModel.mediaTypesByRelativePath,
-            containerInsets: containerInsets,
-            theme: theme,
-            contentCSS: readiumPayload.css,
-            readiumProperties: readiumPayload.properties,
-            publicationLanguage: parent.viewModel.publicationLanguage,
-            publicationReadingProgression: parent.viewModel.publicationReadingProgression,
-            chapterIndex: chapterIndex,
-            subPageIndex: subPageIndex,
-            totalPages: pageCount,
-            bookTitle: parent.bookTitle,
-            chapterTitle: location.title,
-            totalProgression: totalProgression,
-            overlayPreferences: parent.overlayPreferences,
-            showingControls: parent.showingControls,
-            labelTopOffset: parent.viewModel.labelTopOffset,
-            labelBottomOffset: parent.viewModel.labelBottomOffset,
-            useSafeArea: parent.viewModel.useSafeArea,
-            preferLastPageOnReady: preferLastPageOnReady,
-            targetProgressionOnReady: initialProgression,
-            onPageCountReady: onPageCountReady
-          )
-          configurePageController(reusable)
-          reusable.onLinkTap = { [weak self] url in
-            self?.parent.viewModel.navigateToURL(url)
-          }
-          reusable.loadViewIfNeeded()
-          storeController(reusable, for: key)
-          return reusable
-        }
-
         let controller = EpubPageViewController(
           chapterURL: chapterURL,
           chapterMediaType: chapterMediaType,
@@ -377,19 +303,18 @@
         )
         controller.preferLastPageOnReady = preferLastPageOnReady
         controller.targetProgressionOnReady = initialProgression
-        configurePageController(controller)
+        wireController(controller)
         controller.onLinkTap = { [weak self] url in
           self?.parent.viewModel.navigateToURL(url)
         }
         controller.loadViewIfNeeded()
-        storeController(controller, for: key)
         return controller
       }
 
-      private func configurePageController(_ controller: EpubPageViewController) {
+      private func wireController(_ controller: EpubPageViewController) {
         controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
           guard let self, let controller else { return }
-          guard self.frontController === controller else { return }
+          guard self.currentController === controller, self.session == nil else { return }
           let chapterIndex = controller.chapterIndex
           let storedCount = self.parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
           let effectiveCount = max(storedCount, controller.totalPagesInChapter)
@@ -405,7 +330,7 @@
         }
       }
 
-      func configureVisibleController(_ controller: EpubPageViewController) {
+      private func reconfigureHost(_ controller: EpubPageViewController) {
         let chapterIndex = controller.chapterIndex
         let containerInsets = parent.viewModel.containerInsetsForLabels().uiEdgeInsets
         let theme = parent.preferences.resolvedTheme(for: parent.colorScheme)
@@ -462,89 +387,109 @@
         )
       }
 
-      private func storeController(_ controller: EpubPageViewController, for key: String) {
-        let identifier = ObjectIdentifier(controller)
-        if let existingKey = controllerKeys[identifier] {
-          cachedControllers.removeValue(forKey: existingKey)
-        }
-        controllerKeys[identifier] = key
-        cachedControllers[key] = controller
-        if cachedControllers.count > maxCachedControllers {
-          evictUnusedControllers()
-        }
+      func reconfigureHosts() {
+        if let currentController { reconfigureHost(currentController) }
+        if let nextController { reconfigureHost(nextController) }
+        if let previousController { reconfigureHost(previousController) }
       }
 
-      private func evictUnusedControllers() {
-        let protectedIDs = Set(
-          [frontController, nextController, previousController].compactMap {
-            $0.map { ObjectIdentifier($0) }
-          })
-        for (key, controller) in cachedControllers {
-          if cachedControllers.count <= maxCachedControllers { break }
-          let identifier = ObjectIdentifier(controller)
-          if !protectedIDs.contains(identifier) {
-            cachedControllers.removeValue(forKey: key)
-            controllerKeys.removeValue(forKey: identifier)
-          }
-        }
-      }
+      // MARK: - Deck management
 
-      // MARK: - Deck Management
-
-      func rebuildDeck(
+      func installDeck(
         around controller: EpubPageViewController,
         chapterIndex: Int,
         subPageIndex: Int
       ) {
         guard let container = containerViewController else { return }
 
-        removeChildController(frontController, from: container)
-        removeChildController(nextController, from: container)
-        removeChildController(previousController, from: container)
+        let detached = [currentController, nextController, previousController]
+          .compactMap { $0 }
+          .filter { $0 !== controller }
+        for host in detached {
+          removeChildController(host, from: container)
+        }
+        nextController = nil
+        previousController = nil
 
-        frontController = controller
+        currentController = controller
         addChildController(controller, to: container)
         controller.view.frame = container.view.bounds
+        controller.view.isHidden = false
         controller.view.layer.zPosition = 1
         updateShadow(for: controller.view, isElevated: true, offset: 0)
+        if controller.currentSubPageIndex != subPageIndex {
+          controller.scrollToPageIndex(subPageIndex)
+        }
 
-        let nextTarget = nextPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex)
-        if let nextTarget,
-          let nextVC = makePageViewController(
-            chapterIndex: nextTarget.chapterIndex,
-            subPageIndex: nextTarget.subPageIndex
-          )
+        prepareNeighbors(
+          chapterIndex: chapterIndex,
+          subPageIndex: subPageIndex,
+          reusing: detached
+        )
+      }
+
+      private func prepareNeighbors(
+        chapterIndex: Int,
+        subPageIndex: Int,
+        reusing: [EpubPageViewController] = []
+      ) {
+        guard let container = containerViewController else { return }
+
+        if let nextTarget = nextPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex),
+          nextTarget.chapterIndex != chapterIndex
         {
-          nextController = nextVC
-          addChildController(nextVC, to: container)
-          nextVC.view.frame = container.view.bounds
-          nextVC.view.layer.zPosition = 0
-          nextVC.view.isHidden = true
-          warmAdjacentController(nextVC)
+          if nextController?.chapterIndex != nextTarget.chapterIndex {
+            removeChildController(nextController, from: container)
+            nextController = nil
+            let reused = reusing.first { $0.chapterIndex == nextTarget.chapterIndex }
+            if let host = reused
+              ?? makeChapterViewController(
+                chapterIndex: nextTarget.chapterIndex,
+                subPageIndex: nextTarget.subPageIndex,
+                preferLastPageOnReady: nextTarget.preferLastPage
+              )
+            {
+              nextController = host
+              adoptNeighbor(host, in: container)
+            }
+          }
         } else {
+          removeChildController(nextController, from: container)
           nextController = nil
         }
 
-        let prevTarget = previousPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex)
-        if let prevTarget,
-          let prevVC = makePageViewController(
-            chapterIndex: prevTarget.chapterIndex,
-            subPageIndex: prevTarget.subPageIndex,
-            preferLastPageOnReady: prevTarget.preferLastPage
-          )
+        if let prevTarget = previousPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex),
+          prevTarget.chapterIndex != chapterIndex
         {
-          previousController = prevVC
-          addChildController(prevVC, to: container)
-          prevVC.view.frame = container.view.bounds
-          prevVC.view.layer.zPosition = 0
-          prevVC.view.isHidden = true
-          warmAdjacentController(prevVC)
+          if previousController?.chapterIndex != prevTarget.chapterIndex {
+            removeChildController(previousController, from: container)
+            previousController = nil
+            let reused = reusing.first { $0.chapterIndex == prevTarget.chapterIndex }
+            if let host = reused
+              ?? makeChapterViewController(
+                chapterIndex: prevTarget.chapterIndex,
+                subPageIndex: prevTarget.subPageIndex,
+                preferLastPageOnReady: prevTarget.preferLastPage
+              )
+            {
+              previousController = host
+              adoptNeighbor(host, in: container)
+            }
+          }
         } else {
+          removeChildController(previousController, from: container)
           previousController = nil
         }
+      }
 
-        transitionDirection = nil
-        dragOffset = 0
+      private func adoptNeighbor(_ host: EpubPageViewController, in container: UIViewController) {
+        reconfigureHost(host)
+        addChildController(host, to: container)
+        host.view.frame = container.view.bounds
+        host.view.isHidden = true
+        host.view.layer.zPosition = 0
+        host.loadViewIfNeeded()
+        host.forceEnsureContentLoaded()
       }
 
       private func addChildController(_ child: EpubPageViewController, to parent: UIViewController) {
@@ -558,11 +503,6 @@
         parent.view.addSubview(child.view)
         child.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         child.didMove(toParent: parent)
-      }
-
-      private func warmAdjacentController(_ controller: EpubPageViewController) {
-        controller.loadViewIfNeeded()
-        controller.forceEnsureContentLoaded()
       }
 
       private func removeChildController(_ child: EpubPageViewController?, from parent: UIViewController) {
@@ -600,144 +540,299 @@
         return (previousChapter, max(0, previousCount - 1), previousCount <= 1)
       }
 
-      // MARK: - Gestures
-
-      @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
-        guard !isAnimating else { return }
-        guard let view = recognizer.view else { return }
-
-        switch recognizer.state {
-        case .changed:
-          let translation = recognizer.translation(in: view)
-          handlePanChanged(translation: translation, viewWidth: view.bounds.width)
-        case .ended:
-          let translation = recognizer.translation(in: view)
-          let velocity = recognizer.velocity(in: view)
-          handlePanEnded(translation: translation, velocity: velocity, viewWidth: view.bounds.width)
-        case .cancelled, .failed:
-          resetDragState()
-        default:
-          break
-        }
-      }
-
-      private func handlePanChanged(translation: CGPoint, viewWidth: CGFloat) {
-        guard frontController != nil else { return }
-        guard abs(translation.x) > abs(translation.y) + Metrics.directionalDragBias else { return }
-        guard abs(translation.x) > Metrics.minimumDragDistance else { return }
-
-        let directionOffset = pageTurnDirectionOffset(for: translation.x)
-
-        if directionOffset == 1 {
-          guard nextController != nil else {
-            dragOffset = translation.x * Metrics.overscrollResistance
-            transitionDirection = nil
-            updateDragLayout(viewWidth: viewWidth)
-            return
-          }
-          transitionDirection = 1
-          dragOffset = clampedDragOffset(
-            translation.x,
-            sign: forwardDragSign,
-            viewWidth: viewWidth
+      func prepareTurnTarget(
+        chapterIndex: Int,
+        subPageIndex: Int,
+        preferLastPageOnReady: Bool
+      ) -> TurnTarget? {
+        guard let current = currentController else { return nil }
+        let isForward =
+          chapterIndex > currentChapterIndex
+          || (chapterIndex == currentChapterIndex && subPageIndex > currentPageIndex)
+        if chapterIndex == current.chapterIndex {
+          return TurnTarget(
+            host: current,
+            chapterIndex: chapterIndex,
+            subPageIndex: subPageIndex,
+            isCrossChapter: false,
+            isForward: isForward
           )
+        }
+        let neighbor: EpubPageViewController?
+        if nextController?.chapterIndex == chapterIndex {
+          neighbor = nextController
+        } else if previousController?.chapterIndex == chapterIndex {
+          neighbor = previousController
         } else {
-          guard previousController != nil else {
-            dragOffset = translation.x * Metrics.overscrollResistance
-            transitionDirection = nil
-            updateDragLayout(viewWidth: viewWidth)
-            return
-          }
-          transitionDirection = -1
-          dragOffset = clampedDragOffset(
-            translation.x,
-            sign: backwardDragSign,
-            viewWidth: viewWidth
-          )
+          neighbor = nil
         }
-
-        updateDragLayout(viewWidth: viewWidth)
+        guard
+          let host = neighbor
+            ?? makeChapterViewController(
+              chapterIndex: chapterIndex,
+              subPageIndex: subPageIndex,
+              preferLastPageOnReady: preferLastPageOnReady
+            )
+        else { return nil }
+        if host.currentSubPageIndex != subPageIndex, !preferLastPageOnReady {
+          host.scrollToPageIndex(subPageIndex)
+        }
+        return TurnTarget(
+          host: host,
+          chapterIndex: chapterIndex,
+          subPageIndex: subPageIndex,
+          isCrossChapter: true,
+          isForward: isForward
+        )
       }
 
-      private func pageTurnDirectionOffset(for translationX: CGFloat) -> Int {
-        translationX * forwardDragSign > 0 ? 1 : -1
-      }
-
-      private func clampedDragOffset(
-        _ translationX: CGFloat,
-        sign: CGFloat,
-        viewWidth: CGFloat
-      ) -> CGFloat {
-        guard viewWidth > 0 else { return 0 }
-        return sign * min(abs(translationX), viewWidth)
-      }
-
-      private func handlePanEnded(translation: CGPoint, velocity: CGPoint, viewWidth: CGFloat) {
-        guard abs(translation.x) > abs(translation.y) + Metrics.directionalDragBias else {
-          resetDragState()
+      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
+        currentChapterIndex = chapterIndex
+        currentPageIndex = pageIndex
+        guard notify else {
+          if parent.viewModel.currentChapterIndex != chapterIndex {
+            parent.viewModel.currentChapterIndex = chapterIndex
+          }
+          if parent.viewModel.currentPageIndex != pageIndex {
+            parent.viewModel.currentPageIndex = pageIndex
+          }
           return
         }
+        Task { @MainActor in
+          parent.viewModel.currentChapterIndex = chapterIndex
+          parent.viewModel.currentPageIndex = pageIndex
+          parent.viewModel.targetChapterIndex = nil
+          parent.viewModel.targetPageIndex = nil
+          parent.viewModel.pageDidChange()
+        }
+      }
 
-        guard transitionDirection != nil else {
-          if abs(dragOffset) > Metrics.cancelThreshold {
-            cancelDragWithAnimation(viewWidth: viewWidth)
+      // MARK: - Slide sessions
+
+      private func beginSlideSession(direction: SlideDirection, target: TurnTarget) -> Bool {
+        guard session == nil else { return false }
+        guard let container = containerViewController, let current = currentController else { return false }
+        rubberOffset = 0
+        current.view.frame = container.view.bounds
+        current.view.layoutIfNeeded()
+        // A reused neighbor host can sit on a stale page after mid-chapter jumps.
+        if target.isCrossChapter, target.host.currentSubPageIndex != target.subPageIndex {
+          target.host.scrollToPageIndex(target.subPageIndex)
+        }
+
+        let overlay: UIView
+        if let snapshot = current.view.snapshotView(afterScreenUpdates: false) {
+          overlay = snapshot
+        } else if let image = current.makeBacksideSnapshotImage() {
+          overlay = UIImageView(image: image)
+          overlay.contentMode = .scaleToFill
+        } else {
+          return false
+        }
+        overlay.frame = container.view.bounds
+        overlay.isUserInteractionEnabled = false
+
+        container.view.addSubview(overlay)
+        let width = container.view.bounds.width
+
+        switch direction {
+        case .forward:
+          if target.isCrossChapter {
+            addChildController(target.host, to: container)
+            target.host.view.frame = container.view.bounds
+            target.host.view.isHidden = false
+            target.host.view.layer.zPosition = 1
+            current.view.isHidden = true
+            current.view.layer.zPosition = 0
           } else {
-            resetDragState()
+            current.scrollToPageIndex(target.subPageIndex)
           }
-          return
+          overlay.layer.zPosition = 2
+          updateShadow(for: overlay, isElevated: true, offset: 0)
+        case .backward:
+          overlay.layer.zPosition = 1
+          updateShadow(for: overlay, isElevated: false, offset: 0)
+          if target.isCrossChapter {
+            addChildController(target.host, to: container)
+            current.view.isHidden = true
+            current.view.layer.zPosition = 0
+          } else {
+            current.scrollToPageIndex(target.subPageIndex)
+          }
+          target.host.view.frame = container.view.bounds.offsetBy(dx: -backwardDragSign * width, dy: 0)
+          target.host.view.isHidden = false
+          target.host.view.layer.zPosition = 2
+          updateShadow(for: target.host.view, isElevated: true, offset: -backwardDragSign * width)
         }
 
-        let shouldCommit =
-          abs(translation.x) > viewWidth * Metrics.commitDistanceRatio
-          || abs(velocity.x) > Metrics.commitVelocityThreshold
+        session = SlideSession(
+          direction: direction,
+          target: target,
+          originPage: currentPageIndex,
+          overlay: overlay
+        )
+        return true
+      }
 
-        if shouldCommit {
-          commitCurrentDrag(viewWidth: viewWidth)
-        } else {
-          cancelDragWithAnimation(viewWidth: viewWidth)
+      private func layoutSession(offset: CGFloat) {
+        guard let session, let container = containerViewController else { return }
+        let width = container.view.bounds.width
+        switch session.direction {
+        case .forward:
+          session.overlay.frame = container.view.bounds.offsetBy(dx: offset, dy: 0)
+          updateShadow(for: session.overlay, isElevated: true, offset: offset)
+        case .backward:
+          let dx = offset - backwardDragSign * width
+          session.target.host.view.frame = container.view.bounds.offsetBy(dx: dx, dy: 0)
+          updateShadow(for: session.target.host.view, isElevated: true, offset: dx)
         }
       }
 
-      private func updateDragLayout(viewWidth: CGFloat) {
+      private func settleSession(commit: Bool, animated: Bool) {
+        guard let session, let container = containerViewController else { return }
+        isAnimating = true
+        let width = container.view.bounds.width
+
+        let targetFrame: CGRect
+        let shadowedView: UIView
+        let shadowOffset: CGFloat
+        switch (session.direction, commit) {
+        case (.forward, true):
+          targetFrame = container.view.bounds.offsetBy(dx: forwardDragSign * width, dy: 0)
+          shadowedView = session.overlay
+          shadowOffset = forwardDragSign * width
+        case (.forward, false):
+          targetFrame = container.view.bounds
+          shadowedView = session.overlay
+          shadowOffset = 0
+        case (.backward, true):
+          targetFrame = container.view.bounds
+          shadowedView = session.target.host.view
+          shadowOffset = 0
+        case (.backward, false):
+          targetFrame = container.view.bounds.offsetBy(dx: -backwardDragSign * width, dy: 0)
+          shadowedView = session.target.host.view
+          shadowOffset = -backwardDragSign * width
+        }
+
+        let finish = {
+          self.finishSlideSession(commit: commit)
+        }
+        guard animated else {
+          shadowedView.frame = targetFrame
+          updateShadow(for: shadowedView, isElevated: true, offset: shadowOffset)
+          finish()
+          return
+        }
+        UIView.animate(
+          withDuration: Metrics.animationDuration,
+          delay: 0,
+          options: [.curveEaseOut]
+        ) {
+          shadowedView.frame = targetFrame
+          self.updateShadow(for: shadowedView, isElevated: true, offset: shadowOffset)
+        } completion: { _ in
+          finish()
+        }
+      }
+
+      private func finishSlideSession(commit: Bool) {
+        guard let session, let container = containerViewController else { return }
+        let target = session.target
+
+        if commit {
+          session.overlay.removeFromSuperview()
+          self.session = nil
+          if target.isCrossChapter {
+            installDeck(
+              around: target.host,
+              chapterIndex: target.chapterIndex,
+              subPageIndex: target.subPageIndex
+            )
+          } else {
+            resetCurrentPresentation()
+            prepareNeighbors(
+              chapterIndex: target.chapterIndex,
+              subPageIndex: target.subPageIndex
+            )
+          }
+          isAnimating = false
+          commitLocation(
+            chapterIndex: target.chapterIndex,
+            pageIndex: target.subPageIndex,
+            notify: true
+          )
+        } else {
+          let overlay = session.overlay
+          let resetPresentation = {
+            if let current = self.currentController {
+              current.view.frame = container.view.bounds
+              current.view.isHidden = false
+              current.view.layer.zPosition = 1
+              self.updateShadow(for: current.view, isElevated: true, offset: 0)
+            }
+            overlay.removeFromSuperview()
+          }
+          if target.isCrossChapter {
+            resetPresentation()
+          } else if let current = currentController {
+            // The live view still shows the target page; restore it only after the scroll-back lands.
+            current.scrollToPageIndex(session.originPage, completion: resetPresentation)
+          } else {
+            resetPresentation()
+          }
+          if target.isCrossChapter {
+            if target.host === nextController || target.host === previousController {
+              target.host.view.isHidden = true
+              target.host.view.layer.zPosition = 0
+              target.host.view.frame = container.view.bounds
+            } else {
+              removeChildController(target.host, from: container)
+            }
+          }
+          self.session = nil
+          isAnimating = false
+        }
+      }
+
+      private func resetCurrentPresentation() {
+        guard let container = containerViewController, let current = currentController else { return }
+        current.view.frame = container.view.bounds
+        current.view.isHidden = false
+        current.view.layer.zPosition = 1
+        updateShadow(for: current.view, isElevated: true, offset: 0)
+      }
+
+      func animateTransition(to target: TurnTarget) {
+        let direction: SlideDirection = target.isForward ? .forward : .backward
+        guard beginSlideSession(direction: direction, target: target) else {
+          installDeck(
+            around: target.host,
+            chapterIndex: target.chapterIndex,
+            subPageIndex: target.subPageIndex
+          )
+          commitLocation(
+            chapterIndex: target.chapterIndex,
+            pageIndex: target.subPageIndex,
+            notify: true
+          )
+          return
+        }
+        settleSession(commit: true, animated: true)
+      }
+
+      func handleContainerLayout() {
         guard let container = containerViewController else { return }
-
-        if let direction = transitionDirection {
-          if direction == 1 {
-            // Forward: front page slides left, revealing next page behind
-            frontController?.view.isHidden = false
-            frontController?.view.layer.zPosition = 1
-            frontController?.view.frame = container.view.bounds.offsetBy(dx: dragOffset, dy: 0)
-            updateShadow(for: frontController?.view, isElevated: true, offset: dragOffset)
-
-            nextController?.view.isHidden = false
-            nextController?.view.layer.zPosition = 0
-            nextController?.view.frame = container.view.bounds
-
-            previousController?.view.isHidden = true
-          } else {
-            // Backward: previous page slides in from the physical previous edge.
-            previousController?.view.isHidden = false
-            previousController?.view.layer.zPosition = 1
-            let offset = dragOffset - backwardDragSign * viewWidth
-            previousController?.view.frame = container.view.bounds.offsetBy(dx: offset, dy: 0)
-            updateShadow(for: previousController?.view, isElevated: true, offset: offset)
-
-            frontController?.view.isHidden = false
-            frontController?.view.layer.zPosition = 0
-            frontController?.view.frame = container.view.bounds
-
-            nextController?.view.isHidden = true
-          }
-        } else {
-          // Overscroll
-          frontController?.view.isHidden = false
-          frontController?.view.layer.zPosition = 1
-          frontController?.view.frame = container.view.bounds.offsetBy(dx: dragOffset, dy: 0)
-          updateShadow(for: frontController?.view, isElevated: true, offset: dragOffset)
-
-          nextController?.view.isHidden = true
-          previousController?.view.isHidden = true
+        let size = container.view.bounds.size
+        guard size.width > 0, size.height > 0, size != lastLayoutSize else { return }
+        lastLayoutSize = size
+        if session != nil {
+          settleSession(commit: false, animated: false)
         }
+        guard let current = currentController else { return }
+        current.view.frame = container.view.bounds
+        nextController?.view.frame = container.view.bounds
+        previousController?.view.frame = container.view.bounds
       }
 
       private func updateShadow(for view: UIView?, isElevated: Bool, offset: CGFloat) {
@@ -757,320 +852,186 @@
         )
       }
 
-      private func commitCurrentDrag(viewWidth: CGFloat) {
-        guard let direction = transitionDirection else {
-          cancelDragWithAnimation(viewWidth: viewWidth)
+      // MARK: - Gestures
+
+      @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
+        guard !isAnimating else { return }
+        guard let view = recognizer.view else { return }
+
+        switch recognizer.state {
+        case .changed:
+          let translation = recognizer.translation(in: view)
+          handlePanChanged(translation: translation, viewWidth: view.bounds.width)
+        case .ended:
+          let translation = recognizer.translation(in: view)
+          let velocity = recognizer.velocity(in: view)
+          handlePanEnded(translation: translation, velocity: velocity, viewWidth: view.bounds.width)
+        case .cancelled, .failed:
+          cancelPan()
+        default:
+          break
+        }
+      }
+
+      private func handlePanChanged(translation: CGPoint, viewWidth: CGFloat) {
+        guard currentController != nil else { return }
+        guard abs(translation.x) > abs(translation.y) + Metrics.directionalDragBias else { return }
+        guard abs(translation.x) > Metrics.minimumDragDistance else { return }
+
+        if var session {
+          let clamped = clampSessionOffset(
+            translation.x,
+            direction: session.direction,
+            viewWidth: viewWidth
+          )
+          session.offset = clamped
+          self.session = session
+          layoutSession(offset: clamped)
           return
         }
 
-        isAnimating = true
+        let directionOffset = pageTurnDirectionOffset(for: translation.x)
+        let direction: SlideDirection = directionOffset == 1 ? .forward : .backward
+        guard let target = dragTarget(direction: direction) else {
+          rubberOffset = translation.x * Metrics.overscrollResistance
+          layoutRubberband()
+          return
+        }
+        if beginSlideSession(direction: direction, target: target) {
+          let clamped = clampSessionOffset(translation.x, direction: direction, viewWidth: viewWidth)
+          session?.offset = clamped
+          layoutSession(offset: clamped)
+        } else {
+          rubberOffset = translation.x * Metrics.overscrollResistance
+          layoutRubberband()
+        }
+      }
 
-        if direction == 1 {
+      private func handlePanEnded(translation: CGPoint, velocity: CGPoint, viewWidth: CGFloat) {
+        guard abs(translation.x) > abs(translation.y) + Metrics.directionalDragBias else {
+          cancelPan()
+          return
+        }
+
+        if session != nil {
+          let shouldCommit =
+            abs(translation.x) > viewWidth * Metrics.commitDistanceRatio
+            || abs(velocity.x) > Metrics.commitVelocityThreshold
+          settleSession(commit: shouldCommit, animated: true)
+          return
+        }
+
+        if abs(rubberOffset) > Metrics.cancelThreshold {
+          isAnimating = true
           UIView.animate(
             withDuration: Metrics.animationDuration,
             delay: 0,
             options: [.curveEaseOut]
           ) {
-            let targetOffset = self.forwardDragSign * viewWidth
-            self.dragOffset = targetOffset
-            self.frontController?.view.frame =
-              self.containerViewController?.view.bounds.offsetBy(dx: targetOffset, dy: 0) ?? .zero
-            self.updateShadow(for: self.frontController?.view, isElevated: true, offset: targetOffset)
+            self.currentController?.view.frame = self.containerViewController?.view.bounds ?? .zero
+            self.updateShadow(for: self.currentController?.view, isElevated: true, offset: 0)
           } completion: { _ in
-            self.completeForwardTransition()
+            self.rubberOffset = 0
+            self.isAnimating = false
           }
         } else {
-          UIView.animate(
-            withDuration: Metrics.animationDuration,
-            delay: 0,
-            options: [.curveEaseOut]
-          ) {
-            self.dragOffset = self.backwardDragSign * viewWidth
-            self.previousController?.view.frame = self.containerViewController?.view.bounds ?? .zero
-            self.updateShadow(for: self.previousController?.view, isElevated: true, offset: 0)
-          } completion: { _ in
-            self.completeBackwardTransition()
-          }
+          cancelPan()
         }
       }
 
-      private func completeForwardTransition() {
-        guard let container = containerViewController else { return }
-        guard let nextVC = nextController else {
-          resetDragState()
+      private func cancelPan() {
+        if session != nil {
+          settleSession(commit: false, animated: true)
           return
         }
-
-        let oldFront = frontController
-        let oldPrev = previousController
-
-        // Rotate deck
-        frontController = nextVC
-        previousController = oldFront
-        nextController = nil
-
-        // Layout front
-        nextVC.view.frame = container.view.bounds
-        nextVC.view.layer.zPosition = 1
-        nextVC.view.isHidden = false
-        updateShadow(for: nextVC.view, isElevated: true, offset: 0)
-
-        // Hide others
-        oldFront?.view.isHidden = true
-        oldFront?.view.layer.zPosition = 0
-        oldPrev?.view.isHidden = true
-
-        // Remove old previous from hierarchy
-        if let oldPrev, oldPrev !== nextVC, oldPrev !== oldFront {
-          removeChildController(oldPrev, from: container)
-        }
-
-        let chapterIndex = nextVC.chapterIndex
-        let subPageIndex = nextVC.currentSubPageIndex
-        currentChapterIndex = chapterIndex
-        currentPageIndex = subPageIndex
-
-        // Preload next
-        let nextTarget = nextPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex)
-        if let nextTarget,
-          let newNextVC = makePageViewController(
-            chapterIndex: nextTarget.chapterIndex,
-            subPageIndex: nextTarget.subPageIndex
-          )
-        {
-          nextController = newNextVC
-          addChildController(newNextVC, to: container)
-          newNextVC.view.frame = container.view.bounds
-          newNextVC.view.layer.zPosition = 0
-          newNextVC.view.isHidden = true
-          warmAdjacentController(newNextVC)
-        }
-
-        transitionDirection = nil
-        dragOffset = 0
-        isAnimating = false
-
-        Task { @MainActor in
-          parent.viewModel.currentChapterIndex = chapterIndex
-          parent.viewModel.currentPageIndex = subPageIndex
-          parent.viewModel.targetChapterIndex = nil
-          parent.viewModel.targetPageIndex = nil
-          parent.viewModel.pageDidChange()
-        }
+        rubberOffset = 0
+        resetCurrentPresentation()
       }
 
-      private func completeBackwardTransition() {
+      private func layoutRubberband() {
         guard let container = containerViewController else { return }
-        guard let prevVC = previousController else {
-          resetDragState()
-          return
-        }
-
-        let oldFront = frontController
-        let oldNext = nextController
-
-        // Rotate deck
-        frontController = prevVC
-        nextController = oldFront
-        previousController = nil
-
-        // Layout front
-        prevVC.view.frame = container.view.bounds
-        prevVC.view.layer.zPosition = 1
-        prevVC.view.isHidden = false
-        updateShadow(for: prevVC.view, isElevated: true, offset: 0)
-
-        // Hide others
-        oldFront?.view.isHidden = true
-        oldFront?.view.layer.zPosition = 0
-        oldNext?.view.isHidden = true
-
-        // Remove old next from hierarchy
-        if let oldNext, oldNext !== prevVC, oldNext !== oldFront {
-          removeChildController(oldNext, from: container)
-        }
-
-        let chapterIndex = prevVC.chapterIndex
-        let subPageIndex = prevVC.currentSubPageIndex
-        currentChapterIndex = chapterIndex
-        currentPageIndex = subPageIndex
-
-        // Preload previous
-        let prevTarget = previousPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex)
-        if let prevTarget,
-          let newPrevVC = makePageViewController(
-            chapterIndex: prevTarget.chapterIndex,
-            subPageIndex: prevTarget.subPageIndex,
-            preferLastPageOnReady: prevTarget.preferLastPage
-          )
-        {
-          previousController = newPrevVC
-          addChildController(newPrevVC, to: container)
-          newPrevVC.view.frame = container.view.bounds
-          newPrevVC.view.layer.zPosition = 0
-          newPrevVC.view.isHidden = true
-          warmAdjacentController(newPrevVC)
-        }
-
-        transitionDirection = nil
-        dragOffset = 0
-        isAnimating = false
-
-        Task { @MainActor in
-          parent.viewModel.currentChapterIndex = chapterIndex
-          parent.viewModel.currentPageIndex = subPageIndex
-          parent.viewModel.targetChapterIndex = nil
-          parent.viewModel.targetPageIndex = nil
-          parent.viewModel.pageDidChange()
-        }
+        currentController?.view.frame = container.view.bounds.offsetBy(dx: rubberOffset, dy: 0)
+        updateShadow(for: currentController?.view, isElevated: true, offset: rubberOffset)
       }
 
-      func animateTransition(
-        to targetVC: EpubPageViewController,
-        chapterIndex: Int,
-        subPageIndex: Int,
-        forward: Bool
-      ) {
-        guard let container = containerViewController else { return }
-
-        isAnimating = true
-        let viewWidth = container.view.bounds.width
-
-        addChildController(targetVC, to: container)
-        targetVC.view.frame = container.view.bounds
-        targetVC.loadViewIfNeeded()
-        targetVC.forceEnsureContentLoaded()
-
-        if forward {
-          // Target goes behind, front slides away
-          targetVC.view.layer.zPosition = 0
-          targetVC.view.isHidden = false
-          frontController?.view.layer.zPosition = 1
-
-          UIView.animate(
-            withDuration: Metrics.animationDuration,
-            delay: 0,
-            options: [.curveEaseOut]
-          ) {
-            let targetOffset = self.forwardDragSign * viewWidth
-            self.frontController?.view.frame =
-              container.view.bounds.offsetBy(dx: targetOffset, dy: 0)
-            self.updateShadow(for: self.frontController?.view, isElevated: true, offset: targetOffset)
-          } completion: { _ in
-            self.finalizeJump(
-              to: targetVC,
+      private func dragTarget(direction: SlideDirection) -> TurnTarget? {
+        guard let current = currentController else { return nil }
+        let chapterIndex = current.chapterIndex
+        let subPageIndex = currentPageIndex
+        switch direction {
+        case .forward:
+          guard let target = nextPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex)
+          else { return nil }
+          if target.chapterIndex == chapterIndex {
+            return TurnTarget(
+              host: current,
               chapterIndex: chapterIndex,
-              subPageIndex: subPageIndex
+              subPageIndex: target.subPageIndex,
+              isCrossChapter: false,
+              isForward: true
             )
           }
-        } else {
-          // Target slides in from the physical previous edge.
-          targetVC.view.layer.zPosition = 1
-          targetVC.view.frame = container.view.bounds.offsetBy(dx: -backwardDragSign * viewWidth, dy: 0)
-          targetVC.view.isHidden = false
-          frontController?.view.layer.zPosition = 0
-
-          UIView.animate(
-            withDuration: Metrics.animationDuration,
-            delay: 0,
-            options: [.curveEaseOut]
-          ) {
-            targetVC.view.frame = container.view.bounds
-            self.updateShadow(for: targetVC.view, isElevated: true, offset: 0)
-          } completion: { _ in
-            self.finalizeJump(
-              to: targetVC,
+          let host =
+            nextController
+            ?? makeChapterViewController(
+              chapterIndex: target.chapterIndex,
+              subPageIndex: target.subPageIndex,
+              preferLastPageOnReady: target.preferLastPage
+            )
+          guard let host else { return nil }
+          return TurnTarget(
+            host: host,
+            chapterIndex: target.chapterIndex,
+            subPageIndex: target.subPageIndex,
+            isCrossChapter: true,
+            isForward: true
+          )
+        case .backward:
+          guard let target = previousPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex)
+          else { return nil }
+          if target.chapterIndex == chapterIndex {
+            return TurnTarget(
+              host: current,
               chapterIndex: chapterIndex,
-              subPageIndex: subPageIndex
+              subPageIndex: target.subPageIndex,
+              isCrossChapter: false,
+              isForward: false
             )
           }
+          let host =
+            previousController
+            ?? makeChapterViewController(
+              chapterIndex: target.chapterIndex,
+              subPageIndex: target.subPageIndex,
+              preferLastPageOnReady: target.preferLastPage
+            )
+          guard let host else { return nil }
+          return TurnTarget(
+            host: host,
+            chapterIndex: target.chapterIndex,
+            subPageIndex: target.subPageIndex,
+            isCrossChapter: true,
+            isForward: false
+          )
         }
       }
 
-      private func finalizeJump(
-        to targetVC: EpubPageViewController,
-        chapterIndex: Int,
-        subPageIndex: Int
-      ) {
-        rebuildDeck(around: targetVC, chapterIndex: chapterIndex, subPageIndex: subPageIndex)
-        currentChapterIndex = chapterIndex
-        currentPageIndex = subPageIndex
-        isAnimating = false
-
-        Task { @MainActor in
-          parent.viewModel.currentChapterIndex = chapterIndex
-          parent.viewModel.currentPageIndex = subPageIndex
-          parent.viewModel.targetChapterIndex = nil
-          parent.viewModel.targetPageIndex = nil
-          parent.viewModel.pageDidChange()
-        }
+      private func pageTurnDirectionOffset(for translationX: CGFloat) -> Int {
+        translationX * forwardDragSign > 0 ? 1 : -1
       }
 
-      private func cancelDragWithAnimation(viewWidth: CGFloat) {
-        isAnimating = true
-
-        if let direction = transitionDirection {
-          if direction == 1 {
-            UIView.animate(
-              withDuration: Metrics.animationDuration,
-              delay: 0,
-              options: [.curveEaseOut]
-            ) {
-              self.frontController?.view.frame = self.containerViewController?.view.bounds ?? .zero
-              self.updateShadow(for: self.frontController?.view, isElevated: true, offset: 0)
-            } completion: { _ in
-              self.resetDragState()
-            }
-          } else {
-            UIView.animate(
-              withDuration: Metrics.animationDuration,
-              delay: 0,
-              options: [.curveEaseOut]
-            ) {
-              self.previousController?.view.frame =
-                self.containerViewController?.view.bounds.offsetBy(
-                  dx: -self.backwardDragSign * viewWidth,
-                  dy: 0
-                ) ?? .zero
-              self.updateShadow(
-                for: self.previousController?.view,
-                isElevated: true,
-                offset: -self.backwardDragSign * viewWidth
-              )
-            } completion: { _ in
-              self.resetDragState()
-            }
-          }
-        } else {
-          UIView.animate(
-            withDuration: Metrics.animationDuration,
-            delay: 0,
-            options: [.curveEaseOut]
-          ) {
-            self.frontController?.view.frame = self.containerViewController?.view.bounds ?? .zero
-            self.updateShadow(for: self.frontController?.view, isElevated: true, offset: 0)
-          } completion: { _ in
-            self.resetDragState()
-          }
+      private func clampSessionOffset(
+        _ translationX: CGFloat,
+        direction: SlideDirection,
+        viewWidth: CGFloat
+      ) -> CGFloat {
+        guard viewWidth > 0 else { return 0 }
+        switch direction {
+        case .forward:
+          return forwardDragSign * min(max(0, translationX * forwardDragSign), viewWidth)
+        case .backward:
+          return backwardDragSign * min(max(0, translationX * backwardDragSign), viewWidth)
         }
-      }
-
-      private func resetDragState() {
-        guard let container = containerViewController else { return }
-
-        frontController?.view.frame = container.view.bounds
-        frontController?.view.layer.zPosition = 1
-        frontController?.view.isHidden = false
-        updateShadow(for: frontController?.view, isElevated: true, offset: 0)
-
-        nextController?.view.isHidden = true
-        nextController?.view.layer.zPosition = 0
-        previousController?.view.isHidden = true
-        previousController?.view.layer.zPosition = 0
-
-        transitionDirection = nil
-        dragOffset = 0
-        isAnimating = false
       }
 
       // MARK: - Tap Handling
@@ -1120,12 +1081,12 @@
       }
 
       private func isAtLastPage() -> Bool {
-        guard let frontVC = frontController else { return false }
+        guard let current = currentController else { return false }
         let lastChapterIndex = parent.viewModel.chapterCount - 1
-        guard frontVC.chapterIndex == lastChapterIndex else { return false }
+        guard current.chapterIndex == lastChapterIndex else { return false }
         let storedCount = parent.viewModel.chapterPageCount(at: lastChapterIndex) ?? 1
-        let pageCount = max(storedCount, frontVC.totalPagesInChapter)
-        return frontVC.currentSubPageIndex >= pageCount - 1
+        let pageCount = max(storedCount, current.totalPagesInChapter)
+        return currentPageIndex >= pageCount - 1
       }
 
       // MARK: - UIGestureRecognizerDelegate
@@ -1184,12 +1145,8 @@
     override func viewDidLayoutSubviews() {
       super.viewDidLayoutSubviews()
       guard let coordinator, !coordinator.isAnimating else { return }
-      guard let frontVC = coordinator.frontController else { return }
-      coordinator.rebuildDeck(
-        around: frontVC,
-        chapterIndex: coordinator.currentChapterIndex,
-        subPageIndex: coordinator.currentPageIndex
-      )
+      guard coordinator.currentController != nil else { return }
+      coordinator.handleContainerLayout()
     }
   }
 #endif

@@ -1732,14 +1732,28 @@
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
-    private func scrollToPage(_ pageIndex: Int) {
-      guard isContentLoaded else { return }
+    private func scrollToPage(_ pageIndex: Int, completion: (() -> Void)? = nil) {
+      guard isContentLoaded else {
+        completion?()
+        return
+      }
       let js = WebPubPagedJavaScriptBuilder.makeScrollToPageScript(
         pageIndex: pageIndex,
         animated: false,
         paginationLayout: paginationLayout
       )
-      webView.evaluateJavaScript(js, completionHandler: nil)
+      webView.evaluateJavaScript(js) { _, _ in completion?() }
+    }
+
+    func scrollToPageIndex(_ pageIndex: Int, completion: (() -> Void)? = nil) {
+      currentSubPageIndex = pageIndex
+      if isContentLoaded {
+        scrollToPage(pageIndex, completion: completion)
+      } else {
+        pendingPageIndex = pageIndex
+        completion?()
+      }
+      updateOverlayLabels()
     }
 
     func userContentController(
