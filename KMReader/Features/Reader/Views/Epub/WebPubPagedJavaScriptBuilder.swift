@@ -142,6 +142,7 @@
               document.body.classList.add('kmreader-transform-pagination');
             } else {
               document.body.classList.remove('kmreader-transform-pagination');
+              document.body.removeAttribute('data-kmreader-logical-offset');
               restorePageElementTransforms();
             }
           }
@@ -380,6 +381,7 @@
     private static func paginationRuntimeScript(paginationLayout: WebPubPaginationLayout) -> String {
       """
       var reverseScrollLeft = \(paginationLayout.usesReverseScrollLeft ? "true" : "false");
+      var activeLogicalOffset = 0;
       var unwrapLegacyPaginationStrip = function() {
         var body = document.body;
         if (!body) { return; }
@@ -425,11 +427,15 @@
         if (!body) { return; }
         unwrapLegacyPaginationStrip();
         if (offset <= 0) {
+          activeLogicalOffset = 0;
           restorePageElementTransforms();
           body.classList.remove('kmreader-transform-pagination');
+          body.removeAttribute('data-kmreader-logical-offset');
           return;
         }
+        activeLogicalOffset = offset;
         body.classList.add('kmreader-transform-pagination');
+        body.setAttribute('data-kmreader-logical-offset', String(offset));
         paginatedBodyChildren().forEach(function(element) {
           if (!element.hasAttribute('data-kmreader-transform-saved')) {
             element.setAttribute('data-kmreader-transform-saved', 'true');
@@ -452,15 +458,24 @@
       var measurePagination = function() {
         var root = document.documentElement;
         var body = document.body;
+        var previousOffset = activeLogicalOffset;
+        if (body && body.hasAttribute('data-kmreader-logical-offset')) {
+          previousOffset = parseFloat(body.getAttribute('data-kmreader-logical-offset') || '0') || previousOffset;
+        }
+        if (reverseScrollLeft) {
+          unwrapLegacyPaginationStrip();
+          restorePageElementTransforms();
+        }
         var pageWidth = (root && root.clientWidth) || window.innerWidth;
         if (!pageWidth || pageWidth <= 0) { pageWidth = 1; }
-        // The pagination translate3d is visual-only: scrollWidth measures layout
-        // boxes, so no transform teardown is needed before measuring.
         var currentWidth = Math.max(
           root ? (root.scrollWidth || 0) : 0,
           body ? (body.scrollWidth || 0) : 0,
           pageWidth
         );
+        if (reverseScrollLeft && previousOffset > 0) {
+          applyPageElementTransforms(previousOffset, false);
+        }
         return {
           pageWidth: pageWidth,
           currentWidth: currentWidth,
