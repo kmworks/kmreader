@@ -449,6 +449,9 @@
                 preferLastPageOnReady: nextTarget.preferLastPage
               )
             {
+              if host.currentSubPageIndex != nextTarget.subPageIndex, !nextTarget.preferLastPage {
+                host.scrollToPageIndex(nextTarget.subPageIndex)
+              }
               nextController = host
               adoptNeighbor(host, in: container)
             }
@@ -472,6 +475,9 @@
                 preferLastPageOnReady: prevTarget.preferLastPage
               )
             {
+              if host.currentSubPageIndex != prevTarget.subPageIndex, !prevTarget.preferLastPage {
+                host.scrollToPageIndex(prevTarget.subPageIndex)
+              }
               previousController = host
               adoptNeighbor(host, in: container)
             }
@@ -486,7 +492,9 @@
         reconfigureHost(host)
         addChildController(host, to: container)
         host.view.frame = container.view.bounds
-        host.view.isHidden = true
+        // Hidden web views get their rAF-driven pagination stalled until revealed,
+        // so neighbors stay compositing underneath the opaque current page.
+        host.view.isHidden = false
         host.view.layer.zPosition = 0
         host.loadViewIfNeeded()
         host.forceEnsureContentLoaded()
@@ -640,7 +648,6 @@
           if target.isCrossChapter {
             addChildController(target.host, to: container)
             target.host.view.frame = container.view.bounds
-            target.host.view.isHidden = false
             target.host.view.layer.zPosition = 1
             current.view.isHidden = true
             current.view.layer.zPosition = 0
@@ -660,7 +667,6 @@
             current.scrollToPageIndex(target.subPageIndex)
           }
           target.host.view.frame = container.view.bounds.offsetBy(dx: -backwardDragSign * width, dy: 0)
-          target.host.view.isHidden = false
           target.host.view.layer.zPosition = 2
           updateShadow(for: target.host.view, isElevated: true, offset: -backwardDragSign * width)
         }
@@ -783,7 +789,6 @@
           }
           if target.isCrossChapter {
             if target.host === nextController || target.host === previousController {
-              target.host.view.isHidden = true
               target.host.view.layer.zPosition = 0
               target.host.view.frame = container.view.bounds
             } else {

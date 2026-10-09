@@ -786,8 +786,13 @@
     }
 
     func initialProgression(for chapterIndex: Int) -> Double? {
-      guard initialChapterIndex == chapterIndex else { return nil }
-      return initialProgression
+      // One-shot: the saved-position jump belongs to the controller that opens
+      // the book. Later controllers for the same chapter (e.g. neighbor
+      // preloads) must not inherit it.
+      guard initialChapterIndex == chapterIndex, let progression = initialProgression else { return nil }
+      initialChapterIndex = nil
+      initialProgression = nil
+      return progression
     }
 
     func updateChapterPageCount(_ pageCount: Int, for chapterIndex: Int) {
@@ -796,30 +801,6 @@
       if chapterPageCounts[chapterIndex] == normalizedCount { return }
 
       chapterPageCounts[chapterIndex] = normalizedCount
-
-      if chapterIndex == initialChapterIndex, let progression = initialProgression {
-        let pageIndex = max(0, min(normalizedCount - 1, Int(floor(Double(normalizedCount) * progression))))
-        logger.debug(
-          "Applying initial progression to chapterIndex=\(chapterIndex): pageIndex=\(pageIndex)/\(normalizedCount)")
-        let wasSamePosition = currentChapterIndex == chapterIndex && currentPageIndex == pageIndex
-        currentChapterIndex = chapterIndex
-        currentPageIndex = pageIndex
-        if wasSamePosition {
-          if targetChapterIndex == chapterIndex && targetPageIndex == pageIndex {
-            // Avoid keeping a no-op target that can cause a late snap-back.
-            targetChapterIndex = nil
-            targetPageIndex = nil
-          }
-        } else {
-          targetChapterIndex = chapterIndex
-          targetPageIndex = pageIndex
-        }
-        initialChapterIndex = nil
-        initialProgression = nil
-        // The reader only now reaches the saved position; the page it showed
-        // before the chapter was measured is not where the session started.
-        sessionStartPosition = nil
-      }
 
       normalizeCurrentPosition(adjustPageCount: false)
       normalizeTargetPosition(adjustPageCount: false)

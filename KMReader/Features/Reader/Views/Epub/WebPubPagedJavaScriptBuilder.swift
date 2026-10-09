@@ -159,10 +159,14 @@
       targetPageIndex: Int,
       preferLastPage: Bool,
       waitForLoadEvents: Bool,
-      paginationLayout: WebPubPaginationLayout
+      paginationLayout: WebPubPaginationLayout,
+      generation: Int = 0
     ) -> String {
       """
       (function() {
+        var generation = \(generation);
+        window.__kmreaderPaginationGeneration = generation;
+        var isCurrent = function() { return window.__kmreaderPaginationGeneration === generation; };
         var target = \(targetPageIndex);
         var preferLast = \(preferLastPage ? "true" : "false");
         \(paginationRuntimeScript(paginationLayout: paginationLayout))
@@ -170,6 +174,7 @@
         var hasFinalized = false;
 
         var finalize = function() {
+          if (!isCurrent()) return;
           if (hasFinalized) return;
           hasFinalized = true;
 
@@ -188,7 +193,8 @@
               window.webkit.messageHandlers.readerBridge.postMessage({
                 type: 'ready',
                 totalPages: total,
-                currentPage: finalTarget
+                currentPage: finalTarget,
+                generation: generation
               });
             }
           }, 16);
@@ -207,6 +213,7 @@
           var attempt = 0;
 
           var check = function() {
+            if (!isCurrent()) return;
             if (hasFinalized) return;
 
             attempt++;
@@ -236,6 +243,7 @@
         };
 
         var globalTimeout = setTimeout(function() {
+          if (!isCurrent()) return;
           finalize();
         }, 10000);
 
@@ -272,6 +280,10 @@
           var resizeDebounceTimer = null;
 
           var ro = new ResizeObserver(function() {
+            if (!isCurrent()) {
+              ro.disconnect();
+              return;
+            }
             if (isPageCountLocked) {
               return;
             }
@@ -303,7 +315,8 @@
                     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
                       window.webkit.messageHandlers.readerBridge.postMessage({
                         type: 'pageCountUpdate',
-                        totalPages: total
+                        totalPages: total,
+                        generation: generation
                       });
                     }
                   }
