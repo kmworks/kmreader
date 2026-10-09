@@ -11405,24 +11405,24 @@
         }
       }
     },
-    "Cancel Isolation" : {
+    "Cancel Solo" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einzelseitenansicht aufheben"
+            "value" : "Solo aufheben"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancel Isolation"
+            "value" : "Cancel Solo"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cancelar aislamiento"
+            "value" : "Cancelar solitario"
           }
         },
         "fr" : {
@@ -11434,7 +11434,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Annulla isolamento"
+            "value" : "Annulla singola"
           }
         },
         "ja" : {
@@ -11452,7 +11452,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отменить изоляцию"
+            "value" : "Отменить отдельный показ"
           }
         },
         "zh-Hans" : {
@@ -35541,198 +35541,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ISBN"
-          }
-        }
-      }
-    },
-    "Isolate" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isolieren"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isolate"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aislar"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isoler"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isola"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "単独表示"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "분리 표시"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изолировать"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "单独显示"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "單獨顯示"
-          }
-        }
-      }
-    },
-    "Isolate Cover Page" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titelseite einzeln"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isolate Cover Page"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aislar portada"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couverture seule"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isola pagina di copertina"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "表紙を単独表示"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "표지 단독 표시"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изолировать обложку"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "单独显示封面"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "單獨顯示封面"
-          }
-        }
-      }
-    },
-    "Isolate Page %d" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seite %d einzeln"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isolate Page %d"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aislar pagina %d"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Page %d seule"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isola pagina %d"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ページ %d を単独表示"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "페이지 %d 단독 표시"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изолировать страницу %d"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "单独显示第 %d 页"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "單獨顯示第 %d 頁"
           }
         }
       }
@@ -77275,66 +77083,66 @@
         }
       }
     },
-    "Show a context menu on page images for quick actions like share or isolate page. On iOS, Live Text keeps the long-press gesture while it is enabled." : {
+    "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeigt auf Seitenbildern ein Kontextmenü für Schnellaktionen wie Teilen oder Seite isolieren an. Auf iOS bleibt die Geste für langes Drücken bei aktiviertem Live Text reserviert."
+            "value" : "Zeigt auf Seitenbildern ein Kontextmenü für Schnellaktionen wie Teilen oder die Solo-Anzeige einer Seite an. Auf iOS bleibt die Geste für langes Drücken bei aktiviertem Live Text reserviert."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Show a context menu on page images for quick actions like share or isolate page. On iOS, Live Text keeps the long-press gesture while it is enabled."
+            "value" : "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Muestra un menú contextual en las imágenes de las páginas para acciones rápidas como compartir o aislar la página. En iOS, Live Text conserva el gesto de pulsación prolongada mientras está activado."
+            "value" : "Muestra un menú contextual en las imágenes de las páginas para acciones rápidas como compartir o mostrar una página en solitario. En iOS, Live Text conserva el gesto de pulsación prolongada mientras está activado."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Affiche un menu contextuel sur les images des pages pour des actions rapides comme partager ou isoler la page. Sur iOS, Live Text conserve le geste d'appui long lorsqu'il est activé."
+            "value" : "Affiche un menu contextuel sur les images des pages pour des actions rapides comme partager ou afficher une page seule. Sur iOS, Live Text conserve le geste d'appui long lorsqu'il est activé."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostra un menu contestuale sulle immagini delle pagine per azioni rapide come condividere o isolare la pagina. Su iOS, Live Text mantiene il gesto di pressione prolungata quando è attivo."
+            "value" : "Mostra un menu contestuale sulle immagini delle pagine per azioni rapide come condividere o mostrare una pagina da sola. Su iOS, Live Text mantiene il gesto di pressione prolungata quando è attivo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ページ画像に共有やページの分離などのクイックアクション用コンテキストメニューを表示します。iOS では、Live Text が有効な間は長押しジェスチャは Live Text に割り当てられます。"
+            "value" : "ページ画像に共有やページの単独表示などのクイックアクション用コンテキストメニューを表示します。iOS では、Live Text が有効な間は長押しジェスチャは Live Text に割り当てられます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "페이지 이미지에 공유나 페이지 분리 같은 빠른 작업용 컨텍스트 메뉴를 표시합니다. iOS에서는 Live Text가 활성화되어 있는 동안 길게 누르기 제스처가 Live Text에 유지됩니다."
+            "value" : "페이지 이미지에 공유나 페이지 단독 표시 같은 빠른 작업용 컨텍스트 메뉴를 표시합니다. iOS에서는 Live Text가 활성화되어 있는 동안 길게 누르기 제스처가 Live Text에 유지됩니다."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывает контекстное меню на изображениях страниц для быстрых действий, таких как отправка или изоляция страницы. На iOS при включенном Live Text жест долгого нажатия остается за Live Text."
+            "value" : "Показывает контекстное меню на изображениях страниц для быстрых действий, таких как отправка или отдельный показ страницы. На iOS при включенном Live Text жест долгого нажатия остается за Live Text."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在页面图片上显示上下文菜单，用于分享、隔离页面等快捷操作。在 iOS 上，启用 Live Text 后，长按手势仍会保留给 Live Text。"
+            "value" : "在页面图片上显示上下文菜单，用于分享、单独显示页面等快捷操作。在 iOS 上，启用 Live Text 后，长按手势仍会保留给 Live Text。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在頁面圖片上顯示上下文選單，用於分享、隔離頁面等快捷操作。在 iOS 上，啟用 Live Text 後，長按手勢仍會保留給 Live Text。"
+            "value" : "在頁面圖片上顯示上下文選單，用於分享、單獨顯示頁面等快捷操作。在 iOS 上，啟用 Live Text 後，長按手勢仍會保留給 Live Text。"
           }
         }
       }
@@ -77591,6 +77399,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "顯示通知"
+          }
+        }
+      }
+    },
+    "Show Page %d Solo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seite %d solo anzeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Page %d Solo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar página %d en solitario"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher la page %d seule"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostra pagina %d da sola"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ページ %d を単独表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "페이지 %d 단독 표시"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать страницу %d отдельно"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单独显示第 %d 页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "單獨顯示第 %d 頁"
           }
         }
       }
@@ -77911,6 +77783,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在鎖定畫面與動態島中顯示閱讀進度。"
+          }
+        }
+      }
+    },
+    "Show Solo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo anzeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show Solo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar en solitario"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher seule"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostra da sola"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "単独表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단독 표시"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать отдельно"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单独显示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "單獨顯示"
           }
         }
       }
@@ -80088,6 +80024,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "共用"
+          }
+        }
+      }
+    },
+    "Solo Cover Page" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titelseite solo"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo Cover Page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portada en solitario"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couverture seule"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copertina da sola"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表紙を単独表示"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "표지 단독 표시"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обложка отдельно"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单独显示封面"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "單獨顯示封面"
           }
         }
       }

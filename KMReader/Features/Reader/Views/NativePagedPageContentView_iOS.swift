@@ -20,7 +20,7 @@
       readerBackground: .system,
       enableLiveText: false,
       enableImageContextMenu: false,
-      supportsPageIsolationActions: false,
+      supportsPageSoloActions: false,
       doubleTapZoomScale: 3.0,
       doubleTapZoomMode: .enabled
     )
@@ -186,8 +186,8 @@
     private func updatePages() {
       guard let viewModel else { return }
       let pages = currentPageData
-      let canIsolatePageFromCurrentPresentation =
-        renderConfig.supportsPageIsolationActions
+      let canSoloPageFromCurrentPresentation =
+        renderConfig.supportsPageSoloActions
         && pages.count == 2
         && Set(pages.map(\.pageID)).count == 2
 
@@ -212,8 +212,8 @@
           showPageShadow: renderConfig.showPageShadow,
           enableLiveText: renderConfig.enableLiveText,
           enableImageContextMenu: renderConfig.enableImageContextMenu,
-          supportsPageIsolationActions: renderConfig.supportsPageIsolationActions,
-          canIsolatePageFromCurrentPresentation: canIsolatePageFromCurrentPresentation,
+          supportsPageSoloActions: renderConfig.supportsPageSoloActions,
+          canSoloPageFromCurrentPresentation: canSoloPageFromCurrentPresentation,
           background: renderConfig.readerBackground,
           readingDirection: readingDirection,
           displayMode: .fit,

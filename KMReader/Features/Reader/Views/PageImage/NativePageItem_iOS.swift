@@ -27,8 +27,8 @@
     private var showPageShadow = true
     private var enableLiveText = false
     private var enableImageContextMenu = false
-    private var supportsPageIsolationActions = false
-    private var canIsolatePageFromCurrentPresentation = false
+    private var supportsPageSoloActions = false
+    private var canSoloPageFromCurrentPresentation = false
     private let logger = AppLogger(.reader)
 
     #if os(iOS) || os(macOS)
@@ -198,8 +198,8 @@
       showPageShadow: Bool,
       enableLiveText: Bool,
       enableImageContextMenu: Bool,
-      supportsPageIsolationActions: Bool,
-      canIsolatePageFromCurrentPresentation: Bool,
+      supportsPageSoloActions: Bool,
+      canSoloPageFromCurrentPresentation: Bool,
       background: ReaderBackground,
       readingDirection: ReadingDirection,
       displayMode: PageDisplayMode,
@@ -214,8 +214,8 @@
       let shouldEnableLiveText = enableLiveText && !viewModel.isAnimatedPage(for: data.pageID)
       self.enableLiveText = shouldEnableLiveText
       self.enableImageContextMenu = enableImageContextMenu
-      self.supportsPageIsolationActions = supportsPageIsolationActions
-      self.canIsolatePageFromCurrentPresentation = canIsolatePageFromCurrentPresentation
+      self.supportsPageSoloActions = supportsPageSoloActions
+      self.canSoloPageFromCurrentPresentation = canSoloPageFromCurrentPresentation
 
       let pageSourceImage = preparedImage(
         from: image,
@@ -613,8 +613,8 @@
         var sections: [UIMenuElement] = [
           UIMenu(options: .displayInline, children: [makeShareAction(for: currentData.pageID)])
         ]
-        if let isolateAction = makePageIsolationAction(for: currentData.pageID) {
-          sections.append(UIMenu(options: .displayInline, children: [isolateAction]))
+        if let soloAction = makePageSoloAction(for: currentData.pageID) {
+          sections.append(UIMenu(options: .displayInline, children: [soloAction]))
         }
 
         return UIMenu(children: sections)
@@ -627,25 +627,25 @@
         }
       }
 
-      private func makePageIsolationAction(for pageID: ReaderPageID) -> UIAction? {
-        guard supportsPageIsolationActions, let viewModel else { return nil }
+      private func makePageSoloAction(for pageID: ReaderPageID) -> UIAction? {
+        guard supportsPageSoloActions, let viewModel else { return nil }
         guard viewModel.isPageEffectivelyPortrait(pageID) else { return nil }
 
-        if viewModel.isPageIsolated(pageID) {
+        if viewModel.isPageSolo(pageID) {
           return UIAction(
-            title: String(localized: "Cancel Isolation"),
+            title: String(localized: "Cancel Solo"),
             image: UIImage(systemName: "rectangle.portrait.slash")
           ) { [weak self] _ in
-            self?.viewModel?.toggleIsolatePage(pageID)
+            self?.viewModel?.toggleSoloPage(pageID)
           }
         }
 
-        guard canIsolatePageFromCurrentPresentation else { return nil }
+        guard canSoloPageFromCurrentPresentation else { return nil }
         return UIAction(
-          title: String(localized: "Isolate"),
+          title: String(localized: "Show Solo"),
           image: UIImage(systemName: "rectangle.portrait")
         ) { [weak self] _ in
-          self?.viewModel?.toggleIsolatePage(pageID)
+          self?.viewModel?.toggleSoloPage(pageID)
         }
       }
 

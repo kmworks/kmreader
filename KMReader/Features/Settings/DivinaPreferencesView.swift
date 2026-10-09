@@ -12,7 +12,7 @@ struct DivinaPreferencesView: View {
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   @AppStorage("readerBackground") private var readerBackground: ReaderBackground = .system
   @AppStorage("pageLayout") private var pageLayout: PageLayout = .auto
-  @AppStorage("isolateCoverPage") private var isolateCoverPage: Bool = true
+  @AppStorage("isolateCoverPage") private var soloCoverPage: Bool = true
   @AppStorage("splitWidePageMode") private var splitWidePageMode: SplitWidePageMode = .none
   @AppStorage("webtoonPageWidthPercentage") private var webtoonPageWidthPercentage: Double = 100.0
   @AppStorage("webtoonTapScrollPercentage") private var webtoonTapScrollPercentage: Double = 80.0
@@ -177,9 +177,9 @@ struct DivinaPreferencesView: View {
         }
 
         if pageLayout.supportsDualPageOptions {
-          Toggle(isOn: $isolateCoverPage) {
+          Toggle(isOn: $soloCoverPage) {
             VStack(alignment: .leading, spacing: 4) {
-              Text("Isolate Cover Page")
+              Text("Solo Cover Page")
               Text("Display the cover page separately, not paired with the next page")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -470,7 +470,7 @@ struct DivinaPreferencesView: View {
             VStack(alignment: .leading, spacing: 4) {
               Text("Enable Image Context Menu")
               Text(
-                "Show a context menu on page images for quick actions like share or isolate page. On iOS, Live Text keeps the long-press gesture while it is enabled."
+                "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled."
               )
               .font(.caption)
               .foregroundColor(.secondary)

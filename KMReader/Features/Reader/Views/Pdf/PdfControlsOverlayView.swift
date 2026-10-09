@@ -4,7 +4,7 @@
   struct PdfControlsOverlayView: View {
     @Binding var readingDirection: ReadingDirection
     @Binding var pagePresentation: PdfPagePresentation
-    @Binding var isolateCoverPage: Bool
+    @Binding var soloCoverPage: Bool
 
     @Binding var showingPageJumpSheet: Bool
     @Binding var showingSearchSheet: Bool
@@ -313,8 +313,8 @@
         }
         .pickerStyle(.menu)
 
-        if pagePresentation.supportsCoverIsolation {
-          pageIsolation()
+        if pagePresentation.supportsCoverSolo {
+          pageSolo()
         }
       } header: {
         Text(String(localized: "Current Reading Options"))
@@ -355,13 +355,13 @@
     }
 
     @ViewBuilder
-    private func pageIsolation() -> some View {
+    private func pageSolo() -> some View {
       Button {
-        isolateCoverPage.toggle()
+        soloCoverPage.toggle()
       } label: {
         Label(
-          String(localized: "Isolate Cover Page"),
-          systemImage: isolateCoverPage ? "checkmark.rectangle.portrait" : "rectangle.portrait"
+          String(localized: "Solo Cover Page"),
+          systemImage: soloCoverPage ? "checkmark.rectangle.portrait" : "rectangle.portrait"
         )
       }
     }

@@ -12,8 +12,8 @@ struct ReaderCommandHandlers {
   let openNextBook: () -> Void
   let setReadingDirection: (ReadingDirection) -> Void
   let setPageLayout: (PageLayout) -> Void
-  let toggleIsolateCoverPage: () -> Void
-  let toggleIsolatePage: (ReaderPageID) -> Void
+  let toggleSoloCoverPage: () -> Void
+  let toggleSoloPage: (ReaderPageID) -> Void
   let sharePage: (ReaderPageID) -> Void
   let setRotation: (ReaderRotation) -> Void
   let setSplitWidePageMode: (SplitWidePageMode) -> Void

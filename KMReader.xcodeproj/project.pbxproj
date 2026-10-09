@@ -438,7 +438,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "KMReader/KMReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 641;
+				CURRENT_PROJECT_VERSION = 642;
 				DEVELOPMENT_TEAM = M777UHWZA4;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -497,7 +497,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "KMReader/KMReader-macOS.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 641;
+				CURRENT_PROJECT_VERSION = 642;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=appletvos*]" = M777UHWZA4;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = M777UHWZA4;
@@ -558,7 +558,7 @@
 				CODE_SIGN_ENTITLEMENTS = KMReaderWidgets/KMReaderWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 641;
+				CURRENT_PROJECT_VERSION = 642;
 				DEVELOPMENT_TEAM = M777UHWZA4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KMReaderWidgets/Info.plist;
@@ -592,7 +592,7 @@
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 641;
+				CURRENT_PROJECT_VERSION = 642;
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = M777UHWZA4;
 				GENERATE_INFOPLIST_FILE = YES;

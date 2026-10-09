@@ -11,8 +11,8 @@ import SwiftUI
 class ReaderViewModel {
   var readerPages: [ReaderPage] = []
   private(set) var segments: [ReaderSegment] = []
-  var isolatePages: [Int] = []
-  private var isolatePagesByBookId: [String: Set<Int>] = [:]
+  var soloPages: [Int] = []
+  private var soloPagesByBookId: [String: Set<Int>] = [:]
   private(set) var rotation: ReaderRotation
   private(set) var bookIdsWithMissingPageDimensions: Set<String> = []
   private var currentPageID: ReaderPageID?
@@ -46,7 +46,7 @@ class ReaderViewModel {
   var tableOfContents: [ReaderTOCEntry] = []
   private var tableOfContentsByBookId: [String: [ReaderTOCEntry]] = [:]
   private var tableOfContentsBookId: String?
-  private var isolateCoverPageEnabled: Bool
+  private var soloCoverPageEnabled: Bool
   private var forceDualPagePairs: Bool
   private var splitWidePageMode: SplitWidePageMode
   private var pageTransitionStyle: PageTransitionStyle
@@ -131,15 +131,15 @@ class ReaderViewModel {
     return readerPages[resolvedCurrentPageIndex]
   }
 
-  var isCurrentPageIsolated: Bool {
+  var isCurrentPageSolo: Bool {
     guard let currentReaderPage else { return false }
-    guard let isolatePosition = isolatePosition(for: currentReaderPage.id) else { return false }
-    return isolatePagesByBookId[currentReaderPage.bookId]?.contains(isolatePosition.localIndex) == true
+    guard let soloPosition = soloPosition(for: currentReaderPage.id) else { return false }
+    return soloPagesByBookId[currentReaderPage.bookId]?.contains(soloPosition.localIndex) == true
   }
 
-  func isPageIsolated(_ pageID: ReaderPageID) -> Bool {
-    guard let isolatePosition = isolatePosition(for: pageID) else { return false }
-    return isolatePagesByBookId[isolatePosition.bookId]?.contains(isolatePosition.localIndex) == true
+  func isPageSolo(_ pageID: ReaderPageID) -> Bool {
+    guard let soloPosition = soloPosition(for: pageID) else { return false }
+    return soloPagesByBookId[soloPosition.bookId]?.contains(soloPosition.localIndex) == true
   }
 
   func hasMissingPageDimensions(forBookId bookId: String) -> Bool {
@@ -159,7 +159,7 @@ class ReaderViewModel {
     return size.height > size.width
   }
 
-  /// Whether the current page is a wide (non-portrait) image, which cannot be isolated.
+  /// Whether the current page is a wide (non-portrait) image, which cannot be marked solo.
   var isCurrentPageWide: Bool {
     guard let currentReaderPage else { return false }
     return !isPageEffectivelyPortrait(currentReaderPage.id)
@@ -167,7 +167,7 @@ class ReaderViewModel {
 
   convenience init() {
     self.init(
-      isolateCoverPage: AppConfig.isolateCoverPage,
+      soloCoverPage: AppConfig.soloCoverPage,
       pageLayout: AppConfig.pageLayout,
       splitWidePageMode: AppConfig.splitWidePageMode,
       pageTransitionStyle: AppConfig.pageTransitionStyle,
@@ -178,7 +178,7 @@ class ReaderViewModel {
   }
 
   init(
-    isolateCoverPage: Bool,
+    soloCoverPage: Bool,
     pageLayout: PageLayout,
     splitWidePageMode: SplitWidePageMode = .none,
     pageTransitionStyle: PageTransitionStyle = AppConfig.pageTransitionStyle,
@@ -187,7 +187,7 @@ class ReaderViewModel {
     incognitoMode: Bool = false
   ) {
     self.pageLoadScheduler = ReaderPageLoadScheduler(preloadWindow: preloadWindow)
-    self.isolateCoverPageEnabled = isolateCoverPage
+    self.soloCoverPageEnabled = soloCoverPage
     self.forceDualPagePairs = pageLayout == .dual
     self.splitWidePageMode = splitWidePageMode
     self.pageTransitionStyle = pageTransitionStyle
@@ -223,27 +223,27 @@ class ReaderViewModel {
     segmentPageRangeByBookId = rangeByBookId
     pageLoadScheduler.updateReaderPages(flattenedReaderPages)
     readerPagesVersion &+= 1
-    rebuildIsolatePageIndices()
+    rebuildSoloPageIndices()
   }
 
-  private func rebuildIsolatePageIndices() {
+  private func rebuildSoloPageIndices() {
     var flattenedIndices: [Int] = []
-    flattenedIndices.reserveCapacity(isolatePagesByBookId.values.reduce(0) { $0 + $1.count })
+    flattenedIndices.reserveCapacity(soloPagesByBookId.values.reduce(0) { $0 + $1.count })
 
     for (globalIndex, readerPage) in readerPages.enumerated() {
       guard let range = segmentPageRangeByBookId[readerPage.bookId], range.contains(globalIndex) else {
         continue
       }
       let localIndex = globalIndex - range.lowerBound
-      if isolatePagesByBookId[readerPage.bookId]?.contains(localIndex) == true {
+      if soloPagesByBookId[readerPage.bookId]?.contains(localIndex) == true {
         flattenedIndices.append(globalIndex)
       }
     }
 
-    isolatePages = flattenedIndices
+    soloPages = flattenedIndices
   }
 
-  private func isolatePosition(forGlobalPageIndex pageIndex: Int) -> (bookId: String, localIndex: Int)? {
+  private func soloPosition(forGlobalPageIndex pageIndex: Int) -> (bookId: String, localIndex: Int)? {
     guard let readerPage = readerPage(at: pageIndex),
       let range = segmentPageRangeByBookId[readerPage.bookId],
       range.contains(pageIndex)
@@ -253,9 +253,9 @@ class ReaderViewModel {
     return (readerPage.bookId, pageIndex - range.lowerBound)
   }
 
-  private func isolatePosition(for pageID: ReaderPageID) -> (bookId: String, localIndex: Int)? {
+  private func soloPosition(for pageID: ReaderPageID) -> (bookId: String, localIndex: Int)? {
     guard let pageIndex = pageIndex(for: pageID) else { return nil }
-    return isolatePosition(forGlobalPageIndex: pageIndex)
+    return soloPosition(forGlobalPageIndex: pageIndex)
   }
 
   private func matchingViewItem(
@@ -799,10 +799,10 @@ class ReaderViewModel {
     }
   }
 
-  private func hydrateIsolatePages(for bookId: String) async {
+  private func hydrateSoloPages(for bookId: String) async {
     let database = await DatabaseOperator.databaseIfConfigured()
-    let isolatePagesForBook = await database?.fetchIsolatePages(id: bookId) ?? []
-    isolatePagesByBookId[bookId] = Set(isolatePagesForBook)
+    let soloPagesForBook = await database?.fetchSoloPages(id: bookId) ?? []
+    soloPagesByBookId[bookId] = Set(soloPagesForBook)
   }
 
   private func syncPageLoadSchedulerCurrentPage() {
@@ -811,8 +811,8 @@ class ReaderViewModel {
 
   private func resetStateForBookLoad() {
     pageLoadScheduler.resetForBookLoad()
-    isolatePages.removeAll()
-    isolatePagesByBookId.removeAll()
+    soloPages.removeAll()
+    soloPagesByBookId.removeAll()
     bookIdsWithMissingPageDimensions.removeAll()
     tableOfContents.removeAll()
     tableOfContentsByBookId.removeAll()
@@ -862,7 +862,7 @@ class ReaderViewModel {
       return
     }
 
-    await hydrateIsolatePages(for: nextBook.id)
+    await hydrateSoloPages(for: nextBook.id)
     let positionAnchor = captureCurrentPositionAnchor()
 
     appendSegment(
@@ -905,7 +905,7 @@ class ReaderViewModel {
       return
     }
 
-    await hydrateIsolatePages(for: previousBook.id)
+    await hydrateSoloPages(for: previousBook.id)
     let positionAnchor = captureCurrentPositionAnchor()
 
     prependSegment(
@@ -956,8 +956,8 @@ class ReaderViewModel {
         shouldRefreshCachedPages: shouldRefreshCachedPages
       )
 
-      let localIsolatePages = await database?.fetchIsolatePages(id: book.id) ?? []
-      isolatePagesByBookId[book.id] = Set(localIsolatePages)
+      let localSoloPages = await database?.fetchSoloPages(id: book.id) ?? []
+      soloPagesByBookId[book.id] = Set(localSoloPages)
       currentPageID = initialPageNumber.flatMap { pageNumber in
         fetchedPages.first(where: { $0.number == pageNumber }).map {
           ReaderPageID(bookId: book.id, pageNumber: $0.number)
@@ -1511,10 +1511,10 @@ class ReaderViewModel {
   }
 
   func updateDualPageSettings(noCover: Bool) {
-    let newIsolateCover = !noCover
-    guard isolateCoverPageEnabled != newIsolateCover else { return }
+    let newSoloCover = !noCover
+    guard soloCoverPageEnabled != newSoloCover else { return }
     regenerateViewStatePreservingCurrentPosition {
-      isolateCoverPageEnabled = newIsolateCover
+      soloCoverPageEnabled = newSoloCover
     }
   }
 
@@ -1556,29 +1556,29 @@ class ReaderViewModel {
     }
   }
 
-  func toggleIsolatePage(_ pageID: ReaderPageID) {
-    guard let isolatePosition = isolatePosition(for: pageID) else { return }
+  func toggleSoloPage(_ pageID: ReaderPageID) {
+    guard let soloPosition = soloPosition(for: pageID) else { return }
     guard isPageEffectivelyPortrait(pageID) else { return }
-    toggleIsolatePage(at: isolatePosition)
+    toggleSoloPage(at: soloPosition)
   }
 
-  private func toggleIsolatePage(at isolatePosition: (bookId: String, localIndex: Int)) {
+  private func toggleSoloPage(at soloPosition: (bookId: String, localIndex: Int)) {
 
-    var localIsolatePages = isolatePagesByBookId[isolatePosition.bookId] ?? []
-    if localIsolatePages.contains(isolatePosition.localIndex) {
-      localIsolatePages.remove(isolatePosition.localIndex)
+    var localSoloPages = soloPagesByBookId[soloPosition.bookId] ?? []
+    if localSoloPages.contains(soloPosition.localIndex) {
+      localSoloPages.remove(soloPosition.localIndex)
     } else {
-      localIsolatePages.insert(isolatePosition.localIndex)
+      localSoloPages.insert(soloPosition.localIndex)
     }
-    isolatePagesByBookId[isolatePosition.bookId] = localIsolatePages
-    rebuildIsolatePageIndices()
+    soloPagesByBookId[soloPosition.bookId] = localSoloPages
+    rebuildSoloPageIndices()
     regenerateViewState()
 
-    let sortedLocalPages = localIsolatePages.sorted()
+    let sortedLocalPages = localSoloPages.sorted()
     Task {
       if let database = await DatabaseOperator.databaseIfConfigured() {
-        await database.updateIsolatePages(
-          bookId: isolatePosition.bookId,
+        await database.updateSoloPages(
+          bookId: soloPosition.bookId,
           pages: sortedLocalPages
         )
       }
@@ -1594,20 +1594,20 @@ class ReaderViewModel {
     // Apply the split-wide preference consistently in single and dual presentations.
     let effectiveSplitWidePages = splitWidePageMode.isEnabled
 
-    // Cover page isolation only applies when NOT in single page mode
-    // In single page mode, every page is already isolated
-    let shouldIsolateCover = isolateCoverPageEnabled && (forceDualPagePairs || isActuallyUsingDualPageMode)
+    // Cover solo only applies when NOT in single page mode.
+    // In single page mode, every page already shows solo.
+    let shouldSoloCover = soloCoverPageEnabled && (forceDualPagePairs || isActuallyUsingDualPageMode)
 
     viewItems = generateViewItems(
       segments: segments,
       readerPages: readerPages,
-      noCover: !shouldIsolateCover,
+      noCover: !shouldSoloCover,
       allowDualPairs: isActuallyUsingDualPageMode,
       forceDualPairs: forceDualPagePairs,
       splitWidePages: effectiveSplitWidePages,
       keepsSplitSpreadsWhole: keepsSplitSpreadsWhole,
       pageCurl: pageTransitionStyle == .pageCurl,
-      isolatePages: Set(isolatePages),
+      soloPages: Set(soloPages),
       rotation: rotation
     )
     viewItemIndexByPage = generateViewItemIndexMap(items: viewItems)
@@ -1977,7 +1977,7 @@ private func generateViewItems(
   splitWidePages: Bool,
   keepsSplitSpreadsWhole: Bool,
   pageCurl: Bool,
-  isolatePages: Set<Int> = [],
+  soloPages: Set<Int> = [],
   rotation: ReaderRotation = .none
 ) -> [ReaderViewItem] {
   guard !segments.isEmpty, !readerPages.isEmpty else { return [] }
@@ -2046,7 +2046,7 @@ private func generateViewItems(
           : true
         let shouldShowSingle =
           (isCoverPage && currentOrientation.isPairableInForcedDual) || index == segmentEndExclusive - 1
-          || isolatePages.contains(index) || isolatePages.contains(index + 1)
+          || soloPages.contains(index) || soloPages.contains(index + 1)
           || !nextIsPairable  // next page is wide → keep it for its own item
         if shouldShowSingle {
           items.append(.page(id: readerPages[index].id))
@@ -2087,7 +2087,7 @@ private func generateViewItems(
       if isCoverPage && !isWideCoverPage {
         useSinglePage = true
       }
-      if isolatePages.contains(index) {
+      if soloPages.contains(index) {
         useSinglePage = true
       }
       if index == segmentEndExclusive - 1 {
@@ -2109,7 +2109,7 @@ private func generateViewItems(
         let nextIsPortrait = effectiveOrientation(at: index + 1) == .portrait
         if allowDualPairs && index + 1 < segmentEndExclusive
           && nextIsPortrait
-          && !isolatePages.contains(index + 1)
+          && !soloPages.contains(index + 1)
         {
           items.append(.dual(first: readerPages[index].id, second: readerPages[index + 1].id))
           index += 2

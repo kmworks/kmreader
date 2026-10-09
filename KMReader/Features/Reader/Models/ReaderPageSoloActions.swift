@@ -1,11 +1,11 @@
 //
-// ReaderPageIsolationActions.swift
+// ReaderPageSoloActions.swift
 //
 //
 
 import Foundation
 
-enum ReaderPageIsolationActions {
+enum ReaderPageSoloActions {
   struct Action: Identifiable, Equatable {
     let id: String
     let pageID: ReaderPageID
@@ -20,19 +20,19 @@ enum ReaderPageIsolationActions {
     currentPageID: ReaderPageID?,
     currentPairIDs: (first: ReaderPageID, second: ReaderPageID?)?,
     isCurrentPageWide: Bool,
-    isCurrentPageIsolated: Bool,
+    isCurrentPageSolo: Bool,
     displayPageNumber: (ReaderPageID) -> Int
   ) -> [Action] {
     guard supportsDualPageOptions else { return [] }
     guard let currentPageID else { return [] }
     guard !isCurrentPageWide else { return [] }
 
-    if isCurrentPageIsolated {
+    if isCurrentPageSolo {
       return [
         Action(
           id: "cancel-\(currentPageID.description)",
           pageID: currentPageID,
-          title: String(localized: "Cancel Isolation"),
+          title: String(localized: "Cancel Solo"),
           systemImage: "rectangle.portrait.slash"
         )
       ]
@@ -45,19 +45,19 @@ enum ReaderPageIsolationActions {
 
     return [
       Action(
-        id: "isolate-\(leftPageID.description)",
+        id: "solo-\(leftPageID.description)",
         pageID: leftPageID,
         title: String.localizedStringWithFormat(
-          String(localized: "Isolate Page %d"),
+          String(localized: "Show Page %d Solo"),
           displayPageNumber(leftPageID)
         ),
         systemImage: "rectangle.lefthalf.inset.filled"
       ),
       Action(
-        id: "isolate-\(rightPageID.description)",
+        id: "solo-\(rightPageID.description)",
         pageID: rightPageID,
         title: String.localizedStringWithFormat(
-          String(localized: "Isolate Page %d"),
+          String(localized: "Show Page %d Solo"),
           displayPageNumber(rightPageID)
         ),
         systemImage: "rectangle.righthalf.inset.filled"

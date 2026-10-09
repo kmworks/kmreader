@@ -25,7 +25,7 @@
         readerBackground: renderConfig.readerBackground,
         enableLiveText: renderConfig.enableLiveText,
         enableImageContextMenu: renderConfig.enableImageContextMenu,
-        supportsPageIsolationActions: false,
+        supportsPageSoloActions: false,
         doubleTapZoomScale: renderConfig.doubleTapZoomScale,
         doubleTapZoomMode: renderConfig.doubleTapZoomMode
       )

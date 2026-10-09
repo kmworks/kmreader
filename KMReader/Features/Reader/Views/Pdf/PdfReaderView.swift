@@ -30,7 +30,7 @@
     @State private var viewModel: PdfReaderViewModel
     @State private var readingDirection: ReadingDirection
     @State private var pagePresentation: PdfPagePresentation
-    @State private var isolateCoverPage: Bool
+    @State private var soloCoverPage: Bool
     @State private var currentBook: Book?
     @State private var currentSeries: Series?
     @State private var showingControls = false
@@ -71,7 +71,7 @@
       _viewModel = State(initialValue: PdfReaderViewModel(incognito: incognito))
       _readingDirection = State(initialValue: .ltr)
       _pagePresentation = State(initialValue: AppConfig.pdfPagePresentation)
-      _isolateCoverPage = State(initialValue: AppConfig.pdfIsolateCoverPage)
+      _soloCoverPage = State(initialValue: AppConfig.pdfSoloCoverPage)
       _currentBook = State(initialValue: book)
     }
 
@@ -353,7 +353,7 @@
             PdfDocumentView(
               documentURL: documentURL,
               pagePresentation: resolvedPresentation,
-              isolateCoverPage: isolateCoverPage,
+              soloCoverPage: soloCoverPage,
               readingDirection: readingDirection,
               initialPageNumber: documentInitialPage,
               targetPageNumber: targetPageNumber,
@@ -416,7 +416,7 @@
       PdfControlsOverlayView(
         readingDirection: $readingDirection,
         pagePresentation: $pagePresentation,
-        isolateCoverPage: $isolateCoverPage,
+        soloCoverPage: $soloCoverPage,
         showingPageJumpSheet: $showingPageJumpSheet,
         showingSearchSheet: $showingSearchSheet,
         showingTOCSheet: $showingTOCSheet,
@@ -672,15 +672,15 @@
           readingDirection: readingDirection,
           availableReadingDirections: ReadingDirection.pdfAvailableCases,
           pageLayout: pagePresentation.resolvedPageLayout,
-          isolateCoverPage: isolateCoverPage,
-          pageIsolationActions: [],
+          soloCoverPage: soloCoverPage,
+          pageSoloActions: [],
           splitWidePageMode: .none,
           continuousScroll: pagePresentation.resolvedContinuousScroll,
           supportsSearch: true,
           canSearch: viewModel.documentURL != nil,
           supportsReadingDirectionSelection: true,
           supportsPageLayoutSelection: false,
-          supportsDualPageOptions: pagePresentation.supportsCoverIsolation,
+          supportsDualPageOptions: pagePresentation.supportsCoverSolo,
           supportsSplitWidePageMode: false,
           supportsContinuousScrollToggle: false
         )
@@ -740,10 +740,10 @@
               readingDirection = pdfReadingDirection(from: direction)
             },
             setPageLayout: { _ in },
-            toggleIsolateCoverPage: {
-              isolateCoverPage.toggle()
+            toggleSoloCoverPage: {
+              soloCoverPage.toggle()
             },
-            toggleIsolatePage: { _ in },
+            toggleSoloPage: { _ in },
             sharePage: { _ in },
             setRotation: { _ in },
             setSplitWidePageMode: { _ in },

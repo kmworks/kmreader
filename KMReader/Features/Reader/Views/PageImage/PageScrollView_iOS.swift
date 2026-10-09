@@ -155,8 +155,8 @@
       func updatePages() {
         guard let stack = contentStack else { return }
         let pages = parent.pages
-        let canIsolatePageFromCurrentPresentation =
-          parent.renderConfig.supportsPageIsolationActions
+        let canSoloPageFromCurrentPresentation =
+          parent.renderConfig.supportsPageSoloActions
           && pages.count == 2
           && Set(pages.map(\.pageID)).count == 2
 
@@ -182,8 +182,8 @@
             showPageShadow: parent.renderConfig.showPageShadow,
             enableLiveText: parent.renderConfig.enableLiveText,
             enableImageContextMenu: parent.renderConfig.enableImageContextMenu,
-            supportsPageIsolationActions: parent.renderConfig.supportsPageIsolationActions,
-            canIsolatePageFromCurrentPresentation: canIsolatePageFromCurrentPresentation,
+            supportsPageSoloActions: parent.renderConfig.supportsPageSoloActions,
+            canSoloPageFromCurrentPresentation: canSoloPageFromCurrentPresentation,
             background: parent.renderConfig.readerBackground,
             readingDirection: parent.readingDirection,
             displayMode: parent.displayMode,

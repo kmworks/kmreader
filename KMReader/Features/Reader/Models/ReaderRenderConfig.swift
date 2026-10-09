@@ -13,7 +13,7 @@ struct ReaderRenderConfig: Equatable {
   let readerBackground: ReaderBackground
   let enableLiveText: Bool
   let enableImageContextMenu: Bool
-  let supportsPageIsolationActions: Bool
+  let supportsPageSoloActions: Bool
   let doubleTapZoomScale: Double
   let doubleTapZoomMode: DoubleTapZoomMode
 }
