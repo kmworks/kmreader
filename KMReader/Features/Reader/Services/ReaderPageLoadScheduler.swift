@@ -579,7 +579,37 @@ final class ReaderPageLoadScheduler {
     return nil
   }
 
+  /// Decoded page bitmaps are capped at this zoom headroom times the current
+  /// screen width; oversized scans downsample to it, pages within budget
+  /// decode untouched.
+  private static let pageDecodeZoomHeadroom: CGFloat = 2
+
+  /// Short-edge pixel budget for decoded pages. A short-edge cap serves both
+  /// fit-screen (paged) and fit-width (webtoon) display and survives 90°
+  /// rotation, which swaps the binding axis.
+  private var pageShortEdgeCapPixels: CGFloat {
+    #if os(iOS) || os(tvOS)
+      let screenWidthPixels = ReaderUpscaleDecision.screenPixelSize(for: UIScreen.main).width
+    #elseif os(macOS)
+      guard let mainScreen = NSScreen.main else { return .infinity }
+      let screenWidthPixels = ReaderUpscaleDecision.screenPixelSize(for: mainScreen).width
+    #endif
+    return screenWidthPixels * Self.pageDecodeZoomHeadroom
+  }
+
   private func loadImageFromFile(fileURL: URL) async -> PlatformImage? {
+    let shortEdgeCapPixels = pageShortEdgeCapPixels
+    let downsampled = await Task.detached(priority: .userInitiated) {
+      await ImageDecodeHelper.decodeDownsampledIfNeeded(
+        at: fileURL, shortEdgePixels: shortEdgeCapPixels)
+    }.value
+    if let downsampled {
+      logger.debug(
+        "🔽 [Decode] Downsampled \(fileURL.lastPathComponent) to shortEdge≤\(Int(shortEdgeCapPixels))px"
+      )
+      return downsampled
+    }
+
     let image = await Task.detached(priority: .userInitiated) {
       #if os(macOS)
         return NSImage(contentsOf: fileURL)

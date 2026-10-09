@@ -92,19 +92,9 @@ struct ImageDecodeHelper {
   ) async
     -> PlatformImage?
   {
-    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-    guard
-      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-      let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
-      let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
-      width > 0, height > 0
-    else { return nil }
-
-    // EXIF orientations 5–8 swap the axes; compare in display orientation.
-    let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
-    let swapsAxes = (5...8).contains(orientation)
-    let displayWidth = swapsAxes ? height : width
-    let displayHeight = swapsAxes ? width : height
+    guard let (source, displayWidth, displayHeight) = probeDisplayPixelSize(at: url) else {
+      return nil
+    }
 
     let frameAspect = Double(CoverAspectRatio.heightToWidth)
     let target = Double(widthPixels)
@@ -118,6 +108,54 @@ struct ImageDecodeHelper {
       : target / displayWidth
     guard scale < 1 else { return nil }
 
+    return await createThumbnail(
+      source: source, scale: scale, displayWidth: displayWidth, displayHeight: displayHeight)
+  }
+
+  /// Decodes the image at `url`, downsampling via ImageIO when the source's
+  /// short edge exceeds `shortEdgePixels` (aspect preserved). Reader pages
+  /// budget the short edge so the result stays valid under 90° rotation and
+  /// for both fit-width (webtoon) and fit-screen (paged) display, which bind
+  /// different axes.
+  /// - Returns: the downsampled image, or nil when the source is already
+  ///   within the budget (the caller should take the normal decode path) or
+  ///   when the image can't be read.
+  nonisolated static func decodeDownsampledIfNeeded(
+    at url: URL, shortEdgePixels: CGFloat
+  ) async -> PlatformImage? {
+    guard let (source, displayWidth, displayHeight) = probeDisplayPixelSize(at: url) else {
+      return nil
+    }
+
+    let scale = Double(shortEdgePixels) / min(displayWidth, displayHeight)
+    guard scale < 1 else { return nil }
+
+    return await createThumbnail(
+      source: source, scale: scale, displayWidth: displayWidth, displayHeight: displayHeight)
+  }
+
+  /// Header-only probe of the image at `url`: no decode happens here.
+  /// Dimensions come back in display orientation (EXIF orientations 5–8 swap
+  /// the axes).
+  nonisolated private static func probeDisplayPixelSize(at url: URL) -> (
+    source: CGImageSource, displayWidth: Double, displayHeight: Double
+  )? {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+    guard
+      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+      let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+      let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
+      width > 0, height > 0
+    else { return nil }
+
+    let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+    let swapsAxes = (5...8).contains(orientation)
+    return (source, swapsAxes ? height : width, swapsAxes ? width : height)
+  }
+
+  nonisolated private static func createThumbnail(
+    source: CGImageSource, scale: Double, displayWidth: Double, displayHeight: Double
+  ) async -> PlatformImage? {
     let maxPixelSize = scale * max(displayWidth, displayHeight)
     let options: CFDictionary =
       [
