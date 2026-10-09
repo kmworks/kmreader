@@ -612,7 +612,13 @@
       private func beginSlideSession(direction: SlideDirection, target: TurnTarget) -> Bool {
         guard session == nil else { return false }
         guard let container = containerViewController, let current = currentController else { return false }
+        rubberOffset = 0
+        current.view.frame = container.view.bounds
         current.view.layoutIfNeeded()
+        // A reused neighbor host can sit on a stale page after mid-chapter jumps.
+        if target.isCrossChapter, target.host.currentSubPageIndex != target.subPageIndex {
+          target.host.scrollToPageIndex(target.subPageIndex)
+        }
 
         let overlay: UIView
         if let snapshot = current.view.snapshotView(afterScreenUpdates: false) {
@@ -757,19 +763,33 @@
             notify: true
           )
         } else {
-          if let current = currentController {
-            current.view.frame = container.view.bounds
-            current.view.isHidden = false
-            current.view.layer.zPosition = 1
-            updateShadow(for: current.view, isElevated: true, offset: 0)
-            current.scrollToPageIndex(session.originPage)
+          let overlay = session.overlay
+          let resetPresentation = {
+            if let current = self.currentController {
+              current.view.frame = container.view.bounds
+              current.view.isHidden = false
+              current.view.layer.zPosition = 1
+              self.updateShadow(for: current.view, isElevated: true, offset: 0)
+            }
+            overlay.removeFromSuperview()
           }
           if target.isCrossChapter {
-            target.host.view.isHidden = true
-            target.host.view.layer.zPosition = 0
-            target.host.view.frame = container.view.bounds
+            resetPresentation()
+          } else if let current = currentController {
+            // The live view still shows the target page; restore it only after the scroll-back lands.
+            current.scrollToPageIndex(session.originPage, completion: resetPresentation)
+          } else {
+            resetPresentation()
           }
-          session.overlay.removeFromSuperview()
+          if target.isCrossChapter {
+            if target.host === nextController || target.host === previousController {
+              target.host.view.isHidden = true
+              target.host.view.layer.zPosition = 0
+              target.host.view.frame = container.view.bounds
+            } else {
+              removeChildController(target.host, from: container)
+            }
+          }
           self.session = nil
           isAnimating = false
         }
