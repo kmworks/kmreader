@@ -445,7 +445,8 @@
       private func refreshNeighbors(reusing detached: [EpubPageViewController] = []) {
         guard let current = currentChapterController else { return }
         let chapterIndex = current.chapterIndex
-        let subPageIndex = currentPageIndex
+        // Coordinator position fields still hold the previous location until commitLocation runs.
+        let subPageIndex = current.currentSubPageIndex
 
         if let nextTarget = nextPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex),
           nextTarget.chapterIndex != chapterIndex
