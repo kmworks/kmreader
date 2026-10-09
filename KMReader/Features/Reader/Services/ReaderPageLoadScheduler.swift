@@ -697,7 +697,6 @@ final class ReaderPageLoadScheduler {
     }
 
     let autoTriggerScale = CGFloat(AppConfig.imageUpscaleAutoTriggerScale)
-    let alwaysMaxScreenScale = CGFloat(AppConfig.imageUpscaleAlwaysMaxScreenScale)
     guard let screenPixelSize = mainScreenPixelSize else {
       logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): unable to resolve current screen")
       return sourceFileURL
@@ -707,25 +706,22 @@ final class ReaderPageLoadScheduler {
       mode: mode,
       sourcePixelSize: sourcePixelSize,
       screenPixelSize: screenPixelSize,
-      autoTriggerScale: autoTriggerScale,
-      alwaysMaxScreenScale: alwaysMaxScreenScale
+      autoTriggerScale: autoTriggerScale
     )
     guard decision.shouldUpscale else {
       let skipReasonText = Self.upscaleSkipReasonText(decision.reason)
       logger.debug(
         String(
           format:
-            "⏭️ [Upscale] Skip page %d: reason=%@ mode=%@ requiredScale=%.2f source=%dx%d screen=%dx%d auto=%.2f always=%.2f",
+            "⏭️ [Upscale] Skip page %d: reason=%@ requiredScale=%.2f source=%dx%d screen=%dx%d auto=%.2f",
           page.number + 1,
           skipReasonText,
-          mode.rawValue,
           decision.requiredScale,
           Int(sourcePixelSize.width),
           Int(sourcePixelSize.height),
           Int(screenPixelSize.width),
           Int(screenPixelSize.height),
-          autoTriggerScale,
-          alwaysMaxScreenScale
+          autoTriggerScale
         )
       )
       return sourceFileURL
@@ -735,13 +731,6 @@ final class ReaderPageLoadScheduler {
     if let cachedUpscaledURL = upscaledFileURLs.first(where: { FileManager.default.fileExists(atPath: $0.path) }) {
       logger.debug("✅ [Upscale] Use cached @2x page \(page.number + 1): \(cachedUpscaledURL.lastPathComponent)")
       return cachedUpscaledURL
-    }
-
-    // A fresh @2x whose short edge exceeds the decode budget decodes straight
-    // back down to it, so the model run would be wasted.
-    if min(sourcePixelSize.width, sourcePixelSize.height) * 2 > pageShortEdgeCapPixels {
-      logger.debug("⏭️ [Upscale] Skip page \(page.number + 1): @2x output exceeds the decode budget")
-      return sourceFileURL
     }
 
     if let existingTask = upscalingTasks[pageID] {
@@ -912,8 +901,6 @@ final class ReaderPageLoadScheduler {
       return "disabled"
     case .belowAutoTriggerScale:
       return "below-auto-trigger-threshold"
-    case .exceedsAlwaysMaxScreenScale:
-      return "exceeds-always-max-source-size"
     case .invalidSourceSize:
       return "invalid-source-size"
     case nil:

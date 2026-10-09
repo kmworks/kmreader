@@ -1000,9 +1000,12 @@ enum AppConfig {
 
   static nonisolated var imageUpscalingMode: ReaderImageUpscalingMode {
     get {
-      if let stored = UserDefaults.standard.string(forKey: "imageUpscalingMode"),
-        let mode = ReaderImageUpscalingMode(rawValue: stored)
-      {
+      guard let stored = UserDefaults.standard.string(forKey: "imageUpscalingMode") else {
+        return .disabled
+      }
+      // "always" was dropped; its users keep upscaling under auto.
+      if stored == "always" { return .auto }
+      if let mode = ReaderImageUpscalingMode(rawValue: stored) {
         return mode
       }
       return .disabled
@@ -1021,18 +1024,6 @@ enum AppConfig {
     }
     set {
       UserDefaults.standard.set(max(newValue, 1.0), forKey: "imageUpscaleAutoTriggerScale")
-    }
-  }
-
-  static nonisolated var imageUpscaleAlwaysMaxScreenScale: Double {
-    get {
-      if UserDefaults.standard.object(forKey: "imageUpscaleAlwaysMaxScreenScale") != nil {
-        return max(UserDefaults.standard.double(forKey: "imageUpscaleAlwaysMaxScreenScale"), 1.0)
-      }
-      return 1.5
-    }
-    set {
-      UserDefaults.standard.set(max(newValue, 1.0), forKey: "imageUpscaleAlwaysMaxScreenScale")
     }
   }
 

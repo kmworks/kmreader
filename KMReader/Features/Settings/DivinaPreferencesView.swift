@@ -28,9 +28,6 @@ struct DivinaPreferencesView: View {
     AppConfig.imageUpscalingMode
   @AppStorage("imageUpscaleAutoTriggerScale") private var imageUpscaleAutoTriggerScale: Double =
     AppConfig.imageUpscaleAutoTriggerScale
-  @AppStorage("imageUpscaleAlwaysMaxScreenScale")
-  private var imageUpscaleAlwaysMaxScreenScale: Double =
-    AppConfig.imageUpscaleAlwaysMaxScreenScale
   @AppStorage("divinaPageBorderCropMode") private var divinaPageBorderCropMode: ReaderPageBorderCropMode =
     AppConfig.divinaPageBorderCropMode
   @AppStorage("enableLiveText") private var enableLiveText: Bool = false
@@ -423,44 +420,22 @@ struct DivinaPreferencesView: View {
               .foregroundColor(.secondary)
           }
 
-          Group {
-            switch imageUpscalingMode {
-            case .auto:
-              VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                  Text("Auto Trigger Scale Threshold")
-                  Spacer()
-                  Text(String(format: "%.2fx", imageUpscaleAutoTriggerScale))
-                    .foregroundColor(.secondary)
-                }
-                Slider(
-                  value: $imageUpscaleAutoTriggerScale,
-                  in: 1.0...1.5,
-                  step: 0.01
-                )
-                Text("Auto scale only when required scale to fit the page on screen is greater than this value.")
-                  .font(.caption)
+          if imageUpscalingMode == .auto {
+            VStack(alignment: .leading, spacing: 8) {
+              HStack {
+                Text("Auto Trigger Scale Threshold")
+                Spacer()
+                Text(String(format: "%.2fx", imageUpscaleAutoTriggerScale))
                   .foregroundColor(.secondary)
               }
-            case .always:
-              VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                  Text("Always Mode Source Size Threshold")
-                  Spacer()
-                  Text(String(format: "%.2fx", imageUpscaleAlwaysMaxScreenScale))
-                    .foregroundColor(.secondary)
-                }
-                Slider(
-                  value: $imageUpscaleAlwaysMaxScreenScale,
-                  in: 1.0...3.0,
-                  step: 0.05
-                )
-                Text("In Always mode, upscale unless source width or height exceeds this multiple of the screen.")
-                  .font(.caption)
-                  .foregroundColor(.secondary)
-              }
-            case .disabled:
-              EmptyView()
+              Slider(
+                value: $imageUpscaleAutoTriggerScale,
+                in: 1.0...1.5,
+                step: 0.01
+              )
+              Text("Auto scale only when required scale to fit the page on screen is greater than this value.")
+                .font(.caption)
+                .foregroundColor(.secondary)
             }
           }
         }
