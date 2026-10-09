@@ -135,39 +135,14 @@ struct DivinaControlsOverlayView: View {
   }
 
   #if os(iOS) || os(macOS)
-    private func sharePages(ids: [ReaderPageID]) {
-      Task {
-        let originals = await withTaskGroup(of: (Int, PlatformImage?).self) { group in
-          for (index, pageID) in ids.enumerated() {
-            group.addTask {
-              await (index, viewModel.originalPageImage(for: pageID))
-            }
-          }
-          var loaded: [(Int, PlatformImage?)] = []
-          for await result in group {
-            loaded.append(result)
-          }
-          return loaded.sorted { $0.0 < $1.0 }
-        }
-
-        var images: [PlatformImage] = []
-        var names: [String] = []
-        for (index, original) in originals {
-          let pageID = ids[index]
-          guard let page = viewModel.page(for: pageID) else { continue }
-          if let image = original ?? viewModel.preloadedImage(for: pageID) {
-            images.append(image)
-            names.append(page.fileName)
-          }
-        }
-
-        guard !images.isEmpty else { return }
-        await ImageShareHelper.shareMultiple(images: images, fileNames: names)
-      }
-    }
-
     private func sharePage(id: ReaderPageID) {
-      sharePages(ids: [id])
+      Task {
+        let image =
+          await viewModel.originalPageImage(for: id)
+          ?? viewModel.preloadedImage(for: id)
+        guard let image, let page = viewModel.page(for: id) else { return }
+        await ImageShareHelper.share(image: image, fileName: page.fileName)
+      }
     }
 
     private var pageFormat: String {

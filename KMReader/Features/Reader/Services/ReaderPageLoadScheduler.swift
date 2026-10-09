@@ -820,25 +820,7 @@ final class ReaderPageLoadScheduler {
     if let width = page.width, let height = page.height, width > 0, height > 0 {
       return CGSize(width: width, height: height)
     }
-
-    let options = [kCGImageSourceShouldCache: false] as CFDictionary
-    guard
-      let source = CGImageSourceCreateWithURL(fileURL as CFURL, options),
-      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-      let pixelWidth = properties[kCGImagePropertyPixelWidth] as? CGFloat,
-      let pixelHeight = properties[kCGImagePropertyPixelHeight] as? CGFloat,
-      pixelWidth > 0,
-      pixelHeight > 0
-    else {
-      return nil
-    }
-
-    // Compare with the screen in display orientation: EXIF 5–8 swap the axes.
-    let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
-    if (5...8).contains(orientation) {
-      return CGSize(width: pixelHeight, height: pixelWidth)
-    }
-    return CGSize(width: pixelWidth, height: pixelHeight)
+    return ImageDecodeHelper.displayPixelSize(at: fileURL)
   }
 
   nonisolated private static func upscaledImageFileURLs(from sourceFileURL: URL) -> [URL] {

@@ -134,6 +134,13 @@ struct ImageDecodeHelper {
       source: source, scale: scale, displayWidth: displayWidth, displayHeight: displayHeight)
   }
 
+  /// Header-only probe of the image at `url`, in display orientation (EXIF
+  /// orientations 5–8 swap the axes); no decode happens here.
+  nonisolated static func displayPixelSize(at url: URL) -> CGSize? {
+    guard let (_, displayWidth, displayHeight) = probeDisplayPixelSize(at: url) else { return nil }
+    return CGSize(width: displayWidth, height: displayHeight)
+  }
+
   /// Header-only probe of the image at `url`: no decode happens here.
   /// Dimensions come back in display orientation (EXIF orientations 5–8 swap
   /// the axes).
