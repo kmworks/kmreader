@@ -234,7 +234,7 @@
         controller.forceEnsureContentLoaded()
         let shell = CurlPageShellViewController()
         shell.view.frame = pageVC.view.bounds
-        shell.pin(controller.view)
+        shell.adopt(controller)
         frontShell = shell
         PageCurlControllerPlanner.safeSetViewControllers(
           [shell],
@@ -555,7 +555,7 @@
         if target.isCrossChapter {
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
-          targetShell.pin(target.controller.view)
+          targetShell.adopt(target.controller)
           leafSnapshot = nil
           mirror = crossChapterMirror(target: target)
         } else {
@@ -564,8 +564,7 @@
           else { return nil }
           mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
           leaf.pin(snapshot)
-          current.view.removeFromSuperview()
-          targetShell.pin(current.view)
+          targetShell.adopt(current)
           current.scrollToPageIndex(target.subPageIndex)
           leafSnapshot = snapshot
         }
@@ -667,7 +666,7 @@
           target.controller.forceEnsureContentLoaded()
           let shell = CurlPageShellViewController()
           shell.view.frame = pageVC.view.bounds
-          shell.pin(target.controller.view)
+          shell.adopt(target.controller)
           frontShell = shell
           PageCurlControllerPlanner.safeSetViewControllers(
             [shell],
@@ -718,7 +717,7 @@
           session.leafSnapshot?.removeFromSuperview()
           return
         }
-        session.leafShell.pin(current.view)
+        session.leafShell.adopt(current)
         // Keep the leaf snapshot on top until the live view has scrolled back to it.
         current.scrollToPageIndex(session.originPage) {
           session.leafSnapshot?.removeFromSuperview()
@@ -1028,6 +1027,10 @@
 
   @MainActor
   final class CurlPageShellViewController: UIViewController {
+    // Appearance forwarding would re-run pagination in the hosted web view on every
+    // turn; containment alone is enough for safe-area propagation.
+    override var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
+
     override func loadView() {
       let contentView = UIView()
       contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -1043,6 +1046,21 @@
         content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         content.bottomAnchor.constraint(equalTo: view.bottomAnchor),
       ])
+    }
+
+    func adopt(_ child: UIViewController) {
+      if child.parent !== self {
+        if child.parent != nil {
+          child.willMove(toParent: nil)
+          child.view.removeFromSuperview()
+          child.removeFromParent()
+        }
+        addChild(child)
+        child.didMove(toParent: self)
+      }
+      if child.view.superview !== view {
+        pin(child.view)
+      }
     }
   }
 
@@ -1065,7 +1083,6 @@
     private var lastLayoutSize: CGSize = .zero
     private var isContentLoaded = false
     private var pendingPageIndex: Int?
-    private var readyToken: Int = 0
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
     var onPageIndexAdjusted: ((Int) -> Void)?
@@ -1230,8 +1247,6 @@
       labelTopOffset: CGFloat,
       labelBottomOffset: CGFloat,
       useSafeArea: Bool,
-      preferLastPageOnReady: Bool = false,
-      targetProgressionOnReady: Double? = nil,
       onPageCountReady: ((Int) -> Void)?
     ) {
       let shouldReload =
@@ -1277,8 +1292,6 @@
       self.labelTopOffset = labelTopOffset
       self.labelBottomOffset = labelBottomOffset
       self.useSafeArea = useSafeArea
-      self.preferLastPageOnReady = preferLastPageOnReady
-      self.targetProgressionOnReady = targetProgressionOnReady
       self.onPageCountReady = onPageCountReady
 
       guard isViewLoaded else { return }
@@ -1481,7 +1494,6 @@
       // New content loading - show indicator and keep webview active but hidden
       isContentLoaded = false
       pendingPageIndex = currentSubPageIndex
-      readyToken += 1
 
       // Use a near-zero alpha instead of exactly 0.
       // WebKit sometimes throttles layout/JS execution for elements with alpha=0.
@@ -1584,12 +1596,16 @@
       }
     }
 
+    private var paginationGeneration = 0
+
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
+      paginationGeneration += 1
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
         targetPageIndex: targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
-        paginationLayout: paginationLayout
+        paginationLayout: paginationLayout,
+        generation: paginationGeneration
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -1626,6 +1642,8 @@
       guard let type = body["type"] as? String else { return }
 
       if type == "ready" {
+        // A superseded pagination pass must not resurrect stale counts or positions.
+        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
           var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
@@ -1659,6 +1677,7 @@
         webView.alpha = 1
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
         // Handle incremental layout updates from ResizeObserver
+        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
         let normalizedTotal = max(1, total)
         if totalPagesInChapter != normalizedTotal {
           totalPagesInChapter = normalizedTotal
