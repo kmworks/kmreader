@@ -22734,7 +22734,6 @@
       }
     },
     "Enter Offline Mode" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

@@ -90,7 +90,8 @@ struct ServerCardView: View {
 
   private var roleLabel: String? {
     guard accountDisplayValue != nil else { return nil }
-    return String(localized: current.isAdmin ? "user.role.admin" : "user.role.user")
+    return current.isAdmin
+      ? String(localized: "user.role.admin") : String(localized: "user.role.user")
   }
 
   private var accountDisplayValue: String? {

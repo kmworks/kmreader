@@ -35,7 +35,9 @@ struct ServerView: View {
             LoadingIcon()
           } else {
             Label(
-              String(localized: isOffline ? "Check Server Connection" : "Enter Offline Mode"),
+              isOffline
+                ? String(localized: "Check Server Connection")
+                : String(localized: "Enter Offline Mode"),
               systemImage: isOffline ? "wifi" : "wifi.slash")
           }
         }
