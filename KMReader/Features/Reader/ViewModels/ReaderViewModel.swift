@@ -321,6 +321,16 @@ class ReaderViewModel {
     await pageLoadScheduler.getPageImageFileURL(pageID: pageID)
   }
 
+  /// Loads the page from its resolved source file at full resolution.
+  /// Export paths use this instead of the preloaded bitmap, which may be
+  /// downsampled to the decode budget.
+  func originalPageImage(for pageID: ReaderPageID) async -> PlatformImage? {
+    guard let fileURL = await getPageImageFileURL(pageID: pageID) else { return nil }
+    return await Task.detached(priority: .userInitiated) {
+      PlatformImage(contentsOfFile: fileURL.path)
+    }.value
+  }
+
   func addPagePresentationInvalidationObserver(
     _ handler: @escaping PagePresentationInvalidationHandler
   ) -> UUID {

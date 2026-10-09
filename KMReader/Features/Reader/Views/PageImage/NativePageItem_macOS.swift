@@ -660,11 +660,16 @@
 
     @objc private func handleShareContextMenuAction() {
       guard let pageID = currentData?.pageID else { return }
-      // Share the original decoded page (no rotation/split/border crop); fall back
-      // to the displayed image only if the preloaded original is unavailable.
-      guard let image = readerViewModel?.preloadedImage(for: pageID) ?? imageView.image else { return }
-      let fileName = readerViewModel?.page(for: pageID)?.fileName
-      ImageShareHelper.share(image: image, fileName: fileName)
+      // Export original pixels (no rotation/split/border crop); the preloaded
+      // bitmap may be downsampled, so it is only the fallback.
+      Task { [weak self] in
+        guard let self else { return }
+        let image =
+          await readerViewModel?.originalPageImage(for: pageID)
+          ?? readerViewModel?.preloadedImage(for: pageID) ?? imageView.image
+        guard let image else { return }
+        ImageShareHelper.share(image: image, fileName: readerViewModel?.page(for: pageID)?.fileName)
+      }
     }
 
     @objc private func handleTogglePageIsolationContextMenuAction() {
