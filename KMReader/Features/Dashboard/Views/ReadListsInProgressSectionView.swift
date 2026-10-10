@@ -6,15 +6,13 @@
 import SwiftUI
 
 /// Dashboard row of the read lists the user is reading, one card per list with
-/// the book it continues with. Driven by `ReadListReadingService`'s published
-/// snapshot, so it needs no loading or pagination of its own.
+/// the book it continues with. Pure renderer driven by `ReadListReadingService`'s
+/// published snapshot; reloads are dispatched by `DashboardViewModel`.
 @MainActor
 struct ReadListsInProgressSectionView: View {
   let section: DashboardSection
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
-
-  private let logger = AppLogger(.dashboard)
 
   /// The library scope hides entries by the library of the book each list
   /// continues with; which book that is never depends on the scope.
@@ -46,19 +44,6 @@ struct ReadListsInProgressSectionView: View {
         }
       }
     }
-    .onReceive(NotificationCenter.default.publisher(for: .dashboardSectionsShouldReload)) {
-      notification in
-      guard let command = DashboardSectionRefreshNotifier.reloadCommand(from: notification),
-        command.includes(section)
-      else { return }
-      handleReloadCommand(command)
-    }
-    .onAppear {
-      DashboardRefreshCoordinator.shared.registerSection(section)
-    }
-    .onDisappear {
-      DashboardRefreshCoordinator.shared.unregisterSection(section)
-    }
   }
 
   @ViewBuilder
@@ -75,24 +60,6 @@ struct ReadListsInProgressSectionView: View {
         coverOnly: cardKind == .small,
         cardWidth: cardKind.cardWidth
       )
-    }
-  }
-
-  /// A manual refresh also pulls other devices' changes; other reloads only
-  /// re-derive from local data, which the other sections just refreshed.
-  private func handleReloadCommand(_ command: DashboardSectionReloadCommand) {
-    let instanceId = AppConfig.current.instanceId
-    Task {
-      logger.debug("Dashboard section \(section) reloading")
-      defer {
-        DashboardRefreshCoordinator.shared.acknowledgeSectionReload(
-          commandID: command.id, section: section)
-      }
-      if command.source == .manual {
-        await ReadListReadingService.shared.sync(instanceId: instanceId)
-      } else {
-        await ReadListReadingService.shared.refreshSnapshot()
-      }
     }
   }
 }
