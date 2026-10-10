@@ -100,8 +100,8 @@
         pendingSpreadEdge = nil
         return false
       }
-      // Cutting a glide short ends its deceleration first, which settles the
-      // spread where it is; the edge this pan heads to is marked after that.
+      // The settle fired by stopping a glide clears a marked edge, so the
+      // edge this pan heads to is marked after setting the offset, not before.
       setContentOffset(target, animated: animated)
       pendingSpreadEdge = animated ? edge : nil
       return true

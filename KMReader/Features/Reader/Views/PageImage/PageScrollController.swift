@@ -121,8 +121,9 @@
     /// Pans the whole spread to `edge` for a navigation command.
     func panSpread(to edge: ReaderSpreadEdge, animated: Bool) {
       guard wholeSpread != nil, scrollView.isAtBaseZoom else { return }
-      // A pan that cuts a glide short settles the spread where it is first,
-      // so the edge is taken once the pan has started.
+      // The settle fired by cutting a glide short re-anchors the resting
+      // edge to where the spread sits, so the pan's edge is taken after
+      // the pan starts, not before.
       scrollView.panSpread(to: edge, animated: animated)
       restingEdge = edge
       reportPosition()
