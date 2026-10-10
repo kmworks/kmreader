@@ -24,7 +24,7 @@ struct HorizontalCardSkeleton<TextColumn: View, Menu: View>: View {
   let textColumn: (HorizontalCardPalette) -> TextColumn
   let menu: () -> Menu
 
-  @State private var tint = ThumbnailTint()
+  @State private var tint: ThumbnailTint
 
   init(
     thumbnailId: String,
@@ -52,6 +52,10 @@ struct HorizontalCardSkeleton<TextColumn: View, Menu: View>: View {
     self.downloadColor = downloadColor
     self.textColumn = textColumn
     self.menu = menu
+
+    let tint = ThumbnailTint()
+    tint.warm(id: thumbnailId, type: thumbnailType)
+    _tint = State(initialValue: tint)
   }
 
   private var palette: HorizontalCardPalette {
