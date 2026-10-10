@@ -138,6 +138,14 @@
           let isGoingBackward = targetChapterIndex < uiChapterIndex
           let isLastPageOfChapter = isLastPageRequest || normalizedPageIndex == max(0, pageCount - 1)
 
+          // A cross-chapter target right after load is the restore jump; hand
+          // it the pending restore progression so it lands on the saved page.
+          // Consumed once, so later user-initiated jumps get nil.
+          if targetChapterIndex != uiChapterIndex {
+            uiViewController.targetProgressionOnReady = viewModel.initialProgression(
+              for: targetChapterIndex)
+          }
+
           // Navigate to target chapter and page
           uiViewController.navigateToPage(
             chapterIndex: targetChapterIndex,
@@ -256,7 +264,7 @@
     private var isContentLoaded = false
     private var pendingPageIndex: Int?
     private var pendingJumpToLastPage: Bool = false
-    private var targetProgressionOnReady: Double?
+    var targetProgressionOnReady: Double?
     private var readyToken: Int = 0
 
     private var bookTitle: String?
