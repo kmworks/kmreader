@@ -10,6 +10,7 @@ struct SettingsAppearanceView: View {
   @AppStorage("appColorScheme") private var appColorScheme: AppColorScheme = .system
   @AppStorage("privacyProtection") private var privacyProtection: Bool = false
   #if os(iOS)
+    @AppStorage("useClassicPadNavigation") private var useClassicPadNavigation: Bool = false
     @State private var selectedAppIcon: AppIconOption = .primary
     @State private var isUpdatingAppIcon: Bool = false
   #endif
@@ -20,6 +21,17 @@ struct SettingsAppearanceView: View {
         initialValue: AppIconOption.from(alternateIconName: UIApplication.shared.alternateIconName)
       )
     #endif
+  }
+
+  /// Only iPad on iOS 18+ has a navigation choice to make; every other
+  /// platform/OS pair has exactly one shell.
+  private var showsClassicPadNavigation: Bool {
+    #if os(iOS)
+      if #available(iOS 18.0, *) {
+        return PlatformHelper.isPad
+      }
+    #endif
+    return false
   }
 
   var body: some View {
@@ -77,6 +89,21 @@ struct SettingsAppearanceView: View {
           }
         }
       }
+
+      #if os(iOS)
+        if showsClassicPadNavigation {
+          Section(header: Text(String(localized: "settings.appearance.navigation"))) {
+            Toggle(isOn: $useClassicPadNavigation) {
+              VStack(alignment: .leading, spacing: 4) {
+                Text(String(localized: "settings.appearance.classicNavigation.title"))
+                Text(String(localized: "settings.appearance.classicNavigation.caption"))
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+              }
+            }
+          }
+        }
+      #endif
 
       Section(header: Text(String(localized: "settings.appearance.privacy"))) {
         Toggle(isOn: $privacyProtection) {
