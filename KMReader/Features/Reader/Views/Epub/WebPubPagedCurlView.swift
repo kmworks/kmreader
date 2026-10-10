@@ -1027,10 +1027,6 @@
 
   @MainActor
   final class CurlPageShellViewController: UIViewController {
-    // Appearance forwarding would re-run pagination in the hosted web view on every
-    // turn; containment alone is enough for safe-area propagation.
-    override var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
-
     override func loadView() {
       let contentView = UIView()
       contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -1184,7 +1180,8 @@
 
     override func viewWillAppear(_ animated: Bool) {
       super.viewWillAppear(animated)
-      refreshDisplay()
+      // Pagination re-runs on size changes in viewDidLayoutSubviews; appearance
+      // fires on every page turn.
       updateOverlayLabels()
     }
 
