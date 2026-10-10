@@ -16,6 +16,7 @@ struct DashboardView: View {
   @State private var isCheckingConnection = false
   @State private var scopeStore = LibraryScopeStore()
   @State private var dashboardScopeStore = DashboardLibraryScopeStore.shared
+  @State private var viewModel = DashboardViewModel()
   @State private var searchQuery = ""
   // Results re-query only on submit, so the submitted text is stored apart
   // from the live field text.
@@ -37,6 +38,14 @@ struct DashboardView: View {
 
   private var showsEmptyLibraryGuidance: Bool {
     scopeStore.hasLoaded && scopeStore.libraries.isEmpty && !isOffline
+  }
+
+  private var renderedSections: [DashboardSection] {
+    dashboard.sections.filter { $0 != .readListsInProgress || readListContinuationEnabled }
+  }
+
+  private var effectiveLibraryIds: [String] {
+    dashboardScopeStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
   }
 
   private var showsDashboardSearchField: Bool {
@@ -163,8 +172,9 @@ struct DashboardView: View {
     }
 
     isRefreshing = true
+    DashboardRefreshCoordinator.shared.cancelPendingAutoRefresh(clearDeferred: true)
     await scopeStore.refreshMetrics(instanceId: current.instanceId)
-    await DashboardSectionRefreshNotifier.postAll(source: .manual, reason: reason)
+    await viewModel.reload(sections: renderedSections, libraryIds: effectiveLibraryIds)
     isRefreshing = false
   }
 
@@ -196,13 +206,11 @@ struct DashboardView: View {
             showLibraryAddSheet = true
           }
         } else {
-          ForEach(dashboard.sections, id: \.id) { section in
+          ForEach(renderedSections, id: \.id) { section in
             if section == .readListsInProgress {
-              if readListContinuationEnabled {
-                ReadListsInProgressSectionView(section: section)
-              }
+              ReadListsInProgressSectionView(section: section)
             } else {
-              DashboardSectionView(section: section)
+              DashboardSectionView(section: section, viewModel: viewModel)
             }
           }
         }
@@ -291,6 +299,24 @@ struct DashboardView: View {
     .onReceive(NotificationCenter.default.publisher(for: .sseEventReceived)) { notification in
       guard let info = notification.userInfo?["info"] as? SSEEventInfo else { return }
       handleSSEEvent(info)
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .dashboardSectionsShouldReload)) { notification in
+      guard let command = DashboardSectionRefreshNotifier.reloadCommand(from: notification) else { return }
+      Task {
+        await viewModel.applyReloadCommand(
+          command,
+          sections: renderedSections,
+          libraryIds: effectiveLibraryIds
+        )
+      }
+    }
+    .onAppear {
+      viewModel.ensureLoaded(sections: renderedSections, libraryIds: effectiveLibraryIds)
+    }
+    .onChange(of: dashboard.sections) { _, sections in
+      // Sections added in Settings start their first load; removed ones are
+      // just dropped from rendering.
+      viewModel.ensureLoaded(sections: sections, libraryIds: effectiveLibraryIds)
     }
     .onChange(of: enableSSEAutoRefresh) { _, newValue in
       DashboardRefreshCoordinator.shared.setAutoRefreshEnabled(newValue)

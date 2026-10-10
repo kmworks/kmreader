@@ -39,16 +39,8 @@ nonisolated enum DashboardSectionRefreshNotifier {
     readingProgressSections
     .union(seriesContentSections)
 
-  static func postBookContentChanged(source: DashboardRefreshSource, reason: String) async {
-    await post(sections: bookContentSections, source: source, reason: reason)
-  }
-
   static func postSeriesContentChanged(source: DashboardRefreshSource, reason: String) async {
     await post(sections: seriesContentSections, source: source, reason: reason)
-  }
-
-  static func postReadingProgressChanged(source: DashboardRefreshSource, reason: String) async {
-    await post(sections: readingProgressSections, source: source, reason: reason)
   }
 
   static func postReadStatusChanged(source: DashboardRefreshSource, reason: String) async {
