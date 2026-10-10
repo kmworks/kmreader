@@ -1016,17 +1016,7 @@
             // Offsets past the first page depend on the full content extent;
             // finalizing while images are still in flight measures a short
             // document and lands mid-chapter once they load.
-            var needsFullExtent = preferLast || target > 0;
-            var imagesPending = function() {
-              var imgs = document.images;
-              if (!imgs) { return false; }
-              for (var i = 0; i < imgs.length; i++) {
-                var img = imgs[i];
-                if (img.loading === 'lazy') { img.loading = 'eager'; }
-                if (!img.complete) { return true; }
-              }
-              return false;
-            };
+            \(WebPubPagedJavaScriptBuilder.fullExtentGuardScript)
             var installMetricsBridge = function() {
               window.__kmreaderCurrentToken = token;
               if (window.__kmreaderPostMetrics) {
@@ -1191,7 +1181,7 @@
                   isProbablyReady = false;
                 }
 
-                var waitingForImages = needsFullExtent && attempt < 600 && imagesPending();
+                var waitingForImages = needsFullExtent && attempt < imageWaitMaxAttempts && imagesPending();
                 if ((isProbablyReady || attempt >= 60) && !waitingForImages) {
                   finalize();
                 } else {

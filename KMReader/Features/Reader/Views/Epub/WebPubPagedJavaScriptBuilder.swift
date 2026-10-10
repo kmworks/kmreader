@@ -156,6 +156,23 @@
         """
     }
 
+    // Shared by every pagination script (this builder and both scrolled views'
+    // inline scripts) so the guard and its wait cap cannot drift apart.
+    static let fullExtentGuardScript = """
+      var needsFullExtent = preferLast || target > 0;
+      var imageWaitMaxAttempts = 600;
+      var imagesPending = function() {
+        var imgs = document.images;
+        if (!imgs) { return false; }
+        for (var i = 0; i < imgs.length; i++) {
+          var img = imgs[i];
+          if (img.loading === 'lazy') { img.loading = 'eager'; }
+          if (!img.complete) { return true; }
+        }
+        return false;
+      };
+      """
+
     static func makePaginationScript(
       targetPageIndex: Int,
       preferLastPage: Bool,
@@ -177,17 +194,7 @@
         // Offsets past the first page depend on the full content extent; finalizing
         // while images are still in flight measures a short document and lands
         // mid-chapter once they load.
-        var needsFullExtent = preferLast || target > 0;
-        var imagesPending = function() {
-          var imgs = document.images;
-          if (!imgs) { return false; }
-          for (var i = 0; i < imgs.length; i++) {
-            var img = imgs[i];
-            if (img.loading === 'lazy') { img.loading = 'eager'; }
-            if (!img.complete) { return true; }
-          }
-          return false;
-        };
+        \(fullExtentGuardScript)
 
         var finalize = function() {
           if (!isCurrent()) return;
@@ -245,11 +252,11 @@
             }
 
             var isProbablyReady = (stableCount >= 4) || (fontsSettled && stableCount >= 2);
-            if ((preferLast || target > 0) && currentW <= pageWidth && attempt < 40) {
+            if (needsFullExtent && currentW <= pageWidth && attempt < 40) {
               isProbablyReady = false;
             }
 
-            var waitingForImages = needsFullExtent && attempt < 600 && imagesPending();
+            var waitingForImages = needsFullExtent && attempt < imageWaitMaxAttempts && imagesPending();
             if ((isProbablyReady || attempt >= 60) && !waitingForImages) {
               finalize();
             } else {

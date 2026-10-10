@@ -346,6 +346,9 @@
       }
 
       private func wireController(_ controller: EpubPageViewController) {
+        controller.onRepagination = { [weak self] in
+          self?.invalidateBacksideCache()
+        }
         controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
           guard let self, let controller else { return }
           guard self.currentChapterController === controller, self.turnSession == nil else { return }
@@ -763,6 +766,12 @@
           let removedKey = cachedBacksideImageOrder.removeFirst()
           cachedBacksideImages.removeValue(forKey: removedKey)
         }
+      }
+
+      private func invalidateBacksideCache() {
+        backsideCaptureWorkItem?.cancel()
+        cachedBacksideImages.removeAll()
+        cachedBacksideImageOrder.removeAll()
       }
 
       private func scheduleBacksideImageCapture(chapterIndex: Int, pageIndex: Int) {
@@ -1311,6 +1320,9 @@
     var onLinkTap: ((URL) -> Void)?
     var onPageIndexAdjusted: ((Int) -> Void)?
     var onPaginationReady: (() -> Void)?
+    // Fires when pagination re-runs on changed geometry (appearance or viewport
+    // size), so page-index-keyed snapshots cached by the coordinator go stale.
+    var onRepagination: (() -> Void)?
     var preferLastPageOnReady = false
     var targetProgressionOnReady: Double?
 
@@ -1421,6 +1433,7 @@
       let webViewSize = webView?.bounds.size ?? .zero
       if webViewSize.width > 0 && webViewSize.height > 0 && webViewSize != lastLayoutSize {
         lastLayoutSize = webViewSize
+        onRepagination?()
         refreshDisplay()
       }
     }
@@ -1445,6 +1458,7 @@
 
         // Only refresh if WebView has valid size
         if webViewSize.width > 0 && webViewSize.height > 0 {
+          onRepagination?()
           refreshDisplay()
           updateOverlayLabels()
         }
@@ -1526,6 +1540,7 @@
 
       if appearanceChanged {
         applyContainerInsets()
+        onRepagination?()
       }
 
       applyTheme()
