@@ -831,8 +831,11 @@
 
     private func loadContentIfNeeded(force: Bool) {
       guard let chapterURL, let rootURL else { return }
-      let currentURL = webView.url?.standardizedFileURL
-      let urlMatches = currentURL == chapterURL.standardizedFileURL
+      // The web view loads the chapter through the resource scheme, so the raw
+      // chapter URL never matches; compare the rewritten scheme URL instead.
+      let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL)
+      let urlMatches =
+        chapterSchemeURL != nil && webView.url?.deletingFragment == chapterSchemeURL
 
       if urlMatches && isContentLoaded {
         applyPagination(scrollToPage: currentSubPageIndex)
