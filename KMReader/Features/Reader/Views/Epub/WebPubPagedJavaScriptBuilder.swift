@@ -347,6 +347,23 @@
       )
     }
 
+    // Function body for callAsyncJavaScript: resolves after two animation frames,
+    // i.e. once the target page has actually painted.
+    static func makeScrollToPageAndSettleScript(
+      pageIndex: Int,
+      paginationLayout: WebPubPaginationLayout
+    ) -> String {
+      """
+      \(paginationRuntimeScript(paginationLayout: paginationLayout))
+      var pageWidth = measurePagination().pageWidth;
+      scrollToLogicalOffset(pageWidth * \(pageIndex), false);
+      await new Promise(function(resolve) {
+        requestAnimationFrame(function() { requestAnimationFrame(resolve); });
+      });
+      return true;
+      """
+    }
+
     static func makeScrollToLogicalOffsetScript(
       logicalOffset: Double,
       animated: Bool,
