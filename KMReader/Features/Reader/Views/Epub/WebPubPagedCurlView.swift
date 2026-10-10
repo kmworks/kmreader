@@ -207,12 +207,17 @@
 
       // MARK: - Installation
 
+      // While the book is loading, the view model's location is not resolved
+      // yet; installing it would pin the coordinator to a stale page that a
+      // later restore can fail to replace (a programmatic turn is dropped
+      // while the presentation transition is still running).
       func installInitialLocation(in pageVC: UIPageViewController) {
         let chapterIndex = parent.viewModel.currentChapterIndex
         let pageCount = parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
         let pageIndex = max(0, min(parent.viewModel.currentPageIndex, pageCount - 1))
         guard chapterIndex >= 0,
           chapterIndex < parent.viewModel.chapterCount,
+          !parent.viewModel.isLoading,
           let controller = makeChapterController(chapterIndex: chapterIndex, subPageIndex: pageIndex)
         else {
           PageCurlControllerPlanner.safeSetViewControllers(
@@ -826,6 +831,15 @@
           }
           if parent.viewModel.currentPageIndex != pageIndex {
             parent.viewModel.currentPageIndex = pageIndex
+          }
+          // An install that lands on the pending target fulfills it. Leaving
+          // it set would fire a spurious turn back here once the restored
+          // page jump moves the coordinator past it.
+          if parent.viewModel.targetChapterIndex == chapterIndex,
+            parent.viewModel.targetPageIndex == pageIndex
+          {
+            parent.viewModel.targetChapterIndex = nil
+            parent.viewModel.targetPageIndex = nil
           }
           return
         }
