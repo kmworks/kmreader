@@ -195,6 +195,14 @@
 
       private typealias PageTarget = (chapterIndex: Int, subPageIndex: Int, preferLastPage: Bool)
 
+      // Backward flips need the target page's image synchronously, but the
+      // target's controller may not render it in time; pages are captured as
+      // they become the committed page so a back-flip can read them offhand.
+      private let maxCachedBacksideSnapshots = 6
+      private var cachedBacksideImages: [String: UIImage] = [:]
+      private var cachedBacksideImageOrder: [String] = []
+      private var backsideCaptureWorkItem: DispatchWorkItem?
+
       private var paginationLayout: WebPubPaginationLayout {
         parent.paginationLayout
       }
@@ -640,7 +648,24 @@
           target.controller.forceEnsureContentLoaded()
           unparkIfParked(target.controller)
           targetShell.adopt(target.controller)
-          onReady(makeSession(snapshot: nil, mirror: crossChapterMirror(target: target)))
+          let (mirror, capturedTarget) = crossChapterMirror(target: target)
+          let session = makeSession(snapshot: nil, mirror: mirror)
+          onReady(session)
+          if !target.isForward && !capturedTarget {
+            // The neighbor is still loading or paginating toward the target
+            // page; capture the backside once it becomes ready.
+            target.controller.onPaginationReady = {
+              [weak self, weak controller = target.controller, weak backside = session.backside] in
+              controller?.onPaginationReady = nil
+              guard let self, let controller, let backside,
+                self.turnSession?.backside === backside,
+                let image = controller.makeBacksideSnapshotImage()
+              else { return }
+              backside.updateMirroredSnapshot(
+                PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal)
+              )
+            }
+          }
           return
         }
 
@@ -650,34 +675,111 @@
           onReady(nil)
           return
         }
-        let mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+        let mirror: PageCurlBacksideViewController.MirroredSnapshot?
+        if !target.isForward,
+          let cached = cachedBacksideImage(chapterIndex: target.chapterIndex, pageIndex: target.subPageIndex)
+        {
+          mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: cached, axis: .horizontal)
+        } else {
+          mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+        }
         leaf.pin(snapshot)
         if isInteractive {
           targetShell.adopt(current)
-          current.scrollToPageIndex(target.subPageIndex)
-          onReady(makeSession(snapshot: snapshot, mirror: mirror))
+          let session = makeSession(snapshot: snapshot, mirror: mirror)
+          onReady(session)
+          if target.isForward {
+            current.scrollToPageIndex(target.subPageIndex)
+          } else {
+            // A backward flip's backside mirrors the target page, whose pixels
+            // exist only once the live view has scrolled there.
+            current.scrollToPageIndexAndSettle(target.subPageIndex) {
+              [weak self, weak current, weak backside = session.backside] in
+              guard let self, let current, let backside,
+                self.turnSession?.backside === backside,
+                let image = current.makeBacksideSnapshotImage()
+              else { return }
+              backside.updateMirroredSnapshot(
+                PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal)
+              )
+            }
+          }
         } else {
           // A programmatic curl samples the live view from its first frame, so the
           // view must already show the target page; it keeps rendering under the
           // leaf snapshot, keeping the early scroll invisible.
           current.scrollToPageIndexAndSettle(target.subPageIndex) {
+            let targetMirror =
+              !target.isForward
+              ? (current.makeBacksideSnapshotImage()
+                ?? self.cachedBacksideImage(chapterIndex: target.chapterIndex, pageIndex: target.subPageIndex))
+                .flatMap {
+                  PageCurlBacksideViewController.makeMirroredSnapshot(from: $0, axis: .horizontal)
+                }
+              : nil
             targetShell.adopt(current)
-            onReady(makeSession(snapshot: snapshot, mirror: mirror))
+            onReady(makeSession(snapshot: snapshot, mirror: targetMirror ?? mirror))
           }
         }
       }
 
       private func crossChapterMirror(
         target: TurnTarget
-      ) -> PageCurlBacksideViewController.MirroredSnapshot? {
-        guard let current = currentChapterController else { return nil }
-        if target.isForward {
-          return PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+      ) -> (mirror: PageCurlBacksideViewController.MirroredSnapshot?, capturedTarget: Bool) {
+        if !target.isForward,
+          let image = cachedBacksideImage(chapterIndex: target.chapterIndex, pageIndex: target.subPageIndex)
+            ?? target.controller.makeBacksideSnapshotImage()
+        {
+          return (
+            PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal),
+            true
+          )
         }
-        if let image = target.controller.makeBacksideSnapshotImage() {
-          return PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal)
+        guard let current = currentChapterController else { return (nil, false) }
+        return (
+          PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal),
+          false
+        )
+      }
+
+      private func backsideCacheKey(chapterIndex: Int, pageIndex: Int) -> String {
+        "\(chapterIndex)-\(pageIndex)"
+      }
+
+      private func cachedBacksideImage(chapterIndex: Int, pageIndex: Int) -> UIImage? {
+        let key = backsideCacheKey(chapterIndex: chapterIndex, pageIndex: pageIndex)
+        guard let image = cachedBacksideImages[key] else { return nil }
+        cachedBacksideImageOrder.removeAll { $0 == key }
+        cachedBacksideImageOrder.append(key)
+        return image
+      }
+
+      private func storeBacksideImage(_ image: UIImage, chapterIndex: Int, pageIndex: Int) {
+        let key = backsideCacheKey(chapterIndex: chapterIndex, pageIndex: pageIndex)
+        cachedBacksideImages[key] = image
+        cachedBacksideImageOrder.removeAll { $0 == key }
+        cachedBacksideImageOrder.append(key)
+        while cachedBacksideImageOrder.count > maxCachedBacksideSnapshots {
+          let removedKey = cachedBacksideImageOrder.removeFirst()
+          cachedBacksideImages.removeValue(forKey: removedKey)
         }
-        return PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+      }
+
+      private func scheduleBacksideImageCapture(chapterIndex: Int, pageIndex: Int) {
+        backsideCaptureWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+          guard let self,
+            let controller = self.currentChapterController,
+            controller.chapterIndex == chapterIndex,
+            controller.currentSubPageIndex == pageIndex,
+            self.turnSession == nil,
+            !self.isAnimating,
+            let image = controller.makeBacksideSnapshotImage()
+          else { return }
+          self.storeBacksideImage(image, chapterIndex: chapterIndex, pageIndex: pageIndex)
+        }
+        backsideCaptureWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
       }
 
       func performProgrammaticTurn(chapterIndex: Int, pageIndex: Int, in pageVC: UIPageViewController) {
@@ -825,6 +927,7 @@
       func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
+        scheduleBacksideImageCapture(chapterIndex: chapterIndex, pageIndex: pageIndex)
         guard notify else {
           if parent.viewModel.currentChapterIndex != chapterIndex {
             parent.viewModel.currentChapterIndex = chapterIndex
@@ -1207,6 +1310,7 @@
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
     var onPageIndexAdjusted: ((Int) -> Void)?
+    var onPaginationReady: (() -> Void)?
     var preferLastPageOnReady = false
     var targetProgressionOnReady: Double?
 
@@ -1488,6 +1592,8 @@
     func makeBacksideSnapshotImage() -> UIImage? {
       guard isViewLoaded else { return nil }
       guard isContentLoaded else { return nil }
+      // A mid-pagination capture would record the page while it is still hidden.
+      guard webView.alpha >= 0.1 else { return nil }
       view.layoutIfNeeded()
       let bounds = view.bounds
       guard bounds.width > 1, bounds.height > 1 else { return nil }
@@ -1500,7 +1606,9 @@
       return renderer.image { _ in
         // drawHierarchy goes through the render server, so WKWebView content is
         // captured reliably; layer.render can produce blank images offscreen.
-        view.drawHierarchy(in: bounds, afterScreenUpdates: false)
+        // Forcing a commit keeps the frame current when the view is fully
+        // covered and its latest scroll has not been composited yet.
+        view.drawHierarchy(in: bounds, afterScreenUpdates: true)
       }
     }
 
@@ -1597,8 +1705,11 @@
 
     private func loadContentIfNeeded(force: Bool) {
       guard let chapterURL, let rootURL else { return }
-      let currentURL = webView.url?.standardizedFileURL
-      let urlMatches = currentURL == chapterURL.standardizedFileURL
+      // The web view loads the chapter through the resource scheme, so the raw
+      // chapter URL never matches; compare the rewritten scheme URL instead.
+      let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL)
+      let urlMatches =
+        chapterSchemeURL != nil && webView.url?.deletingFragment == chapterSchemeURL
 
       // If URL matches and content is loaded, just update pagination.
       // We don't hide the webview or show the loader here to avoid flickering
@@ -1816,6 +1927,7 @@
         // Stop the loading indicator and finally show the WebView content.
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
+        onPaginationReady?()
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
         // Handle incremental layout updates from ResizeObserver
         if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
