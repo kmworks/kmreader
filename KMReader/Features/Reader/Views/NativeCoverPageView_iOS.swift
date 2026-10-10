@@ -272,6 +272,9 @@
         doubleTapRecognizer.cancelsTouchesInView = false
         doubleTapRecognizer.delegate = self
         singleTapRecognizer.require(toFail: doubleTapRecognizer)
+        if let panRecognizer {
+          singleTapRecognizer.require(toFail: panRecognizer)
+        }
         containerView.addGestureRecognizer(doubleTapRecognizer)
 
         let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))

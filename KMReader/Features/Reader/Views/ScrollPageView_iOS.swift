@@ -102,6 +102,7 @@
       doubleTapGesture.cancelsTouchesInView = false
       doubleTapGesture.delegate = context.coordinator
       singleTapGesture.require(toFail: doubleTapGesture)
+      singleTapGesture.require(toFail: collectionView.panGestureRecognizer)
       collectionView.addGestureRecognizer(doubleTapGesture)
       context.coordinator.doubleTapGesture = doubleTapGesture
 

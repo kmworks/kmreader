@@ -486,6 +486,7 @@
       panRecognizer.delegate = self
       panRecognizer.cancelsTouchesInView = false
       panRecognizer.maximumNumberOfTouches = 1
+      tapRecognizer.require(toFail: panRecognizer)
       panRecognizer.require(toFail: longPressRecognizer)
       view.addGestureRecognizer(panRecognizer)
       self.panGestureRecognizer = panRecognizer
