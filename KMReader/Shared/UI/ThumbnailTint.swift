@@ -16,6 +16,14 @@ final class ThumbnailTint {
   private var loadedKey: String?
   private var loadTask: Task<Void, Never>?
 
+  /// Seeds a cached tint synchronously so the first render is already tinted.
+  /// Marks the thumbnail as loaded, so `load` only fetches on a cache miss.
+  func warm(id: String, type: ThumbnailType) {
+    guard let cached = ThumbnailTintColorCache.shared.cachedColor(id: id, type: type) else { return }
+    color = cached
+    loadedKey = "\(type.rawValue)#\(id)"
+  }
+
   func load(id: String, type: ThumbnailType) {
     let key = "\(type.rawValue)#\(id)"
     guard loadedKey != key else { return }
@@ -39,7 +47,7 @@ final class ThumbnailTint {
     loadTask?.cancel()
     loadTask = Task {
       if invalidate {
-        await ThumbnailTintColorCache.shared.invalidate(id: id, type: type)
+        ThumbnailTintColorCache.shared.invalidate(id: id, type: type)
       }
       let tint = await ThumbnailTintColorCache.shared.color(id: id, type: type)
       guard !Task.isCancelled, loadedKey == key else { return }

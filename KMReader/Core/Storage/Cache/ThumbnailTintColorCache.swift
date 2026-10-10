@@ -11,7 +11,12 @@ import SwiftUI
 /// cover's average color, brightness-clamped so white card text stays readable
 /// without the card going pitch black. Results are cached per thumbnail; a
 /// `.thumbnailDidRefresh` invalidation (via `invalidate`) forces re-extraction.
-actor ThumbnailTintColorCache {
+///
+/// MainActor so views can seed their tint synchronously (`cachedColor`) before
+/// the first render — the same warm start `ThumbnailImage` gets from
+/// `ThumbnailCache.cachedImage`. Only extraction leaves the main actor.
+@MainActor
+final class ThumbnailTintColorCache {
   static let shared = ThumbnailTintColorCache()
 
   private var colors: [String: Color] = [:]
@@ -19,12 +24,16 @@ actor ThumbnailTintColorCache {
 
   private init() {}
 
+  func cachedColor(id: String, type: ThumbnailType) -> Color? {
+    colors[Self.key(id: id, type: type)]
+  }
+
   func color(id: String, type: ThumbnailType) async -> Color? {
     let key = Self.key(id: id, type: type)
     if let cached = colors[key] { return cached }
     if let task = inFlight[key] { return await task.value }
 
-    let task = Task<Color?, Never> {
+    let task: Task<Color?, Never> = Task.detached {
       guard
         let url = try? await ThumbnailCache.shared.ensureThumbnail(id: id, type: type),
         let average = Self.averageColor(at: url)
