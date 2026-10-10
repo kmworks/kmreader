@@ -169,6 +169,8 @@
       private(set) var currentChapterController: EpubPageViewController?
       private var nextChapterController: EpubPageViewController?
       private var previousChapterController: EpubPageViewController?
+      private var nextParkedShell: CurlPageShellViewController?
+      private var previousParkedShell: CurlPageShellViewController?
       private var frontShell: CurlPageShellViewController?
       private var turnSession: TurnSession?
       var hasActiveTurnSession: Bool { turnSession != nil }
@@ -442,6 +444,49 @@
         return (previousChapter, max(0, previousCount - 1), previousCount <= 1)
       }
 
+      // Neighbor chapters are parked inside the front shell so they load and
+      // paginate at the final geometry before the user turns to them; an
+      // off-window web view does neither and would start both mid-turn.
+      private func parkNeighbor(_ controller: EpubPageViewController, isNext: Bool) {
+        guard let frontShell else { return }
+        let slot = isNext ? nextParkedShell : previousParkedShell
+        if let slot, slot.children.first === controller, slot.view.window != nil { return }
+        slot?.unpark()
+        let shell = CurlPageShellViewController()
+        shell.view.frame = frontShell.view.bounds
+        shell.view.isUserInteractionEnabled = false
+        shell.adopt(controller)
+        frontShell.addChild(shell)
+        frontShell.view.insertSubview(shell.view, at: 0)
+        shell.didMove(toParent: frontShell)
+        if isNext {
+          nextParkedShell = shell
+        } else {
+          previousParkedShell = shell
+        }
+      }
+
+      private func unparkNeighbor(isNext: Bool) {
+        if isNext {
+          nextParkedShell?.unpark()
+          nextParkedShell = nil
+        } else {
+          previousParkedShell?.unpark()
+          previousParkedShell = nil
+        }
+      }
+
+      private func unparkIfParked(_ controller: EpubPageViewController) {
+        if nextParkedShell?.children.first === controller {
+          nextParkedShell?.unpark()
+          nextParkedShell = nil
+        }
+        if previousParkedShell?.children.first === controller {
+          previousParkedShell?.unpark()
+          previousParkedShell = nil
+        }
+      }
+
       private func refreshNeighbors(reusing detached: [EpubPageViewController] = []) {
         guard let current = currentChapterController else { return }
         let chapterIndex = current.chapterIndex
@@ -468,8 +513,12 @@
             }
             nextChapterController = host
           }
+          if let host = nextChapterController {
+            parkNeighbor(host, isNext: true)
+          }
         } else {
           nextChapterController = nil
+          unparkNeighbor(isNext: true)
         }
 
         if let prevTarget = previousPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex),
@@ -492,8 +541,12 @@
             }
             previousChapterController = host
           }
+          if let host = previousChapterController {
+            parkNeighbor(host, isNext: false)
+          }
         } else {
           previousChapterController = nil
+          unparkNeighbor(isNext: false)
         }
       }
 
@@ -580,6 +633,7 @@
         if target.isCrossChapter {
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
+          unparkIfParked(target.controller)
           targetShell.adopt(target.controller)
           onReady(makeSession(snapshot: nil, mirror: crossChapterMirror(target: target)))
           return
@@ -702,6 +756,7 @@
           previousChapterController = nil
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
+          unparkIfParked(target.controller)
           let shell = CurlPageShellViewController()
           shell.view.frame = pageVC.view.bounds
           shell.adopt(target.controller)
@@ -1103,6 +1158,16 @@
       if child.view.superview !== view {
         pin(child.view)
       }
+    }
+
+    func unpark() {
+      for child in children {
+        child.willMove(toParent: nil)
+        child.removeFromParent()
+      }
+      willMove(toParent: nil)
+      view.removeFromSuperview()
+      removeFromParent()
     }
   }
 
