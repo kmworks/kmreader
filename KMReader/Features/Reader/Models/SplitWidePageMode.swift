@@ -38,7 +38,7 @@ enum SplitWidePageMode: String, CaseIterable, Hashable, Sendable {
     case .rtl:
       return "rectangle.leadinghalf.inset.filled.arrow.leading"
     case .scroll:
-      return "scroll"
+      return "arrow.left.and.right.square"
     }
   }
 
