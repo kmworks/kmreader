@@ -221,6 +221,7 @@
         longPress.cancelsTouchesInView = false
         longPress.delegate = self
         tap.require(toFail: longPress)
+        tap.require(toFail: pan)
         view.addGestureRecognizer(longPress)
         longPressRecognizer = longPress
         pan.require(toFail: longPress)

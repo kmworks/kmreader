@@ -72,6 +72,7 @@
       singleTapGesture.cancelsTouchesInView = false
       singleTapGesture.delegate = context.coordinator
       singleTapGesture.require(toFail: doubleTapGesture)
+      singleTapGesture.require(toFail: collectionView.panGestureRecognizer)
       collectionView.addGestureRecognizer(singleTapGesture)
 
       let longPressGesture = UILongPressGestureRecognizer(

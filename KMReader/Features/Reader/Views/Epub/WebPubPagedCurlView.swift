@@ -71,6 +71,9 @@
       tapRecognizer.require(toFail: longPressRecognizer)
       pageVC.view.addGestureRecognizer(longPressRecognizer)
       context.coordinator.longPressGestureRecognizer = longPressRecognizer
+      for case let panRecognizer as UIPanGestureRecognizer in pageVC.gestureRecognizers {
+        tapRecognizer.require(toFail: panRecognizer)
+      }
 
       context.coordinator.installInitialLocation(in: pageVC)
 

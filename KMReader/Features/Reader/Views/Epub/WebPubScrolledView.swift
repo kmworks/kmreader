@@ -485,6 +485,7 @@
       longPressRecognizer.delegate = self
       longPressRecognizer.cancelsTouchesInView = false
       tapRecognizer.require(toFail: longPressRecognizer)
+      tapRecognizer.require(toFail: webView.scrollView.panGestureRecognizer)
       view.addGestureRecognizer(longPressRecognizer)
       self.longPressGestureRecognizer = longPressRecognizer
     }

@@ -241,6 +241,9 @@
         singleTap.delegate = self
         view.addGestureRecognizer(singleTap)
         singleTapRecognizer = singleTap
+        for case let panRecognizer as UIPanGestureRecognizer in pageViewController?.gestureRecognizers ?? [] {
+          singleTap.require(toFail: panRecognizer)
+        }
 
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
