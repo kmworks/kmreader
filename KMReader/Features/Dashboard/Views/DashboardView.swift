@@ -23,10 +23,6 @@ struct DashboardView: View {
   @State private var submittedSearchText = ""
   @State private var isSearchPresented = false
 
-  #if os(macOS)
-    @Environment(\.openSettings) private var openSettings
-  #endif
-
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("enableSSEAutoRefresh") private var enableSSEAutoRefresh: Bool = true
@@ -380,20 +376,16 @@ struct DashboardView: View {
           }
         #endif
 
-        // Settings stays reachable in offline mode.
-        ToolbarItem(placement: .confirmationAction) {
-          #if os(macOS)
-            Button {
-              openSettings()
-            } label: {
-              Image(systemName: AppIcon.settings)
+        #if os(iOS)
+          // iPhone has no Settings tab; keep the entry available in offline mode.
+          if !PlatformHelper.isPad {
+            ToolbarItem(placement: .confirmationAction) {
+              NavigationLink(value: NavDestination.settings) {
+                Image(systemName: AppIcon.settings)
+              }
             }
-          #else
-            NavigationLink(value: NavDestination.settings) {
-              Image(systemName: AppIcon.settings)
-            }
-          #endif
-        }
+          }
+        #endif
       }
       .refreshableWithMinimumHold {
         await refreshDashboard(reason: "Pull to refresh")
