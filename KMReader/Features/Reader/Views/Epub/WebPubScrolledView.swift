@@ -1187,7 +1187,7 @@
                 }
 
                 var isProbablyReady = (stableCount >= 4);
-                if (target > 0 && currentH <= pageHeight && attempt < 40) {
+                if (needsFullExtent && currentH <= pageHeight && attempt < 40) {
                   isProbablyReady = false;
                 }
 

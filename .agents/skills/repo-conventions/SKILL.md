@@ -45,7 +45,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### EPUB Pagination Settling
 
-- Chapter pagination (the shared `WebPubPagedJavaScriptBuilder.makePaginationScript` behind every paged engine, and the scrolled views' inline scripts) must not finalize a target whose offset depends on the full content extent — a last-page jump (`preferLast`/`jumpToLastPage`) or any target past page 0 — while images are still in flight: the layout check waits for `document.images` to complete (forcing `loading=lazy` images eager), bounded by the script's global timeout. Finalizing early measures a short document, and the content growth that follows silently strands the position mid-chapter. Page-0 targets finalize without the image wait since their offset does not depend on content size.
+- Chapter pagination (the shared `WebPubPagedJavaScriptBuilder.makePaginationScript` behind every paged engine, and the scrolled views' inline scripts) must not finalize a target whose offset depends on the full content extent — a last-page jump (`preferLast`/`jumpToLastPage`) or any target past page 0 — while images are still in flight: the layout check waits for `document.images` to complete (forcing `loading=lazy` images eager), bounded by the layout-check attempt cap. Finalizing early measures a short document, and the content growth that follows silently strands the position mid-chapter. Page-0 targets finalize without the image wait since their offset does not depend on content size.
 
 ### Scroll Engine
 
