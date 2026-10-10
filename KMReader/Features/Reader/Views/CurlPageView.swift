@@ -964,6 +964,14 @@
         true
       }
 
+      // A tap that catches a gliding page only stops it.
+      func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
+      ) -> Bool {
+        gestureRecognizer === singleTapRecognizer && SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
+      }
+
       func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         touch.view?.hasInteractiveAncestor != true
       }

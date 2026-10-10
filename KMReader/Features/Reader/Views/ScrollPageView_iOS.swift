@@ -92,6 +92,7 @@
       singleTapGesture.cancelsTouchesInView = false
       singleTapGesture.delegate = context.coordinator
       collectionView.addGestureRecognizer(singleTapGesture)
+      context.coordinator.singleTapGesture = singleTapGesture
 
       let doubleTapGesture = UITapGestureRecognizer(
         target: context.coordinator,
@@ -172,6 +173,7 @@
       private var visiblePreloadTask: Task<Void, Never>?
       private var visiblePreloadItem: ReaderViewItem?
       private var applicationWillResignActiveObserver: NSObjectProtocol?
+      weak var singleTapGesture: UITapGestureRecognizer?
       weak var doubleTapGesture: UITapGestureRecognizer?
 
       init(_ parent: ScrollPageView) {
@@ -1123,6 +1125,14 @@
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
       ) -> Bool {
         true
+      }
+
+      // A tap that catches a gliding page only stops it.
+      func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
+      ) -> Bool {
+        gestureRecognizer === singleTapGesture && SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
       }
 
       func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {

@@ -7,8 +7,9 @@
   import UIKit
 
   /// A page host's zoom scroll view that also pans a whole spread at base zoom.
-  /// Its pan begins only for horizontal drags the spread can still follow, so
-  /// a drag pushing past a spread edge is left to the engine's page turn.
+  /// Its pan begins for a touch that catches the gliding spread, and otherwise
+  /// only for horizontal drags the spread can still follow, so a drag pushing
+  /// past a spread edge is left to the engine's page turn.
   final class SpreadPanningScrollView: UIScrollView {
     /// Whether the spread's start edge, in reading order, is on the left.
     var spreadStartsAtLeft = true
@@ -19,6 +20,16 @@
     private var pendingSpreadEdge: ReaderSpreadEdge?
 
     private static let edgeTolerance: CGFloat = 1
+    // A pan that would stop this close to an edge looks like it rests there,
+    // so it settles on the edge and behaves like it.
+    private static let edgeSnapDistance: CGFloat = 12
+
+    /// Whether `recognizer` is the pan of a page host's scroll view. Tap zones
+    /// wait for it to fail: a touch that catches a gliding page begins it at
+    /// once, so that tap only stops the glide.
+    static func isPagePan(_ recognizer: UIGestureRecognizer) -> Bool {
+      (recognizer.view as? SpreadPanningScrollView)?.panGestureRecognizer === recognizer
+    }
 
     var isAtBaseZoom: Bool {
       zoomScale <= minimumZoomScale + 0.01
@@ -50,6 +61,19 @@
       return endDistance < startDistance ? .end : .start
     }
 
+    /// Where a pan heading for `x` should come to rest: on an edge when it
+    /// would stop just short of one, else at `x`.
+    func spreadRestingOffset(forTarget x: CGFloat) -> CGFloat {
+      guard isPanningSpread else { return x }
+      for edge in [ReaderSpreadEdge.start, .end] {
+        let edgeX = spreadOffset(for: edge)
+        if abs(x - edgeX) <= Self.edgeSnapDistance {
+          return edgeX
+        }
+      }
+      return x
+    }
+
     private var maxSpreadOffset: CGFloat {
       max(contentSize.width - bounds.width, 0)
     }
@@ -76,8 +100,10 @@
         pendingSpreadEdge = nil
         return false
       }
-      pendingSpreadEdge = animated ? edge : nil
+      // The settle fired by stopping a glide clears a marked edge, so the
+      // edge this pan heads to is marked after setting the offset, not before.
       setContentOffset(target, animated: animated)
+      pendingSpreadEdge = animated ? edge : nil
       return true
     }
 
@@ -98,7 +124,10 @@
     }
 
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-      guard gestureRecognizer === panGestureRecognizer, isPanningSpread else {
+      // A touch on a gliding spread catches it: UIKit begins that pan at
+      // touch-down, before there is a direction to judge, and the drag that
+      // follows keeps panning the spread.
+      guard gestureRecognizer === panGestureRecognizer, isPanningSpread, !isDecelerating else {
         return super.gestureRecognizerShouldBegin(gestureRecognizer)
       }
       guard let dragX = panGestureRecognizer.horizontalDrag(in: self),

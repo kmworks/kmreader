@@ -1007,6 +1007,10 @@
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
       ) -> Bool {
+        // A tap that catches a gliding page only stops it.
+        if gestureRecognizer === singleTapRecognizer {
+          return SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
+        }
         guard gestureRecognizer === panRecognizer else { return false }
         let typeName = String(describing: type(of: otherGestureRecognizer))
         return typeName.contains("Parallax")
