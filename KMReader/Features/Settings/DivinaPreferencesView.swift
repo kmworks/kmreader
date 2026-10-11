@@ -39,7 +39,6 @@ struct DivinaPreferencesView: View {
   @AppStorage("showDivinaProgressBarWhileReading")
   private var showProgressBarWhileReading: Bool =
     AppConfig.showDivinaProgressBarWhileReading
-  @AppStorage("shakeToOpenLiveText") private var shakeToOpenLiveText: Bool = false
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
 
   private var forcedReadingDirection: ReadingDirection? {
@@ -72,6 +71,13 @@ struct DivinaPreferencesView: View {
           doubleTapZoomMode = newValue ? .enabled : .disabled
         }
       }
+    )
+  }
+
+  private var liveTextEnabled: Binding<Bool> {
+    Binding(
+      get: { enableLiveText },
+      set: { AppConfig.setLiveTextEnabled($0) }
     )
   }
 
@@ -443,7 +449,7 @@ struct DivinaPreferencesView: View {
 
       #if os(iOS) || os(macOS)
         Section(header: Text("Live Text")) {
-          Toggle(isOn: $enableLiveText) {
+          Toggle(isOn: liveTextEnabled) {
             VStack(alignment: .leading, spacing: 4) {
               Text("Enable Live Text")
               Text("Automatically enable Live Text for all images.")
@@ -451,16 +457,6 @@ struct DivinaPreferencesView: View {
                 .foregroundColor(.secondary)
             }
           }
-          #if os(iOS)
-            Toggle(isOn: $shakeToOpenLiveText) {
-              VStack(alignment: .leading, spacing: 4) {
-                Text("Shake to Open Live Text")
-                Text("Shake your device to toggle Live Text")
-                  .font(.caption)
-                  .foregroundColor(.secondary)
-              }
-            }
-          #endif
         }
       #endif
 

@@ -103,6 +103,34 @@ nonisolated enum LocalDatabase {
       }
     }
 
+    migrator.registerMigration("00011_add_manga_translations") { db in
+      try db.create(table: "manga_translations") { table in
+        table.column("instance_id", .text).notNull()
+        table.column("cache_key", .text).notNull()
+        table.column("book_id", .text).notNull()
+        table.column("page_number", .integer).notNull()
+        table.column("result_raw", .blob).notNull()
+        table.column("created_at", .datetime).notNull()
+        table.primaryKey(["instance_id", "cache_key"], onConflict: .replace)
+      }
+      try db.create(
+        index: "idx_manga_translations_book",
+        on: "manga_translations",
+        columns: ["instance_id", "book_id", "page_number"]
+      )
+    }
+
+    migrator.registerMigration("00012_add_manga_translation_providers") { db in
+      try db.create(table: "manga_translation_providers") { table in
+        table.column("id", .text).notNull()
+        table.column("base_url", .text).notNull()
+        table.column("model", .text).notNull()
+        table.column("display_name", .text).notNull()
+        table.column("api_key", .text).notNull()
+        table.primaryKey(["id"], onConflict: .replace)
+      }
+    }
+
     try migrator.migrate(writer)
   }
 

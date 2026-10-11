@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum ReaderPageBorderCropMode: String, CaseIterable, Hashable, Sendable {
+nonisolated enum ReaderPageBorderCropMode: String, CaseIterable, Hashable, Codable, Sendable {
   case disabled
   case conservative
   case aggressive

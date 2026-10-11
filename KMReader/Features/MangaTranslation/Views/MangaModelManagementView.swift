@@ -1,0 +1,303 @@
+import SwiftUI
+
+struct MangaModelManagementView: View {
+  @AppStorage("modelLibrary") private var libraryConfiguration = ModelLibraryConfiguration()
+
+  @State private var catalog: ModelCatalog?
+  @State private var downloadedArchives: [ModelArchive] = []
+  @State private var statuses: [String: MangaModelStorageStatus] = [:]
+  @State private var isLoadingCatalog = false
+  @State private var showsCatalogEditor = false
+  @State private var catalogURLDraft = ""
+  @State private var preparingStorageKey: String?
+  @State private var archiveToDelete: ModelArchive?
+  @State private var showsDeleteConfirmation = false
+
+  private var selectedStorageKey: String {
+    libraryConfiguration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
+  }
+
+  private var availableArchives: [ModelArchive] {
+    let downloadedKeys = Set(downloadedArchives.map(\.storageKey))
+    return (catalog?.models(for: .mangaOCR) ?? []).filter { !downloadedKeys.contains($0.storageKey) }
+  }
+
+  private var canSaveCatalogURL: Bool {
+    let value = catalogURLDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let components = URLComponents(string: value),
+      components.scheme?.lowercased() == "https",
+      components.host?.isEmpty == false
+    else {
+      return false
+    }
+    return true
+  }
+
+  var body: some View {
+    Form {
+      Section(
+        header: Text("Downloaded"),
+        footer: Text("Downloaded models remain available when the catalog changes.")
+      ) {
+        if downloadedArchives.isEmpty {
+          Text("No models downloaded")
+            .foregroundStyle(.secondary)
+        }
+        ForEach(downloadedArchives, id: \.storageKey) { archive in
+          HStack(spacing: 12) {
+            Button {
+              select(archive)
+            } label: {
+              HStack(spacing: 12) {
+                Image(systemName: selectedStorageKey == archive.storageKey ? "checkmark.circle.fill" : "circle")
+                  .foregroundStyle(selectedStorageKey == archive.storageKey ? Color.accentColor : Color.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                  Text(archive.name)
+                  Text(detailText(for: archive))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                  if let comment = archive.comment, !comment.isEmpty {
+                    Text(comment)
+                      .font(.caption)
+                      .foregroundStyle(.secondary)
+                  }
+                }
+              }
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(preparingStorageKey != nil)
+            Spacer()
+            if preparingStorageKey == archive.storageKey {
+              LoadingIcon()
+            } else {
+              Button(role: .destructive) {
+                archiveToDelete = archive
+                showsDeleteConfirmation = true
+              } label: {
+                Image(systemName: AppIcon.delete)
+              }
+              .buttonStyle(.borderless)
+              .disabled(preparingStorageKey != nil)
+            }
+          }
+        }
+      }
+
+      Section(header: Text("Available Models")) {
+        if availableArchives.isEmpty && !isLoadingCatalog {
+          Text("No additional models in this catalog")
+            .foregroundStyle(.secondary)
+        }
+        ForEach(availableArchives, id: \.storageKey) { archive in
+          HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+              Text(archive.name)
+              Text(detailText(for: archive))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              if let comment = archive.comment, !comment.isEmpty {
+                Text(comment)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 6) {
+              Text(archive.bytes.map { formatBytes(Int64($0)) } ?? String(localized: "Unknown"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              Button {
+                prepare(archive)
+              } label: {
+                if preparingStorageKey == archive.storageKey {
+                  LoadingIcon()
+                } else {
+                  Image(systemName: AppIcon.download)
+                    .accessibilityLabel(Text("Download & Use"))
+                }
+              }
+              .buttonStyle(.bordered)
+              .controlSize(.small)
+              .disabled(preparingStorageKey != nil)
+            }
+          }
+          .padding(.vertical, 4)
+        }
+      }
+
+      Section(
+        header: HStack {
+          Text("Catalog")
+          Spacer()
+          Button {
+            refreshCatalog()
+          } label: {
+            Label(String(localized: "Refresh Catalog"), systemImage: AppIcon.refresh)
+              .labelStyle(.iconOnly)
+              .symbolEffect(.pulse, options: .repeating, isActive: isLoadingCatalog)
+          }
+          .buttonStyle(.borderless)
+          .disabled(isLoadingCatalog || preparingStorageKey != nil)
+        },
+        footer: Text("The default catalog is recommended. Custom catalogs must use HTTPS.")
+      ) {
+        HStack {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Catalog URL")
+            Text(libraryConfiguration.catalogURL)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+              .truncationMode(.middle)
+          }
+          Spacer()
+          Button(String(localized: "Edit"), action: beginCatalogEdit)
+            .buttonStyle(.borderless)
+            .disabled(isLoadingCatalog)
+        }
+      }
+    }
+    .onAppear {
+      catalog = .cached
+      reloadDownloadedModels()
+      refreshCatalog()
+    }
+    .sheet(isPresented: $showsCatalogEditor) {
+      SheetView(title: String(localized: "Catalog URL"), size: .medium, applyFormStyle: true) {
+        Form {
+          Section(
+            footer: Text("The default catalog is recommended. Custom catalogs must use HTTPS.")
+          ) {
+            TextField(String(localized: "Catalog URL"), text: $catalogURLDraft)
+              .textContentType(.URL)
+              .autocorrectionDisabled()
+              .onSubmit(saveCatalogURL)
+          }
+        }
+      } controls: {
+        Button {
+          catalogURLDraft = ModelLibraryConfiguration.defaultCatalogURL
+          saveCatalogURL()
+        } label: {
+          Label(String(localized: "Reset to Default"), systemImage: AppIcon.reset)
+            .labelStyle(.iconOnly)
+        }
+        Button(String(localized: "Save"), action: saveCatalogURL)
+          .disabled(!canSaveCatalogURL)
+      }
+    }
+    .alert(String(localized: "Delete Model"), isPresented: $showsDeleteConfirmation) {
+      Button(String(localized: "Delete"), role: .destructive) {
+        if let archiveToDelete {
+          delete(archiveToDelete)
+        }
+      }
+      Button(String(localized: "Cancel"), role: .cancel) {}
+    } message: {
+      Text(archiveToDelete?.name ?? "")
+    }
+  }
+
+  private func beginCatalogEdit() {
+    guard !isLoadingCatalog else { return }
+    catalogURLDraft = libraryConfiguration.catalogURL
+    showsCatalogEditor = true
+  }
+
+  private func cancelCatalogEdit() {
+    catalogURLDraft = ""
+    showsCatalogEditor = false
+  }
+
+  private func saveCatalogURL() {
+    guard canSaveCatalogURL else { return }
+    libraryConfiguration.catalogURL = catalogURLDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    libraryConfiguration.catalog = nil
+    catalog = nil
+    cancelCatalogEdit()
+    refreshCatalog()
+  }
+
+  private func detailText(for archive: ModelArchive) -> String {
+    let version = String(localized: "Version \(archive.version)")
+    let size = statuses[archive.storageKey].map { formatBytes($0.totalBytes) }
+    return [version, archive.license, size].compactMap { $0 }.joined(separator: " · ")
+  }
+
+  private func select(_ archive: ModelArchive) {
+    MangaModelLibrary.select(archive)
+    libraryConfiguration = AppConfig.modelLibrary
+  }
+
+  private func refreshCatalog() {
+    guard !isLoadingCatalog else { return }
+    isLoadingCatalog = true
+    Task {
+      do {
+        catalog = try await ModelCatalogService.fetch()
+        libraryConfiguration = AppConfig.modelLibrary
+        reloadDownloadedModels()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+      isLoadingCatalog = false
+    }
+  }
+
+  private func prepare(_ archive: ModelArchive) {
+    guard preparingStorageKey == nil else { return }
+    preparingStorageKey = archive.storageKey
+    Task {
+      do {
+        try await MangaTranslationService.shared.prepareModels(archive: archive)
+        MangaModelLibrary.select(archive)
+        libraryConfiguration = AppConfig.modelLibrary
+        reloadDownloadedModels()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+      preparingStorageKey = nil
+    }
+  }
+
+  private func delete(_ archive: ModelArchive) {
+    guard preparingStorageKey == nil else { return }
+    preparingStorageKey = archive.storageKey
+    Task {
+      do {
+        try await MangaTranslationService.shared.clearModels(
+          storage: ModelStorage.shared,
+          archive: archive
+        )
+        libraryConfiguration = AppConfig.modelLibrary
+        reloadDownloadedModels()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+      preparingStorageKey = nil
+    }
+  }
+
+  private func reloadDownloadedModels() {
+    libraryConfiguration = AppConfig.modelLibrary
+    guard let storage = try? ModelStorage.shared else {
+      downloadedArchives = []
+      statuses = [:]
+      return
+    }
+    MangaModelLibrary.reconcile(storage: storage)
+    libraryConfiguration = AppConfig.modelLibrary
+    downloadedArchives = MangaModelLibrary.downloadedArchives()
+    statuses = Dictionary(
+      downloadedArchives.map {
+        ($0.storageKey, MangaModelManager.status(storage: storage.storage(for: $0), archive: $0))
+      },
+      uniquingKeysWith: { first, _ in first }
+    )
+  }
+
+  private func formatBytes(_ bytes: Int64) -> String {
+    ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+  }
+}

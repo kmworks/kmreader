@@ -10,6 +10,7 @@
     private let imageView = UIImageView()
     private let sepiaOverlayView = UIView()
     private let animatedInlineContainer = UIView()
+    private let mangaOverlayView = MangaOverlayView()
     private let animatedImageController = AnimatedImagePlayerController()
     private let preparedImageCache = PreparedReaderPageImageCache()
     private let pageNumberLabel = UILabel()
@@ -75,6 +76,7 @@
       imageView.image = nil
       preparedImageCache.clear()
       animatedInlineContainer.layer.contents = nil
+      mangaOverlayView.clear()
       updateSepiaOverlay()
     }
 
@@ -128,6 +130,8 @@
       animatedInlineContainer.backgroundColor = .clear
       animatedInlineContainer.layer.contentsGravity = .resizeAspect
       addSubview(animatedInlineContainer)
+      mangaOverlayView.isHidden = true
+      addSubview(mangaOverlayView)
 
       loadingIndicator.hidesWhenStopped = true
       loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
@@ -290,6 +294,11 @@
         updateContextMenuInteraction()
       #endif
 
+      mangaOverlayView.update(
+        result: viewModel.mangaTranslationResult(for: data),
+        visible: viewModel.showMangaTranslation,
+        background: background
+      )
       updateShadowAppearance()
       setNeedsLayout()
     }
@@ -544,6 +553,7 @@
       imageView.frame = CGRect(x: xOffset, y: yOffset, width: actualImageWidth, height: actualImageHeight)
       sepiaOverlayView.frame = imageView.frame
       animatedInlineContainer.frame = imageView.frame
+      mangaOverlayView.frame = imageView.frame
 
       let topY = yOffset
       let pageLabelWidth = max(30, pageNumberLabel.intrinsicContentSize.width + 16)
