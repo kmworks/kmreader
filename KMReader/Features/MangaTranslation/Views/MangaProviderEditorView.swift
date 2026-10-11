@@ -5,7 +5,6 @@ struct MangaProviderEditorView: View {
   private let isNew: Bool
 
   @Environment(\.dismiss) private var dismiss
-  @AppStorage("mangaTranslation") private var preferences = MangaTranslationPreferences()
 
   @State private var displayName: String
   @State private var baseURL: String
@@ -185,7 +184,6 @@ struct MangaProviderEditorView: View {
       do {
         let database = try await DatabaseOperator.database()
         try await MangaProviderLibrary.save(provider, select: isNew, database: database)
-        preferences = AppConfig.mangaTranslation
         dismiss()
       } catch {
         isSaving = false

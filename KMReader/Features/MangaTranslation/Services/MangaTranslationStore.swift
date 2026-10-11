@@ -23,15 +23,11 @@ nonisolated struct MangaTranslationStore {
     return try record?.translation()
   }
 
-  static func clear(database: DatabaseOperator) async throws {
+  static func clear(instanceId: String, database: DatabaseOperator) async throws {
     _ = try await database.write { db in
-      try MangaTranslationRecord.deleteAll(db)
-    }
-  }
-
-  static func count(database: DatabaseOperator) async throws -> Int {
-    try await database.read { db in
-      try MangaTranslationRecord.fetchCount(db)
+      try MangaTranslationRecord
+        .filter(Column("instance_id") == instanceId)
+        .deleteAll(db)
     }
   }
 }

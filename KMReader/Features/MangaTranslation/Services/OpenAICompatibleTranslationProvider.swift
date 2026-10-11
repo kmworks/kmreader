@@ -18,7 +18,6 @@ struct OpenAICompatibleTranslationProvider: MangaTranslationProvider {
     let payload: [String: Any] = [
       "source_language": sourceLanguage,
       "target_language": targetLanguage,
-      "context": [],
       "segments": segments.map { ["id": $0.id, "text": $0.text] },
     ]
     let payloadText = try jsonString(payload)
@@ -46,26 +45,12 @@ struct OpenAICompatibleTranslationProvider: MangaTranslationProvider {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")
-    if !configuration.apiKey.isEmpty {
-      request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
-    }
+    request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
     request.httpBody = body
 
     logger.info("Manga provider request: \(segments.count) segments")
     let (data, httpResponse) = try await MangaProviderRequest.data(for: request)
     logger.info("Manga provider response: HTTP \(httpResponse.statusCode)")
-    switch httpResponse.statusCode {
-    case 401, 403:
-      throw MangaTranslationFailure.authentication
-    case 429:
-      throw MangaTranslationFailure.rateLimited
-    case 500...599:
-      throw MangaTranslationFailure.unavailable
-    case 200:
-      break
-    default:
-      throw MangaTranslationFailure.invalidResponse
-    }
     guard data.count <= 4 * 1024 * 1024 else {
       throw MangaTranslationFailure.invalidResponse
     }

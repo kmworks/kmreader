@@ -33,7 +33,8 @@ nonisolated struct MangaTARArchive {
       let size = try octal(header, range: 124..<136)
       guard size >= 0 else { throw ArchiveError.invalidHeader }
       let type = header[156]
-      let path = try string(header, range: 0..<100)
+      let rawPath = try string(header, range: 0..<100)
+      let path = rawPath.hasSuffix("/") ? String(rawPath.dropLast()) : rawPath
       guard isSafe(path: path) else { throw ArchiveError.unsafePath }
       entries += 1
       guard entries <= 100 else { throw ArchiveError.tooManyEntries }

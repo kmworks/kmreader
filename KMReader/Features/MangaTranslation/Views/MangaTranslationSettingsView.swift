@@ -162,7 +162,9 @@ struct MangaTranslationSettingsView: View {
       }
     }
     .formStyle(.grouped)
-    .platformNavigationTitle(String(localized: "Manga Translation"))
+    #if os(iOS) || os(macOS)
+      .platformNavigationTitle(SettingsSection.mangaTranslation.title)
+    #endif
     .onAppear(perform: reloadConfiguration)
     .sheet(isPresented: $showsProviderManagement, onDismiss: reloadConfiguration) {
       SheetView(title: String(localized: "Translation Providers"), size: .large, applyFormStyle: true) {
@@ -193,7 +195,10 @@ struct MangaTranslationSettingsView: View {
     Task {
       do {
         if let database = await DatabaseOperator.databaseIfConfigured() {
-          try await MangaTranslationService.shared.clearTranslations(database: database)
+          try await MangaTranslationService.shared.clearTranslations(
+            instanceId: AppConfig.current.instanceId,
+            database: database
+          )
         }
         ErrorManager.shared.notify(message: String(localized: "Cache cleared"))
       } catch {
@@ -204,22 +209,12 @@ struct MangaTranslationSettingsView: View {
 
   private func testProvider() {
     guard let provider else { return }
-    let resolvedSourceLanguage =
-      MangaTranslationLanguage.normalized(preferences.sourceLanguage)
-      ?? MangaTranslationLanguage.defaultSource
-    let resolvedTargetLanguage =
-      MangaTranslationLanguage.normalized(preferences.targetLanguage)
-      ?? MangaTranslationLanguage.systemTarget
     isTesting = true
-    let testText = resolvedSourceLanguage.hasPrefix("ja") ? "これはテストです。" : "This is a test."
     Task {
       do {
-        let translations = try await OpenAICompatibleTranslationProvider().translate(
-          segments: [MangaTextSegment(id: 0, text: testText)],
-          sourceLanguage: resolvedSourceLanguage,
-          targetLanguage: resolvedTargetLanguage,
-          metadata: nil,
-          configuration: provider
+        let translations = try await MangaTranslationService.shared.testProvider(
+          configuration: provider,
+          preferences: preferences
         )
         ErrorManager.shared.notify(message: translations.joined(separator: " / "))
       } catch {

@@ -1,7 +1,7 @@
-import CoreML
+@preconcurrency import CoreML
 import Foundation
 
-nonisolated final class MangaModelSet {
+nonisolated final class MangaModelSet: Sendable {
   let manifest: ModelPackageManifest
   private let models: [String: MLModel]
   private let resources: [String: URL]

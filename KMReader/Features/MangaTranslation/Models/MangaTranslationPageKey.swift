@@ -15,7 +15,7 @@ nonisolated struct MangaTranslationPageKey: Hashable, Codable, Sendable {
       "instanceId": instanceId,
       "bookId": pageID.bookId,
       "pageNumber": String(pageID.pageNumber),
-      "splitMode": String(describing: splitMode),
+      "splitMode": splitMode.rawValue,
       "rotation": String(rotation.rawValue),
       "borderCropMode": borderCropMode.rawValue,
       "sourceSignature": sourceSignature,

@@ -50,6 +50,7 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
     var regions: [MangaTextRegion] = []
     var highestTextScore: Float = 0
     for index in 0..<queryCount {
+      try Task.checkCancellation()
       let scores = (0..<classCount).map { sigmoid(logitValues[index * classCount + $0]) }
       guard let label = scores.enumerated().max(by: { $0.element < $1.element })?.offset,
         let descriptor = labels[label], descriptor.recognize

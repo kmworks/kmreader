@@ -19,7 +19,20 @@ nonisolated struct MangaModelManager {
     let fileManager = FileManager.default
     try fileManager.createDirectory(at: storage.rootDirectory, withIntermediateDirectories: true)
 
-    if try validatePackage(at: storage.packagesDirectory, archive: archive) == nil {
+    let installedManifest: ModelPackageManifest?
+    do {
+      installedManifest = try validatePackage(at: storage.packagesDirectory, archive: archive)
+    } catch {
+      if fileManager.fileExists(atPath: storage.packagesDirectory.path) {
+        try fileManager.removeItem(at: storage.packagesDirectory)
+      }
+      if fileManager.fileExists(atPath: storage.compiledDirectory.path) {
+        try fileManager.removeItem(at: storage.compiledDirectory)
+      }
+      installedManifest = nil
+    }
+
+    if installedManifest == nil {
       let downloadedArchive = try await download(archive: archive, storage: storage)
       let temporaryPackage = storage.rootDirectory.appendingPathComponent("Models.next")
       if fileManager.fileExists(atPath: temporaryPackage.path) {
@@ -77,37 +90,37 @@ nonisolated struct MangaModelManager {
   }
 
   nonisolated static func load(paths: MangaModelPaths) throws -> MangaModelSet {
-    do {
-      var models: [String: MLModel] = [:]
-      var resources: [String: URL] = [:]
-      for (componentName, component) in paths.manifest.components {
-        let configuration = MLModelConfiguration()
-        #if targetEnvironment(simulator)
-          // Simulator GPU inference can corrupt detection and OCR outputs.
-          configuration.computeUnits = .cpuOnly
-        #else
-          configuration.computeUnits = componentName == "detector" ? .cpuAndGPU : .all
-        #endif
-        for (fileName, relativePath) in component.files {
-          let key = "\(componentName).\(fileName)"
-          if relativePath.hasSuffix(".mlpackage") {
-            models[key] = try MLModel(
-              contentsOf: paths.compiledModelURL(component: componentName, file: fileName),
-              configuration: configuration
-            )
-          } else {
-            guard let resourceURL = paths.packageURL(component: componentName, file: fileName) else {
-              throw MangaTranslationFailure.modelPreparation
+    var models: [String: MLModel] = [:]
+    var resources: [String: URL] = [:]
+    for (componentName, component) in paths.manifest.components {
+      let configuration = MLModelConfiguration()
+      #if targetEnvironment(simulator)
+        // Simulator GPU inference can corrupt detection and OCR outputs.
+        configuration.computeUnits = .cpuOnly
+      #else
+        configuration.computeUnits = componentName == "detector" ? .cpuAndGPU : .all
+      #endif
+      for (fileName, relativePath) in component.files {
+        let key = "\(componentName).\(fileName)"
+        if relativePath.hasSuffix(".mlpackage") {
+          let compiledURL = paths.compiledModelURL(component: componentName, file: fileName)
+          do {
+            models[key] = try MLModel(contentsOf: compiledURL, configuration: configuration)
+          } catch let error as NSError {
+            if error.domain == MLModelErrorDomain && error.code == MLModelError.io.rawValue {
+              try? FileManager.default.removeItem(at: compiledURL)
             }
-            resources[key] = resourceURL
+            throw error
           }
+        } else {
+          guard let resourceURL = paths.packageURL(component: componentName, file: fileName) else {
+            throw MangaTranslationFailure.modelPreparation
+          }
+          resources[key] = resourceURL
         }
       }
-      return MangaModelSet(manifest: paths.manifest, models: models, resources: resources)
-    } catch {
-      try? FileManager.default.removeItem(at: paths.compiledDirectory)
-      throw error
     }
+    return MangaModelSet(manifest: paths.manifest, models: models, resources: resources)
   }
 
   nonisolated static func status(storage: ModelStorage, archive: ModelArchive) -> MangaModelStorageStatus {
@@ -153,6 +166,9 @@ nonisolated struct MangaModelManager {
     try fileManager.createDirectory(at: storage.downloadsDirectory, withIntermediateDirectories: true)
     let destination = storage.downloadsDirectory.appendingPathComponent("models.tar")
     let partial = storage.downloadsDirectory.appendingPathComponent("models.tar.part")
+    if fileManager.fileExists(atPath: partial.path) {
+      try fileManager.removeItem(at: partial)
+    }
     defer { try? fileManager.removeItem(at: partial) }
 
     if archive.url.isFileURL {

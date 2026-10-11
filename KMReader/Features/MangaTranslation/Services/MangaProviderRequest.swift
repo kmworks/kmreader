@@ -26,7 +26,23 @@ nonisolated struct MangaProviderRequest {
       guard let response = try await group.next() else {
         throw MangaTranslationFailure.invalidResponse
       }
+      try validate(response.1)
       return response
+    }
+  }
+
+  private static func validate(_ response: HTTPURLResponse) throws {
+    switch response.statusCode {
+    case 200:
+      return
+    case 401, 403:
+      throw MangaTranslationFailure.authentication
+    case 429:
+      throw MangaTranslationFailure.rateLimited
+    case 500...599:
+      throw MangaTranslationFailure.unavailable
+    default:
+      throw MangaTranslationFailure.invalidResponse
     }
   }
 }

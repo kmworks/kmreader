@@ -3,6 +3,11 @@ import CoreML
 import Foundation
 
 nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
+  private static let beginningOfSequenceTokenID = 2
+  private static let endOfSequenceTokenID = 3
+  private static let paddingTokenID: Int32 = 0
+  private static let maximumDecodedTokenCount = 300
+
   let models: MangaModelSet
   let tokenizer: MangaTokenizer
   private let logger = AppLogger(.reader)
@@ -17,10 +22,11 @@ nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
     let decoder = try models.model(component: "recognizer", file: "decoder")
     var recognized: [MangaTextRegion] = []
     for region in regions {
+      try Task.checkCancellation()
       let crop = try MangaInferenceUtilities.cropImage(image, normalizedRect: region.sourceBox)
       let pixels = try MangaInferenceUtilities.pixelValues(crop, width: 224, height: 224, normalize: true)
       let result = try recognize(encoder: encoder, decoder: decoder, crop: pixels)
-      guard result.nonfinite == 0 else { throw MangaTranslationFailure.inference }
+      guard result.nonfinite == 0 else { continue }
       let text = tokenizer.decode(result.tokens).trimmingCharacters(in: .whitespacesAndNewlines)
       guard !text.isEmpty else { continue }
       recognized.append(
@@ -51,17 +57,18 @@ nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
     else {
       throw MangaTranslationFailure.inference
     }
-    var tokenIDs = [2]
+    var tokenIDs = [Self.beginningOfSequenceTokenID]
     var generated: [Int] = []
     var nonfinite = 0
-    for _ in 0..<300 {
+    for _ in 0..<Self.maximumDecodedTokenCount {
+      try Task.checkCancellation()
       let actualLength = tokenIDs.count
       let paddedLength = bucketLength(actualLength)
       let result = try autoreleasepool { () throws -> (token: Int, nonfinite: Int) in
         let input = try MLMultiArray(shape: [1, NSNumber(value: paddedLength)], dataType: .int32)
         let pointer = input.dataPointer.bindMemory(to: Int32.self, capacity: paddedLength)
         for index in 0..<paddedLength {
-          pointer[index] = index < actualLength ? Int32(tokenIDs[index]) : 0
+          pointer[index] = index < actualLength ? Int32(tokenIDs[index]) : Self.paddingTokenID
         }
         let mask = try MLMultiArray(shape: [1, NSNumber(value: paddedLength)], dataType: .int32)
         let maskPointer = mask.dataPointer.bindMemory(to: Int32.self, capacity: paddedLength)
@@ -79,18 +86,28 @@ nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
         guard let logits = output.featureValue(for: "logits")?.multiArrayValue else {
           throw MangaTranslationFailure.inference
         }
-        return nextToken(logits, position: actualLength - 1)
+        return try nextToken(logits, position: actualLength - 1)
       }
       nonfinite += result.nonfinite
-      if result.token == 3 || result.nonfinite > 0 { break }
+      if result.token == Self.endOfSequenceTokenID || result.nonfinite > 0 { break }
       generated.append(result.token)
       tokenIDs.append(result.token)
     }
     return (generated, nonfinite)
   }
 
-  private func nextToken(_ output: MLMultiArray, position: Int) -> (token: Int, nonfinite: Int) {
-    let vocabularySize = output.shape[output.shape.count - 1].intValue
+  private func nextToken(_ output: MLMultiArray, position: Int) throws -> (token: Int, nonfinite: Int) {
+    let shape = output.shape
+    guard shape.count == 3,
+      shape[0].intValue == 1,
+      position >= 0,
+      position < shape[1].intValue,
+      shape[2].intValue > 0,
+      output.count == shape[1].intValue * shape[2].intValue
+    else {
+      throw MangaTranslationFailure.inference
+    }
+    let vocabularySize = shape[2].intValue
     var bestIndex = 0
     var bestValue = -Float.greatestFiniteMagnitude
     var nonfinite = 0
@@ -106,9 +123,9 @@ nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
   }
 
   private func bucketLength(_ length: Int) -> Int {
-    for bucket in [1, 4, 16, 64, 128, 256, 300] where length <= bucket {
+    for bucket in [1, 4, 16, 64, 128, 256, Self.maximumDecodedTokenCount] where length <= bucket {
       return bucket
     }
-    return 300
+    return Self.maximumDecodedTokenCount
   }
 }

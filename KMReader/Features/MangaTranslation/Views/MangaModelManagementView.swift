@@ -10,8 +10,13 @@ struct MangaModelManagementView: View {
   @State private var showsCatalogEditor = false
   @State private var catalogURLDraft = ""
   @State private var preparingStorageKey: String?
+  @State private var deletingStorageKey: String?
   @State private var archiveToDelete: ModelArchive?
   @State private var showsDeleteConfirmation = false
+
+  private var isModelOperationInProgress: Bool {
+    preparingStorageKey != nil || deletingStorageKey != nil
+  }
 
   private var selectedStorageKey: String {
     libraryConfiguration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
@@ -66,9 +71,9 @@ struct MangaModelManagementView: View {
               .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(preparingStorageKey != nil)
+            .disabled(isModelOperationInProgress)
             Spacer()
-            if preparingStorageKey == archive.storageKey {
+            if preparingStorageKey == archive.storageKey || deletingStorageKey == archive.storageKey {
               LoadingIcon()
             } else {
               Button(role: .destructive) {
@@ -78,7 +83,7 @@ struct MangaModelManagementView: View {
                 Image(systemName: AppIcon.delete)
               }
               .buttonStyle(.borderless)
-              .disabled(preparingStorageKey != nil)
+              .disabled(isModelOperationInProgress)
             }
           }
         }
@@ -119,7 +124,7 @@ struct MangaModelManagementView: View {
               }
               .buttonStyle(.bordered)
               .controlSize(.small)
-              .disabled(preparingStorageKey != nil)
+              .disabled(isModelOperationInProgress)
             }
           }
           .padding(.vertical, 4)
@@ -138,7 +143,7 @@ struct MangaModelManagementView: View {
               .symbolEffect(.pulse, options: .repeating, isActive: isLoadingCatalog)
           }
           .buttonStyle(.borderless)
-          .disabled(isLoadingCatalog || preparingStorageKey != nil)
+          .disabled(isLoadingCatalog || isModelOperationInProgress)
         },
         footer: Text("The default catalog is recommended. Custom catalogs must use HTTPS.")
       ) {
@@ -172,6 +177,10 @@ struct MangaModelManagementView: View {
             TextField(String(localized: "Catalog URL"), text: $catalogURLDraft)
               .textContentType(.URL)
               .autocorrectionDisabled()
+              #if os(iOS) || os(tvOS)
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+              #endif
               .onSubmit(saveCatalogURL)
           }
         }
@@ -227,7 +236,6 @@ struct MangaModelManagementView: View {
 
   private func select(_ archive: ModelArchive) {
     MangaModelLibrary.select(archive)
-    libraryConfiguration = AppConfig.modelLibrary
   }
 
   private func refreshCatalog() {
@@ -236,7 +244,6 @@ struct MangaModelManagementView: View {
     Task {
       do {
         catalog = try await ModelCatalogService.fetch()
-        libraryConfiguration = AppConfig.modelLibrary
         reloadDownloadedModels()
       } catch {
         ErrorManager.shared.alert(error: error)
@@ -246,13 +253,12 @@ struct MangaModelManagementView: View {
   }
 
   private func prepare(_ archive: ModelArchive) {
-    guard preparingStorageKey == nil else { return }
+    guard !isModelOperationInProgress else { return }
     preparingStorageKey = archive.storageKey
     Task {
       do {
         try await MangaTranslationService.shared.prepareModels(archive: archive)
         MangaModelLibrary.select(archive)
-        libraryConfiguration = AppConfig.modelLibrary
         reloadDownloadedModels()
       } catch {
         ErrorManager.shared.alert(error: error)
@@ -262,32 +268,29 @@ struct MangaModelManagementView: View {
   }
 
   private func delete(_ archive: ModelArchive) {
-    guard preparingStorageKey == nil else { return }
-    preparingStorageKey = archive.storageKey
+    guard !isModelOperationInProgress else { return }
+    deletingStorageKey = archive.storageKey
     Task {
       do {
         try await MangaTranslationService.shared.clearModels(
           storage: ModelStorage.shared,
           archive: archive
         )
-        libraryConfiguration = AppConfig.modelLibrary
         reloadDownloadedModels()
       } catch {
         ErrorManager.shared.alert(error: error)
       }
-      preparingStorageKey = nil
+      deletingStorageKey = nil
     }
   }
 
   private func reloadDownloadedModels() {
-    libraryConfiguration = AppConfig.modelLibrary
     guard let storage = try? ModelStorage.shared else {
       downloadedArchives = []
       statuses = [:]
       return
     }
     MangaModelLibrary.reconcile(storage: storage)
-    libraryConfiguration = AppConfig.modelLibrary
     downloadedArchives = MangaModelLibrary.downloadedArchives()
     statuses = Dictionary(
       downloadedArchives.map {

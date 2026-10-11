@@ -1,6 +1,8 @@
 import Foundation
 
 struct MangaTranslationConfiguration: Hashable, Sendable {
+  private nonisolated static let inferenceCacheVersion = "inference-3"
+
   let archive: ModelArchive
   let provider: MangaProviderConfig?
   let isOffline: Bool
@@ -26,7 +28,6 @@ struct MangaTranslationConfiguration: Hashable, Sendable {
         "provider": usesSystemProvider ? "system" : "unconfigured",
         "sourceLanguage": sourceLanguage,
         "targetLanguage": targetLanguage,
-        "metadata": metadata?.signature ?? "",
       ])
     }
     return provider.signature(
@@ -36,7 +37,7 @@ struct MangaTranslationConfiguration: Hashable, Sendable {
     )
   }
 
-  nonisolated var modelSignature: String { "\(archive.sha256):inference-3" }
+  nonisolated var modelSignature: String { "\(archive.sha256):\(Self.inferenceCacheVersion)" }
 
   nonisolated static func current(
     metadata: MangaTranslationMetadata? = nil,
@@ -44,19 +45,28 @@ struct MangaTranslationConfiguration: Hashable, Sendable {
   ) async throws -> MangaTranslationConfiguration? {
     guard let archive = MangaModelLibrary.selectedArchive else { return nil }
     let preferences = AppConfig.mangaTranslation
-    let sourceLanguage =
-      MangaTranslationLanguage.normalized(metadata?.sourceLanguage)
-      ?? preferences.sourceLanguage
-    let targetLanguage =
-      MangaTranslationLanguage.normalized(preferences.targetLanguage)
-      ?? MangaTranslationLanguage.systemTarget
+    let languages = resolvedLanguages(metadata: metadata, preferences: preferences)
     return MangaTranslationConfiguration(
       archive: archive,
       provider: try await MangaProviderLibrary.current(database: database),
       isOffline: AppConfig.isOffline,
-      sourceLanguage: sourceLanguage,
-      targetLanguage: targetLanguage,
+      sourceLanguage: languages.sourceLanguage,
+      targetLanguage: languages.targetLanguage,
       metadata: preferences.includeMetadata ? metadata : nil
     )
+  }
+
+  nonisolated static func resolvedLanguages(
+    metadata: MangaTranslationMetadata?,
+    preferences: MangaTranslationPreferences
+  ) -> (sourceLanguage: String, targetLanguage: String) {
+    let sourceLanguage =
+      MangaTranslationLanguage.normalized(metadata?.sourceLanguage)
+      ?? MangaTranslationLanguage.normalized(preferences.sourceLanguage)
+      ?? MangaTranslationLanguage.defaultSource
+    let targetLanguage =
+      MangaTranslationLanguage.normalized(preferences.targetLanguage)
+      ?? MangaTranslationLanguage.systemTarget
+    return (sourceLanguage, targetLanguage)
   }
 }

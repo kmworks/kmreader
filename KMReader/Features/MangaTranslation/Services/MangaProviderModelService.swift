@@ -14,19 +14,7 @@ struct MangaProviderModelService {
     request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")
     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
-    let (data, httpResponse) = try await MangaProviderRequest.data(for: request)
-    switch httpResponse.statusCode {
-    case 401, 403:
-      throw MangaTranslationFailure.authentication
-    case 429:
-      throw MangaTranslationFailure.rateLimited
-    case 500...599:
-      throw MangaTranslationFailure.unavailable
-    case 200:
-      break
-    default:
-      throw MangaTranslationFailure.invalidResponse
-    }
+    let (data, _) = try await MangaProviderRequest.data(for: request)
     guard data.count <= 1024 * 1024,
       let object = try? JSONSerialization.jsonObject(with: data),
       let dictionary = object as? [String: Any],

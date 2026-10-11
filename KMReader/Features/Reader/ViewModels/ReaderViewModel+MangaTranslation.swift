@@ -12,14 +12,14 @@ extension ReaderViewModel {
     guard AppConfig.mangaTranslation.isEnabled, let pageID = resolvedCurrentPageID else { return }
     guard !mangaTranslationPhase.isBusy else { return }
 
-    let forceProviderRetry = mangaTranslationResult != nil && !mangaTranslationPhase.isBusy
+    let forceProviderRetry = mangaTranslationResult != nil
     let taskID = UUID()
     mangaTranslationTask?.cancel()
     mangaTranslationTaskID = taskID
     mangaTranslationResult = nil
-    showMangaTranslation = true
+    setMangaTranslationVisibility(true)
     mangaTranslationPhase = .preparingModels
-    mangaTranslationKey = makeTranslationKey()
+    mangaTranslationKey = makeTranslationKey(for: pageID)
     notifyPagePresentationInvalidation(.pages([pageID]))
     mangaTranslationTask = Task { [weak self] in
       guard let self else { return }
@@ -101,9 +101,17 @@ extension ReaderViewModel {
   }
 
   func toggleMangaTranslation() {
-    showMangaTranslation.toggle()
+    setMangaTranslationVisibility(!showMangaTranslation)
     guard let pageID = mangaTranslationResult?.key.pageID else { return }
     notifyPagePresentationInvalidation(.pages([pageID]))
+  }
+
+  private func setMangaTranslationVisibility(_ isVisible: Bool) {
+    showMangaTranslation = isVisible
+    guard AppConfig.mangaTranslation.showTranslation != isVisible else { return }
+    var preferences = AppConfig.mangaTranslation
+    preferences.showTranslation = isVisible
+    AppConfig.mangaTranslation = preferences
   }
 
   func mangaTranslationResult(for data: NativePageData) -> MangaPageTranslation? {
@@ -112,7 +120,11 @@ extension ReaderViewModel {
 
   func mangaTranslationResult(for pageID: ReaderPageID, splitMode: PageSplitMode) -> MangaPageTranslation? {
     guard let result = mangaTranslationResult else { return nil }
-    guard result.key.pageID == pageID, result.key.splitMode == splitMode else { return nil }
+    guard result.key.pageID == pageID,
+      result.key.splitMode == splitMode,
+      result.key.rotation == currentMangaRotation,
+      result.key.borderCropMode == currentMangaBorderCropMode
+    else { return nil }
     return result
   }
 
@@ -151,10 +163,10 @@ extension ReaderViewModel {
     )
   }
 
-  private func makeTranslationKey() -> MangaTranslationPageKey {
+  private func makeTranslationKey(for pageID: ReaderPageID) -> MangaTranslationPageKey {
     MangaTranslationPageKey(
       instanceId: AppConfig.current.instanceId,
-      pageID: resolvedCurrentPageID ?? ReaderPageID(bookId: "", pageNumber: 0),
+      pageID: pageID,
       splitMode: currentMangaSplitMode,
       rotation: currentMangaRotation,
       borderCropMode: currentMangaBorderCropMode,
@@ -231,8 +243,8 @@ extension ReaderViewModel {
   }
 
   func syncMangaTranslationPage() {
-    guard AppConfig.mangaTranslation.isEnabled, resolvedCurrentPageID != nil else { return }
-    let key = makeTranslationKey()
+    guard AppConfig.mangaTranslation.isEnabled, let pageID = resolvedCurrentPageID else { return }
+    let key = makeTranslationKey(for: pageID)
     if let currentKey = mangaTranslationKey,
       currentKey.pageID == key.pageID,
       currentKey.splitMode == key.splitMode,

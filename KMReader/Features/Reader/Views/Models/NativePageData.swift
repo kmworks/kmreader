@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Split mode for wide pages
-nonisolated enum PageSplitMode: Hashable, Codable {
+nonisolated enum PageSplitMode: String, Hashable, Codable {
   case none
   case leftHalf
   case rightHalf

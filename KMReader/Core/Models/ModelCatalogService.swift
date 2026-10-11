@@ -6,6 +6,7 @@ struct ModelCatalogService {
       throw ModelCatalogError.invalidResponse
     }
     var request = URLRequest(url: url)
+    request.cachePolicy = .reloadIgnoringLocalCacheData
     request.timeoutInterval = 15
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")

@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-nonisolated protocol MangaTextDetecting {
+nonisolated protocol MangaTextDetecting: Sendable {
   func detect(
     image: CGImage,
     splitMode: PageSplitMode,

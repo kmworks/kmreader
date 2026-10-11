@@ -113,7 +113,6 @@ struct MangaProviderManagementView: View {
         providers = try await MangaProviderLibrary.all(
           database: await DatabaseOperator.databaseIfConfigured()
         )
-        preferences = AppConfig.mangaTranslation
       } catch {
         ErrorManager.shared.alert(error: error)
       }
@@ -125,7 +124,6 @@ struct MangaProviderManagementView: View {
       do {
         let database = try await DatabaseOperator.database()
         try await MangaProviderLibrary.delete(provider, database: database)
-        preferences = AppConfig.mangaTranslation
         providers = try await MangaProviderLibrary.all(database: database)
       } catch {
         ErrorManager.shared.alert(error: error)

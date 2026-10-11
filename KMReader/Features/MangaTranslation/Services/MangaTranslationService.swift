@@ -25,6 +25,21 @@ actor MangaTranslationService {
     _ = try await models(archive: archive, storage: storage)
   }
 
+  func testProvider(
+    configuration: MangaProviderConfig,
+    preferences: MangaTranslationPreferences
+  ) async throws -> [String] {
+    let languages = MangaTranslationConfiguration.resolvedLanguages(metadata: nil, preferences: preferences)
+    let testText = languages.sourceLanguage.hasPrefix("ja") ? "これはテストです。" : "This is a test."
+    return try await provider.translate(
+      segments: [MangaTextSegment(id: 0, text: testText)],
+      sourceLanguage: languages.sourceLanguage,
+      targetLanguage: languages.targetLanguage,
+      metadata: nil,
+      configuration: configuration
+    )
+  }
+
   private func models(
     archive: ModelArchive,
     storage: ModelStorage?
@@ -101,6 +116,10 @@ actor MangaTranslationService {
         try ensureTranslationCurrent(for: key, generation: generation)
         return cached
       }
+      if cached.status == .recognitionOnly(.noText) {
+        try ensureTranslationCurrent(for: key, generation: generation)
+        return cached
+      }
       if !configuration.canTranslate {
         try ensureTranslationCurrent(for: key, generation: generation)
         return cached
@@ -118,16 +137,20 @@ actor MangaTranslationService {
       try ensureTranslationCurrent(for: key, generation: generation)
       let detector = try models.makeDetector()
       await onProgress(.detecting)
-      let detectedRegions = try detector.detect(
-        image: image,
-        splitMode: key.splitMode,
-        rotation: key.rotation,
-        borderCropMode: key.borderCropMode
-      )
+      let detectedRegions = try await runInference {
+        try detector.detect(
+          image: image,
+          splitMode: key.splitMode,
+          rotation: key.rotation,
+          borderCropMode: key.borderCropMode
+        )
+      }
       try ensureTranslationCurrent(for: key, generation: generation)
       await onProgress(.recognizing)
       let recognizer = try models.makeRecognizer()
-      regions = try recognizer.recognize(crops: detectedRegions, image: image)
+      regions = try await runInference {
+        try recognizer.recognize(crops: detectedRegions, image: image)
+      }
     }
 
     let status: MangaTranslationStatus
@@ -153,7 +176,9 @@ actor MangaTranslationService {
             targetLanguage: configuration.targetLanguage
           )
         }
-        let translatedByID = Dictionary(uniqueKeysWithValues: translated.enumerated().map { ($0.offset, $0.element) })
+        let translatedByID = Dictionary(
+          uniqueKeysWithValues: zip(regions, translated).map { ($0.0.id, $0.1) }
+        )
         let translatedRegions = regions.map { region in
           MangaTextRegion(
             id: region.id,
@@ -194,6 +219,17 @@ actor MangaTranslationService {
     try? await MangaTranslationStore.save(result, database: database)
     logger.warning("Manga translation status: \(status), regions=\(regions.count)")
     return result
+  }
+
+  private func runInference<T: Sendable>(
+    _ operation: @escaping @Sendable () throws -> T
+  ) async throws -> T {
+    let task = Task.detached(priority: .userInitiated, operation: operation)
+    return try await withTaskCancellationHandler {
+      try await task.value
+    } onCancel: {
+      task.cancel()
+    }
   }
 
   private func beginTranslation(for key: MangaTranslationPageKey) -> UInt64 {
@@ -238,8 +274,8 @@ actor MangaTranslationService {
     MangaModelLibrary.remove(archive)
   }
 
-  func clearTranslations(database: DatabaseOperator) async throws {
-    translationGenerationByKey.removeAll()
-    try await MangaTranslationStore.clear(database: database)
+  func clearTranslations(instanceId: String, database: DatabaseOperator) async throws {
+    translationGenerationByKey = translationGenerationByKey.filter { $0.key.instanceId != instanceId }
+    try await MangaTranslationStore.clear(instanceId: instanceId, database: database)
   }
 }
