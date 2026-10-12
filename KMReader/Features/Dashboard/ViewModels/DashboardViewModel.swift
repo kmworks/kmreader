@@ -108,9 +108,7 @@ final class DashboardViewModel {
   private func startReload(section: DashboardSection, libraryIds: [String]) {
     loadTasks[section]?.cancel()
     loadTasks[section] = nil
-    withAnimation {
-      sectionStates[section, default: SectionState()].pagination.reset()
-    }
+    sectionStates[section, default: SectionState()].pagination.reset()
     guard let loadID = sectionStates[section]?.pagination.loadID else { return }
     startLoad(section: section, loadID: loadID, libraryIds: libraryIds)
   }
@@ -206,18 +204,25 @@ final class DashboardViewModel {
       sectionStates[section] = state
       return
     }
-    withAnimation {
-      state.pagination.items = cachedIds.map(IdentifiedString.init)
-      sectionStates[section] = state
-    }
+    // First fill never animates; only changes to an already-visible section do.
+    state.pagination.items = cachedIds.map(IdentifiedString.init)
+    sectionStates[section] = state
   }
 
   private func applyPage(section: DashboardSection, ids: [String], moreAvailable: Bool) {
     var state = sectionStates[section] ?? SectionState()
+    // First fill never animates; only changes to an already-visible section do.
+    let wasLoaded = state.hasLoadedFirstPage
     if state.pagination.currentPage == 0 {
       state.hasLoadedFirstPage = true
     }
-    withAnimation {
+    if wasLoaded {
+      withAnimation {
+        _ = state.pagination.applyPage(ids.map(IdentifiedString.init))
+        state.pagination.advance(moreAvailable: moreAvailable)
+        sectionStates[section] = state
+      }
+    } else {
       _ = state.pagination.applyPage(ids.map(IdentifiedString.init))
       state.pagination.advance(moreAvailable: moreAvailable)
       sectionStates[section] = state

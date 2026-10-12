@@ -29,18 +29,19 @@ struct ReadListsInProgressSectionView: View {
   }
 
   var body: some View {
-    DashboardSectionLayout(
-      section: section,
-      destination: .browseReadLists(scope: DashboardLibraryScopeStore.shared.scope),
-      showsCardKindMenu: true,
-      isEmpty: continuations.isEmpty,
-      itemIds: continuations.map(\.readListId)
-    ) {
-      LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
-        ForEach(continuations, id: \.readListId) { continuation in
-          continuationCard(continuation)
-            .id(continuation.readListId)
-            .frame(width: cardKind.cardWidth)
+    if !continuations.isEmpty {
+      DashboardSectionLayout(
+        section: section,
+        destination: .browseReadLists(scope: DashboardLibraryScopeStore.shared.scope),
+        showsCardKindMenu: true,
+        itemIds: continuations.map(\.readListId)
+      ) {
+        LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
+          ForEach(continuations, id: \.readListId) { continuation in
+            continuationCard(continuation)
+              .id(continuation.readListId)
+              .frame(width: cardKind.cardWidth)
+          }
         }
       }
     }
