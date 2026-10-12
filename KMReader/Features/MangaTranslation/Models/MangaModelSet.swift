@@ -35,21 +35,31 @@ nonisolated final class MangaModelSet: Sendable {
   }
 
   func makeDetector() throws -> any MangaTextDetecting {
-    guard let component = manifest.components["detector"],
-      component.engine == .rtDetrV2 && component.engineVersion == 1
-    else {
+    guard let component = manifest.components["detector"] else {
       throw MangaTranslationFailure.unsupportedModel
     }
-    return RTDetrDetector(models: self)
+    switch (component.engine, component.engineVersion) {
+    case (.rtDetrV2, 1):
+      return RTDetrDetector(models: self)
+    case (.yolo11nSeg, 1):
+      return YOLOSegDetector(models: self)
+    default:
+      throw MangaTranslationFailure.unsupportedModel
+    }
   }
 
   func makeRecognizer() throws -> any MangaTextRecognizing {
-    guard let component = manifest.components["recognizer"],
-      component.engine == .mangaOCRTransformer && component.engineVersion == 1
-    else {
+    guard let component = manifest.components["recognizer"] else {
       throw MangaTranslationFailure.unsupportedModel
     }
-    return try MangaOCRRecognizer(models: self)
+    switch (component.engine, component.engineVersion) {
+    case (.mangaOCRTransformer, 1):
+      return try MangaOCRRecognizer(models: self, preprocessing: .stretch)
+    case (.mangaOCRMobile, 1):
+      return try MangaOCRRecognizer(models: self, preprocessing: .letterbox)
+    default:
+      throw MangaTranslationFailure.unsupportedModel
+    }
   }
 
   static func supports(_ archive: ModelArchive) -> Bool {
@@ -58,7 +68,8 @@ nonisolated final class MangaModelSet: Sendable {
     }
     return archive.components.allSatisfy { role, component in
       switch (role, component.engine, component.engineVersion) {
-      case ("detector", .rtDetrV2, 1), ("recognizer", .mangaOCRTransformer, 1):
+      case ("detector", .rtDetrV2, 1), ("detector", .yolo11nSeg, 1),
+        ("recognizer", .mangaOCRTransformer, 1), ("recognizer", .mangaOCRMobile, 1):
         true
       default:
         false

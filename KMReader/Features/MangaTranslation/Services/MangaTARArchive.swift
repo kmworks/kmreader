@@ -39,7 +39,7 @@ nonisolated struct MangaTARArchive {
       entries += 1
       guard entries <= 100 else { throw ArchiveError.tooManyEntries }
 
-      if type == 5 {
+      if type == 53 {
         try fileManager.createDirectory(
           at: destination.appendingPathComponent(path),
           withIntermediateDirectories: true

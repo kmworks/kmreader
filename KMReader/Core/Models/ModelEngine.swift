@@ -23,4 +23,6 @@ nonisolated struct ModelEngine: RawRepresentable, Hashable, Codable, Sendable {
 
   static let rtDetrV2 = ModelEngine(rawValue: "rt_detr_v2")
   static let mangaOCRTransformer = ModelEngine(rawValue: "manga_ocr_transformer")
+  static let yolo11nSeg = ModelEngine(rawValue: "yolo11n_seg")
+  static let mangaOCRMobile = ModelEngine(rawValue: "manga_ocr_mobile")
 }
