@@ -1,8 +1,13 @@
 import Foundation
 
 nonisolated enum MangaModelLibrary {
-  static var selectedArchive: ModelArchive? {
-    let storageKey = AppConfig.modelLibrary.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
+  static func selectedArchive(for role: MangaModelRole) -> ModelArchive? {
+    let selectedStorageKeys = AppConfig.modelLibrary.selectedStorageKeys
+    // Role keys landed after the single combined key; existing selections
+    // keep working through the fallback until the next explicit select.
+    let storageKey =
+      selectedStorageKeys[role.selectionStorageKey]
+      ?? selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
     guard !storageKey.isEmpty else { return nil }
     return downloadedArchives().first { $0.storageKey == storageKey }
       ?? ModelCatalog.cached?.models(for: .mangaOCR).first { $0.storageKey == storageKey }
@@ -47,18 +52,32 @@ nonisolated enum MangaModelLibrary {
     AppConfig.modelLibrary = configuration
   }
 
-  static func select(_ archive: ModelArchive) {
+  static func select(_ archive: ModelArchive, for role: MangaModelRole) {
     guard archive.purpose == .mangaOCR else { return }
     var configuration = AppConfig.modelLibrary
-    configuration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] = archive.storageKey
+    configuration.selectedStorageKeys[role.selectionStorageKey] = archive.storageKey
+    // The legacy combined key keeps the other role working until both roles
+    // have explicit picks.
+    let roleKeys = MangaModelRole.allCases.map(\.selectionStorageKey)
+    if roleKeys.allSatisfy({ configuration.selectedStorageKeys[$0] != nil }) {
+      configuration.selectedStorageKeys.removeValue(forKey: ModelPurpose.mangaOCR.rawValue)
+    }
     AppConfig.modelLibrary = configuration
+  }
+
+  static func select(_ archive: ModelArchive) {
+    for role in MangaModelRole.allCases {
+      select(archive, for: role)
+    }
   }
 
   static func remove(_ archive: ModelArchive) {
     var configuration = AppConfig.modelLibrary
     configuration.downloadedArchives.removeAll { $0.storageKey == archive.storageKey }
-    if configuration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] == archive.storageKey {
-      configuration.selectedStorageKeys.removeValue(forKey: ModelPurpose.mangaOCR.rawValue)
+    let selectionKeys =
+      [ModelPurpose.mangaOCR.rawValue] + MangaModelRole.allCases.map(\.selectionStorageKey)
+    for key in selectionKeys where configuration.selectedStorageKeys[key] == archive.storageKey {
+      configuration.selectedStorageKeys.removeValue(forKey: key)
     }
     AppConfig.modelLibrary = configuration
   }

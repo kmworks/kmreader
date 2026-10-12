@@ -63,17 +63,17 @@ nonisolated final class MangaModelSet: Sendable {
   }
 
   static func supports(_ archive: ModelArchive) -> Bool {
-    guard archive.components["detector"] != nil, archive.components["recognizer"] != nil else {
+    MangaModelRole.allCases.contains { supports(archive, for: $0) }
+  }
+
+  static func supports(_ archive: ModelArchive, for role: MangaModelRole) -> Bool {
+    guard let component = archive.components[role.componentName] else { return false }
+    switch (role, component.engine, component.engineVersion) {
+    case (.detector, .rtDetrV2, 1), (.detector, .yolo11nSeg, 1),
+      (.recognizer, .mangaOCRTransformer, 1), (.recognizer, .mangaOCRMobile, 1):
+      return true
+    default:
       return false
-    }
-    return archive.components.allSatisfy { role, component in
-      switch (role, component.engine, component.engineVersion) {
-      case ("detector", .rtDetrV2, 1), ("detector", .yolo11nSeg, 1),
-        ("recognizer", .mangaOCRTransformer, 1), ("recognizer", .mangaOCRMobile, 1):
-        true
-      default:
-        false
-      }
     }
   }
 }

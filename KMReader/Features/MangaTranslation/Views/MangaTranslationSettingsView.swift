@@ -6,7 +6,8 @@ struct MangaTranslationSettingsView: View {
   @State private var showsModelManagement = false
   @State private var showsProviderManagement = false
   @State private var provider: MangaProviderConfig?
-  @State private var archive: ModelArchive?
+  @State private var detectorArchive: ModelArchive?
+  @State private var recognizerArchive: ModelArchive?
   @State private var isTesting = false
 
   private var mangaTranslationEnabled: Binding<Bool> {
@@ -18,6 +19,16 @@ struct MangaTranslationSettingsView: View {
 
   private var usesConfiguredProvider: Bool {
     provider?.isConfigured == true
+  }
+
+  private var selectedModelsDescription: String {
+    guard let detectorArchive, let recognizerArchive else {
+      return String(localized: "Not Selected")
+    }
+    if detectorArchive.storageKey == recognizerArchive.storageKey {
+      return detectorArchive.name
+    }
+    return "\(detectorArchive.name) + \(recognizerArchive.name)"
   }
 
   private var selectedProviderName: String {
@@ -134,7 +145,7 @@ struct MangaTranslationSettingsView: View {
             Label {
               VStack(alignment: .leading, spacing: 2) {
                 Text(String(localized: "Recognition Models"))
-                Text(archive?.name ?? String(localized: "Not Selected"))
+                Text(selectedModelsDescription)
                   .font(.caption)
                   .foregroundStyle(.secondary)
                   .lineLimit(1)
@@ -184,7 +195,8 @@ struct MangaTranslationSettingsView: View {
   }
 
   private func reloadConfiguration() {
-    archive = MangaModelLibrary.selectedArchive
+    detectorArchive = MangaModelLibrary.selectedArchive(for: .detector)
+    recognizerArchive = MangaModelLibrary.selectedArchive(for: .recognizer)
     Task {
       do {
         provider = try await MangaProviderLibrary.current(
