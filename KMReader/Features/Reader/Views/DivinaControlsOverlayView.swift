@@ -129,13 +129,8 @@ struct DivinaControlsOverlayView: View {
       : String(localized: "Show Translation")
   }
 
-  // A translated page swaps the phase icon for a view-state glyph: the
-  // original page shows "photo", the translation keeps "translate".
-  private var mangaTranslationButtonIcon: String {
-    guard viewModel.mangaTranslationResult?.isTranslated == true,
-      !viewModel.showMangaTranslation
-    else { return viewModel.mangaTranslationPhase.icon }
-    return "photo"
+  private var mangaTranslationOverlayVisible: Bool {
+    viewModel.mangaTranslationResult?.isTranslated == true && viewModel.showMangaTranslation
   }
 
   private var pageSoloActions: [ReaderPageSoloActions.Action] {
@@ -242,17 +237,22 @@ struct DivinaControlsOverlayView: View {
                 ForEach(
                   [
                     AppIcon.mangaTranslation, "cpu", "viewfinder", "text.viewfinder",
-                    AppIcon.loadError, "photo",
+                    AppIcon.loadError,
                   ],
                   id: \.self
                 ) { icon in
                   Image(systemName: icon)
-                    .opacity(icon == mangaTranslationButtonIcon ? 1 : 0)
+                    .opacity(icon == viewModel.mangaTranslationPhase.icon ? 1 : 0)
                 }
               }
-              .foregroundColor(viewModel.mangaTranslationPhase.isFailed ? .red : nil)
+              .foregroundColor(
+                viewModel.mangaTranslationPhase.isFailed
+                  ? .red
+                  : mangaTranslationOverlayVisible ? .blue : nil
+              )
               .symbolEffect(.pulse, options: .repeating, isActive: viewModel.mangaTranslationPhase.isBusy)
-              .animation(animation, value: mangaTranslationButtonIcon)
+              .animation(animation, value: viewModel.mangaTranslationPhase)
+              .animation(animation, value: mangaTranslationOverlayVisible)
               .contentShape(Circle())
             }
             .accessibilityLabel(
