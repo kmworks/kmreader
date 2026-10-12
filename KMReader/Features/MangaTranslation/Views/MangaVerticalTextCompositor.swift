@@ -29,9 +29,8 @@ nonisolated enum MangaVerticalTextCompositor {
 
   // SF covers dashes/ellipsis but has no vertical glyphs for them, so they
   // would render sideways; swap in the Unicode vertical presentation forms,
-  // which fall back to a CJK font like the rest of the text. U+FF5E renders
-  // sideways even through that fallback, so it goes to U+301C instead; curly
-  // quotes map to the corner-style forms of vertical CJK typesetting.
+  // which fall back to a CJK font like the rest of the text. Curly quotes map
+  // to the corner-style forms of vertical CJK typesetting.
   private static let verticalPresentationForms: [Character: Character] = [
     "—": "︱",  // U+2014 EM DASH
     "―": "︱",  // U+2015 HORIZONTAL BAR
@@ -39,6 +38,10 @@ nonisolated enum MangaVerticalTextCompositor {
     "…": "︙",  // U+2026 HORIZONTAL ELLIPSIS
     "‥": "︰",  // U+2025 TWO DOT LEADER
     "～": "〜",  // U+FF5E FULLWIDTH TILDE
+    "∼": "〜",  // U+223C TILDE OPERATOR
+    "˜": "〜",  // U+02DC SMALL TILDE
+    "⁓": "〜",  // U+2053 SWUNG DASH
+    "〰": "〜",  // U+3030 WAVY DASH
     "“": "﹃",  // U+201C LEFT DOUBLE QUOTATION MARK
     "”": "﹄",  // U+201D RIGHT DOUBLE QUOTATION MARK
     "‘": "﹁",  // U+2018 LEFT SINGLE QUOTATION MARK
@@ -84,7 +87,7 @@ nonisolated enum MangaVerticalTextCompositor {
     let lineHeight = CTFontGetSize(font) * 1.5
     paragraph.minimumLineHeight = lineHeight
     paragraph.maximumLineHeight = lineHeight
-    return NSAttributedString(
+    let attributed = NSMutableAttributedString(
       string: text,
       attributes: [
         .font: font,
@@ -93,6 +96,18 @@ nonisolated enum MangaVerticalTextCompositor {
         NSAttributedString.Key(kCTVerticalFormsAttributeName as String): true,
       ]
     )
+    // Font fallback renders U+301C with its horizontal glyph; only an explicit
+    // PingFang run engages its vertical wave alternate.
+    let waveFont = CTFontCreateWithName("PingFangSC-Medium" as CFString, CTFontGetSize(font), nil)
+    var location = 0
+    for ch in text {
+      let length = String(ch).utf16.count
+      if ch == "〜" {
+        attributed.addAttribute(.font, value: waveFont, range: NSRange(location: location, length: length))
+      }
+      location += length
+    }
+    return attributed
   }
 
   private static func fittedSize(
