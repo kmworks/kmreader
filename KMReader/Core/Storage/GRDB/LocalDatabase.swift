@@ -131,6 +131,12 @@ nonisolated enum LocalDatabase {
       }
     }
 
+    migrator.registerMigration("00013_add_manga_translations_model_signature") { db in
+      try db.alter(table: "manga_translations") { table in
+        table.add(column: "model_signature", .text).notNull().defaults(to: "")
+      }
+    }
+
     try migrator.migrate(writer)
   }
 

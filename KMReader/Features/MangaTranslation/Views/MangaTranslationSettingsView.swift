@@ -54,6 +54,11 @@ struct MangaTranslationSettingsView: View {
               .foregroundStyle(.secondary)
           }
         }
+        Picker(String(localized: "Text Direction"), selection: $preferences.textDirection) {
+          Text(String(localized: "Auto")).tag(MangaTranslationTextDirection.auto)
+          Text(String(localized: "Horizontal")).tag(MangaTranslationTextDirection.horizontal)
+          Text(String(localized: "Vertical")).tag(MangaTranslationTextDirection.vertical)
+        }
       }
 
       Section(

@@ -297,7 +297,8 @@
       mangaOverlayView.update(
         result: viewModel.mangaTranslationResult(for: data),
         visible: viewModel.showMangaTranslation,
-        background: background
+        background: background,
+        direction: AppConfig.mangaTranslation.textDirection
       )
       updateShadowAppearance()
       setNeedsLayout()

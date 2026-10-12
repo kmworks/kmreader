@@ -47,6 +47,12 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
     let labels = models.labels(for: "detector")
     guard !labels.isEmpty else { throw MangaTranslationFailure.modelPreparation }
 
+    let imageSize = rotation.rotatedSize(CGSize(width: image.width, height: image.height))
+    var displaySize = cropRect?.size ?? imageSize
+    if splitMode != .none {
+      displaySize.width /= 2
+    }
+
     var regions: [MangaTextRegion] = []
     var highestTextScore: Float = 0
     for index in 0..<queryCount {
@@ -73,7 +79,9 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
         cropRect: cropRect
       )
       guard MangaPreparedGeometry.isVisible(box) else { continue }
-      let orientation = descriptor.orientation.flatMap { MangaTextOrientation(rawValue: $0) } ?? .unknown
+      let orientation =
+        descriptor.orientation.flatMap { MangaTextOrientation(rawValue: $0) }
+        ?? .infer(from: box, displaySize: displaySize)
       regions.append(
         MangaTextRegion(
           id: regions.count,

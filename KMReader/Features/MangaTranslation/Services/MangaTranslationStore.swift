@@ -5,8 +5,21 @@ nonisolated struct MangaTranslationStore {
   static func save(_ translation: MangaPageTranslation, database: DatabaseOperator?) async throws {
     guard let database else { return }
     var record = try MangaTranslationRecord(translation)
+    let archivePrefix = translation.key.modelArchivePrefix
     _ = try await database.write { db in
       try record.save(db)
+      // Retired inference versions can never match again; prune them for
+      // this page. Rows from other model archives and same-signature
+      // language/provider/geometry variants stay.
+      try MangaTranslationRecord
+        .filter(Column("instance_id") == record.instanceId)
+        .filter(Column("book_id") == record.bookId)
+        .filter(Column("page_number") == record.pageNumber)
+        .filter(Column("model_signature") != record.modelSignature)
+        .filter(
+          Column("model_signature") == "" || Column("model_signature").like("\(archivePrefix):%")
+        )
+        .deleteAll(db)
     }
   }
 

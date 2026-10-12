@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import CoreML
 import Foundation
 
@@ -17,14 +18,19 @@ nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
     tokenizer = try MangaTokenizer(url: models.resource(component: "recognizer", file: "tokenizer"))
   }
 
-  func recognize(crops regions: [MangaTextRegion], image: CGImage) throws -> [MangaTextRegion] {
+  func recognize(crops regions: [MangaTextRegion], image: CGImage, rotation: ReaderRotation) throws
+    -> [MangaTextRegion]
+  {
     let encoder = try models.model(component: "recognizer", file: "encoder")
     let decoder = try models.model(component: "recognizer", file: "decoder")
+    let ciContext = CIContext()
     var recognized: [MangaTextRegion] = []
     for region in regions {
       try Task.checkCancellation()
       let crop = try MangaInferenceUtilities.cropImage(image, normalizedRect: region.sourceBox)
-      let pixels = try MangaInferenceUtilities.pixelValues(crop, width: 224, height: 224, normalize: true)
+      let readingCrop = try MangaInferenceUtilities.readingOrientation(
+        crop, regionOrientation: region.orientation, pageRotation: rotation, context: ciContext)
+      let pixels = try MangaInferenceUtilities.pixelValues(readingCrop, width: 224, height: 224, normalize: true)
       let result = try recognize(encoder: encoder, decoder: decoder, crop: pixels)
       guard result.nonfinite == 0 else { continue }
       let text = tokenizer.decode(result.tokens).trimmingCharacters(in: .whitespacesAndNewlines)

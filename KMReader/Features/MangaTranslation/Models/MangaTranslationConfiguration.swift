@@ -1,7 +1,7 @@
 import Foundation
 
 struct MangaTranslationConfiguration: Hashable, Sendable {
-  private nonisolated static let inferenceCacheVersion = "inference-3"
+  private nonisolated static let inferenceCacheVersion = "inference-4"
 
   let archive: ModelArchive
   let provider: MangaProviderConfig?

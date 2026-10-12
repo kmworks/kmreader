@@ -149,7 +149,7 @@ actor MangaTranslationService {
       await onProgress(.recognizing)
       let recognizer = try models.makeRecognizer()
       regions = try await runInference {
-        try recognizer.recognize(crops: detectedRegions, image: image)
+        try recognizer.recognize(crops: detectedRegions, image: image, rotation: key.rotation)
       }
     }
 
@@ -197,6 +197,7 @@ actor MangaTranslationService {
           key: key,
           regions: translatedRegions,
           status: status,
+          targetLanguage: configuration.targetLanguage,
           createdAt: Date()
         )
         try? await MangaTranslationStore.save(result, database: database)
@@ -213,6 +214,7 @@ actor MangaTranslationService {
       key: key,
       regions: regions,
       status: status,
+      targetLanguage: configuration.targetLanguage,
       createdAt: Date()
     )
     try ensureTranslationCurrent(for: key, generation: generation)

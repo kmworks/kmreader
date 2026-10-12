@@ -151,7 +151,8 @@
       mangaOverlayView.update(
         result: mangaTranslationResult,
         visible: showsMangaTranslation,
-        background: readerBackground
+        background: readerBackground,
+        direction: AppConfig.mangaTranslation.textDirection
       )
     }
 
@@ -170,7 +171,12 @@
     func updateMangaTranslation(result: MangaPageTranslation?, visible: Bool) {
       mangaTranslationResult = result
       showsMangaTranslation = visible
-      mangaOverlayView.update(result: result, visible: visible, background: readerBackground)
+      mangaOverlayView.update(
+        result: result,
+        visible: visible,
+        background: readerBackground,
+        direction: AppConfig.mangaTranslation.textDirection
+      )
     }
 
     func configure(
