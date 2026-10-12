@@ -5,7 +5,7 @@
 import CoreGraphics
 import Foundation
 
-enum ReaderRotation: Int, CaseIterable, Hashable, Sendable {
+nonisolated enum ReaderRotation: Int, CaseIterable, Hashable, Codable, Sendable {
   case none = 0
   case degrees90 = 90
   case degrees180 = 180

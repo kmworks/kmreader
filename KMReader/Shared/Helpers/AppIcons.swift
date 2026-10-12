@@ -36,6 +36,7 @@ nonisolated enum AppIcon {
   static let markRead = "checkmark.circle"
   static let markUnread = "circle"
   static let pageJump = "arrow.right.to.line"
+  static let mangaTranslation = "translate"
 
   // MARK: - Offline Downloads
 

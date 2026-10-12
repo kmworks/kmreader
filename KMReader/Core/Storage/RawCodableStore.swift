@@ -6,6 +6,7 @@
 import Foundation
 
 nonisolated enum RawCodableStore {
+  // RawRepresentable types must provide their own Codable implementation to avoid recursively encoding rawValue.
   static func encode<T: Encodable>(_ value: T) -> Data? {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]

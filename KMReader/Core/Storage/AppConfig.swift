@@ -1043,15 +1043,20 @@ enum AppConfig {
     }
   }
 
-  static nonisolated var shakeToOpenLiveText: Bool {
-    get {
-      if UserDefaults.standard.object(forKey: "shakeToOpenLiveText") != nil {
-        return UserDefaults.standard.bool(forKey: "shakeToOpenLiveText")
-      }
-      return false
-    }
-    set {
-      UserDefaults.standard.set(newValue, forKey: "shakeToOpenLiveText")
+  static nonisolated func setLiveTextEnabled(_ isEnabled: Bool) {
+    enableLiveText = isEnabled
+    guard isEnabled else { return }
+    var preferences = mangaTranslation
+    preferences.isEnabled = false
+    mangaTranslation = preferences
+  }
+
+  static nonisolated func setMangaTranslationEnabled(_ isEnabled: Bool) {
+    var preferences = mangaTranslation
+    preferences.isEnabled = isEnabled
+    mangaTranslation = preferences
+    if isEnabled {
+      enableLiveText = false
     }
   }
 
@@ -1357,6 +1362,26 @@ enum AppConfig {
     var selection = spotlightLibrarySelectionByInstance
     selection.removeValue(forKey: instanceId)
     spotlightLibrarySelectionByInstance = selection
+  }
+
+  static nonisolated var modelLibrary: ModelLibraryConfiguration {
+    get {
+      guard let rawValue = UserDefaults.standard.string(forKey: "modelLibrary") else {
+        return ModelLibraryConfiguration()
+      }
+      return ModelLibraryConfiguration(rawValue: rawValue) ?? ModelLibraryConfiguration()
+    }
+    set { UserDefaults.standard.set(newValue.rawValue, forKey: "modelLibrary") }
+  }
+
+  static nonisolated var mangaTranslation: MangaTranslationPreferences {
+    get {
+      guard let rawValue = UserDefaults.standard.string(forKey: "mangaTranslation") else {
+        return MangaTranslationPreferences()
+      }
+      return MangaTranslationPreferences(rawValue: rawValue) ?? MangaTranslationPreferences()
+    }
+    set { UserDefaults.standard.set(newValue.rawValue, forKey: "mangaTranslation") }
   }
 
   // MARK: - Clear all auth data

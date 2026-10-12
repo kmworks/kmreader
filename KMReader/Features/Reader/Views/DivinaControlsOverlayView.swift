@@ -33,8 +33,10 @@ struct DivinaControlsOverlayView: View {
   let showPageDimensionWarning: Bool
 
   @Namespace private var progressBarNamespace
+  @AppStorage("mangaTranslation") private var mangaTranslationPreferences = MangaTranslationPreferences()
   @State private var showingPageDimensionWarning = false
   @State private var pageDimensionWarningDismissed = false
+  @State private var showingMangaTranslationSettings = false
 
   #if os(tvOS)
     private enum ControlFocus: Hashable {
@@ -121,6 +123,12 @@ struct DivinaControlsOverlayView: View {
     return readingDirection != .webtoon && readingDirection != .vertical && pageLayout.supportsDualPageOptions
   }
 
+  private var mangaTranslationVisibilityTitle: String {
+    viewModel.showMangaTranslation
+      ? String(localized: "Hide Translation")
+      : String(localized: "Show Translation")
+  }
+
   private var pageSoloActions: [ReaderPageSoloActions.Action] {
     ReaderPageSoloActions.resolve(
       supportsDualPageOptions: enableDualPageOptions,
@@ -159,14 +167,25 @@ struct DivinaControlsOverlayView: View {
 
   var body: some View {
     ZStack(alignment: .bottom) {
-      topControlsLayer
-      bottomControlsLayer
-      hiddenProgressLayer
+      ZStack(alignment: .bottom) {
+        topControlsLayer
+        bottomControlsLayer
+        hiddenProgressLayer
+      }
+      .allowsHitTesting(controlsVisible)
+      mangaTranslationFloatingLayer
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .animation(visibilityAnimation, value: controlsVisible)
     .animation(visibilityAnimation, value: showProgressBarWhileReading)
-    .allowsHitTesting(controlsVisible)
+    .onChange(of: mangaTranslationPreferences.isEnabled) { _, isEnabled in
+      viewModel.setMangaTranslationEnabled(isEnabled)
+    }
+    .sheet(isPresented: $showingMangaTranslationSettings) {
+      SheetView(title: String(localized: "Manga Translation"), size: .large, applyFormStyle: true) {
+        MangaTranslationSettingsView()
+      }
+    }
     .alert(
       "reader.pageDimensions.warning.title",
       isPresented: $showingPageDimensionWarning
@@ -192,6 +211,55 @@ struct DivinaControlsOverlayView: View {
         }
       }
       .focusSection()
+    #endif
+  }
+
+  @ViewBuilder
+  private var mangaTranslationFloatingLayer: some View {
+    #if os(iOS) || os(macOS)
+      if mangaTranslationPreferences.isEnabled, currentPageID != nil {
+        VStack {
+          Spacer()
+          HStack {
+            Spacer()
+            Button {
+              if viewModel.mangaTranslationResult?.isTranslated != true {
+                viewModel.translateCurrentPage()
+              } else {
+                viewModel.toggleMangaTranslation()
+              }
+            } label: {
+              ZStack {
+                ForEach(
+                  [AppIcon.mangaTranslation, "cpu", "viewfinder", "text.viewfinder", AppIcon.loadError],
+                  id: \.self
+                ) { icon in
+                  Image(systemName: icon)
+                    .opacity(icon == viewModel.mangaTranslationPhase.icon ? 1 : 0)
+                }
+              }
+              .foregroundColor(viewModel.mangaTranslationPhase.isFailed ? .red : nil)
+              .symbolEffect(.pulse, options: .repeating, isActive: viewModel.mangaTranslationPhase.isBusy)
+              .animation(animation, value: viewModel.mangaTranslationPhase)
+              .contentShape(Circle())
+            }
+            .accessibilityLabel(
+              Text(
+                viewModel.mangaTranslationResult?.isTranslated == true
+                  ? mangaTranslationVisibilityTitle
+                  : viewModel.mangaTranslationPhase.title
+              )
+            )
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .readerControlButtonStyle()
+            .frame(width: 44, height: 44)
+            .disabled(viewModel.mangaTranslationPhase.isBusy)
+          }
+        }
+        .padding()
+        .padding(.bottom, controlsVisible ? 64 : 0)
+      }
     #endif
   }
 
@@ -514,22 +582,22 @@ struct DivinaControlsOverlayView: View {
       Text(String(localized: "Current Reading Options"))
     }
 
-    Button {
-      showingReaderSettingsSheet = true
-    } label: {
-      Label(String(localized: "Reader Settings"), systemImage: AppIcon.settings)
-    }
-
     Section {
-      pageNavigation()
-    } header: {
-      Text(String(localized: "Page Navigation"))
-    }
+      Button {
+        showingReaderSettingsSheet = true
+      } label: {
+        Label(String(localized: "Reader Settings"), systemImage: AppIcon.settings)
+      }
 
-    Section {
-      bookNavigation()
-    } header: {
-      Text(String(localized: "Book Navigation"))
+      #if os(iOS) || os(macOS)
+        if mangaTranslationPreferences.isEnabled {
+          Button {
+            showingMangaTranslationSettings = true
+          } label: {
+            Label(String(localized: "Manga Translation"), systemImage: AppIcon.mangaTranslation)
+          }
+        }
+      #endif
     }
 
     #if os(iOS) || os(macOS)
@@ -550,6 +618,18 @@ struct DivinaControlsOverlayView: View {
         }
       }
     #endif
+
+    Section {
+      pageNavigation()
+    } header: {
+      Text(String(localized: "Page Navigation"))
+    }
+
+    Section {
+      bookNavigation()
+    } header: {
+      Text(String(localized: "Book Navigation"))
+    }
   }
 
   @ViewBuilder
