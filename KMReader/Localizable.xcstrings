@@ -45913,6 +45913,134 @@
         }
       }
     },
+    "manga.error.languagePackRequired" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade die Sprachen unter Einstellungen > Apps > Übersetzen > Sprachen herunter und versuche es dann erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download the languages in Settings > Apps > Translate > Languages, then try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descarga los idiomas en Ajustes > Apps > Traducir > Idiomas y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargez les langues dans Réglages > Apps > Traduire > Langues, puis réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scarica le lingue in Impostazioni > App > Traduci > Lingue, poi riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「設定」>「App」>「翻訳」>「言語」で言語をダウンロードしてから、もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "설정 > 앱 > 번역 > 언어에서 언어를 다운로드한 후 다시 시도하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузите языки в разделе «Настройки» > «Приложения» > «Перевод» > «Языки» и повторите попытку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在 设置 > App > 翻译 > 语言 中下载所需语言后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在 設定 > App > 翻譯 > 語言 中下載所需語言後重試。"
+          }
+        }
+      }
+    },
+    "manga.error.languagePackRequired.macOS" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade die Sprachen unter Systemeinstellungen > Allgemein > Sprache & Region > Übersetzungssprachen herunter und versuche es dann erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download the languages in System Settings > General > Language & Region > Translation Languages, then try again."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descarga los idiomas en Ajustes del Sistema > General > Idioma y región > Idiomas de traducción y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargez les langues dans Réglages Système > Général > Langue et région > Langues de traduction, puis réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scarica le lingue in Impostazioni di Sistema > Generali > Lingua e zona > Lingue di traduzione, poi riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「システム設定」>「一般」>「言語と地域」>「翻訳言語」で言語をダウンロードしてから、もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 설정 > 일반 > 언어 및 지역 > 번역 언어에서 언어를 다운로드한 후 다시 시도하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузите языки в разделе «Системные настройки» > «Основные» > «Язык и регион» > «Языки перевода» и повторите попытку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在 系统设置 > 通用 > 语言与地区 > 翻译语言 中下载所需语言后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請在 系統設定 > 一般 > 語言與地區 > 翻譯語言 中下載所需語言後重試。"
+          }
+        }
+      }
+    },
     "manga.error.modelPreparation" : {
       "localizations" : {
         "de" : {
@@ -46421,6 +46549,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Provider 不可用"
+          }
+        }
+      }
+    },
+    "manga.error.unsupportedLanguagePair" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Systemübersetzung unterstützt dieses Sprachpaar nicht. Konfiguriere stattdessen einen Übersetzungsanbieter."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System Translation doesn't support this language pair. Configure a translation provider instead."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traducción del sistema no admite este par de idiomas. Configura un proveedor de traducción en su lugar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traduction du système ne prend pas en charge cette paire de langues. Configurez plutôt un fournisseur de traduction."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traduzione di sistema non supporta questa coppia di lingue. Configura invece un provider di traduzione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システム翻訳はこの言語の組み合わせに対応していません。代わりに翻訳プロバイダーを設定してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 번역은 이 언어 쌍을 지원하지 않습니다. 대신 번역 제공자를 설정하세요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Системный перевод не поддерживает эту языковую пару. Вместо этого настройте провайдера перевода."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统翻译不支持该语言组合，请改用翻译 Provider。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系統翻譯不支援此語言組合，請改用翻譯 Provider。"
           }
         }
       }
