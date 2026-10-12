@@ -166,7 +166,8 @@
         result: mangaTranslationResult,
         visible: showsMangaTranslation,
         background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection
+        direction: AppConfig.mangaTranslation.textDirection,
+        image: pageImageView.image
       )
     }
 
@@ -189,7 +190,8 @@
         result: result,
         visible: visible,
         background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection
+        direction: AppConfig.mangaTranslation.textDirection,
+        image: pageImageView.image
       )
     }
 
@@ -222,6 +224,7 @@
       retryButton.isHidden = true
       pageImageView.image = image
       pageImageView.alphaValue = 1.0
+      updateMangaTranslation(result: mangaTranslationResult, visible: showsMangaTranslation)
     }
 
     /// Load image from URL and return its size (fallback for non-preloaded images)

@@ -8,10 +8,8 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
-
-    private var bubbleColor: UIColor {
-      background.appliesImageMultiplyBlend ? UIColor(background.color) : .white
-    }
+    private var sourceImageID: ObjectIdentifier?
+    private var regionColors: [CGColor] = []
 
     override init(frame: CGRect) {
       super.init(frame: frame)
@@ -29,25 +27,28 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection
+      direction: MangaTranslationTextDirection, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
-      if result != self.result || backgroundChanged || directionChanged {
+      let imageID = image.map { ObjectIdentifier($0) }
+      let imageChanged = imageID != sourceImageID
+      sourceImageID = imageID
+      if result != self.result || backgroundChanged || directionChanged || imageChanged {
         self.result = result
+        regionColors = sampleColors(for: result, image: image)
         subviews.forEach { $0.removeFromSuperview() }
         if let result {
-          for region in result.regions {
+          for (index, region) in result.regions.enumerated() {
             let container = UIView()
-            container.backgroundColor = bubbleColor
             container.isUserInteractionEnabled = false
-            container.layer.shadowColor = bubbleColor.cgColor
-            container.layer.shadowOpacity = 0.85
-            container.layer.shadowRadius = 12
-            container.layer.shadowOffset = .zero
+
+            let bubbleBackground = MangaBubbleBackgroundView()
+            bubbleBackground.fillColor = UIColor(cgColor: regionColors[index])
+            container.addSubview(bubbleBackground)
 
             if direction.usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
               let bubble = MangaVerticalTextLabel()
@@ -78,15 +79,32 @@ import SwiftUI
 
     func clear() {
       result = nil
+      sourceImageID = nil
+      regionColors = []
       subviews.forEach { $0.removeFromSuperview() }
       isHidden = true
+    }
+
+    private func sampleColors(for result: MangaPageTranslation?, image: PlatformImage?) -> [CGColor] {
+      guard let result else { return [] }
+      let normalized = image.flatMap(MangaBubbleBackground.normalizedCGImage(from:))
+      return result.regions.map { region in
+        let sampled = normalized.flatMap {
+          MangaBubbleBackground.backgroundColor(in: $0, normalizedBox: region.box)
+        }
+        if background.appliesImageMultiplyBlend {
+          let tint = UIColor(background.color).cgColor
+          return sampled.map { MangaBubbleBackground.multiply($0, by: tint) } ?? tint
+        }
+        return sampled ?? UIColor.white.cgColor
+      }
     }
 
     override func layoutSubviews() {
       super.layoutSubviews()
       guard let result else { return }
       for (index, container) in subviews.enumerated() {
-        guard index < result.regions.count, let child = container.subviews.first else { continue }
+        guard index < result.regions.count else { continue }
         let region = result.regions[index]
         container.frame = CGRect(
           x: region.box.minX * bounds.width - 2,
@@ -96,13 +114,24 @@ import SwiftUI
         )
 
         let cornerRadius = min(32, max(12, min(container.bounds.width, container.bounds.height) * 0.4))
-        container.layer.cornerRadius = cornerRadius
-        container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: cornerRadius).cgPath
+        let feather = MangaBubbleBackground.feather(forCoreSize: container.bounds.size)
+        if let bubbleBackground = container.subviews.first(where: {
+          $0 is MangaBubbleBackgroundView
+        }) as? MangaBubbleBackgroundView {
+          bubbleBackground.frame = container.bounds.insetBy(dx: -feather, dy: -feather)
+          bubbleBackground.cornerRadius = cornerRadius
+          bubbleBackground.feather = feather
+        }
 
         let textFrame = container.bounds.insetBy(
           dx: min(5, max(2, container.bounds.width * 0.04)),
           dy: min(4, max(1, container.bounds.height * 0.03))
         )
+        guard
+          let child = container.subviews.first(where: {
+            $0 is UILabel || $0 is MangaVerticalTextLabel
+          })
+        else { continue }
         child.frame = CGRect(
           x: textFrame.minX,
           y: textFrame.minY,
@@ -144,10 +173,8 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
-
-    private var bubbleColor: NSColor {
-      background.appliesImageMultiplyBlend ? NSColor(background.color) : .white
-    }
+    private var sourceImageID: ObjectIdentifier?
+    private var regionColors: [CGColor] = []
 
     override init(frame frameRect: NSRect) {
       super.init(frame: frameRect)
@@ -165,25 +192,28 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection
+      direction: MangaTranslationTextDirection, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
-      if result != self.result || backgroundChanged || directionChanged {
+      let imageID = image.map { ObjectIdentifier($0) }
+      let imageChanged = imageID != sourceImageID
+      sourceImageID = imageID
+      if result != self.result || backgroundChanged || directionChanged || imageChanged {
         self.result = result
+        regionColors = sampleColors(for: result, image: image)
         subviews.forEach { $0.removeFromSuperview() }
         if let result {
-          for region in result.regions {
+          for (index, region) in result.regions.enumerated() {
             let container = NSView()
             container.wantsLayer = true
-            container.layer?.backgroundColor = bubbleColor.cgColor
-            container.layer?.shadowColor = bubbleColor.cgColor
-            container.layer?.shadowOpacity = 0.85
-            container.layer?.shadowRadius = 12
-            container.layer?.shadowOffset = .zero
+
+            let bubbleBackground = MangaBubbleBackgroundView()
+            bubbleBackground.fillColor = NSColor(cgColor: regionColors[index]) ?? .white
+            container.addSubview(bubbleBackground)
 
             if direction.usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
               let bubble = MangaVerticalTextLabel()
@@ -216,15 +246,32 @@ import SwiftUI
 
     func clear() {
       result = nil
+      sourceImageID = nil
+      regionColors = []
       subviews.forEach { $0.removeFromSuperview() }
       isHidden = true
+    }
+
+    private func sampleColors(for result: MangaPageTranslation?, image: PlatformImage?) -> [CGColor] {
+      guard let result else { return [] }
+      let normalized = image.flatMap(MangaBubbleBackground.normalizedCGImage(from:))
+      return result.regions.map { region in
+        let sampled = normalized.flatMap {
+          MangaBubbleBackground.backgroundColor(in: $0, normalizedBox: region.box)
+        }
+        if background.appliesImageMultiplyBlend {
+          let tint = NSColor(background.color).cgColor
+          return sampled.map { MangaBubbleBackground.multiply($0, by: tint) } ?? tint
+        }
+        return sampled ?? NSColor.white.cgColor
+      }
     }
 
     override func layout() {
       super.layout()
       guard let result else { return }
       for (index, container) in subviews.enumerated() {
-        guard index < result.regions.count, let child = container.subviews.first else { continue }
+        guard index < result.regions.count else { continue }
         let region = result.regions[index]
         container.frame = CGRect(
           x: region.box.minX * bounds.width - 2,
@@ -234,18 +281,24 @@ import SwiftUI
         )
 
         let cornerRadius = min(32, max(12, min(container.bounds.width, container.bounds.height) * 0.4))
-        container.layer?.cornerRadius = cornerRadius
-        container.layer?.shadowPath =
-          NSBezierPath(
-            roundedRect: container.bounds,
-            xRadius: cornerRadius,
-            yRadius: cornerRadius
-          ).cgPath
+        let feather = MangaBubbleBackground.feather(forCoreSize: container.bounds.size)
+        if let bubbleBackground = container.subviews.first(where: {
+          $0 is MangaBubbleBackgroundView
+        }) as? MangaBubbleBackgroundView {
+          bubbleBackground.frame = container.bounds.insetBy(dx: -feather, dy: -feather)
+          bubbleBackground.cornerRadius = cornerRadius
+          bubbleBackground.feather = feather
+        }
 
         let textFrame = container.bounds.insetBy(
           dx: min(5, max(2, container.bounds.width * 0.04)),
           dy: min(4, max(1, container.bounds.height * 0.03))
         )
+        guard
+          let child = container.subviews.first(where: {
+            $0 is NSTextField || $0 is MangaVerticalTextLabel
+          })
+        else { continue }
         child.frame = CGRect(
           x: textFrame.minX,
           y: textFrame.minY,

@@ -298,7 +298,8 @@
         result: viewModel.mangaTranslationResult(for: data),
         visible: viewModel.showMangaTranslation,
         background: background,
-        direction: AppConfig.mangaTranslation.textDirection
+        direction: AppConfig.mangaTranslation.textDirection,
+        image: pageSourceImage
       )
       updateShadowAppearance()
       setNeedsLayout()
