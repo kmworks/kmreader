@@ -52,12 +52,19 @@ nonisolated enum MangaVerticalTextCompositor {
   // Consecutive CJK exclamation/question marks are conventionally typeset in a
   // single character cell; swap each pair for its precomposed one-cell form.
   // ⁉ and ‼ are emoji-capable and iOS picks the color emoji font for them,
-  // so VS15 forces text presentation.
+  // so VS15 forces text presentation — also when the model emits the marks
+  // directly, in bare or VS16 (emoji-style) form.
   private static let oneCellPairs: [(String, String)] = [
     ("！？", "\u{2049}\u{FE0E}"),  // EXCLAMATION QUESTION MARK
     ("？！", "\u{2048}"),  // QUESTION EXCLAMATION MARK
     ("！！", "\u{203C}\u{FE0E}"),  // DOUBLE EXCLAMATION MARK
     ("？？", "\u{2047}"),  // DOUBLE QUESTION MARK
+  ]
+  private static let emojiCapableMarks: [Character: Character] = [
+    "\u{203C}": "\u{203C}\u{FE0E}",  // DOUBLE EXCLAMATION MARK
+    "\u{2049}": "\u{2049}\u{FE0E}",  // EXCLAMATION QUESTION MARK
+    "\u{203C}\u{FE0F}": "\u{203C}\u{FE0E}",  // VS16 emoji-style → VS15 text-style
+    "\u{2049}\u{FE0F}": "\u{2049}\u{FE0E}",
   ]
 
   private static func attributedText(_ text: String, font: CTFont, color: CGColor) -> NSAttributedString {
@@ -73,7 +80,8 @@ nonisolated enum MangaVerticalTextCompositor {
       if ch == "’", let previous, previous.isASCII, previous.isLetter || previous.isNumber {
         mapped.append(ch)
       } else {
-        mapped.append(halfwidthPunctuation[ch] ?? verticalPresentationForms[ch] ?? ch)
+        mapped.append(
+          halfwidthPunctuation[ch] ?? emojiCapableMarks[ch] ?? verticalPresentationForms[ch] ?? ch)
       }
       previous = ch
     }
