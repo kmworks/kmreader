@@ -7,11 +7,12 @@ import Foundation
   import UIKit
 #endif
 
-enum MangaVerticalTextCompositor {
-  private static let frameAttributes: CFDictionary =
+nonisolated enum MangaVerticalTextCompositor {
+  private static var frameAttributes: CFDictionary {
     [
       kCTFrameProgressionAttributeName: NSNumber(value: CTFrameProgression.rightToLeft.rawValue)
     ] as CFDictionary
+  }
 
   private static func attributedText(_ text: String, font: CTFont, color: CGColor) -> NSAttributedString {
     let paragraph = NSMutableParagraphStyle()
@@ -43,6 +44,20 @@ enum MangaVerticalTextCompositor {
     let attributed = attributedText(text, font: font, color: CGColor(gray: 0, alpha: 1))
     let (_, visibleLength) = fittedSize(of: attributed, in: size)
     return visibleLength == attributed.length
+  }
+
+  // Largest capped size whose typeset still fits the bubble; the draw pass
+  // scales down further if even the floor overflows.
+  static func fittedFontSize(text: String, in size: CGSize, makeFont: (CGFloat) -> CTFont) -> CGFloat {
+    guard size.width > 0, size.height > 0 else { return 12 }
+    var fontSize = min(17, max(12, size.width * 0.55))
+    for _ in 0..<5 {
+      if fits(text: text, font: makeFont(fontSize), in: size) { break }
+      let nextSize = max(8, fontSize * 0.85)
+      if nextSize == fontSize { break }
+      fontSize = nextSize
+    }
+    return fontSize
   }
 
   // Draws with a y-down view coordinate system; the context flip happens here.

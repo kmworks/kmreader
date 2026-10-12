@@ -24,16 +24,9 @@ import Foundation
     }
 
     func fitFont() {
-      guard bounds.width > 0, bounds.height > 0 else { return }
-      var size = min(17, max(12, bounds.width * 0.55))
-      for _ in 0..<5 {
-        let font = UIFont.systemFont(ofSize: size, weight: .medium) as CTFont
-        if MangaVerticalTextCompositor.fits(text: text, font: font, in: bounds.size) { break }
-        let nextSize = max(8, size * 0.85)
-        if nextSize == size { break }
-        size = nextSize
+      fontSize = MangaVerticalTextCompositor.fittedFontSize(text: text, in: bounds.size) {
+        UIFont.systemFont(ofSize: $0, weight: .medium) as CTFont
       }
-      fontSize = size
       setNeedsDisplay()
     }
 
@@ -58,16 +51,9 @@ import Foundation
     private var fontSize: CGFloat = 14
 
     func fitFont() {
-      guard bounds.width > 0, bounds.height > 0 else { return }
-      var size = min(17, max(12, bounds.width * 0.55))
-      for _ in 0..<5 {
-        let font = NSFont.systemFont(ofSize: size, weight: .medium) as CTFont
-        if MangaVerticalTextCompositor.fits(text: text, font: font, in: bounds.size) { break }
-        let nextSize = max(8, size * 0.85)
-        if nextSize == size { break }
-        size = nextSize
+      fontSize = MangaVerticalTextCompositor.fittedFontSize(text: text, in: bounds.size) {
+        NSFont.systemFont(ofSize: $0, weight: .medium) as CTFont
       }
-      fontSize = size
       needsDisplay = true
     }
 

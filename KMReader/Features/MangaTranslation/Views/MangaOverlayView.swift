@@ -27,11 +27,13 @@ import SwiftUI
       isHidden = true
     }
 
-    func update(result: MangaPageTranslation?, visible: Bool, background: ReaderBackground) {
+    func update(
+      result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
+      direction: MangaTranslationTextDirection
+    ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
-      let direction = AppConfig.mangaTranslation.textDirection
       let directionChanged = self.direction != direction
       self.direction = direction
       if result != self.result || backgroundChanged || directionChanged {
@@ -47,7 +49,7 @@ import SwiftUI
             container.layer.shadowRadius = 12
             container.layer.shadowOffset = .zero
 
-            if usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
+            if direction.usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
               let bubble = MangaVerticalTextLabel()
               bubble.text = region.translatedText ?? region.text
               container.addSubview(bubble)
@@ -115,21 +117,6 @@ import SwiftUI
       }
     }
 
-    private func usesVerticalLayout(for region: MangaTextRegion, targetLanguage: String) -> Bool {
-      switch direction {
-      case .vertical:
-        return true
-      case .horizontal:
-        return false
-      case .auto:
-        guard MangaTranslationLanguage.supportsVerticalLayout(targetLanguage) else { return false }
-        let orientation =
-          region.orientation == .unknown
-          ? MangaTextOrientation.infer(from: region.box) : region.orientation
-        return orientation == .vertical
-      }
-    }
-
     private func fitFont(for bubble: UILabel) {
       guard bubble.bounds.width > 0, bubble.bounds.height > 0 else { return }
       var fontSize = min(17, max(12, bubble.bounds.height * 0.35))
@@ -176,11 +163,13 @@ import SwiftUI
       isHidden = true
     }
 
-    func update(result: MangaPageTranslation?, visible: Bool, background: ReaderBackground) {
+    func update(
+      result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
+      direction: MangaTranslationTextDirection
+    ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
-      let direction = AppConfig.mangaTranslation.textDirection
       let directionChanged = self.direction != direction
       self.direction = direction
       if result != self.result || backgroundChanged || directionChanged {
@@ -196,7 +185,7 @@ import SwiftUI
             container.layer?.shadowRadius = 12
             container.layer?.shadowOffset = .zero
 
-            if usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
+            if direction.usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
               let bubble = MangaVerticalTextLabel()
               bubble.text = region.translatedText ?? region.text
               container.addSubview(bubble)
@@ -268,21 +257,6 @@ import SwiftUI
         } else if let bubble = child as? MangaVerticalTextLabel {
           bubble.fitFont()
         }
-      }
-    }
-
-    private func usesVerticalLayout(for region: MangaTextRegion, targetLanguage: String) -> Bool {
-      switch direction {
-      case .vertical:
-        return true
-      case .horizontal:
-        return false
-      case .auto:
-        guard MangaTranslationLanguage.supportsVerticalLayout(targetLanguage) else { return false }
-        let orientation =
-          region.orientation == .unknown
-          ? MangaTextOrientation.infer(from: region.box) : region.orientation
-        return orientation == .vertical
       }
     }
 

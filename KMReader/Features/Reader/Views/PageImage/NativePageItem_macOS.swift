@@ -324,7 +324,8 @@
       mangaOverlayView.update(
         result: readerViewModel?.mangaTranslationResult(for: data),
         visible: readerViewModel?.showMangaTranslation ?? false,
-        background: background
+        background: background,
+        direction: AppConfig.mangaTranslation.textDirection
       )
       updateShadowAppearance()
       updateContextMenu()
