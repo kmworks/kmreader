@@ -44,24 +44,21 @@ nonisolated enum MangaInferenceUtilities {
     return crop
   }
 
-  // The recognizer is trained on horizontal text lines: bring each crop
-  // into reading orientation — apply the page rotation, then turn vertical
-  // columns 90° counter-clockwise so their top becomes the line start.
+  // Crops are cut from the unrotated source image; bring them into
+  // reading orientation first. Vertical columns must stay as-is: the
+  // recognizer reads upright vertical text natively, and de-rotating
+  // turns every glyph sideways, which it cannot read at all.
   static func readingOrientation(
     _ image: CGImage,
-    regionOrientation: MangaTextOrientation,
     pageRotation: ReaderRotation,
     context: CIContext
   ) throws -> CGImage {
-    var clockwiseDegrees: Int
+    let clockwiseDegrees: Int
     switch pageRotation {
     case .none: clockwiseDegrees = 0
     case .degrees90: clockwiseDegrees = 90
     case .degrees180: clockwiseDegrees = 180
     case .degrees270: clockwiseDegrees = 270
-    }
-    if regionOrientation == .vertical {
-      clockwiseDegrees = (clockwiseDegrees + 270) % 360
     }
     guard clockwiseDegrees != 0 else { return image }
     let exifOrientation: Int32
