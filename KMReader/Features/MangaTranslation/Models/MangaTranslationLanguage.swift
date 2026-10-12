@@ -22,6 +22,12 @@ nonisolated enum MangaTranslationLanguage {
     return value.isEmpty ? nil : value
   }
 
+  // Vertical typesetting reads naturally only for Chinese and Japanese;
+  // other targets keep horizontal rendering even for vertical bubbles.
+  static func supportsVerticalLayout(_ language: String) -> Bool {
+    language.hasPrefix("ja") || language.hasPrefix("zh")
+  }
+
   static func pickerCodes(including language: String? = nil) -> [String] {
     var codes = Set(LanguageCodeHelper.commonLanguageCodes)
     codes.insert(systemTarget)

@@ -43,19 +43,25 @@ import SwiftUI
             container.layer.shadowRadius = 12
             container.layer.shadowOffset = .zero
 
-            let bubble = UILabel()
-            bubble.text = region.translatedText ?? region.text
-            bubble.font = .systemFont(ofSize: 14, weight: .medium)
-            bubble.textColor = .black
-            bubble.textAlignment = .center
-            bubble.numberOfLines = 0
-            bubble.lineBreakMode = .byWordWrapping
-            bubble.adjustsFontSizeToFitWidth = true
-            bubble.minimumScaleFactor = 0.5
-            bubble.backgroundColor = .clear
-            bubble.isUserInteractionEnabled = false
+            if usesVerticalLayout(for: region) {
+              let bubble = MangaVerticalTextLabel()
+              bubble.text = region.translatedText ?? region.text
+              container.addSubview(bubble)
+            } else {
+              let bubble = UILabel()
+              bubble.text = region.translatedText ?? region.text
+              bubble.font = .systemFont(ofSize: 14, weight: .medium)
+              bubble.textColor = .black
+              bubble.textAlignment = .center
+              bubble.numberOfLines = 0
+              bubble.lineBreakMode = .byWordWrapping
+              bubble.adjustsFontSizeToFitWidth = true
+              bubble.minimumScaleFactor = 0.5
+              bubble.backgroundColor = .clear
+              bubble.isUserInteractionEnabled = false
+              container.addSubview(bubble)
+            }
 
-            container.addSubview(bubble)
             addSubview(container)
           }
         }
@@ -74,7 +80,7 @@ import SwiftUI
       super.layoutSubviews()
       guard let result else { return }
       for (index, container) in subviews.enumerated() {
-        guard index < result.regions.count, let bubble = container.subviews.first as? UILabel else { continue }
+        guard index < result.regions.count, let child = container.subviews.first else { continue }
         let region = result.regions[index]
         container.frame = CGRect(
           x: region.box.minX * bounds.width - 2,
@@ -91,14 +97,29 @@ import SwiftUI
           dx: min(5, max(2, container.bounds.width * 0.04)),
           dy: min(4, max(1, container.bounds.height * 0.03))
         )
-        bubble.frame = CGRect(
+        child.frame = CGRect(
           x: textFrame.minX,
           y: textFrame.minY,
           width: max(0, textFrame.width),
           height: max(0, textFrame.height)
         )
-        fitFont(for: bubble)
+        if let bubble = child as? UILabel {
+          fitFont(for: bubble)
+        } else if let bubble = child as? MangaVerticalTextLabel {
+          bubble.fitFont()
+        }
       }
+    }
+
+    private func usesVerticalLayout(for region: MangaTextRegion) -> Bool {
+      let orientation =
+        region.orientation == .unknown
+        ? MangaTextOrientation.infer(from: region.box) : region.orientation
+      guard orientation == .vertical else { return false }
+      let targetLanguage = MangaTranslationConfiguration.resolvedLanguages(
+        metadata: nil, preferences: AppConfig.mangaTranslation
+      ).targetLanguage
+      return MangaTranslationLanguage.supportsVerticalLayout(targetLanguage)
     }
 
     private func fitFont(for bubble: UILabel) {
@@ -163,21 +184,27 @@ import SwiftUI
             container.layer?.shadowRadius = 12
             container.layer?.shadowOffset = .zero
 
-            let bubble = NSTextField()
-            bubble.stringValue = region.translatedText ?? region.text
-            bubble.font = .systemFont(ofSize: 14, weight: .medium)
-            bubble.textColor = .black
-            bubble.alignment = .center
-            bubble.lineBreakMode = .byWordWrapping
-            bubble.maximumNumberOfLines = 0
-            bubble.isEditable = false
-            bubble.isSelectable = false
-            bubble.isBordered = false
-            bubble.drawsBackground = false
-            bubble.cell?.wraps = true
-            bubble.cell?.isScrollable = false
+            if usesVerticalLayout(for: region) {
+              let bubble = MangaVerticalTextLabel()
+              bubble.text = region.translatedText ?? region.text
+              container.addSubview(bubble)
+            } else {
+              let bubble = NSTextField()
+              bubble.stringValue = region.translatedText ?? region.text
+              bubble.font = .systemFont(ofSize: 14, weight: .medium)
+              bubble.textColor = .black
+              bubble.alignment = .center
+              bubble.lineBreakMode = .byWordWrapping
+              bubble.maximumNumberOfLines = 0
+              bubble.isEditable = false
+              bubble.isSelectable = false
+              bubble.isBordered = false
+              bubble.drawsBackground = false
+              bubble.cell?.wraps = true
+              bubble.cell?.isScrollable = false
+              container.addSubview(bubble)
+            }
 
-            container.addSubview(bubble)
             addSubview(container)
           }
         }
@@ -196,7 +223,7 @@ import SwiftUI
       super.layout()
       guard let result else { return }
       for (index, container) in subviews.enumerated() {
-        guard index < result.regions.count, let bubble = container.subviews.first as? NSTextField else { continue }
+        guard index < result.regions.count, let child = container.subviews.first else { continue }
         let region = result.regions[index]
         container.frame = CGRect(
           x: region.box.minX * bounds.width - 2,
@@ -218,14 +245,29 @@ import SwiftUI
           dx: min(5, max(2, container.bounds.width * 0.04)),
           dy: min(4, max(1, container.bounds.height * 0.03))
         )
-        bubble.frame = CGRect(
+        child.frame = CGRect(
           x: textFrame.minX,
           y: textFrame.minY,
           width: max(0, textFrame.width),
           height: max(0, textFrame.height)
         )
-        fitFont(for: bubble)
+        if let bubble = child as? NSTextField {
+          fitFont(for: bubble)
+        } else if let bubble = child as? MangaVerticalTextLabel {
+          bubble.fitFont()
+        }
       }
+    }
+
+    private func usesVerticalLayout(for region: MangaTextRegion) -> Bool {
+      let orientation =
+        region.orientation == .unknown
+        ? MangaTextOrientation.infer(from: region.box) : region.orientation
+      guard orientation == .vertical else { return false }
+      let targetLanguage = MangaTranslationConfiguration.resolvedLanguages(
+        metadata: nil, preferences: AppConfig.mangaTranslation
+      ).targetLanguage
+      return MangaTranslationLanguage.supportsVerticalLayout(targetLanguage)
     }
 
     private func fitFont(for bubble: NSTextField) {
