@@ -29,7 +29,7 @@ nonisolated struct MangaOCRRecognizer: MangaTextRecognizing {
       try Task.checkCancellation()
       let crop = try MangaInferenceUtilities.cropImage(image, normalizedRect: region.sourceBox)
       let readingCrop = try MangaInferenceUtilities.readingOrientation(
-        crop, regionOrientation: region.orientation, pageRotation: rotation, context: ciContext)
+        crop, pageRotation: rotation, context: ciContext)
       let pixels = try MangaInferenceUtilities.pixelValues(readingCrop, width: 224, height: 224, normalize: true)
       let result = try recognize(encoder: encoder, decoder: decoder, crop: pixels)
       guard result.nonfinite == 0 else { continue }
