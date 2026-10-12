@@ -24,26 +24,35 @@ nonisolated enum MangaVerticalTextCompositor {
   private static let halfwidthPunctuation: [Character: Character] = [
     "!": "！",
     "?": "？",
-    "~": "～",
+    "~": "〜",
   ]
 
   // SF covers dashes/ellipsis but has no vertical glyphs for them, so they
   // would render sideways; swap in the Unicode vertical presentation forms,
-  // which fall back to a CJK font like the rest of the text.
+  // which fall back to a CJK font like the rest of the text. U+FF5E renders
+  // sideways even through that fallback, so it goes to U+301C instead; curly
+  // quotes map to the corner-style forms of vertical CJK typesetting.
   private static let verticalPresentationForms: [Character: Character] = [
     "—": "︱",  // U+2014 EM DASH
     "―": "︱",  // U+2015 HORIZONTAL BAR
     "–": "︲",  // U+2013 EN DASH
     "…": "︙",  // U+2026 HORIZONTAL ELLIPSIS
     "‥": "︰",  // U+2025 TWO DOT LEADER
+    "～": "〜",  // U+FF5E FULLWIDTH TILDE
+    "“": "﹃",  // U+201C LEFT DOUBLE QUOTATION MARK
+    "”": "﹄",  // U+201D RIGHT DOUBLE QUOTATION MARK
+    "‘": "﹁",  // U+2018 LEFT SINGLE QUOTATION MARK
+    "’": "﹂",  // U+2019 RIGHT SINGLE QUOTATION MARK
   ]
 
   // Consecutive CJK exclamation/question marks are conventionally typeset in a
   // single character cell; swap each pair for its precomposed one-cell form.
+  // ⁉ and ‼ are emoji-capable and iOS picks the color emoji font for them,
+  // so VS15 forces text presentation.
   private static let oneCellPairs: [(String, String)] = [
-    ("！？", "\u{2049}"),  // EXCLAMATION QUESTION MARK
+    ("！？", "\u{2049}\u{FE0E}"),  // EXCLAMATION QUESTION MARK
     ("？！", "\u{2048}"),  // QUESTION EXCLAMATION MARK
-    ("！！", "\u{203C}"),  // DOUBLE EXCLAMATION MARK
+    ("！！", "\u{203C}\u{FE0E}"),  // DOUBLE EXCLAMATION MARK
     ("？？", "\u{2047}"),  // DOUBLE QUESTION MARK
   ]
 
@@ -52,7 +61,19 @@ nonisolated enum MangaVerticalTextCompositor {
     for (token, fullwidth) in halfwidthTokens {
       text = text.replacingOccurrences(of: token, with: fullwidth)
     }
-    text = String(text.map { halfwidthPunctuation[$0] ?? verticalPresentationForms[$0] ?? $0 })
+    var mapped = ""
+    mapped.reserveCapacity(text.count)
+    var previous: Character?
+    for ch in text {
+      // ’ doubles as the English apostrophe; convert only outside ASCII words.
+      if ch == "’", let previous, previous.isASCII, previous.isLetter || previous.isNumber {
+        mapped.append(ch)
+      } else {
+        mapped.append(halfwidthPunctuation[ch] ?? verticalPresentationForms[ch] ?? ch)
+      }
+      previous = ch
+    }
+    text = mapped
     for (pair, oneCell) in oneCellPairs {
       text = text.replacingOccurrences(of: pair, with: oneCell)
     }
