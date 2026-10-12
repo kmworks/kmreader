@@ -131,6 +131,14 @@ nonisolated enum LocalDatabase {
       }
     }
 
+    migrator.registerMigration("00013_drop_manga_translation_book_columns") { db in
+      try db.execute(sql: "DROP INDEX idx_manga_translations_book")
+      try db.alter(table: "manga_translations") { table in
+        table.drop(column: "book_id")
+        table.drop(column: "page_number")
+      }
+    }
+
     try migrator.migrate(writer)
   }
 
