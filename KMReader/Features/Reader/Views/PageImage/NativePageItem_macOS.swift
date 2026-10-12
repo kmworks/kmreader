@@ -325,7 +325,8 @@
         result: readerViewModel?.mangaTranslationResult(for: data),
         visible: readerViewModel?.showMangaTranslation ?? false,
         background: background,
-        direction: AppConfig.mangaTranslation.textDirection
+        direction: AppConfig.mangaTranslation.textDirection,
+        image: pageSourceImage
       )
       updateShadowAppearance()
       updateContextMenu()

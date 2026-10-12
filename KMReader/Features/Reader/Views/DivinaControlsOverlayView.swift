@@ -129,6 +129,10 @@ struct DivinaControlsOverlayView: View {
       : String(localized: "Show Translation")
   }
 
+  private var mangaTranslationOverlayVisible: Bool {
+    viewModel.mangaTranslationResult?.isTranslated == true && viewModel.showMangaTranslation
+  }
+
   private var pageSoloActions: [ReaderPageSoloActions.Action] {
     ReaderPageSoloActions.resolve(
       supportsDualPageOptions: enableDualPageOptions,
@@ -229,19 +233,17 @@ struct DivinaControlsOverlayView: View {
                 viewModel.toggleMangaTranslation()
               }
             } label: {
-              ZStack {
-                ForEach(
-                  [AppIcon.mangaTranslation, "cpu", "viewfinder", "text.viewfinder", AppIcon.loadError],
-                  id: \.self
-                ) { icon in
-                  Image(systemName: icon)
-                    .opacity(icon == viewModel.mangaTranslationPhase.icon ? 1 : 0)
-                }
-              }
-              .foregroundColor(viewModel.mangaTranslationPhase.isFailed ? .red : nil)
-              .symbolEffect(.pulse, options: .repeating, isActive: viewModel.mangaTranslationPhase.isBusy)
-              .animation(animation, value: viewModel.mangaTranslationPhase)
-              .contentShape(Circle())
+              Image(systemName: viewModel.mangaTranslationPhase.icon)
+                .contentTransition(.symbolEffect(.replace))
+                .foregroundColor(
+                  viewModel.mangaTranslationPhase.isFailed
+                    ? .red
+                    : mangaTranslationOverlayVisible ? .blue : nil
+                )
+                .symbolEffect(.pulse, options: .repeating, isActive: viewModel.mangaTranslationPhase.isBusy)
+                .animation(animation, value: viewModel.mangaTranslationPhase)
+                .animation(animation, value: mangaTranslationOverlayVisible)
+                .contentShape(Circle())
             }
             .accessibilityLabel(
               Text(

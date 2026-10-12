@@ -14,9 +14,88 @@ nonisolated enum MangaVerticalTextCompositor {
     ] as CFDictionary
   }
 
+  // Model output occasionally mixes half-width punctuation into CJK text;
+  // normalize the common ones to their full-width forms. Multi-char tokens
+  // must be replaced before the single-character maps below run.
+  private static let halfwidthTokens: [(String, String)] = [
+    ("...", "…"),
+    ("--", "—"),
+  ]
+  private static let halfwidthPunctuation: [Character: Character] = [
+    "!": "！",
+    "?": "？",
+    "~": "〜",
+  ]
+
+  // SF covers dashes/ellipsis but has no vertical glyphs for them, so they
+  // would render sideways; swap in the Unicode vertical presentation forms,
+  // which fall back to a CJK font like the rest of the text. Tilde-likes all
+  // normalize to the wave dash U+301C; curly quotes map to the corner-style
+  // forms of vertical CJK typesetting.
+  private static let verticalPresentationForms: [Character: Character] = [
+    "—": "︱",  // U+2014 EM DASH
+    "―": "︱",  // U+2015 HORIZONTAL BAR
+    "–": "︲",  // U+2013 EN DASH
+    "…": "︙",  // U+2026 HORIZONTAL ELLIPSIS
+    "‥": "︰",  // U+2025 TWO DOT LEADER
+    "～": "〜",  // U+FF5E FULLWIDTH TILDE
+    "∼": "〜",  // U+223C TILDE OPERATOR
+    "˜": "〜",  // U+02DC SMALL TILDE
+    "⁓": "〜",  // U+2053 SWUNG DASH
+    "〰": "〜",  // U+3030 WAVY DASH
+    "“": "﹃",  // U+201C LEFT DOUBLE QUOTATION MARK
+    "”": "﹄",  // U+201D RIGHT DOUBLE QUOTATION MARK
+    "‘": "﹁",  // U+2018 LEFT SINGLE QUOTATION MARK
+    "’": "﹂",  // U+2019 RIGHT SINGLE QUOTATION MARK
+  ]
+
+  // Consecutive CJK exclamation/question marks are conventionally typeset in a
+  // single character cell; swap each pair for its precomposed one-cell form.
+  // ⁉ and ‼ are emoji-capable and iOS picks the color emoji font for them,
+  // so VS15 forces text presentation — also when the model emits the marks
+  // directly, in bare or VS16 (emoji-style) form.
+  private static let oneCellPairs: [(String, String)] = [
+    ("！？", "\u{2049}\u{FE0E}"),  // EXCLAMATION QUESTION MARK
+    ("？！", "\u{2048}"),  // QUESTION EXCLAMATION MARK
+    ("！！", "\u{203C}\u{FE0E}"),  // DOUBLE EXCLAMATION MARK
+    ("？？", "\u{2047}"),  // DOUBLE QUESTION MARK
+  ]
+  private static let emojiCapableMarks: [Character: Character] = [
+    "\u{203C}": "\u{203C}\u{FE0E}",  // DOUBLE EXCLAMATION MARK
+    "\u{2049}": "\u{2049}\u{FE0E}",  // EXCLAMATION QUESTION MARK
+    "\u{203C}\u{FE0F}": "\u{203C}\u{FE0E}",  // VS16 emoji-style → VS15 text-style
+    "\u{2049}\u{FE0F}": "\u{2049}\u{FE0E}",
+  ]
+
   private static func attributedText(_ text: String, font: CTFont, color: CGColor) -> NSAttributedString {
+    var text = text
+    for (token, fullwidth) in halfwidthTokens {
+      text = text.replacingOccurrences(of: token, with: fullwidth)
+    }
+    var mapped = ""
+    mapped.reserveCapacity(text.count)
+    var previous: Character?
+    for ch in text {
+      // ’ doubles as the English apostrophe; convert only outside ASCII words.
+      if ch == "’", let previous, previous.isASCII, previous.isLetter || previous.isNumber {
+        mapped.append(ch)
+      } else {
+        mapped.append(
+          halfwidthPunctuation[ch] ?? emojiCapableMarks[ch] ?? verticalPresentationForms[ch] ?? ch)
+      }
+      previous = ch
+    }
+    text = mapped
+    for (pair, oneCell) in oneCellPairs {
+      text = text.replacingOccurrences(of: pair, with: oneCell)
+    }
     let paragraph = NSMutableParagraphStyle()
     paragraph.alignment = .center
+    // Core Text's default line advance in vertical frames is ~3em, leaving a
+    // wide empty gap between columns; pin it to a fixed em multiple instead.
+    let lineHeight = CTFontGetSize(font) * 1.5
+    paragraph.minimumLineHeight = lineHeight
+    paragraph.maximumLineHeight = lineHeight
     return NSAttributedString(
       string: text,
       attributes: [
@@ -78,11 +157,14 @@ nonisolated enum MangaVerticalTextCompositor {
         frameSize = needed
       }
     }
+    // Suggest rounds the fitted size to whole points and can land fractionally
+    // below the laid-out line boxes; a frame narrower than that drops a whole
+    // column from the layout, so give the rect a point of slack.
     let contentRect = CGRect(
-      x: (size.width - frameSize.width) / 2,
-      y: (size.height - frameSize.height) / 2,
-      width: frameSize.width,
-      height: frameSize.height
+      x: (size.width - frameSize.width) / 2 - 0.5,
+      y: (size.height - frameSize.height) / 2 - 0.5,
+      width: frameSize.width + 1,
+      height: frameSize.height + 1
     )
     let framesetter = CTFramesetterCreateWithAttributedString(attributed)
     let frame = CTFramesetterCreateFrame(
