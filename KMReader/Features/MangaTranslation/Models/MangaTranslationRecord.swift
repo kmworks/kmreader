@@ -8,6 +8,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
   let cacheKey: String
   let bookId: String
   let pageNumber: Int
+  let modelSignature: String
   let resultRaw: Data
   let createdAt: Date
 
@@ -16,6 +17,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
     cacheKey = translation.key.cacheKey
     bookId = translation.key.pageID.bookId
     pageNumber = translation.key.pageID.pageNumber
+    modelSignature = translation.key.modelSignature
     let encoder = JSONEncoder()
     encoder.outputFormatting = .sortedKeys
     resultRaw = try encoder.encode(translation)
@@ -27,6 +29,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
     cacheKey = row["cache_key"]
     bookId = row["book_id"]
     pageNumber = row["page_number"]
+    modelSignature = row["model_signature"]
     resultRaw = row["result_raw"]
     createdAt = row["created_at"]
   }
@@ -36,6 +39,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
     cacheKey: String,
     bookId: String,
     pageNumber: Int,
+    modelSignature: String,
     resultRaw: Data,
     createdAt: Date
   ) {
@@ -43,6 +47,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
     self.cacheKey = cacheKey
     self.bookId = bookId
     self.pageNumber = pageNumber
+    self.modelSignature = modelSignature
     self.resultRaw = resultRaw
     self.createdAt = createdAt
   }
@@ -56,6 +61,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
     container[Column("cache_key")] = cacheKey
     container[Column("book_id")] = bookId
     container[Column("page_number")] = pageNumber
+    container[Column("model_signature")] = modelSignature
     container[Column("result_raw")] = resultRaw
     container[Column("created_at")] = createdAt
   }
@@ -65,6 +71,7 @@ nonisolated struct MangaTranslationRecord: FetchableRecord, MutablePersistableRe
     case cacheKey = "cache_key"
     case bookId = "book_id"
     case pageNumber = "page_number"
+    case modelSignature = "model_signature"
     case resultRaw = "result_raw"
     case createdAt = "created_at"
   }
