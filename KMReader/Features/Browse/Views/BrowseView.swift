@@ -142,41 +142,18 @@ struct BrowseView: View {
     }
     #if os(iOS) || os(macOS)
       .toolbar {
-        #if os(iOS)
-          if (libraryTab || searchOnly) && !PlatformHelper.isPad, #available(iOS 26.0, *) {
-            ToolbarItem(placement: .largeTitle) {
-              InlineLargeBarTitle(title: title)
-            }
-          }
-        #endif
-        #if os(macOS)
-          ToolbarItem(placement: .navigation) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: menuScopeBinding)
-          }
-        #endif
-        #if os(iOS)
-          if PlatformHelper.isPad {
-            ToolbarItem(placement: .cancellationAction) {
-              LibraryScopeMenu(
-                libraries: scopeStore.libraries,
-                showLibraryPicker: $showLibraryPicker,
-                scope: menuScopeBinding)
-            }
-          } else if librarySelection == nil {
-            ToolbarItem(placement: .confirmationAction) {
-              LibraryScopeMenu(
-                libraries: scopeStore.libraries,
-                showLibraryPicker: $showLibraryPicker,
-                scope: menuScopeBinding)
-            }
-            if #available(iOS 26.0, *) {
-              ToolbarSpacer(.fixed, placement: .confirmationAction)
-            }
-          }
-        #endif
+        InlineLargeTitleToolbarItem(title: title, enabled: libraryTab || searchOnly)
+
+        LibraryScopeToolbarItem(
+          showsOnPhone: librarySelection == nil,
+          separatesTrailingMenu: true
+        ) {
+          LibraryScopeMenu(
+            libraries: scopeStore.libraries,
+            showLibraryPicker: $showLibraryPicker,
+            scope: menuScopeBinding)
+        }
+
         ToolbarItem(placement: .confirmationAction) {
           BrowseActionsMenu(
             layoutMode: browseLayoutBinding,

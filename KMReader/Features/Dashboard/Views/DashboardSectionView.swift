@@ -27,18 +27,19 @@ struct DashboardSectionView: View {
   }
 
   var body: some View {
-    DashboardSectionLayout(
-      section: section,
-      destination: .dashboardSectionDetail(section: section),
-      showsCardKindMenu: true,
-      isEmpty: viewModel.isEmpty(for: section),
-      itemIds: viewModel.items(for: section).map(\.id)
-    ) {
-      LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
-        ForEach(viewModel.items(for: section)) { item in
-          itemView(for: item.id)
-            .id(item.id)
-            .frame(width: itemWidth)
+    if !viewModel.isEmpty(for: section) {
+      DashboardSectionLayout(
+        section: section,
+        destination: .dashboardSectionDetail(section: section),
+        showsCardKindMenu: true,
+        itemIds: viewModel.items(for: section).map(\.id)
+      ) {
+        LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
+          ForEach(viewModel.items(for: section)) { item in
+            itemView(for: item.id)
+              .id(item.id)
+              .frame(width: itemWidth)
+          }
         }
       }
     }

@@ -7,13 +7,13 @@ import SwiftUI
 
 /// Shared dashboard section chrome: gradient band, header navigation link,
 /// and the horizontal card strip. Owns the band's vertical rhythm so every
-/// section reads the same; empty sections collapse to zero height.
+/// section reads the same. Callers skip rendering for empty sections: loads
+/// live in the central view model, not in view lifetimes.
 @MainActor
 struct DashboardSectionLayout<Content: View>: View {
   let section: DashboardSection
   let destination: NavDestination
   let showsCardKindMenu: Bool
-  let isEmpty: Bool
   let itemIds: [String]
   @ViewBuilder let content: () -> Content
 
@@ -69,7 +69,6 @@ struct DashboardSectionLayout<Content: View>: View {
             .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
-          .disabled(isEmpty)
 
           Spacer()
 
@@ -119,7 +118,5 @@ struct DashboardSectionLayout<Content: View>: View {
         }
       }
     }
-    .opacity(isEmpty ? 0 : 1)
-    .frame(height: isEmpty ? 0 : nil)
   }
 }

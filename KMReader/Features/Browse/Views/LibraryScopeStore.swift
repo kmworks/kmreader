@@ -5,8 +5,9 @@
 
 import SwiftUI
 
-/// Shared loading for the library scope toolbar buttons. `refresh` hits the
-/// server first; `load` only reads the local sidebar projection (used when the
+/// Shared loading for the library scope toolbar buttons. `refresh` seeds from
+/// the local projection first so scope UI renders immediately, then hits the
+/// server; `load` only reads the local sidebar projection (used when the
 /// projection changes notification fires).
 @Observable
 @MainActor
@@ -20,6 +21,7 @@ final class LibraryScopeStore {
 
   func refresh(instanceId: String) async {
     hasLoaded = false
+    await load(instanceId: instanceId)
     await LibraryManager.shared.refreshLibraries()
     await refreshMetrics(instanceId: instanceId)
   }
@@ -52,7 +54,10 @@ final class LibraryScopeStore {
       if allLibrariesEntry != allEntry {
         allLibrariesEntry = allEntry
       }
-      hasLoaded = true
+      // @Observable invalidates observers on any write, even an unchanged one.
+      if !hasLoaded {
+        hasLoaded = true
+      }
     } catch {
       ErrorManager.shared.alert(error: error)
     }

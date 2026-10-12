@@ -32,10 +32,6 @@ struct DashboardView: View {
 
   private let logger = AppLogger(.dashboard)
 
-  private var showsEmptyLibraryGuidance: Bool {
-    scopeStore.hasLoaded && scopeStore.libraries.isEmpty && !isOffline
-  }
-
   private var renderedSections: [DashboardSection] {
     dashboard.sections.filter { $0 != .readListsInProgress || readListContinuationEnabled }
   }
@@ -53,16 +49,6 @@ struct DashboardView: View {
     #else
       return false
     #endif
-  }
-
-  /// Header content for the active scope: All and Pinned aggregate the covered
-  /// libraries' metrics; a single library shows its own name and metrics.
-  private var scopedLibraryHeader: some View {
-    LibraryScopeHeader(
-      scope: dashboardScopeStore.scope,
-      pinnedIds: dashboard.libraryIds,
-      libraries: scopeStore.libraries,
-      allLibrariesEntry: scopeStore.allLibrariesEntry)
   }
 
   @ViewBuilder
@@ -195,19 +181,17 @@ struct DashboardView: View {
 
         offlineStatusBanner
 
-        scopedLibraryHeader
+        DashboardScopeHeaderView(scopeStore: scopeStore, dashboardScopeStore: dashboardScopeStore)
 
-        if showsEmptyLibraryGuidance {
-          DashboardEmptyLibraryView(isAdmin: current.isAdmin) {
-            showLibraryAddSheet = true
-          }
-        } else {
-          ForEach(renderedSections, id: \.id) { section in
-            if section == .readListsInProgress {
-              ReadListsInProgressSectionView(section: section)
-            } else {
-              DashboardSectionView(section: section, viewModel: viewModel)
-            }
+        DashboardEmptyLibraryGuidanceView(scopeStore: scopeStore) {
+          showLibraryAddSheet = true
+        }
+
+        ForEach(renderedSections, id: \.id) { section in
+          if section == .readListsInProgress {
+            ReadListsInProgressSectionView(section: section)
+          } else {
+            DashboardSectionView(section: section, viewModel: viewModel)
           }
         }
       }
@@ -338,54 +322,10 @@ struct DashboardView: View {
     }
     #if os(iOS) || os(macOS)
       .toolbar {
-        #if os(iOS)
-          if #available(iOS 26.0, *), !PlatformHelper.isPad {
-            ToolbarItem(placement: .largeTitle) {
-              InlineLargeBarTitle(title: String(localized: "title.dashboard"))
-            }
-          }
-        #endif
-
-        #if os(macOS)
-          ToolbarItem(placement: .navigation) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: $dashboardScopeStore.scope)
-          }
-        #endif
-
-        #if os(iOS)
-          if PlatformHelper.isPad {
-            ToolbarItem(placement: .cancellationAction) {
-              LibraryScopeMenu(
-                libraries: scopeStore.libraries,
-                showLibraryPicker: $showLibraryPicker,
-                scope: $dashboardScopeStore.scope)
-            }
-          } else {
-            ToolbarItem(placement: .confirmationAction) {
-              LibraryScopeMenu(
-                libraries: scopeStore.libraries,
-                showLibraryPicker: $showLibraryPicker,
-                scope: $dashboardScopeStore.scope)
-            }
-            if #available(iOS 26.0, *) {
-              ToolbarSpacer(.fixed, placement: .confirmationAction)
-            }
-          }
-        #endif
-
-        #if os(iOS)
-          // iPhone has no Settings tab; keep the entry available in offline mode.
-          if !PlatformHelper.isPad {
-            ToolbarItem(placement: .confirmationAction) {
-              NavigationLink(value: NavDestination.settings) {
-                Image(systemName: AppIcon.settings)
-              }
-            }
-          }
-        #endif
+        DashboardToolbar(
+          scopeStore: scopeStore,
+          showLibraryPicker: $showLibraryPicker,
+          scope: $dashboardScopeStore.scope)
       }
       .refreshableWithMinimumHold {
         await refreshDashboard(reason: "Pull to refresh")
