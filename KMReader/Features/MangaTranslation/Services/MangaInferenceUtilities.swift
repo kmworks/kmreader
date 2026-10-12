@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreImage
 import CoreML
 import Foundation
 
@@ -41,6 +42,40 @@ nonisolated enum MangaInferenceUtilities {
       throw MangaTranslationFailure.inference
     }
     return crop
+  }
+
+  // The recognizer is trained on horizontal text lines: bring each crop
+  // into reading orientation — apply the page rotation, then turn vertical
+  // columns 90° counter-clockwise so their top becomes the line start.
+  static func readingOrientation(
+    _ image: CGImage,
+    regionOrientation: MangaTextOrientation,
+    pageRotation: ReaderRotation,
+    context: CIContext
+  ) throws -> CGImage {
+    var clockwiseDegrees: Int
+    switch pageRotation {
+    case .none: clockwiseDegrees = 0
+    case .degrees90: clockwiseDegrees = 90
+    case .degrees180: clockwiseDegrees = 180
+    case .degrees270: clockwiseDegrees = 270
+    }
+    if regionOrientation == .vertical {
+      clockwiseDegrees = (clockwiseDegrees + 270) % 360
+    }
+    guard clockwiseDegrees != 0 else { return image }
+    let exifOrientation: Int32
+    switch clockwiseDegrees {
+    case 90: exifOrientation = 6
+    case 180: exifOrientation = 3
+    case 270: exifOrientation = 8
+    default: throw MangaTranslationFailure.inference
+    }
+    let oriented = CIImage(cgImage: image).oriented(forExifOrientation: exifOrientation)
+    guard let result = context.createCGImage(oriented, from: oriented.extent) else {
+      throw MangaTranslationFailure.inference
+    }
+    return result
   }
 
   static func pixelValues(_ image: CGImage, width: Int, height: Int, normalize: Bool) throws -> MLMultiArray {

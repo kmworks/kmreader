@@ -49,12 +49,25 @@ enum MangaVerticalTextCompositor {
   static func draw(text: String, font: CTFont, color: CGColor, in context: CGContext, size: CGSize) {
     guard size.width > 0, size.height > 0 else { return }
     let attributed = attributedText(text, font: font, color: color)
-    let (fitted, _) = fittedSize(of: attributed, in: size)
+    let (fitted, visibleLength) = fittedSize(of: attributed, in: size)
+    guard fitted.width > 0, fitted.height > 0 else { return }
+    var frameSize = fitted
+    if visibleLength < attributed.length {
+      // Once the font floor is reached the typeset still overflows the
+      // bubble; lay out at view height with unconstrained width, then
+      // scale the vector outlines down — complete but smaller beats
+      // silently clipped.
+      let (needed, _) = fittedSize(
+        of: attributed, in: CGSize(width: 10000, height: size.height))
+      if needed.width > 0, needed.height > 0 {
+        frameSize = needed
+      }
+    }
     let contentRect = CGRect(
-      x: (size.width - fitted.width) / 2,
-      y: (size.height - fitted.height) / 2,
-      width: fitted.width,
-      height: fitted.height
+      x: (size.width - frameSize.width) / 2,
+      y: (size.height - frameSize.height) / 2,
+      width: frameSize.width,
+      height: frameSize.height
     )
     let framesetter = CTFramesetterCreateWithAttributedString(attributed)
     let frame = CTFramesetterCreateFrame(
@@ -62,6 +75,10 @@ enum MangaVerticalTextCompositor {
       frameAttributes
     )
     context.saveGState()
+    let scale = min(1, min(size.width / frameSize.width, size.height / frameSize.height))
+    context.translateBy(x: size.width / 2, y: size.height / 2)
+    context.scaleBy(x: scale, y: scale)
+    context.translateBy(x: -size.width / 2, y: -size.height / 2)
     context.textMatrix = .identity
     context.translateBy(x: 0, y: size.height)
     context.scaleBy(x: 1, y: -1)

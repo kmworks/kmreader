@@ -149,7 +149,7 @@ actor MangaTranslationService {
       await onProgress(.recognizing)
       let recognizer = try models.makeRecognizer()
       regions = try await runInference {
-        try recognizer.recognize(crops: detectedRegions, image: image)
+        try recognizer.recognize(crops: detectedRegions, image: image, rotation: key.rotation)
       }
     }
 
