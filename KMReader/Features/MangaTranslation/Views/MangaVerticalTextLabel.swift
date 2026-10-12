@@ -29,7 +29,9 @@ import Foundation
       for _ in 0..<5 {
         let font = UIFont.systemFont(ofSize: size, weight: .medium) as CTFont
         if MangaVerticalTextCompositor.fits(text: text, font: font, in: bounds.size) { break }
-        size = max(8, size * 0.85)
+        let nextSize = max(8, size * 0.85)
+        if nextSize == size { break }
+        size = nextSize
       }
       fontSize = size
       setNeedsDisplay()
@@ -55,21 +57,15 @@ import Foundation
 
     private var fontSize: CGFloat = 14
 
-    override init(frame frameRect: NSRect) {
-      super.init(frame: frameRect)
-    }
-
-    required init?(coder: NSCoder) {
-      super.init(coder: coder)
-    }
-
     func fitFont() {
       guard bounds.width > 0, bounds.height > 0 else { return }
       var size = min(17, max(12, bounds.width * 0.55))
       for _ in 0..<5 {
         let font = NSFont.systemFont(ofSize: size, weight: .medium) as CTFont
         if MangaVerticalTextCompositor.fits(text: text, font: font, in: bounds.size) { break }
-        size = max(8, size * 0.85)
+        let nextSize = max(8, size * 0.85)
+        if nextSize == size { break }
+        size = nextSize
       }
       fontSize = size
       needsDisplay = true

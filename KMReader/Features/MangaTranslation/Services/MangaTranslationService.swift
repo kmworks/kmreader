@@ -197,6 +197,7 @@ actor MangaTranslationService {
           key: key,
           regions: translatedRegions,
           status: status,
+          targetLanguage: configuration.targetLanguage,
           createdAt: Date()
         )
         try? await MangaTranslationStore.save(result, database: database)
@@ -213,6 +214,7 @@ actor MangaTranslationService {
       key: key,
       regions: regions,
       status: status,
+      targetLanguage: configuration.targetLanguage,
       createdAt: Date()
     )
     try ensureTranslationCurrent(for: key, generation: generation)
