@@ -98,7 +98,11 @@ nonisolated struct MangaModelManager {
         // Simulator GPU inference can corrupt detection and OCR outputs.
         configuration.computeUnits = .cpuOnly
       #else
-        configuration.computeUnits = componentName == "detector" ? .cpuAndGPU : .all
+        // GPU/ANE specialize the decoder graph per sequence bucket and each
+        // specialization adds gigabytes of compile state, which kills
+        // memory-constrained devices on long decodes; the CPU runs the small
+        // recognizer at the same speed with flat memory.
+        configuration.computeUnits = componentName == "detector" ? .cpuAndGPU : .cpuOnly
       #endif
       for (fileName, relativePath) in component.files {
         let key = "\(componentName).\(fileName)"

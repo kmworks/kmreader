@@ -1115,8 +1115,8 @@ class BuildRunner:
         )
 
         # Do not force -sdk. Let destination drive platform selection, same as Xcode UI.
-        # Build and install
-        cmd = [
+        # Build
+        build_cmd = [
             "xcodebuild",
             "-project",
             self.project,
@@ -1127,13 +1127,67 @@ class BuildRunner:
             "build",
             "-quiet",
         ]
-        cmd.extend(COMPILATION_CACHE_ARGS)
+        build_cmd.extend(COMPILATION_CACHE_ARGS)
 
         try:
-            subprocess.run(cmd, check=True)
-            print(
-                f"{Color.GREEN}App installed successfully! Launch it manually on your device.{Color.NC}"
+            subprocess.run(build_cmd, check=True)
+
+            # Get build settings to find app path
+            result = subprocess.run(
+                build_cmd + ["-showBuildSettings"],
+                capture_output=True,
+                text=True,
+                check=True,
             )
+
+            app_path = None
+            for line in result.stdout.split("\n"):
+                if "BUILT_PRODUCTS_DIR" in line:
+                    built_products_dir = line.split("=")[1].strip()
+                    app_path = os.path.join(built_products_dir, f"{self.scheme}.app")
+                    break
+
+            if not app_path or not os.path.exists(app_path):
+                print(f"{Color.RED}Could not find built app{Color.NC}")
+                return False
+
+            # A plain xcodebuild build never reaches the device; install explicitly.
+            print(f"{Color.GREEN}Installing app...{Color.NC}")
+            subprocess.run(
+                [
+                    "xcrun",
+                    "devicectl",
+                    "device",
+                    "install",
+                    "app",
+                    "--device",
+                    device_udid,
+                    app_path,
+                ],
+                check=True,
+            )
+
+            bundle_id = self._get_bundle_id(app_path)
+            if not bundle_id:
+                print(f"{Color.RED}Could not determine bundle identifier{Color.NC}")
+                return False
+
+            print(f"{Color.GREEN}Launching app...{Color.NC}")
+            subprocess.run(
+                [
+                    "xcrun",
+                    "devicectl",
+                    "device",
+                    "process",
+                    "launch",
+                    "--device",
+                    device_udid,
+                    bundle_id,
+                ],
+                check=True,
+            )
+
+            print(f"{Color.GREEN}App launched successfully!{Color.NC}")
             return True
         except subprocess.CalledProcessError as e:
             print(f"{Color.RED}Failed to build/install: {e}{Color.NC}")
