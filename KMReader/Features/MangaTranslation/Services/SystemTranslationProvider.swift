@@ -26,10 +26,22 @@ nonisolated enum SystemTranslationProvider {
     guard !segments.isEmpty else { return [] }
     #if os(iOS) || os(macOS)
       if #available(iOS 26.0, macOS 26.0, *) {
+        let source = Locale.Language(identifier: sourceLanguage)
+        let target = Locale.Language(identifier: targetLanguage)
+        switch await LanguageAvailability().status(from: source, to: target) {
+        case .installed:
+          break
+        case .supported:
+          throw MangaTranslationFailure.languagePackRequired
+        case .unsupported:
+          throw MangaTranslationFailure.unsupportedLanguagePair
+        @unknown default:
+          throw MangaTranslationFailure.unavailable
+        }
         do {
           let session = TranslationSession(
-            installedSource: Locale.Language(identifier: sourceLanguage),
-            target: Locale.Language(identifier: targetLanguage)
+            installedSource: source,
+            target: target
           )
           let requests = segments.map {
             TranslationSession.Request(sourceText: $0.text, clientIdentifier: String($0.id))
@@ -54,6 +66,9 @@ nonisolated enum SystemTranslationProvider {
           throw error
         } catch {
           AppLogger(.reader).error("System translation failed: \(error)")
+          if TranslationError.notInstalled ~= error {
+            throw MangaTranslationFailure.languagePackRequired
+          }
           throw MangaTranslationFailure.unavailable
         }
       }
