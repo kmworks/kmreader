@@ -19,9 +19,10 @@ actor MangaTranslationService {
 
   func prepareModels(
     archive: ModelArchive,
-    storage: ModelStorage? = nil
+    storage: ModelStorage? = nil,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws {
-    _ = try await models(archive: archive, storage: storage)
+    _ = try await models(archive: archive, storage: storage, onProgress: onProgress)
   }
 
   func testProvider(
@@ -41,7 +42,8 @@ actor MangaTranslationService {
 
   private func models(
     archive: ModelArchive,
-    storage: ModelStorage?
+    storage: ModelStorage?,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws -> MangaModelSet {
     guard archive.isValid, archive.purpose == .mangaOCR else {
       throw MangaTranslationFailure.modelPreparation
@@ -60,7 +62,11 @@ actor MangaTranslationService {
     let generation = modelPreparationGeneration
     let resolvedStorage = try (storage ?? .shared).storage(for: archive)
     let task = Task<MangaModelPaths, Error> {
-      try await MangaModelManager.preparePaths(archive: archive, storage: resolvedStorage)
+      try await MangaModelManager.preparePaths(
+        archive: archive,
+        storage: resolvedStorage,
+        onProgress: onProgress
+      )
     }
     modelPreparationArchive = archive
     modelPreparationTask = task

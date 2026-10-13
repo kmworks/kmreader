@@ -10,6 +10,7 @@ struct MangaModelManagementView: View {
   @State private var showsCatalogEditor = false
   @State private var catalogURLDraft = ""
   @State private var preparingStorageKey: String?
+  @State private var downloadProgress: Double?
   @State private var deletingStorageKey: String?
   @State private var archiveToDelete: ModelArchive?
   @State private var showsDeleteConfirmation = false
@@ -103,6 +104,9 @@ struct MangaModelManagementView: View {
                 Text(comment)
                   .font(.caption)
                   .foregroundStyle(.secondary)
+              }
+              if preparingStorageKey == archive.storageKey {
+                ProgressView(value: downloadProgress ?? 0)
               }
             }
             Spacer()
@@ -293,15 +297,21 @@ struct MangaModelManagementView: View {
   private func prepare(_ archive: ModelArchive) {
     guard !isModelOperationInProgress else { return }
     preparingStorageKey = archive.storageKey
+    downloadProgress = nil
     Task {
       do {
-        try await MangaTranslationService.shared.prepareModels(archive: archive)
+        try await MangaTranslationService.shared.prepareModels(archive: archive) { received, expected in
+          Task { @MainActor in
+            downloadProgress = expected.map { min(1, Double(received) / Double($0)) }
+          }
+        }
         MangaModelLibrary.select(archive)
         reloadDownloadedModels()
       } catch {
         ErrorManager.shared.alert(error: error)
       }
       preparingStorageKey = nil
+      downloadProgress = nil
     }
   }
 
