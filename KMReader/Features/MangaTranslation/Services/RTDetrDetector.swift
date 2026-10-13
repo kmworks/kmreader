@@ -4,7 +4,6 @@ import Foundation
 
 nonisolated struct RTDetrDetector: MangaTextDetecting {
   let models: MangaModelSet
-  private let logger = AppLogger(.reader)
 
   func detect(
     image: CGImage,
@@ -36,8 +35,8 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
     }
     let queryCount = logitShape[1].intValue
     let classCount = logitShape[2].intValue
-    let logitValues = MangaInferenceUtilities.flatValues(logits)
-    let boxValues = MangaInferenceUtilities.flatValues(boxes)
+    let logitValues = try MangaInferenceUtilities.flatValues(logits)
+    let boxValues = try MangaInferenceUtilities.flatValues(boxes)
     guard queryCount > 0, classCount > 0,
       logitValues.count == queryCount * classCount,
       boxValues.count == queryCount * 4
@@ -46,15 +45,15 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
     }
     let labels = models.labels(for: "detector")
     guard !labels.isEmpty else { throw MangaTranslationFailure.modelPreparation }
-
-    let imageSize = rotation.rotatedSize(CGSize(width: image.width, height: image.height))
-    var displaySize = cropRect?.size ?? imageSize
-    if splitMode != .none {
-      displaySize.width /= 2
-    }
+    let displaySize = MangaInferenceUtilities.detectorDisplaySize(
+      for: image,
+      rotation: rotation,
+      cropRect: cropRect,
+      splitMode: splitMode
+    )
 
     var regions: [MangaTextRegion] = []
-    var highestTextScore: Float = 0
+    var highestScore: Float = 0
     for index in 0..<queryCount {
       try Task.checkCancellation()
       let scores = (0..<classCount).map { sigmoid(logitValues[index * classCount + $0]) }
@@ -64,76 +63,33 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
         continue
       }
       let score = scores[label]
-      highestTextScore = max(highestTextScore, score)
+      highestScore = max(highestScore, score)
       guard score >= 0.3 else { continue }
       let centerX = CGFloat(boxValues[index * 4])
       let centerY = CGFloat(boxValues[index * 4 + 1])
       let width = CGFloat(boxValues[index * 4 + 2])
       let height = CGFloat(boxValues[index * 4 + 3])
       let sourceBox = CGRect(x: centerX - width / 2, y: centerY - height / 2, width: width, height: height)
-      let box = MangaPreparedGeometry.normalizedRect(
-        for: sourceBox,
-        in: image,
-        splitMode: splitMode,
-        rotation: rotation,
-        cropRect: cropRect
-      )
-      guard MangaPreparedGeometry.isVisible(box) else { continue }
-      let orientation =
-        descriptor.orientation.flatMap { MangaTextOrientation(rawValue: $0) }
-        ?? .infer(from: box, displaySize: displaySize)
-      regions.append(
-        MangaTextRegion(
+      guard
+        let region = MangaInferenceUtilities.region(
           id: regions.count,
           label: label,
           score: score,
           sourceBox: sourceBox,
-          box: box,
-          text: "",
-          translatedText: nil,
-          orientation: orientation
+          descriptor: descriptor,
+          image: image,
+          splitMode: splitMode,
+          rotation: rotation,
+          cropRect: cropRect,
+          displaySize: displaySize
         )
-      )
+      else { continue }
+      regions.append(region)
     }
-    let deduplicatedRegions = deduplicated(regions: regions)
-    logger.info(
-      "Manga detection: \(deduplicatedRegions.count) regions, highestTextScore=\(String(format: "%.3f", highestTextScore))"
-    )
-    return deduplicatedRegions
+    return MangaInferenceUtilities.finalizeDetections(regions: regions, highestScore: highestScore)
   }
 
   private func sigmoid(_ value: Float) -> Float {
     1 / (1 + exp(-value))
-  }
-
-  private func intersectionOverUnion(_ first: CGRect, _ second: CGRect) -> CGFloat {
-    let intersection = first.intersection(second)
-    let intersectionArea = intersection.width * intersection.height
-    guard intersectionArea > 0 else { return 0 }
-    return intersectionArea / (first.width * first.height + second.width * second.height - intersectionArea)
-  }
-
-  private func deduplicated(regions: [MangaTextRegion]) -> [MangaTextRegion] {
-    var kept: [MangaTextRegion] = []
-    for region in regions.sorted(by: { $0.score > $1.score }) {
-      if kept.contains(where: {
-        $0.label == region.label && intersectionOverUnion($0.sourceBox, region.sourceBox) >= 0.7
-      }) {
-        continue
-      }
-      kept.append(region)
-    }
-    return kept.enumerated().map {
-      MangaTextRegion(
-        id: $0.offset,
-        label: $0.element.label,
-        score: $0.element.score,
-        sourceBox: $0.element.sourceBox,
-        box: $0.element.box,
-        text: $0.element.text,
-        translatedText: $0.element.translatedText,
-        orientation: $0.element.orientation
-      )
-    }
   }
 }

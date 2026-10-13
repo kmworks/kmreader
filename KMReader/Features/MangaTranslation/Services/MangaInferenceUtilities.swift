@@ -9,22 +9,107 @@ nonisolated enum MangaInferenceUtilities {
     return try model.prediction(from: try MLDictionaryFeatureProvider(dictionary: values))
   }
 
-  static func flatValues(_ array: MLMultiArray) -> [Float] {
-    guard array.shape.count == 3 else { return [] }
-    var values: [Float] = []
-    values.reserveCapacity(array.count)
-    for first in 0..<array.shape[0].intValue {
-      for second in 0..<array.shape[1].intValue {
-        for third in 0..<array.shape[2].intValue {
-          values.append(
-            array[
-              [NSNumber(value: first), NSNumber(value: second), NSNumber(value: third)]
-            ].floatValue
-          )
-        }
-      }
+  static func flatValues(_ array: MLMultiArray) throws -> [Float] {
+    switch array.dataType {
+    case .float32:
+      let pointer = array.dataPointer.bindMemory(to: Float32.self, capacity: array.count)
+      return Array(UnsafeBufferPointer(start: pointer, count: array.count))
+    case .float16:
+      let pointer = array.dataPointer.bindMemory(to: Float16.self, capacity: array.count)
+      return UnsafeBufferPointer(start: pointer, count: array.count).map { Float($0) }
+    default:
+      throw MangaTranslationFailure.inference
     }
-    return values
+  }
+
+  static func detectorDisplaySize(
+    for image: CGImage,
+    rotation: ReaderRotation,
+    cropRect: CGRect?,
+    splitMode: PageSplitMode
+  ) -> CGSize {
+    let imageSize = rotation.rotatedSize(CGSize(width: image.width, height: image.height))
+    var displaySize = cropRect?.size ?? imageSize
+    if splitMode != .none {
+      displaySize.width /= 2
+    }
+    return displaySize
+  }
+
+  static func region(
+    id: Int,
+    label: Int,
+    score: Float,
+    sourceBox: CGRect,
+    descriptor: ModelPackageLabel,
+    image: CGImage,
+    splitMode: PageSplitMode,
+    rotation: ReaderRotation,
+    cropRect: CGRect?,
+    displaySize: CGSize
+  ) -> MangaTextRegion? {
+    let box = MangaPreparedGeometry.normalizedRect(
+      for: sourceBox,
+      in: image,
+      splitMode: splitMode,
+      rotation: rotation,
+      cropRect: cropRect
+    )
+    guard MangaPreparedGeometry.isVisible(box) else { return nil }
+    let orientation =
+      descriptor.orientation.flatMap { MangaTextOrientation(rawValue: $0) }
+      ?? .infer(from: box, displaySize: displaySize)
+    return MangaTextRegion(
+      id: id,
+      label: label,
+      score: score,
+      sourceBox: sourceBox,
+      box: box,
+      text: "",
+      translatedText: nil,
+      orientation: orientation
+    )
+  }
+
+  static func finalizeDetections(regions: [MangaTextRegion], highestScore: Float) -> [MangaTextRegion] {
+    var kept: [MangaTextRegion] = []
+    for region in regions.sorted(by: { $0.score > $1.score }) {
+      // Suppression stays label-aware so multi-class detectors keep
+      // overlapping boxes of different classes; single-class models emit
+      // label 0 throughout, which collapses the comparison to always-true.
+      if kept.contains(where: {
+        $0.label == region.label
+          && intersectionOverUnion($0.sourceBox, region.sourceBox) >= suppressionIoU
+      }) {
+        continue
+      }
+      kept.append(region)
+    }
+    let renumbered = kept.enumerated().map {
+      MangaTextRegion(
+        id: $0.offset,
+        label: $0.element.label,
+        score: $0.element.score,
+        sourceBox: $0.element.sourceBox,
+        box: $0.element.box,
+        text: $0.element.text,
+        translatedText: $0.element.translatedText,
+        orientation: $0.element.orientation
+      )
+    }
+    AppLogger(.reader).info(
+      "Manga detection: \(renumbered.count) regions, highestScore=\(String(format: "%.3f", highestScore))"
+    )
+    return renumbered
+  }
+
+  private static let suppressionIoU: CGFloat = 0.7
+
+  private static func intersectionOverUnion(_ first: CGRect, _ second: CGRect) -> CGFloat {
+    let intersection = first.intersection(second)
+    let intersectionArea = intersection.width * intersection.height
+    guard intersectionArea > 0 else { return 0 }
+    return intersectionArea / (first.width * first.height + second.width * second.height - intersectionArea)
   }
 
   static func cropImage(_ image: CGImage, normalizedRect: CGRect) throws -> CGImage {
