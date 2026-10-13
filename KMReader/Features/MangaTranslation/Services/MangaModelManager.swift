@@ -155,17 +155,18 @@ nonisolated struct MangaModelManager {
   }
 
   nonisolated static func supportsAppVersion(_ archive: ModelArchive) -> Bool {
-    guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+    // The window is in build numbers: marketing versions flip on App Store
+    // releases, but the build number identifies the build that has the
+    // required support.
+    guard let buildString = Bundle.main.infoDictionary?["CFBundleVersion"] as? String,
+      let currentBuild = Int(buildString)
+    else {
       return archive.minimumAppVersion == nil && archive.maximumAppVersion == nil
     }
-    if let minimum = archive.minimumAppVersion,
-      currentVersion.compare(minimum, options: .numeric) == .orderedAscending
-    {
+    if let minimum = archive.minimumAppVersion.flatMap(Int.init), currentBuild < minimum {
       return false
     }
-    if let maximum = archive.maximumAppVersion,
-      currentVersion.compare(maximum, options: .numeric) == .orderedDescending
-    {
+    if let maximum = archive.maximumAppVersion.flatMap(Int.init), currentBuild > maximum {
       return false
     }
     return true
