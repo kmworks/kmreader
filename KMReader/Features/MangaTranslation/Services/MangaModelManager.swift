@@ -176,14 +176,14 @@ nonisolated struct MangaModelManager {
       var request = URLRequest(url: archive.url)
       request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")
       let delegate = MangaModelDownloadDelegate(
+        destination: partial,
         expectedBytes: archive.bytes.map(Int64.init),
         onProgress: onProgress
       )
-      let (temporaryURL, response) = try await URLSession.shared.download(for: request, delegate: delegate)
+      let response = try await delegate.download(with: request)
       guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
         throw MangaTranslationFailure.modelPreparation
       }
-      try fileManager.moveItem(at: temporaryURL, to: partial)
     }
 
     let attributes = try fileManager.attributesOfItem(atPath: partial.path)
