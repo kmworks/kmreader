@@ -124,6 +124,8 @@ struct BrowseView: View {
       showSavedFilters: $showSavedFilters,
       libraryIds: resolvedLibraryIds,
       libraryScope: libraryTab ? libraryTabScope?.wrappedValue : (searchOnly ? nil : effectiveScope),
+      searchScope: searchOnly ? libraryTabScope : nil,
+      showLibraryPicker: $showLibraryPicker,
       scopeLibraries: scopeStore.libraries,
       allLibrariesEntry: scopeStore.allLibrariesEntry
     )
