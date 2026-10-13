@@ -83,7 +83,15 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
       && (url.scheme == "https" || url.isFileURL)
       && sha256.count == 64 && sha256.allSatisfy(\.isHexDigit)
       && (bytes ?? 1) > 0
-      && (maximumAppVersion.map(ModelPackageManifest.isValidVersion) ?? true)
+      && (minimumAppVersion.map(Self.isValidBuildNumber) ?? true)
+      && (maximumAppVersion.map(Self.isValidBuildNumber) ?? true)
+  }
+
+  // The catalog window gates on build numbers, so unlike manifest versions
+  // these must be plain digits — a dotted value would parse as nil in the
+  // Int gate and silently disable the bound.
+  private static func isValidBuildNumber(_ value: String) -> Bool {
+    !value.isEmpty && value.allSatisfy { $0.isASCII && $0.isNumber }
   }
 
   enum CodingKeys: String, CodingKey {
