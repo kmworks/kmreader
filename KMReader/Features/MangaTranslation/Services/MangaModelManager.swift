@@ -175,13 +175,13 @@ nonisolated struct MangaModelManager {
     } else {
       var request = URLRequest(url: archive.url)
       request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")
-      let delegate = MangaModelDownloadDelegate(
+      let statusCode = try await MangaModelDownloader.download(
+        with: request,
         destination: partial,
         expectedBytes: archive.bytes.map(Int64.init),
         onProgress: onProgress
       )
-      let response = try await delegate.download(with: request)
-      guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+      guard statusCode == 200 else {
         throw MangaTranslationFailure.modelPreparation
       }
     }
