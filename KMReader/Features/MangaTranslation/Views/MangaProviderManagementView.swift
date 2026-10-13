@@ -7,6 +7,15 @@ struct MangaProviderManagementView: View {
   @State private var editingProvider: MangaProviderConfig?
   @State private var providerToDelete: MangaProviderConfig?
   @State private var showsDeleteConfirmation = false
+  @State private var testingProviderID: String?
+  @State private var testResultMessage: String?
+
+  private var showsTestResult: Binding<Bool> {
+    Binding(
+      get: { testResultMessage != nil },
+      set: { if !$0 { testResultMessage = nil } }
+    )
+  }
 
   var body: some View {
     Form {
@@ -48,42 +57,40 @@ struct MangaProviderManagementView: View {
             .foregroundStyle(.secondary)
         }
         ForEach(providers) { provider in
-          HStack(spacing: 12) {
-            Button {
-              preferences.selectedProviderID = provider.id
-            } label: {
-              HStack(spacing: 12) {
-                Image(systemName: preferences.selectedProviderID == provider.id ? "checkmark.circle.fill" : "circle")
-                  .foregroundStyle(
-                    preferences.selectedProviderID == provider.id ? Color.accentColor : Color.secondary
-                  )
-                VStack(alignment: .leading, spacing: 4) {
-                  Text(provider.resolvedDisplayName)
-                  Text(provider.baseURL)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                  Text(provider.model)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                }
+          Button {
+            preferences.selectedProviderID = provider.id
+          } label: {
+            HStack(spacing: 12) {
+              Image(systemName: preferences.selectedProviderID == provider.id ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(
+                  preferences.selectedProviderID == provider.id ? Color.accentColor : Color.secondary
+                )
+              VStack(alignment: .leading, spacing: 4) {
+                Text(provider.resolvedDisplayName)
+                Text(provider.baseURL)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
+                Text(provider.model)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
               }
-              .contentShape(Rectangle())
+              if testingProviderID == provider.id {
+                Spacer()
+                ProgressView()
+              }
             }
-            .buttonStyle(.plain)
-            Spacer()
-            Button(String(localized: "Edit")) {
-              editingProvider = provider
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          #if os(iOS) || os(macOS)
+            .swipeActions(edge: .trailing) {
+              providerActions(for: provider)
             }
-            .buttonStyle(.borderless)
-            Button(role: .destructive) {
-              providerToDelete = provider
-              showsDeleteConfirmation = true
-            } label: {
-              Image(systemName: AppIcon.delete)
-            }
-            .buttonStyle(.borderless)
+          #endif
+          .contextMenu {
+            providerActions(for: provider)
           }
         }
       }
@@ -95,6 +102,13 @@ struct MangaProviderManagementView: View {
         isNew: !providers.contains(where: { $0.id == provider.id })
       )
     }
+    .alert(String(localized: "Test Provider"), isPresented: showsTestResult) {
+      Button(String(localized: "OK"), role: .cancel) {}
+    } message: {
+      if let testResultMessage {
+        Text(testResultMessage)
+      }
+    }
     .alert(String(localized: "Delete Provider"), isPresented: $showsDeleteConfirmation) {
       Button(String(localized: "Delete"), role: .destructive) {
         if let providerToDelete {
@@ -104,6 +118,29 @@ struct MangaProviderManagementView: View {
       Button(String(localized: "Cancel"), role: .cancel) {}
     } message: {
       Text(providerToDelete?.resolvedDisplayName ?? "")
+    }
+  }
+
+  @ViewBuilder
+  private func providerActions(for provider: MangaProviderConfig) -> some View {
+    Button {
+      test(provider)
+    } label: {
+      Label(String(localized: "Test Provider"), systemImage: "network")
+    }
+    .disabled(!provider.isConfigured)
+
+    Button {
+      editingProvider = provider
+    } label: {
+      Label(String(localized: "Edit"), systemImage: AppIcon.edit)
+    }
+
+    Button(role: .destructive) {
+      providerToDelete = provider
+      showsDeleteConfirmation = true
+    } label: {
+      Label(String(localized: "Delete"), systemImage: AppIcon.delete)
     }
   }
 
@@ -128,6 +165,29 @@ struct MangaProviderManagementView: View {
       } catch {
         ErrorManager.shared.alert(error: error)
       }
+    }
+  }
+
+  private func test(_ provider: MangaProviderConfig) {
+    guard testingProviderID == nil else { return }
+    testingProviderID = provider.id
+    Task {
+      let message: String
+      do {
+        let translations = try await MangaTranslationService.shared.testProvider(
+          configuration: provider,
+          preferences: preferences
+        )
+        message = translations.joined(separator: " / ")
+      } catch {
+        message =
+          (error as? MangaTranslationFailure)?.description ?? error.localizedDescription
+      }
+      // A provider deleted mid-test has no row left to show its result for.
+      if providers.contains(where: { $0.id == provider.id }) {
+        testResultMessage = message
+      }
+      testingProviderID = nil
     }
   }
 }
