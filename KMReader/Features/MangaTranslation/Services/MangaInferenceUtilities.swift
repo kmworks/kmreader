@@ -1,3 +1,4 @@
+import Accelerate
 import CoreGraphics
 import CoreImage
 import CoreML
@@ -15,8 +16,29 @@ nonisolated enum MangaInferenceUtilities {
       let pointer = array.dataPointer.bindMemory(to: Float32.self, capacity: array.count)
       return Array(UnsafeBufferPointer(start: pointer, count: array.count))
     case .float16:
-      let pointer = array.dataPointer.bindMemory(to: Float16.self, capacity: array.count)
-      return UnsafeBufferPointer(start: pointer, count: array.count).map { Float($0) }
+      // Float16 is unavailable on Intel macOS, so convert the raw half data
+      // through vImage instead of binding the pointer.
+      var values = [Float](repeating: 0, count: array.count)
+      let conversionError = values.withUnsafeMutableBytes { destination -> vImage_Error in
+        var sourceBuffer = vImage_Buffer(
+          data: array.dataPointer,
+          height: 1,
+          width: vImagePixelCount(array.count),
+          rowBytes: array.count * 2
+        )
+        var destinationBuffer = vImage_Buffer(
+          data: destination.baseAddress,
+          height: 1,
+          width: vImagePixelCount(array.count),
+          rowBytes: array.count * MemoryLayout<Float>.stride
+        )
+        return vImageConvert_Planar16FtoPlanarF(
+          &sourceBuffer, &destinationBuffer, vImage_Flags(kvImageNoFlags))
+      }
+      guard conversionError == kvImageNoError else {
+        throw MangaTranslationFailure.inference
+      }
+      return values
     default:
       throw MangaTranslationFailure.inference
     }
