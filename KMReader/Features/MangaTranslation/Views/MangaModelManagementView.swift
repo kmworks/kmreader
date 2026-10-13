@@ -217,7 +217,7 @@ struct MangaModelManagementView: View {
       pickingRole = role
     } label: {
       HStack {
-        Text(roleTitle(role))
+        Text(role.title)
         Spacer()
         Text(selectedName(for: role))
           .font(.caption)
@@ -230,13 +230,6 @@ struct MangaModelManagementView: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-  }
-
-  private func roleTitle(_ role: MangaModelRole) -> String {
-    switch role {
-    case .detector: return String(localized: "Detection Model")
-    case .recognizer: return String(localized: "Recognition Model")
-    }
   }
 
   private func selectedStorageKey(for role: MangaModelRole) -> String {

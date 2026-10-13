@@ -8,15 +8,8 @@ struct MangaModelRolePickerSheet: View {
 
   @Environment(\.dismiss) private var dismiss
 
-  private var title: String {
-    switch role {
-    case .detector: return String(localized: "Detection Model")
-    case .recognizer: return String(localized: "Recognition Model")
-    }
-  }
-
   var body: some View {
-    SheetView(title: title, size: .large, applyFormStyle: true) {
+    SheetView(title: role.title, size: .large, applyFormStyle: true) {
       Form {
         Section {
           if archives.isEmpty {
