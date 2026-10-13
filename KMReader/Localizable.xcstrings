@@ -20237,6 +20237,134 @@
         }
       }
     },
+    "Detection" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detektion"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detection"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detección"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Détection"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rilevamento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検出"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "감지"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Детекция"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检测"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偵測"
+          }
+        }
+      }
+    },
+    "Detection Model" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detektionsmodell"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detection Model"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelo de detección"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modèle de détection"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modello di rilevamento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検出モデル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "감지 모델"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модель детекции"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检测模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偵測模型"
+          }
+        }
+      }
+    },
     "Device authentication is not available on this device." : {
       "localizations" : {
         "de" : {
@@ -68699,6 +68827,70 @@
         }
       }
     },
+    "Recognition" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erkennung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recognition"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconocimiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnaissance"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Riconoscimento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "認識"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "인식"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Распознавание"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別"
+          }
+        }
+      }
+    },
     "Recognition and translation run on device with System Translation. Page images never leave the device." : {
       "localizations" : {
         "de" : {
@@ -68763,36 +68955,36 @@
         }
       }
     },
-    "Recognition Models" : {
+    "Recognition Model" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erkennungsmodelle"
+            "value" : "Erkennungsmodell"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recognition Models"
+            "value" : "Recognition Model"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modelos de reconocimiento"
+            "value" : "Modelo de reconocimiento"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modèles de reconnaissance"
+            "value" : "Modèle de reconnaissance"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modelli di riconoscimento"
+            "value" : "Modello di riconoscimento"
           }
         },
         "ja" : {
@@ -68810,7 +69002,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Модели распознавания"
+            "value" : "Модель распознавания"
           }
         },
         "zh-Hans" : {
@@ -93016,6 +93208,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用原生 PDF 閱讀器"
+          }
+        }
+      }
+    },
+    "Use one model for both roles, or mix a detection model with a different recognition model." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dasselbe Modell für beide Schritte verwenden oder Detektions- und Erkennungsmodell getrennt wählen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use one model for both roles, or mix a detection model with a different recognition model."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el mismo modelo para detección y reconocimiento, o elige modelos distintos para cada función."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez le même modèle pour la détection et la reconnaissance, ou choisissez des modèles différents pour chaque rôle."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa lo stesso modello per rilevamento e riconoscimento, oppure scegli modelli diversi per ciascun ruolo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検出と認識に同じモデルを使うか、それぞれ別のモデルを選べます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "감지와 인식에 같은 모델을 쓰거나, 각각 다른 모델을 선택할 수 있습니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используйте одну модель для детекции и распознавания или выберите разные модели для каждой роли."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检测与识别可共用同一模型，也可分开选用不同模型。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "偵測與識別可共用同一模型，也可分開選用不同模型。"
           }
         }
       }

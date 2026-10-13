@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MangaModelManagementView: View {
+  let role: MangaModelRole
+
   @AppStorage("modelLibrary") private var libraryConfiguration = ModelLibraryConfiguration()
 
   @State private var catalog: ModelCatalog?
@@ -10,6 +12,7 @@ struct MangaModelManagementView: View {
   @State private var showsCatalogEditor = false
   @State private var catalogURLDraft = ""
   @State private var preparingStorageKey: String?
+  @State private var downloadProgress: Double?
   @State private var deletingStorageKey: String?
   @State private var archiveToDelete: ModelArchive?
   @State private var showsDeleteConfirmation = false
@@ -18,13 +21,15 @@ struct MangaModelManagementView: View {
     preparingStorageKey != nil || deletingStorageKey != nil
   }
 
-  private var selectedStorageKey: String {
-    libraryConfiguration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
-  }
-
   private var availableArchives: [ModelArchive] {
     let downloadedKeys = Set(downloadedArchives.map(\.storageKey))
-    return (catalog?.models(for: .mangaOCR) ?? []).filter { !downloadedKeys.contains($0.storageKey) }
+    return (catalog?.models(for: .mangaOCR) ?? []).filter {
+      !downloadedKeys.contains($0.storageKey) && MangaModelSet.supports($0, for: role)
+    }
+  }
+
+  private var selectableArchives: [ModelArchive] {
+    downloadedArchives.filter { MangaModelSet.supports($0, for: role) }
   }
 
   private var canSaveCatalogURL: Bool {
@@ -41,6 +46,40 @@ struct MangaModelManagementView: View {
   var body: some View {
     Form {
       Section(
+        header: Text(role.title),
+        footer: Text(
+          "Use one model for both roles, or mix a detection model with a different recognition model.")
+      ) {
+        if selectableArchives.isEmpty {
+          Text("No models downloaded")
+            .foregroundStyle(.secondary)
+        }
+        ForEach(selectableArchives, id: \.storageKey) { archive in
+          Button {
+            MangaModelLibrary.select(archive, for: role)
+            reloadDownloadedModels()
+          } label: {
+            HStack(spacing: 12) {
+              Image(systemName: isSelected(archive) ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isSelected(archive) ? Color.accentColor : Color.secondary)
+              VStack(alignment: .leading, spacing: 4) {
+                Text(archive.name)
+                MangaModelCapabilityChips(archive: archive)
+                if let comment = archive.comment, !comment.isEmpty {
+                  Text(comment)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+              }
+              Spacer()
+            }
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+        }
+      }
+
+      Section(
         header: Text("Downloaded"),
         footer: Text("Downloaded models remain available when the catalog changes.")
       ) {
@@ -50,28 +89,18 @@ struct MangaModelManagementView: View {
         }
         ForEach(downloadedArchives, id: \.storageKey) { archive in
           HStack(spacing: 12) {
-            Button {
-              select(archive)
-            } label: {
-              HStack(spacing: 12) {
-                Image(systemName: selectedStorageKey == archive.storageKey ? "checkmark.circle.fill" : "circle")
-                  .foregroundStyle(selectedStorageKey == archive.storageKey ? Color.accentColor : Color.secondary)
-                VStack(alignment: .leading, spacing: 4) {
-                  Text(archive.name)
-                  Text(detailText(for: archive))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                  if let comment = archive.comment, !comment.isEmpty {
-                    Text(comment)
-                      .font(.caption)
-                      .foregroundStyle(.secondary)
-                  }
-                }
+            VStack(alignment: .leading, spacing: 4) {
+              Text(archive.name)
+              Text(detailText(for: archive))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              MangaModelCapabilityChips(archive: archive)
+              if let comment = archive.comment, !comment.isEmpty {
+                Text(comment)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
               }
-              .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .disabled(isModelOperationInProgress)
             Spacer()
             if preparingStorageKey == archive.storageKey || deletingStorageKey == archive.storageKey {
               LoadingIcon()
@@ -101,10 +130,14 @@ struct MangaModelManagementView: View {
               Text(detailText(for: archive))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+              MangaModelCapabilityChips(archive: archive)
               if let comment = archive.comment, !comment.isEmpty {
                 Text(comment)
                   .font(.caption)
                   .foregroundStyle(.secondary)
+              }
+              if preparingStorageKey == archive.storageKey {
+                ProgressView(value: downloadProgress ?? 0)
               }
             }
             Spacer()
@@ -208,6 +241,13 @@ struct MangaModelManagementView: View {
     }
   }
 
+  private func isSelected(_ archive: ModelArchive) -> Bool {
+    let key =
+      libraryConfiguration.selectedStorageKeys[role.selectionStorageKey]
+      ?? libraryConfiguration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
+    return key == archive.storageKey
+  }
+
   private func beginCatalogEdit() {
     guard !isLoadingCatalog else { return }
     catalogURLDraft = libraryConfiguration.catalogURL
@@ -234,10 +274,6 @@ struct MangaModelManagementView: View {
     return [version, archive.license, size].compactMap { $0 }.joined(separator: " · ")
   }
 
-  private func select(_ archive: ModelArchive) {
-    MangaModelLibrary.select(archive)
-  }
-
   private func refreshCatalog() {
     guard !isLoadingCatalog else { return }
     isLoadingCatalog = true
@@ -255,15 +291,22 @@ struct MangaModelManagementView: View {
   private func prepare(_ archive: ModelArchive) {
     guard !isModelOperationInProgress else { return }
     preparingStorageKey = archive.storageKey
+    downloadProgress = nil
     Task {
       do {
-        try await MangaTranslationService.shared.prepareModels(archive: archive)
+        try await MangaTranslationService.shared.prepareModels(archive: archive) { received, expected in
+          Task { @MainActor in
+            downloadProgress = expected.map { min(1, Double(received) / Double($0)) }
+          }
+        }
         MangaModelLibrary.select(archive)
         reloadDownloadedModels()
+      } catch is CancellationError {
       } catch {
         ErrorManager.shared.alert(error: error)
       }
       preparingStorageKey = nil
+      downloadProgress = nil
     }
   }
 

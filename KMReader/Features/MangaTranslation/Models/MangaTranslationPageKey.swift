@@ -10,8 +10,10 @@ nonisolated struct MangaTranslationPageKey: Hashable, Codable, Sendable {
   let providerSignature: String
   let modelSignature: String
 
-  // Signatures are "<archive sha256>:<inference cache version>"; cache
-  // pruning uses the archive prefix to find retired same-page rows.
+  // Signatures are "<detector sha256>:<recognizer sha256>:<inference cache
+  // version>"; cache pruning uses the detector prefix to find retired
+  // same-page rows (same detector family, older inference or legacy
+  // single-archive signature).
   var modelArchivePrefix: String {
     modelSignature.split(separator: ":", maxSplits: 1).first.map(String.init) ?? ""
   }

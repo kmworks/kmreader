@@ -3,10 +3,11 @@ import SwiftUI
 struct MangaTranslationSettingsView: View {
   @AppStorage("mangaTranslation") private var preferences = MangaTranslationPreferences()
 
-  @State private var showsModelManagement = false
+  @State private var modelSheetRole: MangaModelRole?
   @State private var showsProviderManagement = false
   @State private var provider: MangaProviderConfig?
-  @State private var archive: ModelArchive?
+  @State private var detectorArchive: ModelArchive?
+  @State private var recognizerArchive: ModelArchive?
   @State private var isTesting = false
 
   private var mangaTranslationEnabled: Binding<Bool> {
@@ -18,6 +19,11 @@ struct MangaTranslationSettingsView: View {
 
   private var usesConfiguredProvider: Bool {
     provider?.isConfigured == true
+  }
+
+  private func selectedName(for role: MangaModelRole) -> String {
+    let archive = role == .detector ? detectorArchive : recognizerArchive
+    return archive?.name ?? String(localized: "Not Selected")
   }
 
   private var selectedProviderName: String {
@@ -117,7 +123,7 @@ struct MangaTranslationSettingsView: View {
                   .lineLimit(1)
               }
             } icon: {
-              Image(systemName: "server.rack")
+              Image(systemName: AppIcon.mangaTranslation)
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -127,29 +133,8 @@ struct MangaTranslationSettingsView: View {
           .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        Button {
-          showsModelManagement = true
-        } label: {
-          HStack {
-            Label {
-              VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "Recognition Models"))
-                Text(archive?.name ?? String(localized: "Not Selected"))
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-                  .lineLimit(1)
-              }
-            } icon: {
-              Image(systemName: "cpu")
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        modelRow(.detector, icon: "text.viewfinder")
+        modelRow(.recognizer, icon: "character.textbox")
         Toggle(isOn: $preferences.includeMetadata) {
           VStack(alignment: .leading, spacing: 4) {
             Text(String(localized: "Include Comic Metadata"))
@@ -176,15 +161,42 @@ struct MangaTranslationSettingsView: View {
         MangaProviderManagementView()
       }
     }
-    .sheet(isPresented: $showsModelManagement, onDismiss: reloadConfiguration) {
-      SheetView(title: String(localized: "Recognition Models"), size: .large, applyFormStyle: true) {
-        MangaModelManagementView()
+    .sheet(item: $modelSheetRole, onDismiss: reloadConfiguration) { role in
+      SheetView(title: role.title, size: .large, applyFormStyle: true) {
+        MangaModelManagementView(role: role)
       }
     }
   }
 
+  private func modelRow(_ role: MangaModelRole, icon: String) -> some View {
+    Button {
+      modelSheetRole = role
+    } label: {
+      HStack {
+        Label {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(role.title)
+            Text(selectedName(for: role))
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+        } icon: {
+          Image(systemName: icon)
+        }
+        Spacer()
+        Image(systemName: "chevron.right")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
   private func reloadConfiguration() {
-    archive = MangaModelLibrary.selectedArchive
+    detectorArchive = MangaModelLibrary.selectedArchive(for: .detector)
+    recognizerArchive = MangaModelLibrary.selectedArchive(for: .recognizer)
     Task {
       do {
         provider = try await MangaProviderLibrary.current(

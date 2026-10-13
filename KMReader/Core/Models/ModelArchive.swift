@@ -10,7 +10,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
   let license: String
   let purpose: ModelPurpose
   let capabilities: [String]
-  let minimumAppVersion: String?
   let components: [String: ModelPackageComponent]
   let comment: String?
 
@@ -24,7 +23,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     license: String,
     purpose: ModelPurpose = .mangaOCR,
     capabilities: [String] = ["detection", "ocr"],
-    minimumAppVersion: String? = nil,
     components: [String: ModelPackageComponent] = ModelPackageComponent.currentMangaOCRComponents,
     comment: String? = nil
   ) {
@@ -37,7 +35,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     self.license = license
     self.purpose = purpose
     self.capabilities = capabilities
-    self.minimumAppVersion = minimumAppVersion
     self.components = components
     self.comment = comment
   }
@@ -56,7 +53,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     capabilities =
       try container.decodeIfPresent([String].self, forKey: .capabilities)
       ?? (decodedPurpose == .mangaOCR ? ["detection", "ocr"] : [])
-    minimumAppVersion = try container.decodeIfPresent(String.self, forKey: .minimumAppVersion)
     components =
       try container.decodeIfPresent([String: ModelPackageComponent].self, forKey: .components)
       ?? (decodedPurpose == .mangaOCR ? ModelPackageComponent.currentMangaOCRComponents : [:])
@@ -70,7 +66,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     let manifest = ModelPackageManifest(
       formatVersion: 1,
       capabilities: capabilities,
-      minimumAppVersion: minimumAppVersion,
       components: components
     )
     return !id.isEmpty && id.count <= 128 && id != "." && id != ".."
@@ -91,7 +86,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     case license
     case purpose
     case capabilities
-    case minimumAppVersion = "minimum_app_version"
     case components
     case comment
   }

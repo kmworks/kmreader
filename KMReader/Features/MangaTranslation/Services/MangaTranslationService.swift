@@ -6,8 +6,7 @@ actor MangaTranslationService {
 
   private let provider: any MangaTranslationProvider
   private let logger = AppLogger(.reader)
-  private var modelSet: MangaModelSet?
-  private var preparedArchive: ModelArchive?
+  private var preparedSets: [String: (archive: ModelArchive, models: MangaModelSet)] = [:]
   private var modelPreparationArchive: ModelArchive?
   private var modelPreparationTask: Task<MangaModelPaths, Error>?
   private var modelPreparationGeneration = 0
@@ -20,9 +19,10 @@ actor MangaTranslationService {
 
   func prepareModels(
     archive: ModelArchive,
-    storage: ModelStorage? = nil
+    storage: ModelStorage? = nil,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws {
-    _ = try await models(archive: archive, storage: storage)
+    _ = try await models(archive: archive, storage: storage, onProgress: onProgress)
   }
 
   func testProvider(
@@ -42,12 +42,13 @@ actor MangaTranslationService {
 
   private func models(
     archive: ModelArchive,
-    storage: ModelStorage?
+    storage: ModelStorage?,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws -> MangaModelSet {
     guard archive.isValid, archive.purpose == .mangaOCR else {
       throw MangaTranslationFailure.modelPreparation
     }
-    if let modelSet, preparedArchive == archive { return modelSet }
+    if let prepared = preparedSets[archive.storageKey] { return prepared.models }
     if let modelPreparationTask, modelPreparationArchive == archive {
       return try await finishPreparation(
         modelPreparationTask,
@@ -61,7 +62,11 @@ actor MangaTranslationService {
     let generation = modelPreparationGeneration
     let resolvedStorage = try (storage ?? .shared).storage(for: archive)
     let task = Task<MangaModelPaths, Error> {
-      try await MangaModelManager.preparePaths(archive: archive, storage: resolvedStorage)
+      try await MangaModelManager.preparePaths(
+        archive: archive,
+        storage: resolvedStorage,
+        onProgress: onProgress
+      )
     }
     modelPreparationArchive = archive
     modelPreparationTask = task
@@ -78,8 +83,12 @@ actor MangaTranslationService {
       let models = try MangaModelManager.load(paths: paths)
       MangaModelLibrary.register(archive)
       if modelPreparationGeneration == generation {
-        modelSet = models
-        preparedArchive = archive
+        // Detector and recognizer may come from different archives; keep one
+        // prepared set per selected archive and drop anything unselected.
+        let keepKeys = Set(AppConfig.modelLibrary.selectedStorageKeys.values)
+          .union([archive.storageKey])
+        preparedSets = preparedSets.filter { keepKeys.contains($0.key) }
+        preparedSets[archive.storageKey] = (archive, models)
         modelPreparationArchive = nil
         modelPreparationTask = nil
       }
@@ -133,9 +142,9 @@ actor MangaTranslationService {
     if let cached, !cached.regions.isEmpty {
       regions = cached.regions
     } else {
-      let models = try await models(archive: configuration.archive, storage: storage)
+      let detectorModels = try await models(archive: configuration.detectorArchive, storage: storage)
       try ensureTranslationCurrent(for: key, generation: generation)
-      let detector = try models.makeDetector()
+      let detector = try detectorModels.makeDetector()
       await onProgress(.detecting)
       let detectedRegions = try await runInference {
         try detector.detect(
@@ -147,7 +156,8 @@ actor MangaTranslationService {
       }
       try ensureTranslationCurrent(for: key, generation: generation)
       await onProgress(.recognizing)
-      let recognizer = try models.makeRecognizer()
+      let recognizerModels = try await models(archive: configuration.recognizerArchive, storage: storage)
+      let recognizer = try recognizerModels.makeRecognizer()
       regions = try await runInference {
         try recognizer.recognize(crops: detectedRegions, image: image, rotation: key.rotation)
       }
@@ -259,8 +269,7 @@ actor MangaTranslationService {
   }
 
   func releaseModels() {
-    modelSet = nil
-    preparedArchive = nil
+    preparedSets = [:]
     modelPreparationGeneration += 1
     modelPreparationTask?.cancel()
     modelPreparationTask = nil

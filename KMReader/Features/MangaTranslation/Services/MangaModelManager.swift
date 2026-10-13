@@ -5,15 +5,17 @@ import Foundation
 nonisolated struct MangaModelManager {
   static func prepare(
     archive: ModelArchive,
-    storage: ModelStorage
+    storage: ModelStorage,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws -> MangaModelSet {
-    let paths = try await preparePaths(archive: archive, storage: storage)
+    let paths = try await preparePaths(archive: archive, storage: storage, onProgress: onProgress)
     return try load(paths: paths)
   }
 
   static func preparePaths(
     archive: ModelArchive,
-    storage: ModelStorage
+    storage: ModelStorage,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws -> MangaModelPaths {
     try validateSupport(archive: archive)
     let fileManager = FileManager.default
@@ -33,7 +35,7 @@ nonisolated struct MangaModelManager {
     }
 
     if installedManifest == nil {
-      let downloadedArchive = try await download(archive: archive, storage: storage)
+      let downloadedArchive = try await download(archive: archive, storage: storage, onProgress: onProgress)
       let temporaryPackage = storage.rootDirectory.appendingPathComponent("Models.next")
       if fileManager.fileExists(atPath: temporaryPackage.path) {
         try fileManager.removeItem(at: temporaryPackage)
@@ -84,7 +86,7 @@ nonisolated struct MangaModelManager {
     guard archive.isValid, archive.purpose == .mangaOCR else {
       throw MangaTranslationFailure.modelPreparation
     }
-    guard MangaModelSet.supports(archive), supportsAppVersion(archive.minimumAppVersion) else {
+    guard MangaModelSet.supports(archive) else {
       throw MangaTranslationFailure.unsupportedModel
     }
   }
@@ -154,17 +156,10 @@ nonisolated struct MangaModelManager {
     }
   }
 
-  private static func supportsAppVersion(_ minimumVersion: String?) -> Bool {
-    guard let minimumVersion else { return true }
-    guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
-      return false
-    }
-    return currentVersion.compare(minimumVersion, options: .numeric) != .orderedAscending
-  }
-
   private static func download(
     archive: ModelArchive,
-    storage: ModelStorage
+    storage: ModelStorage,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void
   ) async throws -> URL {
     let fileManager = FileManager.default
     try fileManager.createDirectory(at: storage.downloadsDirectory, withIntermediateDirectories: true)
@@ -180,11 +175,15 @@ nonisolated struct MangaModelManager {
     } else {
       var request = URLRequest(url: archive.url)
       request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")
-      let (temporaryURL, response) = try await URLSession.shared.download(for: request)
-      guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+      let statusCode = try await MangaModelDownloader.download(
+        with: request,
+        destination: partial,
+        expectedBytes: archive.bytes.map(Int64.init),
+        onProgress: onProgress
+      )
+      guard statusCode == 200 else {
         throw MangaTranslationFailure.modelPreparation
       }
-      try fileManager.moveItem(at: temporaryURL, to: partial)
     }
 
     let attributes = try fileManager.attributesOfItem(atPath: partial.path)
