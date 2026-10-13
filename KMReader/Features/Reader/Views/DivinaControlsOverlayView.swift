@@ -255,6 +255,7 @@ struct DivinaControlsOverlayView: View {
             .frame(width: 44, height: 44)
             .highPriorityGesture(
               LongPressGesture().onEnded { _ in
+                HapticFeedback.medium()
                 showingMangaTranslationSettings = true
               }
             )
