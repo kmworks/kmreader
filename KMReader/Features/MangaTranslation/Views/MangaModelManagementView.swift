@@ -62,9 +62,12 @@ struct MangaModelManagementView: View {
               Text(detailText(for: archive))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-              Text(MangaModelRole.capabilityTitle(for: archive))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+              MangaModelCapabilityChips(archive: archive)
+              if let comment = archive.comment, !comment.isEmpty {
+                Text(comment)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
             }
             Spacer()
             if preparingStorageKey == archive.storageKey || deletingStorageKey == archive.storageKey {
@@ -95,9 +98,12 @@ struct MangaModelManagementView: View {
               Text(detailText(for: archive))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-              Text(MangaModelRole.capabilityTitle(for: archive))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+              MangaModelCapabilityChips(archive: archive)
+              if let comment = archive.comment, !comment.isEmpty {
+                Text(comment)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {

@@ -20,9 +20,7 @@ nonisolated enum MangaModelRole: String, Codable, Hashable, Sendable, CaseIterab
     }
   }
 
-  static func capabilityTitle(for archive: ModelArchive) -> String {
+  static func supported(by archive: ModelArchive) -> [MangaModelRole] {
     allCases.filter { archive.components[$0.componentName] != nil }
-      .map(\.title)
-      .joined(separator: " + ")
   }
 }
