@@ -123,7 +123,7 @@ struct MangaTranslationSettingsView: View {
                   .lineLimit(1)
               }
             } icon: {
-              Image(systemName: "server.rack")
+              Image(systemName: AppIcon.mangaTranslation)
             }
             Spacer()
             Image(systemName: "chevron.right")
