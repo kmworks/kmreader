@@ -9,13 +9,6 @@ struct MangaTranslationSettingsView: View {
   @State private var detectorArchive: ModelArchive?
   @State private var recognizerArchive: ModelArchive?
 
-  private var mangaTranslationEnabled: Binding<Bool> {
-    Binding(
-      get: { preferences.isEnabled },
-      set: { AppConfig.setMangaTranslationEnabled($0) }
-    )
-  }
-
   private var usesConfiguredProvider: Bool {
     provider?.isConfigured == true
   }
@@ -51,14 +44,6 @@ struct MangaTranslationSettingsView: View {
   var body: some View {
     Form {
       Section {
-        Toggle(isOn: mangaTranslationEnabled) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(String(localized: "Enable Manga Translation"))
-            Text(String(localized: "Show the floating button and translate pages automatically as you read."))
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
-        }
         Picker(String(localized: "Text Direction"), selection: $preferences.textDirection) {
           Text(String(localized: "Auto")).tag(MangaTranslationTextDirection.auto)
           Text(String(localized: "Horizontal")).tag(MangaTranslationTextDirection.horizontal)

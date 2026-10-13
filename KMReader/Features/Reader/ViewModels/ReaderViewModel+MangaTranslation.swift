@@ -8,102 +8,40 @@ import Foundation
 #endif
 
 extension ReaderViewModel {
-  func translateCurrentPage(showsFailureNotification: Bool = true) {
-    guard AppConfig.mangaTranslation.isEnabled, let pageID = resolvedCurrentPageID else { return }
-    guard !mangaTranslationPhase.isBusy else { return }
+  /// Translated pages take a lot of memory only as text regions, so the
+  /// session cache can be generous; eviction is FIFO.
+  private static let mangaTranslationResultCacheLimit = 80
+  /// View items translated ahead of the current one while the queue is idle.
+  private static let mangaTranslationPrefetchItemCount = 1
 
-    let forceProviderRetry = mangaTranslationResult != nil
-    let taskID = UUID()
-    mangaTranslationTask?.cancel()
-    mangaTranslationTaskID = taskID
-    mangaTranslationResult = nil
-    setMangaTranslationVisibility(true)
-    mangaTranslationPhase = .preparingModels
-    mangaTranslationKey = makeTranslationKey(for: pageID)
-    notifyPagePresentationInvalidation(.pages([pageID]))
-    mangaTranslationTask = Task { [weak self] in
-      guard let self else { return }
-      do {
-        let metadata = await mangaTranslationMetadata(for: pageID)
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        let database = await DatabaseOperator.databaseIfConfigured()
-        guard
-          let configuration = try await MangaTranslationConfiguration.current(
-            metadata: metadata,
-            database: database
-          )
-        else {
-          throw MangaTranslationFailure.modelPreparation
-        }
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        let key = try await makeTranslationKey(for: pageID, configuration: configuration)
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        mangaTranslationKey = key
-        guard let pageImage = await originalPageImage(for: pageID) else {
-          throw MangaTranslationFailure.inference
-        }
-        #if os(iOS) || os(tvOS)
-          let sourceImage = pageImage.cgImage
-        #else
-          let sourceImage = pageImage.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        #endif
-        guard let sourceImage else { throw MangaTranslationFailure.inference }
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        let result = try await MangaTranslationService.shared.translate(
-          key: key,
-          image: sourceImage,
-          configuration: configuration,
-          database: database,
-          forceProviderRetry: forceProviderRetry,
-          onProgress: { [weak self] phase in
-            guard let self else { return }
-            await self.updateMangaTranslationPhase(phase, taskID: taskID)
-          }
-        )
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        mangaTranslationResult = result
-        if result.isTranslated {
-          mangaTranslationPhase = .completed
-        } else {
-          let failure = result.status.failure ?? .inference
-          mangaTranslationPhase = failure == .noText ? .noText : .failed(failure)
-          reportMangaTranslationFailure(failure, showsNotification: showsFailureNotification)
-        }
-        mangaTranslationTask = nil
-        mangaTranslationTaskID = nil
-        notifyPagePresentationInvalidation(.pages([pageID]))
-      } catch let error as MangaTranslationFailure {
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        mangaTranslationResult = nil
-        mangaTranslationPhase = .failed(error)
-        mangaTranslationTask = nil
-        mangaTranslationTaskID = nil
-        reportMangaTranslationFailure(error, showsNotification: showsFailureNotification)
-        notifyPagePresentationInvalidation(.pages([pageID]))
-      } catch {
-        guard isCurrentMangaTranslationTask(taskID) else { return }
-        mangaTranslationResult = nil
-        mangaTranslationPhase = .failed(.inference)
-        mangaTranslationTask = nil
-        mangaTranslationTaskID = nil
-        reportMangaTranslationFailure(.inference, showsNotification: showsFailureNotification)
-        notifyPagePresentationInvalidation(.pages([pageID]))
-      }
-    }
+  var mangaTranslationResult: MangaPageTranslation? {
+    guard let pageID = resolvedCurrentPageID else { return nil }
+    return mangaTranslationResult(for: pageID, splitMode: currentMangaSplitMode)
   }
 
-  private func reportMangaTranslationFailure(
-    _ failure: MangaTranslationFailure,
-    showsNotification: Bool
-  ) {
-    guard showsNotification || failure.notifiesDuringAutomaticTranslation else { return }
-    ErrorManager.shared.notify(message: failure.description)
+  func mangaTranslationResult(for data: NativePageData) -> MangaPageTranslation? {
+    mangaTranslationResult(for: data.pageID, splitMode: data.splitMode)
+  }
+
+  func mangaTranslationResult(for pageID: ReaderPageID, splitMode: PageSplitMode) -> MangaPageTranslation? {
+    mangaTranslationResults[sessionKey(for: pageID, splitMode: splitMode)]
+  }
+
+  func translateCurrentPage() {
+    guard mangaTranslationEnabled, resolvedCurrentPageID != nil else { return }
+    guard !mangaTranslationPhase.isBusy else { return }
+    startMangaTranslationQueue(
+      keys: desiredQueueKeys(includeCachedFront: true),
+      frontForceRetry: mangaTranslationResult != nil,
+      frontManual: true
+    )
   }
 
   func toggleMangaTranslation() {
     setMangaTranslationVisibility(!showMangaTranslation)
-    guard let pageID = mangaTranslationResult?.key.pageID else { return }
-    notifyPagePresentationInvalidation(.pages([pageID]))
+    // Visibility applies to every page holding a result, not just the
+    // current one — a dual-page pair flips together.
+    notifyPagePresentationInvalidation(.all)
   }
 
   private func setMangaTranslationVisibility(_ isVisible: Bool) {
@@ -114,22 +52,336 @@ extension ReaderViewModel {
     AppConfig.mangaTranslation = preferences
   }
 
-  func mangaTranslationResult(for data: NativePageData) -> MangaPageTranslation? {
-    mangaTranslationResult(for: data.pageID, splitMode: data.splitMode)
+  func cancelMangaTranslation() {
+    stopMangaTranslationQueue()
+    mangaTranslationResults = [:]
+    mangaTranslationResultOrder = []
+    mangaTranslationPhase = .idle
   }
 
-  func mangaTranslationResult(for pageID: ReaderPageID, splitMode: PageSplitMode) -> MangaPageTranslation? {
-    guard let result = mangaTranslationResult else { return nil }
-    guard result.key.pageID == pageID,
-      result.key.splitMode == splitMode,
-      result.key.rotation == currentMangaRotation,
-      result.key.borderCropMode == currentMangaBorderCropMode
-    else { return nil }
-    return result
+  /// Provider configuration edits are invisible to the session key's
+  /// preference stamp, so the settings sheet's dismissal clears and re-runs
+  /// the session cache wholesale.
+  func refreshMangaTranslationConfiguration() {
+    guard mangaTranslationEnabled else { return }
+    cancelMangaTranslation()
+    notifyPagePresentationInvalidation(.all)
+    syncMangaTranslationPage()
+  }
+
+  private func stopMangaTranslationQueue() {
+    mangaTranslationQueueID = nil
+    mangaTranslationQueueTask?.cancel()
+    mangaTranslationQueueTask = nil
+    mangaTranslationQueueSnapshot = []
+    mangaTranslationInFlightKey = nil
+  }
+
+  func setMangaTranslationEnabled(_ isEnabled: Bool) {
+    guard mangaTranslationEnabled != isEnabled else { return }
+    mangaTranslationEnabled = isEnabled
+    if isEnabled {
+      // Live Text and the translation overlay cannot analyze the same page.
+      AppConfig.enableLiveText = false
+      syncMangaTranslationPage()
+      return
+    }
+    cancelMangaTranslation()
+    notifyPagePresentationInvalidation(.all)
+  }
+
+  func syncMangaTranslationPage() {
+    guard mangaTranslationEnabled, let frontKey = currentMangaTranslationSessionKey() else { return }
+    let keys = desiredQueueKeys()
+    if keys == pendingMangaTranslationQueueKeys(), mangaTranslationQueueTask != nil { return }
+    if let cached = mangaTranslationResults[frontKey] {
+      mangaTranslationPhase = phase(for: cached)
+    }
+    guard !keys.isEmpty else {
+      stopMangaTranslationQueue()
+      return
+    }
+    startMangaTranslationQueue(keys: keys, frontForceRetry: false, frontManual: false)
+  }
+
+  /// Current page first (unless already cached), then the next few view
+  /// items, skipping anything already translated this session.
+  private func desiredQueueKeys(
+    includeCachedFront: Bool = false
+  ) -> [MangaTranslationSessionKey] {
+    var keys: [MangaTranslationSessionKey] = []
+    guard let frontKey = currentMangaTranslationSessionKey() else { return keys }
+    if includeCachedFront || mangaTranslationResults[frontKey] == nil {
+      keys.append(frontKey)
+    }
+    guard let currentItem = currentViewItem(),
+      let startIndex = viewItemIndex(for: currentItem)
+    else { return keys }
+    var itemIndex = startIndex + 1
+    var visitedItems = 0
+    while itemIndex < viewItems.count, visitedItems < Self.mangaTranslationPrefetchItemCount {
+      let item = viewItems[itemIndex]
+      itemIndex += 1
+      if item.isEnd { break }
+      visitedItems += 1
+      for itemPageID in item.pageIDs {
+        let key = sessionKey(for: itemPageID, splitMode: mangaSplitMode(for: item))
+        guard mangaTranslationResults[key] == nil, !keys.contains(key) else { continue }
+        keys.append(key)
+      }
+    }
+    return keys
+  }
+
+  /// Work the running queue still owes, including the item being processed.
+  private func pendingMangaTranslationQueueKeys() -> [MangaTranslationSessionKey] {
+    var keys = mangaTranslationQueueSnapshot
+    if let inFlightKey = mangaTranslationInFlightKey {
+      keys.insert(inFlightKey, at: 0)
+    }
+    return keys
+  }
+
+  private func startMangaTranslationQueue(
+    keys: [MangaTranslationSessionKey],
+    frontForceRetry: Bool,
+    frontManual: Bool
+  ) {
+    if frontForceRetry, let front = keys.first {
+      // A manual retry hides the previous overlay while it re-runs.
+      mangaTranslationResults.removeValue(forKey: front)
+      mangaTranslationResultOrder.removeAll { $0 == front }
+      notifyPagePresentationInvalidation(.pages([front.pageID]))
+    }
+    stopMangaTranslationQueue()
+    let queueID = UUID()
+    mangaTranslationQueueID = queueID
+    mangaTranslationQueueSnapshot = keys
+    mangaTranslationQueueFrontForceRetry = frontForceRetry
+    mangaTranslationQueueFrontManual = frontManual
+    setMangaTranslationVisibility(true)
+    if keys.first == currentMangaTranslationSessionKey() {
+      mangaTranslationPhase = .preparingModels
+    }
+    mangaTranslationQueueTask = Task { [weak self] in
+      await self?.runMangaTranslationQueue(queueID: queueID)
+    }
+  }
+
+  private func runMangaTranslationQueue(queueID: UUID) async {
+    while !mangaTranslationQueueSnapshot.isEmpty {
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      let sessionKey = mangaTranslationQueueSnapshot.removeFirst()
+      // Only the page the user is looking at reports failures; the queue
+      // front is pure prefetch whenever the current page is already cached.
+      let isCurrentPageItem = sessionKey == currentMangaTranslationSessionKey()
+      let forceProviderRetry = isCurrentPageItem && mangaTranslationQueueFrontForceRetry
+      let isManual = isCurrentPageItem && mangaTranslationQueueFrontManual
+      if mangaTranslationResults[sessionKey] != nil { continue }
+      mangaTranslationInFlightKey = sessionKey
+      await processMangaTranslationItem(
+        sessionKey,
+        queueID: queueID,
+        forceProviderRetry: forceProviderRetry,
+        reportsFailure: isCurrentPageItem,
+        isManual: isManual
+      )
+      // A superseded queue must not clear the replacement's in-flight marker.
+      if mangaTranslationInFlightKey == sessionKey {
+        mangaTranslationInFlightKey = nil
+      }
+    }
+    guard isCurrentMangaTranslationQueue(queueID) else { return }
+    mangaTranslationQueueTask = nil
+  }
+
+  private func processMangaTranslationItem(
+    _ sessionKey: MangaTranslationSessionKey,
+    queueID: UUID,
+    forceProviderRetry: Bool,
+    reportsFailure: Bool,
+    isManual: Bool
+  ) async {
+    let pageID = sessionKey.pageID
+    do {
+      let metadata = await mangaTranslationMetadata(for: pageID)
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      let database = await DatabaseOperator.databaseIfConfigured()
+      guard
+        let configuration = try await MangaTranslationConfiguration.current(
+          metadata: metadata,
+          database: database
+        )
+      else {
+        throw MangaTranslationFailure.modelPreparation
+      }
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      let key = try await makeTranslationKey(
+        for: pageID,
+        sessionKey: sessionKey,
+        configuration: configuration
+      )
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      // The persisted cache answers before any image decode: finalized rows
+      // need neither inference nor the provider.
+      if !forceProviderRetry,
+        let cached = try? await MangaTranslationStore.fetch(key: key, database: database),
+        cached.isFinalized
+      {
+        guard isCurrentMangaTranslationQueue(queueID) else { return }
+        storeMangaTranslationResult(cached, for: sessionKey)
+        reportMangaTranslationFailure(
+          cached.status.failure,
+          reportsFailure: reportsFailure,
+          isManual: isManual
+        )
+        return
+      }
+      guard configuration.canTranslate else {
+        throw configuration.isOffline ? MangaTranslationFailure.offline : .notConfigured
+      }
+      guard let pageImage = await originalPageImage(for: pageID) else {
+        throw MangaTranslationFailure.inference
+      }
+      #if os(iOS) || os(tvOS)
+        let sourceImage = pageImage.cgImage
+      #else
+        let sourceImage = pageImage.cgImage(forProposedRect: nil, context: nil, hints: nil)
+      #endif
+      guard let sourceImage else { throw MangaTranslationFailure.inference }
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      let result = try await MangaTranslationService.shared.translate(
+        key: key,
+        image: sourceImage,
+        configuration: configuration,
+        database: database,
+        forceProviderRetry: forceProviderRetry,
+        onProgress: { [weak self] phase in
+          guard let self else { return }
+          await self.updateMangaTranslationPhase(phase, for: sessionKey, queueID: queueID)
+        }
+      )
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      if result.isFinalized {
+        storeMangaTranslationResult(result, for: sessionKey)
+        reportMangaTranslationFailure(
+          result.status.failure,
+          reportsFailure: reportsFailure,
+          isManual: isManual
+        )
+      } else {
+        let failure = result.status.failure ?? .inference
+        failMangaTranslationItem(
+          failure,
+          for: sessionKey,
+          reportsFailure: reportsFailure,
+          isManual: isManual
+        )
+      }
+    } catch let error as MangaTranslationFailure {
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      failMangaTranslationItem(
+        error,
+        for: sessionKey,
+        reportsFailure: reportsFailure,
+        isManual: isManual
+      )
+    } catch {
+      guard isCurrentMangaTranslationQueue(queueID) else { return }
+      failMangaTranslationItem(
+        .inference,
+        for: sessionKey,
+        reportsFailure: reportsFailure,
+        isManual: isManual
+      )
+    }
+  }
+
+  private func storeMangaTranslationResult(
+    _ result: MangaPageTranslation,
+    for sessionKey: MangaTranslationSessionKey
+  ) {
+    if mangaTranslationResults[sessionKey] == nil {
+      mangaTranslationResultOrder.append(sessionKey)
+    }
+    mangaTranslationResults[sessionKey] = result
+    let overflow = mangaTranslationResultOrder.count - Self.mangaTranslationResultCacheLimit
+    if overflow > 0 {
+      for evictedKey in mangaTranslationResultOrder.prefix(overflow) {
+        mangaTranslationResults.removeValue(forKey: evictedKey)
+      }
+      mangaTranslationResultOrder.removeFirst(overflow)
+    }
+    notifyPagePresentationInvalidation(.pages([sessionKey.pageID]))
+    if sessionKey == currentMangaTranslationSessionKey() {
+      mangaTranslationPhase = phase(for: result)
+    }
+  }
+
+  private func failMangaTranslationItem(
+    _ failure: MangaTranslationFailure,
+    for sessionKey: MangaTranslationSessionKey,
+    reportsFailure: Bool,
+    isManual: Bool
+  ) {
+    if sessionKey == currentMangaTranslationSessionKey() {
+      mangaTranslationPhase = failure == .noText ? .noText : .failed(failure)
+    }
+    reportMangaTranslationFailure(failure, reportsFailure: reportsFailure, isManual: isManual)
+  }
+
+  /// Prefetch failures stay silent; the current page reports configuration
+  /// and network problems even on automatic attempts, and everything on a
+  /// manual one.
+  private func reportMangaTranslationFailure(
+    _ failure: MangaTranslationFailure?,
+    reportsFailure: Bool,
+    isManual: Bool
+  ) {
+    guard let failure else { return }
+    guard isManual || (reportsFailure && failure.notifiesDuringAutomaticTranslation) else { return }
+    ErrorManager.shared.notify(message: failure.description)
+  }
+
+  private func phase(for result: MangaPageTranslation) -> MangaTranslationPhase {
+    if result.isTranslated { return .completed }
+    let failure = result.status.failure ?? .inference
+    return failure == .noText ? .noText : .failed(failure)
+  }
+
+  private func currentMangaTranslationSessionKey() -> MangaTranslationSessionKey? {
+    guard let pageID = resolvedCurrentPageID else { return nil }
+    return sessionKey(for: pageID, splitMode: currentMangaSplitMode)
+  }
+
+  private func sessionKey(for pageID: ReaderPageID, splitMode: PageSplitMode) -> MangaTranslationSessionKey {
+    MangaTranslationSessionKey(
+      pageID: pageID,
+      splitMode: splitMode,
+      rotation: currentMangaRotation,
+      borderCropMode: currentMangaBorderCropMode,
+      configurationStamp: MangaTranslationSessionKey.currentConfigurationStamp()
+    )
+  }
+
+  private func updateMangaTranslationPhase(
+    _ phase: MangaTranslationPhase,
+    for sessionKey: MangaTranslationSessionKey,
+    queueID: UUID
+  ) {
+    guard isCurrentMangaTranslationQueue(queueID),
+      sessionKey == currentMangaTranslationSessionKey()
+    else { return }
+    mangaTranslationPhase = phase
   }
 
   private var currentMangaSplitMode: PageSplitMode {
-    guard case .split(_, let part)? = currentViewItem(), part != .both else { return .none }
+    guard let item = currentViewItem() else { return .none }
+    return mangaSplitMode(for: item)
+  }
+
+  private func mangaSplitMode(for item: ReaderViewItem) -> PageSplitMode {
+    guard case .split(_, let part) = item, part != .both else { return .none }
     return isLeftSplitHalf(
       part: part,
       readingDirection: readingDirection,
@@ -147,6 +399,7 @@ extension ReaderViewModel {
 
   private func makeTranslationKey(
     for pageID: ReaderPageID,
+    sessionKey: MangaTranslationSessionKey,
     configuration: MangaTranslationConfiguration
   ) async throws -> MangaTranslationPageKey {
     let sourceURL = await getPageImageFileURL(pageID: pageID)
@@ -154,25 +407,12 @@ extension ReaderViewModel {
     return MangaTranslationPageKey(
       instanceId: AppConfig.current.instanceId,
       pageID: pageID,
-      splitMode: currentMangaSplitMode,
-      rotation: currentMangaRotation,
-      borderCropMode: currentMangaBorderCropMode,
+      splitMode: sessionKey.splitMode,
+      rotation: sessionKey.rotation,
+      borderCropMode: sessionKey.borderCropMode,
       sourceSignature: sourceSignature,
       providerSignature: configuration.providerSignature,
       modelSignature: configuration.modelSignature
-    )
-  }
-
-  private func makeTranslationKey(for pageID: ReaderPageID) -> MangaTranslationPageKey {
-    MangaTranslationPageKey(
-      instanceId: AppConfig.current.instanceId,
-      pageID: pageID,
-      splitMode: currentMangaSplitMode,
-      rotation: currentMangaRotation,
-      borderCropMode: currentMangaBorderCropMode,
-      sourceSignature: "pending",
-      providerSignature: "pending",
-      modelSignature: "pending"
     )
   }
 
@@ -212,53 +452,7 @@ extension ReaderViewModel {
     ])
   }
 
-  private func isCurrentMangaTranslationTask(_ taskID: UUID) -> Bool {
-    mangaTranslationTaskID == taskID && !Task.isCancelled
-  }
-
-  private func updateMangaTranslationPhase(
-    _ phase: MangaTranslationPhase,
-    taskID: UUID
-  ) {
-    guard isCurrentMangaTranslationTask(taskID) else { return }
-    mangaTranslationPhase = phase
-  }
-
-  func cancelMangaTranslation() {
-    mangaTranslationTaskID = nil
-    mangaTranslationTask?.cancel()
-    mangaTranslationTask = nil
-    mangaTranslationKey = nil
-    mangaTranslationResult = nil
-    mangaTranslationPhase = .idle
-  }
-
-  func setMangaTranslationEnabled(_ isEnabled: Bool) {
-    if isEnabled {
-      syncMangaTranslationPage()
-      return
-    }
-    cancelMangaTranslation()
-    notifyPagePresentationInvalidation(.all)
-  }
-
-  func syncMangaTranslationPage() {
-    guard AppConfig.mangaTranslation.isEnabled, let pageID = resolvedCurrentPageID else { return }
-    let key = makeTranslationKey(for: pageID)
-    if let currentKey = mangaTranslationKey,
-      currentKey.pageID == key.pageID,
-      currentKey.splitMode == key.splitMode,
-      currentKey.rotation == key.rotation,
-      currentKey.borderCropMode == key.borderCropMode
-    {
-      return
-    }
-    mangaTranslationTaskID = nil
-    mangaTranslationTask?.cancel()
-    mangaTranslationTask = nil
-    mangaTranslationKey = key
-    mangaTranslationResult = nil
-    mangaTranslationPhase = .idle
-    translateCurrentPage(showsFailureNotification: false)
+  private func isCurrentMangaTranslationQueue(_ queueID: UUID) -> Bool {
+    mangaTranslationQueueID == queueID && !Task.isCancelled
   }
 }

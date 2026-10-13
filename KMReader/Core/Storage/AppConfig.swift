@@ -1045,19 +1045,6 @@ enum AppConfig {
 
   static nonisolated func setLiveTextEnabled(_ isEnabled: Bool) {
     enableLiveText = isEnabled
-    guard isEnabled else { return }
-    var preferences = mangaTranslation
-    preferences.isEnabled = false
-    mangaTranslation = preferences
-  }
-
-  static nonisolated func setMangaTranslationEnabled(_ isEnabled: Bool) {
-    var preferences = mangaTranslation
-    preferences.isEnabled = isEnabled
-    mangaTranslation = preferences
-    if isEnabled {
-      enableLiveText = false
-    }
   }
 
   static nonisolated var epubThemePreferences: EpubThemePreferences {

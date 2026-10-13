@@ -23758,6 +23758,7 @@
       }
     },
     "Enable Manga Translation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -82844,6 +82845,7 @@
       }
     },
     "Show the floating button and translate pages automatically as you read." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -88861,6 +88863,7 @@
       }
     },
     "Testing…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

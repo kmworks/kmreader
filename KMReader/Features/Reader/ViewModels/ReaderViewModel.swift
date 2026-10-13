@@ -40,15 +40,29 @@ class ReaderViewModel {
   private(set) var remainingUnreadCountByBookId: [String: Int] = [:]
   var incognitoMode: Bool = false
   var isZoomed: Bool = false
-  var mangaTranslationResult: MangaPageTranslation?
   var mangaTranslationPhase: MangaTranslationPhase = .idle
   var showMangaTranslation = AppConfig.mangaTranslation.showTranslation
+  /// Session-scoped on purpose: every reader session starts with translation off.
+  var mangaTranslationEnabled = false
+  /// Translated/no-text results for this session, keyed by page and geometry.
+  /// Failed attempts are never kept so they retry when the page is revisited.
+  var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:]
   @ObservationIgnored
-  var mangaTranslationTask: Task<Void, Never>?
+  var mangaTranslationQueueTask: Task<Void, Never>?
   @ObservationIgnored
-  var mangaTranslationTaskID: UUID?
+  var mangaTranslationQueueID: UUID?
   @ObservationIgnored
-  var mangaTranslationKey: MangaTranslationPageKey?
+  var mangaTranslationResultOrder: [MangaTranslationSessionKey] = []
+  /// Snapshot of the running queue so repeated syncs with the same work are
+  /// no-ops. The front key is the current page; the rest is silent prefetch.
+  @ObservationIgnored
+  var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = []
+  @ObservationIgnored
+  var mangaTranslationInFlightKey: MangaTranslationSessionKey?
+  @ObservationIgnored
+  var mangaTranslationQueueFrontForceRetry = false
+  @ObservationIgnored
+  var mangaTranslationQueueFrontManual = false
 
   var viewItems: [ReaderViewItem] = []
   var viewItemIndexByPage: [ReaderPageID: Int] = [:]
