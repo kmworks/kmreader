@@ -39,13 +39,13 @@ nonisolated struct MangaTARArchive {
       entries += 1
       guard entries <= 100 else { throw ArchiveError.tooManyEntries }
 
-      if type == 5 {
+      if type == UInt8(ascii: "5") {
         try fileManager.createDirectory(
           at: destination.appendingPathComponent(path),
           withIntermediateDirectories: true
         )
         try copyContent(from: input, to: nil, count: size)
-      } else if type == 0 || type == 48 {
+      } else if type == 0 || type == UInt8(ascii: "0") {
         let fileURL = destination.appendingPathComponent(path)
         try fileManager.createDirectory(
           at: fileURL.deletingLastPathComponent(),
