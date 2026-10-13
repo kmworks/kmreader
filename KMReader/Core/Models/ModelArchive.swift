@@ -11,6 +11,7 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
   let purpose: ModelPurpose
   let capabilities: [String]
   let minimumAppVersion: String?
+  let maximumAppVersion: String?
   let components: [String: ModelPackageComponent]
   let comment: String?
 
@@ -25,6 +26,7 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     purpose: ModelPurpose = .mangaOCR,
     capabilities: [String] = ["detection", "ocr"],
     minimumAppVersion: String? = nil,
+    maximumAppVersion: String? = nil,
     components: [String: ModelPackageComponent] = ModelPackageComponent.currentMangaOCRComponents,
     comment: String? = nil
   ) {
@@ -38,6 +40,7 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     self.purpose = purpose
     self.capabilities = capabilities
     self.minimumAppVersion = minimumAppVersion
+    self.maximumAppVersion = maximumAppVersion
     self.components = components
     self.comment = comment
   }
@@ -57,6 +60,7 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
       try container.decodeIfPresent([String].self, forKey: .capabilities)
       ?? (decodedPurpose == .mangaOCR ? ["detection", "ocr"] : [])
     minimumAppVersion = try container.decodeIfPresent(String.self, forKey: .minimumAppVersion)
+    maximumAppVersion = try container.decodeIfPresent(String.self, forKey: .maximumAppVersion)
     components =
       try container.decodeIfPresent([String: ModelPackageComponent].self, forKey: .components)
       ?? (decodedPurpose == .mangaOCR ? ModelPackageComponent.currentMangaOCRComponents : [:])
@@ -79,6 +83,7 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
       && (url.scheme == "https" || url.isFileURL)
       && sha256.count == 64 && sha256.allSatisfy(\.isHexDigit)
       && (bytes ?? 1) > 0
+      && (maximumAppVersion.map(ModelPackageManifest.isValidVersion) ?? true)
   }
 
   enum CodingKeys: String, CodingKey {
@@ -92,6 +97,7 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     case purpose
     case capabilities
     case minimumAppVersion = "minimum_app_version"
+    case maximumAppVersion = "maximum_app_version"
     case components
     case comment
   }

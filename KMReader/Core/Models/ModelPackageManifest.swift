@@ -33,7 +33,7 @@ nonisolated struct ModelPackageManifest: Codable, Hashable, Sendable {
     return !components.contains(".") && !components.contains("..") && !components.contains("")
   }
 
-  private static func isValidVersion(_ version: String) -> Bool {
+  static func isValidVersion(_ version: String) -> Bool {
     version.range(of: #"^[0-9]+(\.[0-9]+)*$"#, options: .regularExpression) != nil
   }
 

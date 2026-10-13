@@ -84,7 +84,7 @@ nonisolated struct MangaModelManager {
     guard archive.isValid, archive.purpose == .mangaOCR else {
       throw MangaTranslationFailure.modelPreparation
     }
-    guard MangaModelSet.supports(archive), supportsAppVersion(archive.minimumAppVersion) else {
+    guard MangaModelSet.supports(archive), supportsAppVersion(archive) else {
       throw MangaTranslationFailure.unsupportedModel
     }
   }
@@ -154,12 +154,21 @@ nonisolated struct MangaModelManager {
     }
   }
 
-  private static func supportsAppVersion(_ minimumVersion: String?) -> Bool {
-    guard let minimumVersion else { return true }
+  nonisolated static func supportsAppVersion(_ archive: ModelArchive) -> Bool {
     guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+      return archive.minimumAppVersion == nil && archive.maximumAppVersion == nil
+    }
+    if let minimum = archive.minimumAppVersion,
+      currentVersion.compare(minimum, options: .numeric) == .orderedAscending
+    {
       return false
     }
-    return currentVersion.compare(minimumVersion, options: .numeric) != .orderedAscending
+    if let maximum = archive.maximumAppVersion,
+      currentVersion.compare(maximum, options: .numeric) == .orderedDescending
+    {
+      return false
+    }
+    return true
   }
 
   private static func download(

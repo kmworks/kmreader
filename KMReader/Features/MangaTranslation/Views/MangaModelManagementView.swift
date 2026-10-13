@@ -21,7 +21,9 @@ struct MangaModelManagementView: View {
 
   private var availableArchives: [ModelArchive] {
     let downloadedKeys = Set(downloadedArchives.map(\.storageKey))
-    return (catalog?.models(for: .mangaOCR) ?? []).filter { !downloadedKeys.contains($0.storageKey) }
+    return (catalog?.models(for: .mangaOCR) ?? []).filter {
+      !downloadedKeys.contains($0.storageKey) && MangaModelManager.supportsAppVersion($0)
+    }
   }
 
   private var canSaveCatalogURL: Bool {
