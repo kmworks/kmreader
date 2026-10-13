@@ -974,6 +974,7 @@
       func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard gestureRecognizer === panRecognizer else { return true }
         guard !parent.viewModel.isZoomed else { return false }
+        guard !parent.viewModel.isPageContextMenuPresented else { return false }
         guard !isAnimatingTransition else { return false }
         guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
 

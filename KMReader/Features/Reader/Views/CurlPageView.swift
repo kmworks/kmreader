@@ -921,6 +921,7 @@
       func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard !isTransitioning else { return false }
         guard !parent.viewModel.isZoomed else { return false }
+        guard !parent.viewModel.isPageContextMenuPresented else { return false }
 
         synchronizeCurrentAnchorWithVisibleController()
         guard let currentPageIndex = currentResolvedIndex() else { return false }

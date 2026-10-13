@@ -762,6 +762,7 @@
       /// Leaves drags a whole spread can still follow to the spread's own
       /// scroll view, so the spread pans before the page turns.
       func shouldBeginPaging(with pan: UIPanGestureRecognizer) -> Bool {
+        guard !parent.viewModel.isPageContextMenuPresented else { return false }
         guard let collectionView,
           let dragX = pan.horizontalDrag(in: collectionView),
           let indexPath = collectionView.indexPathForItem(at: pan.location(in: collectionView)),

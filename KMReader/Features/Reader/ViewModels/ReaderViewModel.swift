@@ -40,6 +40,11 @@ class ReaderViewModel {
   private(set) var remainingUnreadCountByBookId: [String: Int] = [:]
   var incognitoMode: Bool = false
   var isZoomed: Bool = false
+  // Counts presented (or still dismissing) page-image context menus; the touch
+  // that dismisses a menu must not also turn the page underneath it.
+  @ObservationIgnored
+  var presentedPageContextMenuCount = 0
+  var isPageContextMenuPresented: Bool { presentedPageContextMenuCount > 0 }
   var mangaTranslationPhase: MangaTranslationPhase = .idle
   var showMangaTranslation = AppConfig.mangaTranslation.showTranslation
   /// Session-scoped on purpose: every reader session starts with translation off.
