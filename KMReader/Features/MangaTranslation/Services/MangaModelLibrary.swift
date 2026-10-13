@@ -66,7 +66,9 @@ nonisolated enum MangaModelLibrary {
   }
 
   static func select(_ archive: ModelArchive) {
-    for role in MangaModelRole.allCases {
+    // Single-role packages must not claim the other role's key: leaving it on
+    // its current value keeps the legacy fallback and any explicit pick alive.
+    for role in MangaModelRole.allCases where MangaModelSet.supports(archive, for: role) {
       select(archive, for: role)
     }
   }
