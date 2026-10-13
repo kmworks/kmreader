@@ -19,4 +19,10 @@ nonisolated enum MangaModelRole: String, Codable, Hashable, Sendable, CaseIterab
     case .recognizer: return String(localized: "Recognition Model")
     }
   }
+
+  static func capabilityTitle(for archive: ModelArchive) -> String {
+    allCases.filter { archive.components[$0.componentName] != nil }
+      .map(\.title)
+      .joined(separator: " + ")
+  }
 }

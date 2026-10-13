@@ -10,8 +10,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
   let license: String
   let purpose: ModelPurpose
   let capabilities: [String]
-  let minimumAppVersion: String?
-  let maximumAppVersion: String?
   let components: [String: ModelPackageComponent]
   let comment: String?
 
@@ -25,8 +23,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     license: String,
     purpose: ModelPurpose = .mangaOCR,
     capabilities: [String] = ["detection", "ocr"],
-    minimumAppVersion: String? = nil,
-    maximumAppVersion: String? = nil,
     components: [String: ModelPackageComponent] = ModelPackageComponent.currentMangaOCRComponents,
     comment: String? = nil
   ) {
@@ -39,8 +35,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     self.license = license
     self.purpose = purpose
     self.capabilities = capabilities
-    self.minimumAppVersion = minimumAppVersion
-    self.maximumAppVersion = maximumAppVersion
     self.components = components
     self.comment = comment
   }
@@ -59,8 +53,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     capabilities =
       try container.decodeIfPresent([String].self, forKey: .capabilities)
       ?? (decodedPurpose == .mangaOCR ? ["detection", "ocr"] : [])
-    minimumAppVersion = try container.decodeIfPresent(String.self, forKey: .minimumAppVersion)
-    maximumAppVersion = try container.decodeIfPresent(String.self, forKey: .maximumAppVersion)
     components =
       try container.decodeIfPresent([String: ModelPackageComponent].self, forKey: .components)
       ?? (decodedPurpose == .mangaOCR ? ModelPackageComponent.currentMangaOCRComponents : [:])
@@ -74,7 +66,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     let manifest = ModelPackageManifest(
       formatVersion: 1,
       capabilities: capabilities,
-      minimumAppVersion: minimumAppVersion,
       components: components
     )
     return !id.isEmpty && id.count <= 128 && id != "." && id != ".."
@@ -83,15 +74,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
       && (url.scheme == "https" || url.isFileURL)
       && sha256.count == 64 && sha256.allSatisfy(\.isHexDigit)
       && (bytes ?? 1) > 0
-      && (minimumAppVersion.map(Self.isValidBuildNumber) ?? true)
-      && (maximumAppVersion.map(Self.isValidBuildNumber) ?? true)
-  }
-
-  // The catalog window gates on build numbers, so unlike manifest versions
-  // these must be plain digits — a dotted value would parse as nil in the
-  // Int gate and silently disable the bound.
-  private static func isValidBuildNumber(_ value: String) -> Bool {
-    !value.isEmpty && value.allSatisfy { $0.isASCII && $0.isNumber }
   }
 
   enum CodingKeys: String, CodingKey {
@@ -104,8 +86,6 @@ nonisolated struct ModelArchive: Hashable, Codable, Identifiable, Sendable {
     case license
     case purpose
     case capabilities
-    case minimumAppVersion = "minimum_app_version"
-    case maximumAppVersion = "maximum_app_version"
     case components
     case comment
   }

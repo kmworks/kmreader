@@ -22,7 +22,7 @@ struct MangaModelManagementView: View {
   private var availableArchives: [ModelArchive] {
     let downloadedKeys = Set(downloadedArchives.map(\.storageKey))
     return (catalog?.models(for: .mangaOCR) ?? []).filter {
-      !downloadedKeys.contains($0.storageKey) && MangaModelManager.supportsAppVersion($0)
+      !downloadedKeys.contains($0.storageKey)
     }
   }
 
@@ -62,11 +62,9 @@ struct MangaModelManagementView: View {
               Text(detailText(for: archive))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-              if let comment = archive.comment, !comment.isEmpty {
-                Text(comment)
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
+              Text(MangaModelRole.capabilityTitle(for: archive))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
             if preparingStorageKey == archive.storageKey || deletingStorageKey == archive.storageKey {
@@ -97,11 +95,9 @@ struct MangaModelManagementView: View {
               Text(detailText(for: archive))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-              if let comment = archive.comment, !comment.isEmpty {
-                Text(comment)
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-              }
+              Text(MangaModelRole.capabilityTitle(for: archive))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {

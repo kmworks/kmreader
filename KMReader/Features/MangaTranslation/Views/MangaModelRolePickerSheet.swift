@@ -26,11 +26,9 @@ struct MangaModelRolePickerSheet: View {
                   .foregroundStyle(selectedStorageKey == archive.storageKey ? Color.accentColor : Color.secondary)
                 VStack(alignment: .leading, spacing: 4) {
                   Text(archive.name)
-                  if let comment = archive.comment, !comment.isEmpty {
-                    Text(comment)
-                      .font(.caption)
-                      .foregroundStyle(.secondary)
-                  }
+                  Text(MangaModelRole.capabilityTitle(for: archive))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
               }
               .contentShape(Rectangle())
