@@ -1357,8 +1357,7 @@
       if boundaryReadyDirection != candidateDirection {
         boundaryReadyDirection = candidateDirection
         showBoundaryHint(for: candidateDirection, autoHideAfter: nil)
-        let haptic = UIImpactFeedbackGenerator(style: .light)
-        haptic.impactOccurred()
+        HapticFeedback.light()
       }
     }
 
