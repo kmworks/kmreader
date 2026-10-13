@@ -44,7 +44,72 @@ struct DashboardSectionLayout<Content: View>: View {
   }
 
   var body: some View {
-    ZStack {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack {
+        NavigationLink(value: destination) {
+          HStack {
+            Text(section.displayName)
+              .font(.title2)
+              .bold()
+              .fontDesign(.serif)
+            Image(systemName: "chevron.right")
+              .foregroundStyle(.secondary)
+          }
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+
+        Spacer()
+
+        if showsCardKindMenu {
+          DashboardCardKindMenu(section: section)
+        }
+      }
+      .padding(.horizontal)
+      .padding(.top, LayoutConfig.dashboardSectionTopPadding)
+      #if os(macOS)
+        .padding(.leading, 16)
+      #endif
+
+      ScrollViewReader { proxy in
+        ScrollView(.horizontal, showsIndicators: false) {
+          content()
+            #if os(iOS) || os(tvOS)
+              .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
+              .padding(.bottom, bottomPadding)
+            #endif
+            #if os(macOS)
+              .padding(.leading, 16)
+              .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+                stripContentFrame = $0
+              }
+            #endif
+        }
+        .contentMargins(.horizontal, LayoutConfig.defaultSpacing, for: .scrollContent)
+        .scrollClipDisabled()
+        .trailingOverscrollTrigger {
+          pushNavDestination(destination)
+        }
+        #if os(macOS)
+          .macHorizontalScrollButtons(
+            scrollProxy: proxy,
+            itemIds: itemIds,
+            contentFrame: stripContentFrame,
+            horizontalContentMargin: LayoutConfig.defaultSpacing,
+            coverHeight: scrollArrowsCoverHeight
+          )
+          // macOS keeps the vertical padding outside the scroll view so the
+          // arrows overlay hugs the card strip; elsewhere it stays in the
+          // content so the padding area still drags the strip.
+          .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
+          .padding(.bottom, bottomPadding)
+        #endif
+      }
+    }
+    // The gradient rides in .background so its ignoresSafeArea sizing can never
+    // inflate the band: as a ZStack sibling it made the band wider than the
+    // screen whenever safe-area insets churned (rotation), looping the layout.
+    .background {
       #if os(iOS) || os(macOS)
         if showGradientBackground {
           LinearGradient(
@@ -54,69 +119,6 @@ struct DashboardSectionLayout<Content: View>: View {
           ).ignoresSafeArea()
         }
       #endif
-
-      VStack(alignment: .leading, spacing: 0) {
-        HStack {
-          NavigationLink(value: destination) {
-            HStack {
-              Text(section.displayName)
-                .font(.title2)
-                .bold()
-                .fontDesign(.serif)
-              Image(systemName: "chevron.right")
-                .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-
-          Spacer()
-
-          if showsCardKindMenu {
-            DashboardCardKindMenu(section: section)
-          }
-        }
-        .padding(.horizontal)
-        .padding(.top, LayoutConfig.dashboardSectionTopPadding)
-        #if os(macOS)
-          .padding(.leading, 16)
-        #endif
-
-        ScrollViewReader { proxy in
-          ScrollView(.horizontal, showsIndicators: false) {
-            content()
-              #if os(iOS) || os(tvOS)
-                .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-                .padding(.bottom, bottomPadding)
-              #endif
-              #if os(macOS)
-                .padding(.leading, 16)
-                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
-                  stripContentFrame = $0
-                }
-              #endif
-          }
-          .contentMargins(.horizontal, LayoutConfig.defaultSpacing, for: .scrollContent)
-          .scrollClipDisabled()
-          .trailingOverscrollTrigger {
-            pushNavDestination(destination)
-          }
-          #if os(macOS)
-            .macHorizontalScrollButtons(
-              scrollProxy: proxy,
-              itemIds: itemIds,
-              contentFrame: stripContentFrame,
-              horizontalContentMargin: LayoutConfig.defaultSpacing,
-              coverHeight: scrollArrowsCoverHeight
-            )
-            // macOS keeps the vertical padding outside the scroll view so the
-            // arrows overlay hugs the card strip; elsewhere it stays in the
-            // content so the padding area still drags the strip.
-            .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
-            .padding(.bottom, bottomPadding)
-          #endif
-        }
-      }
     }
   }
 }

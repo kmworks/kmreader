@@ -25,11 +25,14 @@ struct PushableNavigationStack<Root: View>: View {
   }
 
   var body: some View {
+    // Injected outside the NavigationStack: inside the content builder the
+    // closure is recreated on every stack-internal content rebuild (toolbar,
+    // scroll, geometry), invalidating every reader in the tab.
     NavigationStack(path: effectivePath) {
       root()
-        .environment(\.pushNavDestination) { destination in
-          effectivePath.wrappedValue.append(destination)
-        }
+    }
+    .environment(\.pushNavDestination) { destination in
+      effectivePath.wrappedValue.append(destination)
     }
   }
 }
