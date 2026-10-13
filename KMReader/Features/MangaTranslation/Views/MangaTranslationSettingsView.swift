@@ -144,7 +144,7 @@ struct MangaTranslationSettingsView: View {
           HStack {
             Label {
               VStack(alignment: .leading, spacing: 2) {
-                Text(String(localized: "Recognition Models"))
+                Text(String(localized: "Models"))
                 Text(selectedModelsDescription)
                   .font(.caption)
                   .foregroundStyle(.secondary)
@@ -188,7 +188,7 @@ struct MangaTranslationSettingsView: View {
       }
     }
     .sheet(isPresented: $showsModelManagement, onDismiss: reloadConfiguration) {
-      SheetView(title: String(localized: "Recognition Models"), size: .large, applyFormStyle: true) {
+      SheetView(title: String(localized: "Models"), size: .large, applyFormStyle: true) {
         MangaModelManagementView()
       }
     }
