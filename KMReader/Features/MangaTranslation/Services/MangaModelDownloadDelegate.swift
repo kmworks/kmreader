@@ -15,6 +15,7 @@ nonisolated final class MangaModelDownloadDelegate: NSObject {
 
   private final class ContinuationBox {
     var continuation: CheckedContinuation<URLResponse, Error>?
+    var lastProgressReport: ContinuousClock.Instant?
   }
 
   init(
@@ -52,6 +53,14 @@ extension MangaModelDownloadDelegate: URLSessionDownloadDelegate {
     totalBytesExpectedToWrite: Int64
   ) {
     let expected = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : expectedBytes
+    let now = ContinuousClock.now
+    let isFinal = expected.map { totalBytesWritten >= $0 } ?? false
+    if !isFinal, let last = continuationBox.lastProgressReport,
+      last.duration(to: now) < .milliseconds(100)
+    {
+      return
+    }
+    continuationBox.lastProgressReport = now
     onProgress(totalBytesWritten, expected)
   }
 
