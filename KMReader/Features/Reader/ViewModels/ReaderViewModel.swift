@@ -79,7 +79,7 @@ class ReaderViewModel {
   private(set) var readingDirection: ReadingDirection
   private(set) var splitWidePageMode: SplitWidePageMode
   private var pageTransitionStyle: PageTransitionStyle
-  private var isActuallyUsingDualPageMode: Bool = false
+  private(set) var isActuallyUsingDualPageMode: Bool = false
   typealias PagePresentationInvalidationHandler = @MainActor (ReaderPagePresentationInvalidation) -> Void
   @ObservationIgnored
   private var pagePresentationInvalidationHandlers: [UUID: PagePresentationInvalidationHandler] = [:]

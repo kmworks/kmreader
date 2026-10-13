@@ -15,8 +15,8 @@ extension ReaderViewModel {
   private static let mangaTranslationPrefetchItemCount = 1
 
   var mangaTranslationResult: MangaPageTranslation? {
-    guard let pageID = resolvedCurrentPageID else { return nil }
-    return mangaTranslationResult(for: pageID, splitMode: currentMangaSplitMode)
+    guard let key = currentMangaTranslationSessionKey() else { return nil }
+    return mangaTranslationResults[key]
   }
 
   func mangaTranslationResult(for data: NativePageData) -> MangaPageTranslation? {
@@ -104,7 +104,8 @@ extension ReaderViewModel {
     startMangaTranslationQueue(keys: keys, frontForceRetry: false, frontManual: false)
   }
 
-  /// Current page first (unless already cached), then the next few view
+  /// Current page first (unless already cached), then the rest of the visible
+  /// item so a dual-page spread switches together, then the next few view
   /// items, skipping anything already translated this session.
   private func desiredQueueKeys(
     includeCachedFront: Bool = false
@@ -117,6 +118,10 @@ extension ReaderViewModel {
     guard let currentItem = currentViewItem(),
       let startIndex = viewItemIndex(for: currentItem)
     else { return keys }
+    for key in mangaTranslationSessionKeys(for: currentItem) {
+      guard key != frontKey, mangaTranslationResults[key] == nil, !keys.contains(key) else { continue }
+      keys.append(key)
+    }
     var itemIndex = startIndex + 1
     var visitedItems = 0
     while itemIndex < viewItems.count, visitedItems < Self.mangaTranslationPrefetchItemCount {
@@ -124,8 +129,7 @@ extension ReaderViewModel {
       itemIndex += 1
       if item.isEnd { break }
       visitedItems += 1
-      for itemPageID in item.pageIDs {
-        let key = sessionKey(for: itemPageID, splitMode: mangaSplitMode(for: item))
+      for key in mangaTranslationSessionKeys(for: item) {
         guard mangaTranslationResults[key] == nil, !keys.contains(key) else { continue }
         keys.append(key)
       }
@@ -350,8 +354,23 @@ extension ReaderViewModel {
   }
 
   private func currentMangaTranslationSessionKey() -> MangaTranslationSessionKey? {
-    guard let pageID = resolvedCurrentPageID else { return nil }
-    return sessionKey(for: pageID, splitMode: currentMangaSplitMode)
+    guard let pageID = resolvedCurrentPageID, let item = currentViewItem() else { return nil }
+    let keys = mangaTranslationSessionKeys(for: item)
+    return keys.first(where: { $0.pageID == pageID }) ?? keys.first
+  }
+
+  /// Keys for an item's pages as displayed, in reading order. A merged split
+  /// renders as two half pages in dual-page presentation, so it takes one key
+  /// per half — a whole-page key would never match the halves the pages look
+  /// their results up with.
+  private func mangaTranslationSessionKeys(for item: ReaderViewItem) -> [MangaTranslationSessionKey] {
+    guard !item.isEnd else { return [] }
+    if isActuallyUsingDualPageMode, case .split(let id, .both) = item {
+      return [ReaderSplitPart.first, .second].map { part in
+        sessionKey(for: id, splitMode: mangaSplitMode(for: part))
+      }
+    }
+    return item.pageIDs.map { sessionKey(for: $0, splitMode: mangaSplitMode(for: item)) }
   }
 
   private func sessionKey(for pageID: ReaderPageID, splitMode: PageSplitMode) -> MangaTranslationSessionKey {
@@ -375,14 +394,13 @@ extension ReaderViewModel {
     mangaTranslationPhase = phase
   }
 
-  private var currentMangaSplitMode: PageSplitMode {
-    guard let item = currentViewItem() else { return .none }
-    return mangaSplitMode(for: item)
-  }
-
   private func mangaSplitMode(for item: ReaderViewItem) -> PageSplitMode {
     guard case .split(_, let part) = item, part != .both else { return .none }
-    return isLeftSplitHalf(
+    return mangaSplitMode(for: part)
+  }
+
+  private func mangaSplitMode(for part: ReaderSplitPart) -> PageSplitMode {
+    isLeftSplitHalf(
       part: part,
       readingDirection: readingDirection,
       splitWidePageMode: splitWidePageMode
