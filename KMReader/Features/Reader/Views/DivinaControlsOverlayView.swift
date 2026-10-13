@@ -34,7 +34,6 @@ struct DivinaControlsOverlayView: View {
   let showPageDimensionWarning: Bool
 
   @Namespace private var progressBarNamespace
-  @AppStorage("mangaTranslation") private var mangaTranslationPreferences = MangaTranslationPreferences()
   @State private var showingPageDimensionWarning = false
   @State private var pageDimensionWarningDismissed = false
 
@@ -178,10 +177,12 @@ struct DivinaControlsOverlayView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .animation(visibilityAnimation, value: controlsVisible)
     .animation(visibilityAnimation, value: showProgressBarWhileReading)
-    .onChange(of: mangaTranslationPreferences.isEnabled) { _, isEnabled in
-      viewModel.setMangaTranslationEnabled(isEnabled)
-    }
-    .sheet(isPresented: $showingMangaTranslationSettings) {
+    .sheet(
+      isPresented: $showingMangaTranslationSettings,
+      onDismiss: {
+        viewModel.refreshMangaTranslationConfiguration()
+      }
+    ) {
       SheetView(title: String(localized: "Manga Translation"), size: .large, applyFormStyle: true) {
         MangaTranslationSettingsView()
       }
@@ -217,7 +218,7 @@ struct DivinaControlsOverlayView: View {
   @ViewBuilder
   private var mangaTranslationFloatingLayer: some View {
     #if os(iOS) || os(macOS)
-      if mangaTranslationPreferences.isEnabled, currentPageID != nil {
+      if viewModel.mangaTranslationEnabled, currentPageID != nil {
         VStack {
           Spacer()
           HStack {
@@ -596,11 +597,11 @@ struct DivinaControlsOverlayView: View {
 
       #if os(iOS) || os(macOS)
         Button {
-          AppConfig.setMangaTranslationEnabled(!mangaTranslationPreferences.isEnabled)
+          viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
         } label: {
           Label(
             String(localized: "Manga Translation"),
-            systemImage: mangaTranslationPreferences.isEnabled
+            systemImage: viewModel.mangaTranslationEnabled
               ? AppIcon.confirm : AppIcon.mangaTranslation
           )
         }

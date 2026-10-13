@@ -75,9 +75,6 @@ struct MainApp: App {
     #if os(iOS) || os(tvOS)
       _ = MangaModelMemoryWarningObserver.shared
     #endif
-    if AppConfig.mangaTranslation.isEnabled {
-      AppConfig.enableLiveText = false
-    }
     AppConfig.showProtectedServers = false
     _authViewModel = State(initialValue: AuthViewModel())
   }

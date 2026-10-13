@@ -7,7 +7,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
   var sourceLanguage: String
   var targetLanguage: String
   var includeMetadata: Bool
-  var isEnabled: Bool
   var showTranslation: Bool
   var textDirection: MangaTranslationTextDirection
 
@@ -16,7 +15,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     sourceLanguage: String = MangaTranslationLanguage.defaultSource,
     targetLanguage: String = "",
     includeMetadata: Bool = false,
-    isEnabled: Bool = false,
     showTranslation: Bool = true,
     textDirection: MangaTranslationTextDirection = .auto
   ) {
@@ -24,7 +22,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     self.sourceLanguage = sourceLanguage
     self.targetLanguage = targetLanguage
     self.includeMetadata = includeMetadata
-    self.isEnabled = isEnabled
     self.showTranslation = showTranslation
     self.textDirection = textDirection
   }
@@ -46,7 +43,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
         ?? MangaTranslationLanguage.defaultSource,
       targetLanguage: try container.decodeIfPresent(String.self, forKey: .targetLanguage) ?? "",
       includeMetadata: try container.decodeIfPresent(Bool.self, forKey: .includeMetadata) ?? false,
-      isEnabled: try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? false,
       showTranslation: try container.decodeIfPresent(Bool.self, forKey: .showTranslation) ?? true,
       textDirection: try container.decodeIfPresent(
         MangaTranslationTextDirection.self, forKey: .textDirection) ?? .auto
@@ -59,7 +55,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     try container.encode(sourceLanguage, forKey: .sourceLanguage)
     try container.encode(targetLanguage, forKey: .targetLanguage)
     try container.encode(includeMetadata, forKey: .includeMetadata)
-    try container.encode(isEnabled, forKey: .isEnabled)
     try container.encode(showTranslation, forKey: .showTranslation)
     try container.encode(textDirection, forKey: .textDirection)
   }
@@ -76,7 +71,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     case sourceLanguage
     case targetLanguage
     case includeMetadata
-    case isEnabled
     case showTranslation
     case textDirection
   }

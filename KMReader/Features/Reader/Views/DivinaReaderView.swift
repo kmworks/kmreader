@@ -666,6 +666,12 @@ struct DivinaReaderView: View {
     .onChange(of: divinaPreloadProfile) { _, newValue in
       viewModel.updatePreloadWindow(newValue.window)
     }
+    .onChange(of: enableLiveText) { _, newValue in
+      // Live Text and the translation overlay cannot analyze the same page.
+      if newValue {
+        viewModel.setMangaTranslationEnabled(false)
+      }
+    }
     .task(id: currentBookId) {
       readerPresentation.registerFlushHandler(for: sessionID) {
         viewModel.flushProgress()
@@ -1709,8 +1715,6 @@ struct DivinaReaderView: View {
       }
     }
 
-    @AppStorage("mangaTranslation") private var mangaTranslationPreferences = MangaTranslationPreferences()
-
     private var readerCommandState: ReaderCommandState {
       let supportsDualPageOptions =
         readingDirection != .webtoon
@@ -1747,7 +1751,7 @@ struct DivinaReaderView: View {
         supportsDualPageOptions: supportsDualPageOptions,
         supportsSplitWidePageMode: supportsSplitWidePageMode,
         supportsMangaTranslation: true,
-        mangaTranslationEnabled: mangaTranslationPreferences.isEnabled
+        mangaTranslationEnabled: viewModel.mangaTranslationEnabled
       )
     }
 
@@ -1807,7 +1811,7 @@ struct DivinaReaderView: View {
           },
           toggleContinuousScroll: {},
           toggleMangaTranslation: {
-            AppConfig.setMangaTranslationEnabled(!mangaTranslationPreferences.isEnabled)
+            viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
           },
           showMangaTranslationSettings: {
             showingMangaTranslationSettings = true

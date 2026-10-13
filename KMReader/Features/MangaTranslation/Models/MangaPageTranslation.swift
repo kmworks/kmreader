@@ -9,6 +9,12 @@ nonisolated struct MangaPageTranslation: Codable, Hashable, Sendable {
 
   var isTranslated: Bool { status == .translated }
 
+  /// Terminal for caching: a completed translation, or a page that provably
+  /// has no text. Anything else (e.g. provider failures) must retry.
+  var isFinalized: Bool {
+    (isTranslated && !regions.isEmpty) || status == .recognitionOnly(.noText)
+  }
+
   init(
     key: MangaTranslationPageKey,
     regions: [MangaTextRegion],
