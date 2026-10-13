@@ -58,6 +58,9 @@ nonisolated final class MangaModelDownloader: NSObject {
         statusCode = status
       }
     }
+    // A cancelled consumer ends the stream loop without a finished event;
+    // surface cancellation instead of a bogus zero status.
+    if Task.isCancelled { throw CancellationError() }
     return statusCode
   }
 }

@@ -301,6 +301,7 @@ struct MangaModelManagementView: View {
         }
         MangaModelLibrary.select(archive)
         reloadDownloadedModels()
+      } catch is CancellationError {
       } catch {
         ErrorManager.shared.alert(error: error)
       }
