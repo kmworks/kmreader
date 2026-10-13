@@ -42,6 +42,7 @@
 
     #if os(iOS)
       private lazy var contextMenuInteraction = UIContextMenuInteraction(delegate: self)
+      private var isPresentingContextMenu = false
     #endif
 
     private var heightConstraint: NSLayoutConstraint?
@@ -70,6 +71,7 @@
       #endif
       #if os(iOS)
         removeContextMenuInteractionIfNeeded()
+        releaseContextMenuSuppression()
       #endif
       updateAnimatedPlayback(sourceFileURL: nil)
       imageView.isHidden = false
@@ -675,7 +677,9 @@
       }
 
       private func makePreview() -> UITargetedPreview? {
-        guard !imageView.bounds.isEmpty else { return nil }
+        // UITargetedPreview traps on a windowless view: the page can already be
+        // gone when a still-presented menu is cancelled during teardown.
+        guard imageView.window != nil, !imageView.bounds.isEmpty else { return nil }
         let parameters = UIPreviewParameters()
         parameters.backgroundColor = .clear
         parameters.visiblePath = UIBezierPath(rect: imageView.bounds)
@@ -709,6 +713,38 @@
         previewForDismissingMenuWithConfiguration configuration: UIContextMenuConfiguration
       ) -> UITargetedPreview? {
         makePreview()
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willDisplayMenuFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        guard !isPresentingContextMenu else { return }
+        isPresentingContextMenu = true
+        viewModel?.presentedPageContextMenuCount += 1
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willEndFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        // Released only once the dismissal animation finishes: touches landing
+        // while the menu fades still belong to the menu, not the reader.
+        guard let animator else {
+          releaseContextMenuSuppression()
+          return
+        }
+        animator.addCompletion { [weak self] in
+          self?.releaseContextMenuSuppression()
+        }
+      }
+
+      private func releaseContextMenuSuppression() {
+        guard isPresentingContextMenu else { return }
+        isPresentingContextMenu = false
+        viewModel?.presentedPageContextMenuCount -= 1
       }
     }
   #endif

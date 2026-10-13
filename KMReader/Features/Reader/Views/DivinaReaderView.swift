@@ -1850,7 +1850,9 @@ struct DivinaReaderView: View {
   }
 
   private func handleTapZoneAction(_ action: TapZoneAction) {
-    guard viewModel.hasPages, !isPresentingModalSheet, !viewModel.isZoomed else { return }
+    guard viewModel.hasPages, !isPresentingModalSheet, !viewModel.isZoomed,
+      !viewModel.isPageContextMenuPresented
+    else { return }
     switch action {
     case .previous:
       goToReaderPosition(.previous)
