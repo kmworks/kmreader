@@ -223,12 +223,10 @@ struct MainApp: App {
                 Text(String(localized: "Enable Translation"))
               }
             }
-            .disabled(!state.isActive)
 
             Button(String(localized: "Settings")) {
               readerPresentation.showMangaTranslationSettingsFromCommand()
             }
-            .disabled(!state.isActive)
           }
           .disabled(!state.isActive)
         }

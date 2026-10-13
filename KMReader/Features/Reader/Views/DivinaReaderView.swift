@@ -1807,7 +1807,7 @@ struct DivinaReaderView: View {
           },
           toggleContinuousScroll: {},
           toggleMangaTranslation: {
-            AppConfig.setMangaTranslationEnabled(!AppConfig.mangaTranslation.isEnabled)
+            AppConfig.setMangaTranslationEnabled(!mangaTranslationPreferences.isEnabled)
           },
           showMangaTranslationSettings: {
             showingMangaTranslationSettings = true

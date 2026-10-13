@@ -172,15 +172,20 @@ struct MangaProviderManagementView: View {
     guard testingProviderID == nil else { return }
     testingProviderID = provider.id
     Task {
+      let message: String
       do {
         let translations = try await MangaTranslationService.shared.testProvider(
           configuration: provider,
           preferences: preferences
         )
-        testResultMessage = translations.joined(separator: " / ")
+        message = translations.joined(separator: " / ")
       } catch {
-        testResultMessage =
+        message =
           (error as? MangaTranslationFailure)?.description ?? error.localizedDescription
+      }
+      // A provider deleted mid-test has no row left to show its result for.
+      if providers.contains(where: { $0.id == provider.id }) {
+        testResultMessage = message
       }
       testingProviderID = nil
     }

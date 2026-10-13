@@ -252,7 +252,6 @@ struct DivinaControlsOverlayView: View {
             .controlSize(.large)
             .readerControlButtonStyle()
             .frame(width: 44, height: 44)
-            .disabled(viewModel.mangaTranslationPhase.isBusy)
             .highPriorityGesture(
               LongPressGesture().onEnded { _ in
                 showingMangaTranslationSettings = true
