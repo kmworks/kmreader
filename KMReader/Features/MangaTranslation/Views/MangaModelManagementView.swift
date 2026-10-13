@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MangaModelManagementView: View {
+  let role: MangaModelRole
+
   @AppStorage("modelLibrary") private var libraryConfiguration = ModelLibraryConfiguration()
 
   @State private var catalog: ModelCatalog?
@@ -14,7 +16,6 @@ struct MangaModelManagementView: View {
   @State private var deletingStorageKey: String?
   @State private var archiveToDelete: ModelArchive?
   @State private var showsDeleteConfirmation = false
-  @State private var pickingRole: MangaModelRole?
 
   private var isModelOperationInProgress: Bool {
     preparingStorageKey != nil || deletingStorageKey != nil
@@ -23,8 +24,12 @@ struct MangaModelManagementView: View {
   private var availableArchives: [ModelArchive] {
     let downloadedKeys = Set(downloadedArchives.map(\.storageKey))
     return (catalog?.models(for: .mangaOCR) ?? []).filter {
-      !downloadedKeys.contains($0.storageKey)
+      !downloadedKeys.contains($0.storageKey) && MangaModelSet.supports($0, for: role)
     }
+  }
+
+  private var selectableArchives: [ModelArchive] {
+    downloadedArchives.filter { MangaModelSet.supports($0, for: role) }
   }
 
   private var canSaveCatalogURL: Bool {
@@ -41,11 +46,37 @@ struct MangaModelManagementView: View {
   var body: some View {
     Form {
       Section(
+        header: Text(role.title),
         footer: Text(
           "Use one model for both roles, or mix a detection model with a different recognition model.")
       ) {
-        roleRow(.detector)
-        roleRow(.recognizer)
+        if selectableArchives.isEmpty {
+          Text("No models downloaded")
+            .foregroundStyle(.secondary)
+        }
+        ForEach(selectableArchives, id: \.storageKey) { archive in
+          Button {
+            MangaModelLibrary.select(archive, for: role)
+            reloadDownloadedModels()
+          } label: {
+            HStack(spacing: 12) {
+              Image(systemName: isSelected(archive) ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isSelected(archive) ? Color.accentColor : Color.secondary)
+              VStack(alignment: .leading, spacing: 4) {
+                Text(archive.name)
+                MangaModelCapabilityChips(archive: archive)
+                if let comment = archive.comment, !comment.isEmpty {
+                  Text(comment)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+              }
+              Spacer()
+            }
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+        }
       }
 
       Section(
@@ -170,14 +201,6 @@ struct MangaModelManagementView: View {
       reloadDownloadedModels()
       refreshCatalog()
     }
-    .sheet(item: $pickingRole) { role in
-      MangaModelRolePickerSheet(
-        role: role,
-        archives: downloadedArchives.filter { MangaModelSet.supports($0, for: role) },
-        selectedStorageKey: selectedStorageKey(for: role),
-        onSelect: { MangaModelLibrary.select($0, for: role) }
-      )
-    }
     .sheet(isPresented: $showsCatalogEditor) {
       SheetView(title: String(localized: "Catalog URL"), size: .medium, applyFormStyle: true) {
         Form {
@@ -218,40 +241,11 @@ struct MangaModelManagementView: View {
     }
   }
 
-  private func roleRow(_ role: MangaModelRole) -> some View {
-    Button {
-      pickingRole = role
-    } label: {
-      HStack {
-        Text(role.title)
-        Spacer()
-        Text(selectedName(for: role))
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-        Image(systemName: "chevron.right")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-  }
-
-  private func selectedStorageKey(for role: MangaModelRole) -> String {
-    libraryConfiguration.selectedStorageKeys[role.selectionStorageKey]
+  private func isSelected(_ archive: ModelArchive) -> Bool {
+    let key =
+      libraryConfiguration.selectedStorageKeys[role.selectionStorageKey]
       ?? libraryConfiguration.selectedStorageKeys[ModelPurpose.mangaOCR.rawValue] ?? ""
-  }
-
-  private func selectedName(for role: MangaModelRole) -> String {
-    let key = selectedStorageKey(for: role)
-    guard !key.isEmpty,
-      let archive = downloadedArchives.first(where: { $0.storageKey == key })
-        ?? catalog?.models(for: .mangaOCR).first(where: { $0.storageKey == key })
-    else {
-      return String(localized: "Not Selected")
-    }
-    return archive.name
+    return key == archive.storageKey
   }
 
   private func beginCatalogEdit() {
