@@ -44,6 +44,7 @@ nonisolated enum AppIcon {
   /// Filled in every context: part of the status's identity.
   static let downloaded = "checkmark.icloud.fill"
   static let downloadPartial = "icloud"
+  static let downloadQueued = "hourglass"
   static let downloadFailed = "exclamationmark.circle.fill"
   static let clearCache = "xmark.circle"
 
