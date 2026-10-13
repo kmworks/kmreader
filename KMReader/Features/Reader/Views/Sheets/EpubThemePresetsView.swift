@@ -97,6 +97,7 @@ struct EpubThemePresetsView: View {
     #if os(iOS) || os(macOS)
       .swipeActions(edge: .trailing, allowsFullSwipe: false) {
         Button(role: .destructive) {
+          HapticFeedback.medium()
           deletePreset(preset)
         } label: {
           Label("Delete", systemImage: AppIcon.delete)

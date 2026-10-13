@@ -100,6 +100,7 @@ struct SavedFiltersView: View {
     #if os(iOS) || os(macOS)
       .swipeActions(edge: .trailing, allowsFullSwipe: false) {
         Button(role: .destructive) {
+          HapticFeedback.medium()
           deleteFilter(filter)
         } label: {
           Label("Delete", systemImage: AppIcon.delete)
