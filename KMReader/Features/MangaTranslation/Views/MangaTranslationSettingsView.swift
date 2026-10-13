@@ -8,7 +8,6 @@ struct MangaTranslationSettingsView: View {
   @State private var provider: MangaProviderConfig?
   @State private var detectorArchive: ModelArchive?
   @State private var recognizerArchive: ModelArchive?
-  @State private var isTesting = false
 
   private var mangaTranslationEnabled: Binding<Bool> {
     Binding(
@@ -92,22 +91,7 @@ struct MangaTranslationSettingsView: View {
       }
 
       Section(
-        header: HStack {
-          Text("Translation")
-          Spacer()
-          Button {
-            testProvider()
-          } label: {
-            if isTesting {
-              Label(String(localized: "Testing…"), systemImage: AppIcon.refresh)
-            } else {
-              Label(String(localized: "Test Provider"), systemImage: "network")
-            }
-          }
-          .symbolEffect(.pulse, options: .repeating, isActive: isTesting)
-          .buttonStyle(.borderless)
-          .disabled(isTesting || provider?.isConfigured != true)
-        },
+        header: Text("Translation"),
         footer: Text(privacyDescription)
       ) {
         Button {
@@ -221,24 +205,6 @@ struct MangaTranslationSettingsView: View {
       } catch {
         ErrorManager.shared.alert(error: error)
       }
-    }
-  }
-
-  private func testProvider() {
-    guard let provider else { return }
-    isTesting = true
-    Task {
-      do {
-        let translations = try await MangaTranslationService.shared.testProvider(
-          configuration: provider,
-          preferences: preferences
-        )
-        ErrorManager.shared.notify(message: translations.joined(separator: " / "))
-      } catch {
-        let message = (error as? MangaTranslationFailure)?.description ?? error.localizedDescription
-        ErrorManager.shared.notify(message: message)
-      }
-      isTesting = false
     }
   }
 }

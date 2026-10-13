@@ -90,6 +90,7 @@ struct DivinaReaderView: View {
   @State private var showingTOCSheet = false
   @State private var showingReaderSettingsSheet = false
   @State private var showingDetailSheet = false
+  @State private var showingMangaTranslationSettings = false
   @State private var requestedNextSegmentPreloads: Set<String> = []
   @State private var requestedPreviousSegmentPreloads: Set<String> = []
   @State private var inFlightNextSegmentPreloads: [String: Task<Void, Never>] = [:]
@@ -1009,6 +1010,7 @@ struct DivinaReaderView: View {
       showingTOCSheet: $showingTOCSheet,
       showingReaderSettingsSheet: $showingReaderSettingsSheet,
       showingDetailSheet: $showingDetailSheet,
+      showingMangaTranslationSettings: $showingMangaTranslationSettings,
       viewModel: viewModel,
       currentBook: currentSegmentBook,
       dualPage: useDualPage,
@@ -1707,6 +1709,8 @@ struct DivinaReaderView: View {
       }
     }
 
+    @AppStorage("mangaTranslation") private var mangaTranslationPreferences = MangaTranslationPreferences()
+
     private var readerCommandState: ReaderCommandState {
       let supportsDualPageOptions =
         readingDirection != .webtoon
@@ -1741,7 +1745,9 @@ struct DivinaReaderView: View {
         supportsPageLayoutSelection: true,
         supportsRotationSelection: readingDirection != .webtoon,
         supportsDualPageOptions: supportsDualPageOptions,
-        supportsSplitWidePageMode: supportsSplitWidePageMode
+        supportsSplitWidePageMode: supportsSplitWidePageMode,
+        supportsMangaTranslation: true,
+        mangaTranslationEnabled: mangaTranslationPreferences.isEnabled
       )
     }
 
@@ -1799,7 +1805,13 @@ struct DivinaReaderView: View {
           setSplitWidePageMode: { mode in
             splitWidePageMode = mode
           },
-          toggleContinuousScroll: {}
+          toggleContinuousScroll: {},
+          toggleMangaTranslation: {
+            AppConfig.setMangaTranslationEnabled(!AppConfig.mangaTranslation.isEnabled)
+          },
+          showMangaTranslationSettings: {
+            showingMangaTranslationSettings = true
+          }
         )
       )
     }

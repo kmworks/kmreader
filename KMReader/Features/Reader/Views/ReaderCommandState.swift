@@ -28,4 +28,6 @@ struct ReaderCommandState: Equatable {
   var supportsDualPageOptions: Bool = false
   var supportsSplitWidePageMode: Bool = false
   var supportsContinuousScrollToggle: Bool = false
+  var supportsMangaTranslation: Bool = false
+  var mangaTranslationEnabled: Bool = false
 }

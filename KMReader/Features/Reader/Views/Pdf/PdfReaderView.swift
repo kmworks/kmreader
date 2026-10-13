@@ -747,7 +747,9 @@
             sharePage: { _ in },
             setRotation: { _ in },
             setSplitWidePageMode: { _ in },
-            toggleContinuousScroll: {}
+            toggleContinuousScroll: {},
+            toggleMangaTranslation: {},
+            showMangaTranslationSettings: {}
           )
         )
       }
