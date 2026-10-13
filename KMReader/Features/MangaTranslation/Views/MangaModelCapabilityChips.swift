@@ -11,7 +11,7 @@ struct MangaModelCapabilityChips: View {
     if !roles.isEmpty {
       HStack {
         ForEach(roles) { role in
-          DetailChip(role.title, glass: false)
+          DetailChip(role.capabilityTitle, glass: false)
         }
       }
     }
