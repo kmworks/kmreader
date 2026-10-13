@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Live download progress as the Apple Books-style ring+pie, for card/row status
 /// slots. The book's progress comes from DownloadProgressTracker; a 0 renders as
-/// the minimum sliver so a queued download already reads as in-flight.
+/// the minimum sliver so a just-started download already reads as in-flight.
 struct DownloadProgressPie: View {
   let progress: Double
   var color: Color = .secondary
