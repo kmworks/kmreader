@@ -28,7 +28,7 @@ Do not duplicate those instructions here. This skill owns ordering, GitHub PR ha
 ## Guardrails
 
 - Work from a clean or understood git state. Do not mix unrelated local changes into release PRs.
-- Use `asc --help` for command shape when uncertain; CLI flags can drift. Known asc 5.0 renames: `versions get` → `versions view`, `versions attach-build --build` → `--build-id`, `review items-add` → `review items add`.
+- Use `asc --help` for command shape when uncertain; CLI flags can drift. Known asc 5.0 renames: `versions get` → `versions view`, `versions attach-build --build` → `--build-id`, `review items-add` → `review items add`, `localizations --version-id` → `--version`.
 - Do not use raw `xcodebuild`; this repo uses Makefile automation.
 - Do not create duplicate App Store Connect versions. Reuse existing editable versions.
 - Stop before submission if any platform build is not `VALID`, metadata is incomplete, content rights are missing, or encryption compliance is unresolved.
@@ -197,6 +197,35 @@ asc versions view --version-id "$tvos_version_id" --include-build --pretty
 ```
 
 All three versions should be `WAITING_FOR_REVIEW`. Report platform, version ID, build ID, and submission ID.
+
+### After submission: withdraw, rejection, review notes
+
+Withdraw a version from review (e.g. metadata must change after submission):
+
+```bash
+asc review submissions-update --id "$submission_id" --canceled=true --confirm
+```
+
+The version returns to `DEVELOPER_REJECTED` and becomes editable again. Resubmission uses the normal create/items/submit flow above with a new submission ID.
+
+Resubmit after an Apple rejection: do NOT create a new submission. The version is still attached to the old `UNRESOLVED_ISSUES` submission, and adding it to a new submission fails with `already added to another reviewSubmission`. Instead, resolve the rejected item, then re-submit the SAME submission:
+
+```bash
+asc review items list --submission "$old_submission_id" --pretty
+asc review items update --id "$rejected_item_id" --resolved true --pretty
+asc review submissions-submit --id "$old_submission_id" --confirm --pretty
+```
+
+The version returns to `WAITING_FOR_REVIEW` under the same submission ID. Do not create an empty submission first: a `submissions-create` with no items leaves a `READY_FOR_REVIEW` draft that cannot be canceled (`not in cancellable state`).
+
+Review notes (short factual context for the reviewer, e.g. clarifying a rejected feature's architecture) can be updated even while `WAITING_FOR_REVIEW`:
+
+```bash
+asc review details-for-version --version-id "$version_id" --pretty
+asc review details-update --id "$detail_id" --notes "$notes" --pretty
+```
+
+Keep notes factual and brief; do not mention the rejection or policy background in them.
 
 ## Phase 7: Start Next Version Cycle
 
