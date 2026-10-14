@@ -18,12 +18,9 @@ struct MangaProviderEditorView: View {
   init(provider: MangaProviderConfig, isNew: Bool) {
     providerID = provider.id
     self.isNew = isNew
-    let initialBaseURL =
-      isNew && provider.baseURL.isEmpty
-      ? MangaProviderEndpointPreset.openAI.baseURL ?? "" : provider.baseURL
     _displayName = State(initialValue: provider.displayName)
-    _baseURL = State(initialValue: initialBaseURL)
-    _endpointPreset = State(initialValue: MangaProviderEndpointPreset(baseURL: initialBaseURL))
+    _baseURL = State(initialValue: provider.baseURL)
+    _endpointPreset = State(initialValue: MangaProviderEndpointPreset(baseURL: provider.baseURL))
     _model = State(initialValue: provider.model)
     _apiKey = State(initialValue: provider.apiKey)
   }
@@ -62,9 +59,9 @@ struct MangaProviderEditorView: View {
     ) {
       Form {
         Section(
-          header: Text("OpenAI-Compatible API"),
+          header: Text("Custom AI API"),
           footer: Text(
-            "Enter the API root, including /v1 when required (for example, https://api.openai.com/v1). HTTP and HTTPS are supported. KMReader calls /models and /chat/completions under this URL. Base URL, API Key, and Model are required."
+            "Enter the API root, including /v1 when required (for example, https://your-server/v1). HTTP and HTTPS are supported. KMReader calls /models and /chat/completions under this URL. Base URL, API Key, and Model are required."
           )
         ) {
           TextField(String(localized: "Display Name"), text: $displayName)
