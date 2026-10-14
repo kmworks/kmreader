@@ -1,24 +1,9 @@
-New
-- One Lists home on every platform: Collections and Read Lists now live together on a single Lists page (a new tab on iPhone and Apple TV, one merged row in sidebars), with your pinned items always first.
-- Smart Lists on KMServer: saved searches evaluated live on the server. Browse them from the Lists page, and create, edit, or delete them right in the app.
-- One library scope menu everywhere: switch between All Libraries, your Pinned set, or a single library from a single dropdown shared by the Dashboard, Offline, and every browse page, with an info line showing the scope's size and counts.
-- Server Info is rebuilt as an overview with server identity, uptime, CPU, memory, disk, and content totals, plus new Tasks, Sessions, and Scheduled Tasks pages with a live task queue. It now works on stock Komga servers too.
-- Reading stats now come from the server when it supports them, including new Current and Longest Streak cards, with the on-device stats as a fallback.
-- Fetch metadata with komf: Identify, Match, and Reset Metadata actions for series and oneshots when your KMServer has the komf integration connected (admin only).
-- Select multiple books and series on browse pages to mark them read or unread, or add them to a read list or collection in one go.
-- The iPad interface is rebuilt around adaptable tabs with a sidebar, replacing the old split view.
-- Sign in faster: the login screen can create an API key for you automatically.
-
 Reader
-- Pan smoothly across wide spreads instead of paging their halves, with a Scroll split mode for joined pages.
-- The end page now tells you how many unread books remain in the series, and finishing a book suggests the next unread one.
-- Split wide pages are border-cropped before splitting, so joined spreads realign perfectly at the seam.
-- Fixed reading progress not being recorded on books you had already started.
+- EPUB page-curl mode respects the safe area again, and dragging back across a chapter boundary in cover mode now reveals the correct page instead of briefly showing the wrong one.
+- EPUB chapters paginate faster in every paged mode, and page-curl transitions use far less memory.
+- Oversized pages decode at display size, roughly halving peak reader memory with no visible change; shared or exported pages still use the original full-resolution image.
+- Covers render sharper on every surface, fixing blurry iPad covers and reducing moiré on high-frequency artwork.
+- AI upscaling loses its "Always" mode; "Auto" covers the useful cases, and users who had "Always" selected move to "Auto" automatically.
 
 Improvements
-- Offline mode is now a simple toggle, and the offline banner on the Dashboard retries the connection with one tap.
-- Dashboard cards are polished to match Apple Books sizing, covers stop flashing placeholders while scrolling, and corner badges stay consistent at any size.
-- Download failures are surfaced clearly with counts, and Sync Data lives in Offline Tasks with real per-stage progress.
-- Settings are reorganized into flatter groups, server management entries are admin-only, and About now links to the Discord community.
-- The default and legacy app icons get the new glass look.
-- Browse pages get a unified toolbar, content-type counts move onto the chips (and hide when zero), and iPhone tab roots show clean inline titles.
+- Page isolation is renamed to Solo: menu actions now read Show Solo, Cancel Solo, and Show Page N Solo, and the dual-page cover preference reads Solo Cover Page.
