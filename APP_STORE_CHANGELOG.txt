@@ -1,6 +1,6 @@
 New
 - Manga translation: translate manga pages with downloadable model packs. Text detection and OCR run entirely on your device, page images never leave the device, and translated text renders over the original bubbles, including vertical typesetting for vertical bubbles when translating to Chinese or Japanese.
-- Translation runs per reading session and translates the next pages ahead as you read. Enable it from the reader's ⋯ menu, and choose OpenAI-compatible providers or the system translation fallback (iOS/macOS 26) in Settings → Manga Translation. Detection and recognition models can be picked independently.
+- Translation runs per reading session and translates the next pages ahead as you read. Enable it from the reader's ⋯ menu, and choose a custom AI provider or the system translation fallback (iOS/macOS 26) in Settings → Manga Translation. Detection and recognition models can be picked independently.
 - iPad on iOS 18+ gains a Classic Navigation toggle in Settings → Appearance that restores the previous split-view sidebar layout, with one-tap library switching in portrait.
 
 Reader
