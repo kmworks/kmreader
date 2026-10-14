@@ -28,11 +28,11 @@ Do not duplicate those instructions here. This skill owns ordering, GitHub PR ha
 ## Guardrails
 
 - Work from a clean or understood git state. Do not mix unrelated local changes into release PRs.
-- Use `asc --help` for command shape when uncertain; CLI flags can drift.
+- Use `asc --help` for command shape when uncertain; CLI flags can drift. Known asc 5.0 renames: `versions get` → `versions view`, `versions attach-build --build` → `--build-id`, `review items-add` → `review items add`.
 - Do not use raw `xcodebuild`; this repo uses Makefile automation.
 - Do not create duplicate App Store Connect versions. Reuse existing editable versions.
 - Stop before submission if any platform build is not `VALID`, metadata is incomplete, content rights are missing, or encryption compliance is unresolved.
-- Do not rely on `asc submit status --id`; App Store Connect can reject that lookup with a `GET_INSTANCE` limitation. Verify final state through `asc versions get/list` and review submission responses.
+- Do not rely on `asc submit status --id`; App Store Connect can reject that lookup with a `GET_INSTANCE` limitation. Verify final state through `asc versions view/list` and review submission responses.
 - Keep release notes user-facing. Exclude bump commits, CI, implementation details, file names, class names, and refactor-only work.
 - Use `gh pr create --body-file` and `gh pr edit --body-file`; do not pass Markdown bodies inline.
 
@@ -54,6 +54,7 @@ git tag --sort=-creatordate | head -20
 ```bash
 git diff --check
 wc -c APP_STORE_DESCRIPTION.txt APP_STORE_CHANGELOG.txt
+wc -m APP_STORE_DESCRIPTION.txt APP_STORE_CHANGELOG.txt  # both must be at most 4000 characters each (App Store Connect limit, counted in characters, not bytes); trim before syncing if over
 ```
 
 If validation needs stronger proof, run the smallest relevant repo command. Do not run repository-wide formatting just for release copy.
@@ -159,17 +160,17 @@ Map one build ID per platform. Confirm:
 Attach each build:
 
 ```bash
-asc versions attach-build --version-id "$ios_version_id" --build "$ios_build_id" --pretty
-asc versions attach-build --version-id "$macos_version_id" --build "$macos_build_id" --pretty
-asc versions attach-build --version-id "$tvos_version_id" --build "$tvos_build_id" --pretty
+asc versions attach-build --version-id "$ios_version_id" --build-id "$ios_build_id" --pretty
+asc versions attach-build --version-id "$macos_version_id" --build-id "$macos_build_id" --pretty
+asc versions attach-build --version-id "$tvos_version_id" --build-id "$tvos_build_id" --pretty
 ```
 
 Then verify:
 
 ```bash
-asc versions get --version-id "$ios_version_id" --include-build --pretty
-asc versions get --version-id "$macos_version_id" --include-build --pretty
-asc versions get --version-id "$tvos_version_id" --include-build --pretty
+asc versions view --version-id "$ios_version_id" --include-build --pretty
+asc versions view --version-id "$macos_version_id" --include-build --pretty
+asc versions view --version-id "$tvos_version_id" --include-build --pretty
 ```
 
 ## Phase 6: Submit For Review
@@ -180,7 +181,7 @@ For each platform:
 submission_id=$(asc review submissions-create --app 6755198424 --platform IOS --pretty \
   | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("id") or data["data"]["id"])')
 
-asc review items-add --submission "$submission_id" --item-type appStoreVersions --item-id "$ios_version_id" --pretty
+asc review items add --submission "$submission_id" --item-type appStoreVersions --item-id "$ios_version_id" --pretty
 asc review submissions-submit --id "$submission_id" --confirm --pretty
 ```
 
@@ -190,9 +191,9 @@ Final verification:
 
 ```bash
 asc versions list --app 6755198424 --version "$version" --platform IOS,MAC_OS,TV_OS --pretty
-asc versions get --version-id "$ios_version_id" --include-build --pretty
-asc versions get --version-id "$macos_version_id" --include-build --pretty
-asc versions get --version-id "$tvos_version_id" --include-build --pretty
+asc versions view --version-id "$ios_version_id" --include-build --pretty
+asc versions view --version-id "$macos_version_id" --include-build --pretty
+asc versions view --version-id "$tvos_version_id" --include-build --pretty
 ```
 
 All three versions should be `WAITING_FOR_REVIEW`. Report platform, version ID, build ID, and submission ID.
@@ -208,7 +209,7 @@ make minor
 git status --short --branch
 ```
 
-`make minor` must own the version mutation. Do not edit `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` manually.
+`make minor` must own the version mutation. Do not edit `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` manually. On Linux, `misc/bump-version.sh` fails because its `sed -i ''` is BSD/macOS-only syntax and GNU sed misparses it; replicate the script's exact mutation with GNU sed (same two replacements, same commit message) instead of hand-editing the version numbers.
 
 Verify the generated commit and version delta:
 
