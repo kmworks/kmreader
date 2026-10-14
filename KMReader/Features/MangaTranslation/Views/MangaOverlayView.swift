@@ -53,12 +53,14 @@ import SwiftUI
             if direction.usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
               let bubble = MangaVerticalTextLabel()
               bubble.text = region.translatedText ?? region.text
+              bubble.textColor = MangaBubbleBackground.textColor(on: regionColors[index])
               container.addSubview(bubble)
             } else {
               let bubble = UILabel()
               bubble.text = region.translatedText ?? region.text
               bubble.font = .systemFont(ofSize: 14, weight: .medium)
-              bubble.textColor = .black
+              bubble.textColor = UIColor(
+                cgColor: MangaBubbleBackground.textColor(on: regionColors[index]))
               bubble.textAlignment = .center
               bubble.numberOfLines = 0
               bubble.lineBreakMode = .byWordWrapping
@@ -218,12 +220,15 @@ import SwiftUI
             if direction.usesVerticalLayout(for: region, targetLanguage: result.targetLanguage) {
               let bubble = MangaVerticalTextLabel()
               bubble.text = region.translatedText ?? region.text
+              bubble.textColor = MangaBubbleBackground.textColor(on: regionColors[index])
               container.addSubview(bubble)
             } else {
               let bubble = NSTextField()
               bubble.stringValue = region.translatedText ?? region.text
               bubble.font = .systemFont(ofSize: 14, weight: .medium)
-              bubble.textColor = .black
+              bubble.textColor =
+                NSColor(cgColor: MangaBubbleBackground.textColor(on: regionColors[index]))
+                ?? .black
               bubble.alignment = .center
               bubble.lineBreakMode = .byWordWrapping
               bubble.maximumNumberOfLines = 0

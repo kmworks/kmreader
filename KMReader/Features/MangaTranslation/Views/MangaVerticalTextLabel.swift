@@ -9,6 +9,10 @@ import Foundation
       didSet { setNeedsDisplay() }
     }
 
+    var textColor: CGColor = UIColor.black.cgColor {
+      didSet { setNeedsDisplay() }
+    }
+
     private var fontSize: CGFloat = 14
 
     override init(frame: CGRect) {
@@ -34,7 +38,7 @@ import Foundation
       guard !text.isEmpty, let context = UIGraphicsGetCurrentContext() else { return }
       let font = UIFont.systemFont(ofSize: fontSize, weight: .medium) as CTFont
       MangaVerticalTextCompositor.draw(
-        text: text, font: font, color: UIColor.black.cgColor, in: context, size: bounds.size
+        text: text, font: font, color: textColor, in: context, size: bounds.size
       )
     }
   }
@@ -45,6 +49,10 @@ import Foundation
     override var isFlipped: Bool { true }
 
     var text: String = "" {
+      didSet { needsDisplay = true }
+    }
+
+    var textColor: CGColor = NSColor.black.cgColor {
       didSet { needsDisplay = true }
     }
 
@@ -61,7 +69,7 @@ import Foundation
       guard !text.isEmpty, let context = NSGraphicsContext.current?.cgContext else { return }
       let font = NSFont.systemFont(ofSize: fontSize, weight: .medium) as CTFont
       MangaVerticalTextCompositor.draw(
-        text: text, font: font, color: NSColor.black.cgColor, in: context, size: bounds.size
+        text: text, font: font, color: textColor, in: context, size: bounds.size
       )
     }
   }
