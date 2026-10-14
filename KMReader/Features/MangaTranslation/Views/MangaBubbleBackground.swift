@@ -107,6 +107,18 @@ enum MangaBubbleBackground {
     )
   }
 
+  // Sampled fills cluster near pure white/black, so a mid-gray luminance
+  // threshold suffices to keep the text readable.
+  static func textColor(on background: CGColor) -> CGColor {
+    guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+      let components = background.converted(to: space, intent: .defaultIntent, options: nil)?
+        .components,
+      components.count >= 3
+    else { return CGColor(gray: 0, alpha: 1) }
+    let luminance = 0.299 * components[0] + 0.587 * components[1] + 0.114 * components[2]
+    return luminance < 0.5 ? CGColor(gray: 1, alpha: 1) : CGColor(gray: 0, alpha: 1)
+  }
+
   static func multiply(_ color: CGColor, by tint: CGColor) -> CGColor {
     guard let space = CGColorSpace(name: CGColorSpace.sRGB),
       let base = color.converted(to: space, intent: .defaultIntent, options: nil)?.components,
