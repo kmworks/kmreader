@@ -1,24 +1,28 @@
 New
-- One Lists home on every platform: Collections and Read Lists now live together on a single Lists page (a new tab on iPhone and Apple TV, one merged row in sidebars), with your pinned items always first.
-- Smart Lists on KMServer: saved searches evaluated live on the server. Browse them from the Lists page, and create, edit, or delete them right in the app.
-- One library scope menu everywhere: switch between All Libraries, your Pinned set, or a single library from a single dropdown shared by the Dashboard, Offline, and every browse page, with an info line showing the scope's size and counts.
-- Server Info is rebuilt as an overview with server identity, uptime, CPU, memory, disk, and content totals, plus new Tasks, Sessions, and Scheduled Tasks pages with a live task queue. It now works on stock Komga servers too.
-- Reading stats now come from the server when it supports them, including new Current and Longest Streak cards, with the on-device stats as a fallback.
-- Fetch metadata with komf: Identify, Match, and Reset Metadata actions for series and oneshots when your KMServer has the komf integration connected (admin only).
-- Select multiple books and series on browse pages to mark them read or unread, or add them to a read list or collection in one go.
-- The iPad interface is rebuilt around adaptable tabs with a sidebar, replacing the old split view.
-- Sign in faster: the login screen can create an API key for you automatically.
+- Manga translation: translate manga pages with downloadable model packs. Text detection and OCR run entirely on your device, page images never leave the device, and translated text renders over the original bubbles, including vertical typesetting for vertical bubbles when translating to Chinese or Japanese.
+- Translation runs per reading session and translates the next pages ahead as you read. Enable it from the reader's ⋯ menu, and choose OpenAI-compatible providers or the system translation fallback (iOS/macOS 26) in Settings → Manga Translation. Detection and recognition models can be picked independently.
+- iPad on iOS 18+ gains a Classic Navigation toggle in Settings → Appearance that restores the previous split-view sidebar layout, with one-tap library switching in portrait.
 
 Reader
-- Pan smoothly across wide spreads instead of paging their halves, with a Scroll split mode for joined pages.
-- The end page now tells you how many unread books remain in the series, and finishing a book suggests the next unread one.
-- Split wide pages are border-cropped before splitting, so joined spreads realign perfectly at the seam.
-- Fixed reading progress not being recorded on books you had already started.
+- EPUB page-curl mode respects the safe area again, and dragging back across a chapter boundary in cover mode now reveals the correct page instead of briefly showing the wrong one.
+- Page-curl tap turns now wait for the new page to paint before animating, so the peel no longer reveals the old page and snaps; cross-chapter turns no longer spin while neighbors load.
+- EPUB cold-start restore is fixed: opening a book now returns to your saved position in page-curl and paged-scroll modes.
+- Jumping back to the previous chapter in EPUB now lands on its last page instead of mid-chapter, and backward page-curl flips show the previous page mirrored on the backside.
+- EPUB chapters paginate faster in every paged mode, and page-curl transitions use far less memory.
+- Catching a gliding whole spread mid-flick now keeps panning it under your finger, and taps that stop a glide no longer also trigger their tap zone.
+- Drags in the reader no longer trigger tap actions when the gesture ends.
+- Manga translation now covers both pages of a dual-page spread and both halves of a merged wide page, and missing system translation language packs now produce an actionable error telling you where to download them.
+- Fixed a crash when opening a page context menu during a page turn on iOS 26+.
+- The Scroll split-wide-page mode gets a pan icon that reads clearly across languages.
+- Oversized pages decode at display size, roughly halving peak reader memory with no visible change; shared or exported pages still use the original full-resolution image.
+- Covers render sharper on every surface, fixing blurry iPad covers and reducing moiré on high-frequency artwork.
+- AI upscaling loses its "Always" mode; "Auto" covers the useful cases, and users who had "Always" selected move to "Auto" automatically.
 
 Improvements
-- Offline mode is now a simple toggle, and the offline banner on the Dashboard retries the connection with one tap.
-- Dashboard cards are polished to match Apple Books sizing, covers stop flashing placeholders while scrolling, and corner badges stay consistent at any size.
-- Download failures are surfaced clearly with counts, and Sync Data lives in Offline Tasks with real per-stage progress.
-- Settings are reorganized into flatter groups, server management entries are admin-only, and About now links to the Discord community.
-- The default and legacy app icons get the new glass look.
-- Browse pages get a unified toolbar, content-type counts move onto the chips (and hide when zero), and iPhone tab roots show clean inline titles.
+- Page isolation is renamed to Solo: menu actions now read Show Solo, Cancel Solo, and Show Page N Solo, and the dual-page cover preference reads Solo Cover Page.
+- The Dashboard no longer stutters on first load or pull-to-refresh, the library info row appears immediately, and cards no longer flash white when switching library scope.
+- Removed the redundant Settings gear from the Dashboard on iPad and macOS (Settings stays in its tab/sidebar/scene).
+- Fixed the iPhone dashboard getting stuck in a perpetual refresh animation after rotating landscape → portrait.
+- Queued downloads now show an hourglass instead of a stuck 0% progress pie.
+- The iPhone Search tab's empty-state placeholder shows the current library scope as a tappable menu, so you can see and switch scope while the search field is focused.
+- Haptic feedback for the translation button long-press, EPUB rubber-band boundaries, and swipe deletes.

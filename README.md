@@ -23,6 +23,7 @@
 ### Readers
 
 - DIVINA reader on iOS, macOS, and tvOS with LTR, RTL, vertical, Webtoon, spreads, zoom, page curl on iOS, cover transitions, tap zone layout presets, keyboard support, per-page rotation, border cropping, preload profiles, and per-book preferences.
+- Manga translation: on-device text detection and OCR with downloadable model packs; translated text renders over the original bubbles, including vertical typesetting. Enable per reading session from the reader menu; OpenAI-compatible providers or the system translation fallback.
 - EPUB reader on iOS/macOS with paged, scrolled, curl, or cover layouts, custom fonts, per-book theme and typography controls, dedicated EPUB behavior settings, status/footer overlays, multi-column reading, and nested table of contents.
 - PDF reader on iOS/macOS with native PDF or DIVINA mode, search, table of contents, page jump, automatic or explicit page presentation modes, spread layouts, configurable render quality, and continuous reading options.
 - Animated GIF and WebP pages play inline. Peek mode (progress-free reading), page image actions, persistent reader progress overlays, AI upscaling, and iOS Live Text are supported where available.
