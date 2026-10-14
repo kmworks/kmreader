@@ -16,6 +16,7 @@ struct DivinaControlsOverlayView: View {
   @Binding var showingTOCSheet: Bool
   @Binding var showingReaderSettingsSheet: Bool
   @Binding var showingDetailSheet: Bool
+  @Binding var showingMangaTranslationSettings: Bool
 
   let viewModel: ReaderViewModel
   let currentBook: Book?
@@ -121,6 +122,16 @@ struct DivinaControlsOverlayView: View {
     return readingDirection != .webtoon && readingDirection != .vertical && pageLayout.supportsDualPageOptions
   }
 
+  private var mangaTranslationVisibilityTitle: String {
+    viewModel.showMangaTranslation
+      ? String(localized: "Hide Translation")
+      : String(localized: "Show Translation")
+  }
+
+  private var mangaTranslationOverlayVisible: Bool {
+    viewModel.mangaTranslationResult?.isTranslated == true && viewModel.showMangaTranslation
+  }
+
   private var pageSoloActions: [ReaderPageSoloActions.Action] {
     ReaderPageSoloActions.resolve(
       supportsDualPageOptions: enableDualPageOptions,
@@ -145,10 +156,6 @@ struct DivinaControlsOverlayView: View {
       }
     }
 
-    private var pageFormat: String {
-      String(localized: "Page %d")
-    }
-
   #endif
 
   private static let scrimExtensionHeight: CGFloat = 120
@@ -159,14 +166,27 @@ struct DivinaControlsOverlayView: View {
 
   var body: some View {
     ZStack(alignment: .bottom) {
-      topControlsLayer
-      bottomControlsLayer
-      hiddenProgressLayer
+      ZStack(alignment: .bottom) {
+        topControlsLayer
+        bottomControlsLayer
+        hiddenProgressLayer
+      }
+      .allowsHitTesting(controlsVisible)
+      mangaTranslationFloatingLayer
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .animation(visibilityAnimation, value: controlsVisible)
     .animation(visibilityAnimation, value: showProgressBarWhileReading)
-    .allowsHitTesting(controlsVisible)
+    .sheet(
+      isPresented: $showingMangaTranslationSettings,
+      onDismiss: {
+        viewModel.refreshMangaTranslationConfiguration()
+      }
+    ) {
+      SheetView(title: String(localized: "Manga Translation"), size: .large, applyFormStyle: true) {
+        MangaTranslationSettingsView()
+      }
+    }
     .alert(
       "reader.pageDimensions.warning.title",
       isPresented: $showingPageDimensionWarning
@@ -192,6 +212,61 @@ struct DivinaControlsOverlayView: View {
         }
       }
       .focusSection()
+    #endif
+  }
+
+  @ViewBuilder
+  private var mangaTranslationFloatingLayer: some View {
+    #if os(iOS) || os(macOS)
+      if viewModel.mangaTranslationEnabled, currentPageID != nil {
+        VStack {
+          Spacer()
+          HStack {
+            Spacer()
+            Button {
+              if viewModel.mangaTranslationResult?.isTranslated != true {
+                viewModel.translateCurrentPage()
+              } else {
+                viewModel.toggleMangaTranslation()
+              }
+            } label: {
+              Image(systemName: viewModel.mangaTranslationPhase.icon)
+                .contentTransition(.symbolEffect(.replace))
+                .foregroundColor(
+                  viewModel.mangaTranslationPhase.isFailed
+                    ? .red
+                    : mangaTranslationOverlayVisible ? .blue : nil
+                )
+                .symbolEffect(.pulse, options: .repeating, isActive: viewModel.mangaTranslationPhase.isBusy)
+                .animation(animation, value: viewModel.mangaTranslationPhase)
+                .animation(animation, value: mangaTranslationOverlayVisible)
+                .contentShape(Circle())
+            }
+            .accessibilityLabel(
+              Text(
+                viewModel.mangaTranslationResult?.isTranslated == true
+                  ? mangaTranslationVisibilityTitle
+                  : viewModel.mangaTranslationPhase.title
+              )
+            )
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
+            .readerControlButtonStyle()
+            .frame(width: 44, height: 44)
+            .highPriorityGesture(
+              LongPressGesture().onEnded { _ in
+                HapticFeedback.medium()
+                showingMangaTranslationSettings = true
+              }
+            )
+            .accessibilityAction(named: String(localized: "Settings")) {
+              showingMangaTranslationSettings = true
+            }
+          }
+        }
+        .padding()
+        .padding(.bottom, controlsVisible ? 64 : 0)
+      }
     #endif
   }
 
@@ -514,11 +589,50 @@ struct DivinaControlsOverlayView: View {
       Text(String(localized: "Current Reading Options"))
     }
 
-    Button {
-      showingReaderSettingsSheet = true
-    } label: {
-      Label(String(localized: "Reader Settings"), systemImage: AppIcon.settings)
+    Section {
+      Button {
+        showingReaderSettingsSheet = true
+      } label: {
+        Label(String(localized: "Reader Settings"), systemImage: AppIcon.settings)
+      }
+
+      #if os(iOS) || os(macOS)
+        Button {
+          viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
+        } label: {
+          Label(
+            String(localized: "Manga Translation"),
+            systemImage: viewModel.mangaTranslationEnabled
+              ? AppIcon.confirm : AppIcon.mangaTranslation
+          )
+        }
+      #endif
     }
+
+    #if os(iOS) || os(macOS)
+      if currentPageID != nil {
+        Section {
+          if dualPage, let pair = viewModel.currentViewItem()?.pagePairIDs {
+            sharePageButton(for: pair.first)
+            if let second = pair.second {
+              sharePageButton(for: second)
+            }
+          } else if let currentPageID {
+            sharePageButton(for: currentPageID)
+          }
+
+          ForEach(pageSoloActions) { action in
+            Button {
+              viewModel.toggleSoloPage(action.pageID)
+            } label: {
+              Label(action.title, systemImage: action.systemImage)
+            }
+          }
+        } header: {
+          Text(String(localized: "Current Page"))
+        }
+      }
+    #endif
 
     Section {
       pageNavigation()
@@ -531,25 +645,6 @@ struct DivinaControlsOverlayView: View {
     } header: {
       Text(String(localized: "Book Navigation"))
     }
-
-    #if os(iOS) || os(macOS)
-      if currentPageID != nil {
-        Section {
-          if dualPage, let pair = viewModel.currentViewItem()?.pagePairIDs {
-            pageActionsMenu(for: pair.first)
-            if let second = pair.second {
-              pageActionsMenu(for: second)
-            }
-          } else if let currentPageID {
-            pageActionsMenu(for: currentPageID)
-          } else {
-            EmptyView()
-          }
-        } header: {
-          Text(String(localized: "Current Page"))
-        }
-      }
-    #endif
   }
 
   @ViewBuilder
@@ -624,39 +719,16 @@ struct DivinaControlsOverlayView: View {
 
   #if os(iOS) || os(macOS)
     @ViewBuilder
-    private func pageActionsMenu(for pageID: ReaderPageID) -> some View {
-      let displayedPageNumber = displayPageNumber(for: pageID)
-      Menu {
-        Button {
-          sharePage(id: pageID)
-        } label: {
-          Label(String(localized: "Share"), systemImage: AppIcon.share)
-        }
-
-        if let soloAction = pageSoloAction(for: pageID) {
-          Button {
-            viewModel.toggleSoloPage(soloAction.pageID)
-          } label: {
-            Label(pageSoloMenuTitle(for: soloAction), systemImage: soloAction.systemImage)
-          }
-        }
+    private func sharePageButton(for pageID: ReaderPageID) -> some View {
+      Button {
+        sharePage(id: pageID)
       } label: {
         Label(
-          String.localizedStringWithFormat(pageFormat, displayedPageNumber),
-          systemImage: "doc"
+          String.localizedStringWithFormat(
+            String(localized: "Share Page %d"), displayPageNumber(for: pageID)),
+          systemImage: AppIcon.share
         )
       }
-    }
-
-    private func pageSoloAction(for pageID: ReaderPageID) -> ReaderPageSoloActions.Action? {
-      pageSoloActions.first { $0.pageID == pageID }
-    }
-
-    private func pageSoloMenuTitle(for action: ReaderPageSoloActions.Action) -> String {
-      if action.title == String(localized: "Cancel Solo") {
-        return action.title
-      }
-      return String(localized: "Show Solo")
     }
   #endif
 }

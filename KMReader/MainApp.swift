@@ -72,6 +72,9 @@ struct MainApp: App {
     AppConfig.migrateOfflineProvenanceIfNeeded()
     AppConfig.removeLegacyThemeColor()
     AppConfig.migrateLegacyHorizontalBookCards()
+    #if os(iOS) || os(tvOS)
+      _ = MangaModelMemoryWarningObserver.shared
+    #endif
     AppConfig.showProtectedServers = false
     _authViewModel = State(initialValue: AuthViewModel())
   }
@@ -202,6 +205,25 @@ struct MainApp: App {
         if state.supportsBookDetails {
           Button("Book Details") {
             readerPresentation.showBookDetailsFromCommand()
+          }
+          .disabled(!state.isActive)
+        }
+
+        if state.supportsMangaTranslation {
+          Menu(String(localized: "Manga Translation")) {
+            Button {
+              readerPresentation.toggleMangaTranslationFromCommand()
+            } label: {
+              if state.mangaTranslationEnabled {
+                Label(String(localized: "Enable Translation"), systemImage: AppIcon.confirm)
+              } else {
+                Text(String(localized: "Enable Translation"))
+              }
+            }
+
+            Button(String(localized: "Settings")) {
+              readerPresentation.showMangaTranslationSettingsFromCommand()
+            }
           }
           .disabled(!state.isActive)
         }
@@ -362,33 +384,23 @@ struct MainApp: App {
 
           ForEach(state.commandPageIDs, id: \.self) { pageID in
             let displayPageNumber = state.displayPageNumbersByID[pageID] ?? pageID.pageNumber + 1
-            Menu("Page \(displayPageNumber)") {
-              Button("Share") {
-                readerPresentation.sharePageFromCommand(pageID)
-              }
-              .disabled(!state.isActive)
+            Button(
+              String.localizedStringWithFormat(String(localized: "Share Page %d"), displayPageNumber)
+            ) {
+              readerPresentation.sharePageFromCommand(pageID)
+            }
+            .disabled(!state.isActive)
+          }
 
-              if let soloAction = state.pageSoloActions.first(where: { $0.pageID == pageID }) {
-                Divider()
-                Button(readerPageSoloTitle(for: soloAction)) {
-                  readerPresentation.toggleSoloPageFromCommand(soloAction.pageID)
-                }
-                .disabled(!state.isActive)
-              }
+          ForEach(state.pageSoloActions) { action in
+            Button(action.title) {
+              readerPresentation.toggleSoloPageFromCommand(action.pageID)
             }
             .disabled(!state.isActive)
           }
         }
       }
     }
-
-    private func readerPageSoloTitle(for action: ReaderPageSoloActions.Action) -> String {
-      if action.title == String(localized: "Cancel Solo") {
-        return action.title
-      }
-      return String(localized: "Show Solo")
-    }
-
   #endif
 
   var body: some Scene {

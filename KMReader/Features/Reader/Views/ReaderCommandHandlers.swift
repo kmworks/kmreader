@@ -18,4 +18,6 @@ struct ReaderCommandHandlers {
   let setRotation: (ReaderRotation) -> Void
   let setSplitWidePageMode: (SplitWidePageMode) -> Void
   let toggleContinuousScroll: () -> Void
+  let toggleMangaTranslation: () -> Void
+  let showMangaTranslationSettings: () -> Void
 }

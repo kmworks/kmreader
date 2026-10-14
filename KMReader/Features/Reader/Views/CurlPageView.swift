@@ -241,6 +241,9 @@
         singleTap.delegate = self
         view.addGestureRecognizer(singleTap)
         singleTapRecognizer = singleTap
+        for case let panRecognizer as UIPanGestureRecognizer in pageViewController?.gestureRecognizers ?? [] {
+          singleTap.require(toFail: panRecognizer)
+        }
 
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
@@ -918,6 +921,7 @@
       func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard !isTransitioning else { return false }
         guard !parent.viewModel.isZoomed else { return false }
+        guard !parent.viewModel.isPageContextMenuPresented else { return false }
 
         synchronizeCurrentAnchorWithVisibleController()
         guard let currentPageIndex = currentResolvedIndex() else { return false }
@@ -962,6 +966,14 @@
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
       ) -> Bool {
         true
+      }
+
+      // A tap that catches a gliding page only stops it.
+      func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
+      ) -> Bool {
+        gestureRecognizer === singleTapRecognizer && SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
       }
 
       func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {

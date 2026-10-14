@@ -43,7 +43,6 @@ struct DivinaReaderView: View {
     AppConfig.showDivinaProgressBarWhileReading
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
-  @AppStorage("shakeToOpenLiveText") private var shakeToOpenLiveText: Bool = false
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
   @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("offlineFirstReading") private var offlineFirstReading: Bool = false
@@ -91,6 +90,7 @@ struct DivinaReaderView: View {
   @State private var showingTOCSheet = false
   @State private var showingReaderSettingsSheet = false
   @State private var showingDetailSheet = false
+  @State private var showingMangaTranslationSettings = false
   @State private var requestedNextSegmentPreloads: Set<String> = []
   @State private var requestedPreviousSegmentPreloads: Set<String> = []
   @State private var inFlightNextSegmentPreloads: [String: Task<Void, Never>] = [:]
@@ -130,6 +130,7 @@ struct DivinaReaderView: View {
       initialValue: ReaderViewModel(
         soloCoverPage: AppConfig.soloCoverPage,
         pageLayout: AppConfig.pageLayout,
+        readingDirection: AppConfig.defaultReadingDirection,
         splitWidePageMode: AppConfig.splitWidePageMode,
         pageTransitionStyle: AppConfig.pageTransitionStyle,
         rotation: .none,
@@ -266,6 +267,10 @@ struct DivinaReaderView: View {
 
   private func closeReader() {
     cancelAutoHideAfterResume()
+    viewModel.cancelMangaTranslation()
+    Task {
+      await MangaTranslationService.shared.releaseModels()
+    }
     logger.debug(
       "🚪 Closing DIVINA reader for book \(currentBookId), currentPage=\(viewModel.currentPage?.number ?? -1), totalPages=\(viewModel.pageCount)"
     )
@@ -607,13 +612,6 @@ struct DivinaReaderView: View {
     .iPadIgnoresSafeArea()
     #if os(iOS)
       .statusBarHidden(!shouldShowControls)
-      .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
-        if shakeToOpenLiveText {
-          enableLiveText.toggle()
-          let message = enableLiveText ? String(localized: "Live Text: ON") : String(localized: "Live Text: OFF")
-          ErrorManager.shared.notify(message: message)
-        }
-      }
     #endif
     .sheet(isPresented: $showingPageJumpSheet) {
       PageJumpSheetView(
@@ -667,6 +665,12 @@ struct DivinaReaderView: View {
     }
     .onChange(of: divinaPreloadProfile) { _, newValue in
       viewModel.updatePreloadWindow(newValue.window)
+    }
+    .onChange(of: enableLiveText) { _, newValue in
+      // Live Text and the translation overlay cannot analyze the same page.
+      if newValue {
+        viewModel.setMangaTranslationEnabled(false)
+      }
     }
     .task(id: currentBookId) {
       readerPresentation.registerFlushHandler(for: sessionID) {
@@ -736,7 +740,8 @@ struct DivinaReaderView: View {
         showingControls = false
       }
     }
-    .onChange(of: readingDirection) { _, _ in
+    .onChange(of: readingDirection) { _, newValue in
+      viewModel.updateReadingDirection(newValue)
       #if os(iOS) || os(macOS)
         triggerTapZoneOverlay(timeout: 1)
       #endif
@@ -1011,6 +1016,7 @@ struct DivinaReaderView: View {
       showingTOCSheet: $showingTOCSheet,
       showingReaderSettingsSheet: $showingReaderSettingsSheet,
       showingDetailSheet: $showingDetailSheet,
+      showingMangaTranslationSettings: $showingMangaTranslationSettings,
       viewModel: viewModel,
       currentBook: currentSegmentBook,
       dualPage: useDualPage,
@@ -1143,8 +1149,9 @@ struct DivinaReaderView: View {
 
     #if os(iOS) || os(macOS)
       if event.matches(.l) {
-        enableLiveText.toggle()
-        let message = enableLiveText ? String(localized: "Live Text: ON") : String(localized: "Live Text: OFF")
+        let isEnabled = !enableLiveText
+        AppConfig.setLiveTextEnabled(isEnabled)
+        let message = isEnabled ? String(localized: "Live Text: ON") : String(localized: "Live Text: OFF")
         ErrorManager.shared.notify(message: message)
         return true
       }
@@ -1742,7 +1749,9 @@ struct DivinaReaderView: View {
         supportsPageLayoutSelection: true,
         supportsRotationSelection: readingDirection != .webtoon,
         supportsDualPageOptions: supportsDualPageOptions,
-        supportsSplitWidePageMode: supportsSplitWidePageMode
+        supportsSplitWidePageMode: supportsSplitWidePageMode,
+        supportsMangaTranslation: true,
+        mangaTranslationEnabled: viewModel.mangaTranslationEnabled
       )
     }
 
@@ -1800,7 +1809,13 @@ struct DivinaReaderView: View {
           setSplitWidePageMode: { mode in
             splitWidePageMode = mode
           },
-          toggleContinuousScroll: {}
+          toggleContinuousScroll: {},
+          toggleMangaTranslation: {
+            viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
+          },
+          showMangaTranslationSettings: {
+            showingMangaTranslationSettings = true
+          }
         )
       )
     }
@@ -1835,7 +1850,9 @@ struct DivinaReaderView: View {
   }
 
   private func handleTapZoneAction(_ action: TapZoneAction) {
-    guard viewModel.hasPages, !isPresentingModalSheet, !viewModel.isZoomed else { return }
+    guard viewModel.hasPages, !isPresentingModalSheet, !viewModel.isZoomed,
+      !viewModel.isPageContextMenuPresented
+    else { return }
     switch action {
     case .previous:
       goToReaderPosition(.previous)
@@ -2035,9 +2052,11 @@ struct DivinaReaderView: View {
     // Updating currentBookId triggers the .task(id: currentBookId) reload.
     preserveReaderOptions = true
     currentBookId = bookId
+    viewModel.cancelMangaTranslation()
     viewModel = ReaderViewModel(
       soloCoverPage: soloCoverPage,
       pageLayout: pageLayout,
+      readingDirection: readingDirection,
       splitWidePageMode: splitWidePageMode,
       rotation: rotation,
       preloadWindow: divinaPreloadProfile.window,

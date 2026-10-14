@@ -10,7 +10,6 @@ final class DashboardRefreshCoordinator {
   static let shared = DashboardRefreshCoordinator()
 
   private let debounceInterval: TimeInterval = 5.0
-  private let manualReloadTimeout: UInt64 = 10_000_000_000
   private let logger = AppLogger(.dashboard)
 
   private var isAutoRefreshEnabled = AppConfig.enableSSEAutoRefresh
@@ -22,8 +21,6 @@ final class DashboardRefreshCoordinator {
   private var hasDeferredProjectionRefresh = false
   private var deferredProjectionSections: Set<DashboardSection>?
   private var projectionObserverTasks: [Task<Void, Never>] = []
-  private var activeSections: Set<DashboardSection> = []
-  private var reloadTrackers: [UUID: SectionReloadTracker] = [:]
 
   private init() {
     startProjectionObservers()
@@ -70,7 +67,7 @@ final class DashboardRefreshCoordinator {
   ) async {
     switch source {
     case .manual:
-      await requestManualRefresh(sections: sections, reason: reason)
+      requestManualRefresh(sections: sections, reason: reason)
     case .auto:
       scheduleAutoRefresh(sections: sections, reason: reason)
     case .projection:
@@ -78,71 +75,27 @@ final class DashboardRefreshCoordinator {
     }
   }
 
-  func registerSection(_ section: DashboardSection) {
-    activeSections.insert(section)
-  }
-
-  func unregisterSection(_ section: DashboardSection) {
-    activeSections.remove(section)
-  }
-
-  func acknowledgeSectionReload(commandID: UUID, section: DashboardSection) {
-    guard var tracker = reloadTrackers[commandID] else { return }
-    tracker.remaining.remove(section)
-    guard tracker.remaining.isEmpty else {
-      reloadTrackers[commandID] = tracker
-      return
-    }
-    tracker.timeoutTask.cancel()
-    reloadTrackers.removeValue(forKey: commandID)
-    tracker.continuation.resume()
-  }
-
-  /// Manual refreshes suspend until every rendered section has finished
-  /// reloading, so pull-to-refresh dismisses only after content has settled.
+  /// Manual refreshes go straight to the dashboard: it observes the reload
+  /// notification once and awaits its view model, so no per-section
+  /// acknowledgement is needed.
   private func requestManualRefresh(
     sections: Set<DashboardSection>?,
     reason: String
-  ) async {
+  ) {
     logger.debug("Dashboard manual refresh requested: \(reason)")
 
     if sections == nil {
       cancelPendingAutoRefresh(clearDeferred: true)
     }
 
-    let command = DashboardSectionReloadCommand(
-      id: UUID(),
-      source: .manual,
-      sections: sections,
-      reason: reason
+    DashboardSectionRefreshNotifier.postReload(
+      command: DashboardSectionReloadCommand(
+        id: UUID(),
+        source: .manual,
+        sections: sections,
+        reason: reason
+      )
     )
-    let expectedSections = activeSections.filter { command.includes($0) }
-    guard !expectedSections.isEmpty else {
-      DashboardSectionRefreshNotifier.postReload(command: command)
-      return
-    }
-
-    await withTaskCancellationHandler {
-      await withCheckedContinuation { continuation in
-        let timeoutTask = Task { @MainActor in
-          try? await Task.sleep(nanoseconds: manualReloadTimeout)
-          guard let tracker = reloadTrackers.removeValue(forKey: command.id) else { return }
-          tracker.continuation.resume()
-        }
-        reloadTrackers[command.id] = SectionReloadTracker(
-          remaining: expectedSections,
-          continuation: continuation,
-          timeoutTask: timeoutTask
-        )
-        DashboardSectionRefreshNotifier.postReload(command: command)
-      }
-    } onCancel: {
-      Task { @MainActor in
-        guard let tracker = reloadTrackers.removeValue(forKey: command.id) else { return }
-        tracker.timeoutTask.cancel()
-        tracker.continuation.resume()
-      }
-    }
   }
 
   private func requestProjectionRefresh(
@@ -334,10 +287,4 @@ final class DashboardRefreshCoordinator {
       }
     )
   }
-}
-
-private struct SectionReloadTracker {
-  var remaining: Set<DashboardSection>
-  let continuation: CheckedContinuation<Void, Never>
-  let timeoutTask: Task<Void, Never>
 }

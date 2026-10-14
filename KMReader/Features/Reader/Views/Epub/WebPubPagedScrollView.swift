@@ -138,6 +138,14 @@
           let isGoingBackward = targetChapterIndex < uiChapterIndex
           let isLastPageOfChapter = isLastPageRequest || normalizedPageIndex == max(0, pageCount - 1)
 
+          // A cross-chapter target right after load is the restore jump; hand
+          // it the pending restore progression so it lands on the saved page.
+          // Consumed once, so later user-initiated jumps get nil.
+          if targetChapterIndex != uiChapterIndex {
+            uiViewController.targetProgressionOnReady = viewModel.initialProgression(
+              for: targetChapterIndex)
+          }
+
           // Navigate to target chapter and page
           uiViewController.navigateToPage(
             chapterIndex: targetChapterIndex,
@@ -256,7 +264,7 @@
     private var isContentLoaded = false
     private var pendingPageIndex: Int?
     private var pendingJumpToLastPage: Bool = false
-    private var targetProgressionOnReady: Double?
+    var targetProgressionOnReady: Double?
     private var readyToken: Int = 0
 
     private var bookTitle: String?
@@ -478,6 +486,7 @@
       panRecognizer.delegate = self
       panRecognizer.cancelsTouchesInView = false
       panRecognizer.maximumNumberOfTouches = 1
+      tapRecognizer.require(toFail: panRecognizer)
       panRecognizer.require(toFail: longPressRecognizer)
       view.addGestureRecognizer(panRecognizer)
       self.panGestureRecognizer = panRecognizer
@@ -823,8 +832,11 @@
 
     private func loadContentIfNeeded(force: Bool) {
       guard let chapterURL, let rootURL else { return }
-      let currentURL = webView.url?.standardizedFileURL
-      let urlMatches = currentURL == chapterURL.standardizedFileURL
+      // The web view loads the chapter through the resource scheme, so the raw
+      // chapter URL never matches; compare the rewritten scheme URL instead.
+      let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL)
+      let urlMatches =
+        chapterSchemeURL != nil && webView.url?.deletingFragment == chapterSchemeURL
 
       if urlMatches && isContentLoaded {
         applyPagination(scrollToPage: currentSubPageIndex)

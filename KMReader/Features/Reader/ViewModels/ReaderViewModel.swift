@@ -40,6 +40,34 @@ class ReaderViewModel {
   private(set) var remainingUnreadCountByBookId: [String: Int] = [:]
   var incognitoMode: Bool = false
   var isZoomed: Bool = false
+  // Counts presented (or still dismissing) page-image context menus; the touch
+  // that dismisses a menu must not also turn the page underneath it.
+  @ObservationIgnored
+  var presentedPageContextMenuCount = 0
+  var isPageContextMenuPresented: Bool { presentedPageContextMenuCount > 0 }
+  var mangaTranslationPhase: MangaTranslationPhase = .idle
+  var showMangaTranslation = AppConfig.mangaTranslation.showTranslation
+  /// Session-scoped on purpose: every reader session starts with translation off.
+  var mangaTranslationEnabled = false
+  /// Translated/no-text results for this session, keyed by page and geometry.
+  /// Failed attempts are never kept so they retry when the page is revisited.
+  var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:]
+  @ObservationIgnored
+  var mangaTranslationQueueTask: Task<Void, Never>?
+  @ObservationIgnored
+  var mangaTranslationQueueID: UUID?
+  @ObservationIgnored
+  var mangaTranslationResultOrder: [MangaTranslationSessionKey] = []
+  /// Snapshot of the running queue so repeated syncs with the same work are
+  /// no-ops. The front key is the current page; the rest is silent prefetch.
+  @ObservationIgnored
+  var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = []
+  @ObservationIgnored
+  var mangaTranslationInFlightKey: MangaTranslationSessionKey?
+  @ObservationIgnored
+  var mangaTranslationQueueFrontForceRetry = false
+  @ObservationIgnored
+  var mangaTranslationQueueFrontManual = false
 
   var viewItems: [ReaderViewItem] = []
   var viewItemIndexByPage: [ReaderPageID: Int] = [:]
@@ -48,9 +76,10 @@ class ReaderViewModel {
   private var tableOfContentsBookId: String?
   private var soloCoverPageEnabled: Bool
   private var forceDualPagePairs: Bool
-  private var splitWidePageMode: SplitWidePageMode
+  private(set) var readingDirection: ReadingDirection
+  private(set) var splitWidePageMode: SplitWidePageMode
   private var pageTransitionStyle: PageTransitionStyle
-  private var isActuallyUsingDualPageMode: Bool = false
+  private(set) var isActuallyUsingDualPageMode: Bool = false
   typealias PagePresentationInvalidationHandler = @MainActor (ReaderPagePresentationInvalidation) -> Void
   @ObservationIgnored
   private var pagePresentationInvalidationHandlers: [UUID: PagePresentationInvalidationHandler] = [:]
@@ -89,7 +118,7 @@ class ReaderViewModel {
   private var segmentPageRangeByBookId: [String: Range<Int>] = [:]
   private(set) var readerPagesVersion: Int = 0
 
-  private var resolvedCurrentPageID: ReaderPageID? {
+  var resolvedCurrentPageID: ReaderPageID? {
     if let currentPageID, readerPageIndexByID[currentPageID] != nil {
       return currentPageID
     }
@@ -180,6 +209,7 @@ class ReaderViewModel {
   init(
     soloCoverPage: Bool,
     pageLayout: PageLayout,
+    readingDirection: ReadingDirection = AppConfig.defaultReadingDirection,
     splitWidePageMode: SplitWidePageMode = .none,
     pageTransitionStyle: PageTransitionStyle = AppConfig.pageTransitionStyle,
     rotation: ReaderRotation = .none,
@@ -189,6 +219,7 @@ class ReaderViewModel {
     self.pageLoadScheduler = ReaderPageLoadScheduler(preloadWindow: preloadWindow)
     self.soloCoverPageEnabled = soloCoverPage
     self.forceDualPagePairs = pageLayout == .dual
+    self.readingDirection = readingDirection
     self.splitWidePageMode = splitWidePageMode
     self.pageTransitionStyle = pageTransitionStyle
     self.rotation = rotation
@@ -343,7 +374,7 @@ class ReaderViewModel {
     pagePresentationInvalidationHandlers.removeValue(forKey: token)
   }
 
-  private func notifyPagePresentationInvalidation(
+  func notifyPagePresentationInvalidation(
     _ invalidation: ReaderPagePresentationInvalidation
   ) {
     for handler in pagePresentationInvalidationHandlers.values {
@@ -807,6 +838,7 @@ class ReaderViewModel {
 
   private func syncPageLoadSchedulerCurrentPage() {
     pageLoadScheduler.updateCurrentPageID(resolvedCurrentPageID)
+    syncMangaTranslationPage()
   }
 
   private func resetStateForBookLoad() {
@@ -826,6 +858,7 @@ class ReaderViewModel {
     currentPageID = nil
     currentViewItemID = nil
     navigationTarget = nil
+    cancelMangaTranslation()
     nextBookOfflineState = nil
     sessionStartPagesByBookId.removeAll()
     progressRecordingGatesByBookId.removeAll()
@@ -1524,6 +1557,12 @@ class ReaderViewModel {
     regenerateViewStatePreservingCurrentPosition {
       forceDualPagePairs = shouldForceDualPage
     }
+  }
+
+  func updateReadingDirection(_ direction: ReadingDirection) {
+    guard readingDirection != direction else { return }
+    readingDirection = direction
+    syncMangaTranslationPage()
   }
 
   func updateSplitWidePageMode(_ mode: SplitWidePageMode) {

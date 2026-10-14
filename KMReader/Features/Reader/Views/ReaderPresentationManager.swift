@@ -337,6 +337,14 @@ final class ReaderPresentationManager {
     func toggleContinuousScrollFromCommand() {
       readerCommandHandlers?.toggleContinuousScroll()
     }
+
+    func toggleMangaTranslationFromCommand() {
+      readerCommandHandlers?.toggleMangaTranslation()
+    }
+
+    func showMangaTranslationSettingsFromCommand() {
+      readerCommandHandlers?.showMangaTranslationSettings()
+    }
   #endif
 
   private func finishSession(

@@ -179,6 +179,7 @@
         static let movingShadowOffset: CGFloat = 3
         static let idleShadowOffset: CGFloat = 1
         static let animationDuration: TimeInterval = 0.3
+        static let boundaryFeedbackMinimumOffset: CGFloat = 8
       }
 
       private var paginationLayout: WebPubPaginationLayout {
@@ -221,6 +222,7 @@
         longPress.cancelsTouchesInView = false
         longPress.delegate = self
         tap.require(toFail: longPress)
+        tap.require(toFail: pan)
         view.addGestureRecognizer(longPress)
         longPressRecognizer = longPress
         pan.require(toFail: longPress)
@@ -926,6 +928,10 @@
           return
         }
 
+        if abs(rubberOffset) > Metrics.boundaryFeedbackMinimumOffset {
+          // A rubber-banded drag with no page to land on is a boundary hit.
+          HapticFeedback.light()
+        }
         if abs(rubberOffset) > Metrics.cancelThreshold {
           isAnimating = true
           UIView.animate(

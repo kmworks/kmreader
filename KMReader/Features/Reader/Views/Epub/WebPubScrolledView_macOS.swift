@@ -234,7 +234,12 @@
       readyToken += 1
       let token = readyToken
       injectCSS(on: webView) { [weak self] in
-        self?.injectPaginationJS(on: webView, targetPageIndex: targetPageIndex, token: token)
+        self?.injectPaginationJS(
+          on: webView,
+          targetPageIndex: targetPageIndex,
+          preferLastPage: self?.pendingJumpToLastPage ?? false,
+          token: token
+        )
       }
     }
 
@@ -452,12 +457,18 @@
       max(lastKnownDocumentContentHeight, effectiveViewportHeight)
     }
 
-    private func injectPaginationJS(on webView: WKWebView, targetPageIndex: Int, token: Int) {
+    private func injectPaginationJS(on webView: WKWebView, targetPageIndex: Int, preferLastPage: Bool, token: Int) {
       let js = """
           (function() {
             var target = \(targetPageIndex);
+            var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
             var hasFinalized = false;
+
+            // Offsets past the first page depend on the full content extent;
+            // finalizing while images are still in flight measures a short
+            // document and lands mid-chapter once they load.
+            \(WebPubPagedJavaScriptBuilder.fullExtentGuardScript)
             var installMetricsBridge = function() {
               window.__kmreaderCurrentToken = token;
               if (window.__kmreaderPostMetrics) {
@@ -582,10 +593,23 @@
             };
 
             var timeout = setTimeout(finalize, 5000);
+            var hasStarted = false;
             var start = function() {
+              if (hasStarted) { return; }
+              hasStarted = true;
               clearTimeout(timeout);
+              var attempt = 0;
+              var poll = function() {
+                if (hasFinalized) return;
+                attempt++;
+                if (needsFullExtent && attempt < imageWaitMaxAttempts && imagesPending()) {
+                  window.requestAnimationFrame(poll);
+                  return;
+                }
+                finalize();
+              };
               window.requestAnimationFrame(function() {
-                window.requestAnimationFrame(finalize);
+                window.requestAnimationFrame(poll);
               });
             };
 

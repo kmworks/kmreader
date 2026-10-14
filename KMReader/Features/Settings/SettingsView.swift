@@ -70,6 +70,14 @@ struct SettingsView: View {
         }
       }
 
+      #if os(iOS) || os(macOS)
+        Section {
+          NavigationLink(value: NavDestination.settingsMangaTranslation) {
+            SettingsSectionRow(section: .mangaTranslation)
+          }
+        }
+      #endif
+
       Section {
         NavigationLink(value: NavDestination.settingsReading) {
           SettingsSectionRow(section: .reading)

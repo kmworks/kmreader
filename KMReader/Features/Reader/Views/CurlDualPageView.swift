@@ -162,6 +162,9 @@
         singleTap.cancelsTouchesInView = false
         singleTap.delegate = self
         view.addGestureRecognizer(singleTap)
+        for case let panRecognizer as UIPanGestureRecognizer in pageViewController?.gestureRecognizers ?? [] {
+          singleTap.require(toFail: panRecognizer)
+        }
 
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
@@ -1136,6 +1139,7 @@
       func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard !isTransitioning else { return false }
         guard !parent.viewModel.isZoomed else { return false }
+        guard !parent.viewModel.isPageContextMenuPresented else { return false }
 
         syncCurrentItemWithVisibleController()
         guard let currentSpreadIndex = currentResolvedSpreadIndex(),

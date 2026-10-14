@@ -106,6 +106,15 @@
       }
     }
 
+    // The mirrored content may only become renderable after the session starts
+    // (an EPUB backward flip captures the target page once the live view scrolls to it).
+    func updateMirroredSnapshot(_ mirroredSnapshot: MirroredSnapshot) {
+      self.mirroredSnapshot = mirroredSnapshot
+      if isViewLoaded {
+        applyMirroredSnapshot()
+      }
+    }
+
     private func applyStyle() {
       view.backgroundColor = style.renderedColor
       dimView.backgroundColor = UIColor.black.withAlphaComponent(style.dimOpacity)

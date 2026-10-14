@@ -9,7 +9,8 @@ struct DownloadStatusIcon: View {
   let systemName: String
   let spinning: Bool
   var color: Color = .secondary
-  /// Book-level downloads get a live progress pie while spinning; aggregate
+  /// Book-level downloads get a live progress pie while spinning; a pending book
+  /// with no tracker entry yet is queued and gets the hourglass. Aggregate
   /// (series/read-list) statuses have no single progress and keep the spinner.
   var bookId: String? = nil
 
@@ -29,7 +30,7 @@ struct DownloadStatusIcon: View {
   /// The tracker entry is cleared at completion while the status flip is still
   /// in flight; the last reported value keeps the pie full until the completion
   /// checkmark replaces it. Reset when spinning stops so a re-queued download
-  /// starts from the minimum sliver instead of a stale value.
+  /// falls back to the queued glyph instead of a stale pie.
   @State private var lastReportedProgress: Double = 0
 
   private var effectiveSystemName: String {
@@ -53,15 +54,23 @@ struct DownloadStatusIcon: View {
           .transition(.opacity)
       } else if effectiveSpinning {
         if let bookId {
-          Image(systemName: systemName)
-            .hidden()
-            .overlay {
-              DownloadProgressPie(
-                progress: progressTracker.progress[bookId] ?? lastReportedProgress,
-                color: color
-              )
-            }
-            .transition(.opacity)
+          if progressTracker.progress[bookId] != nil || lastReportedProgress > 0 {
+            Image(systemName: systemName)
+              .hidden()
+              .overlay {
+                DownloadProgressPie(
+                  progress: progressTracker.progress[bookId] ?? lastReportedProgress,
+                  color: color
+                )
+              }
+              .transition(.opacity)
+          } else {
+            // The tracker only gets an entry once the download starts; before
+            // that the book is queued and a 0 pie would read as in-flight.
+            Image(systemName: AppIcon.downloadQueued)
+              .foregroundColor(color)
+              .transition(.opacity)
+          }
         } else {
           spinningContent
             .transition(.opacity)

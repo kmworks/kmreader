@@ -29,7 +29,6 @@ struct ReaderSettingsSheet: View {
     AppConfig.imageUpscaleAutoTriggerScale
   @AppStorage("divinaPageBorderCropMode") private var divinaPageBorderCropMode: ReaderPageBorderCropMode =
     AppConfig.divinaPageBorderCropMode
-  @AppStorage("shakeToOpenLiveText") private var shakeToOpenLiveText: Bool = false
   @AppStorage("enableDivinaImageContextMenu")
   private var enableDivinaImageContextMenu: Bool = AppConfig.enableDivinaImageContextMenu
   @AppStorage("showDivinaControlsGradientBackground")
@@ -60,6 +59,13 @@ struct ReaderSettingsSheet: View {
           doubleTapZoomMode = newValue ? .enabled : .disabled
         }
       }
+    )
+  }
+
+  private var liveTextEnabled: Binding<Bool> {
+    Binding(
+      get: { enableLiveText },
+      set: { AppConfig.setLiveTextEnabled($0) }
     )
   }
 
@@ -265,14 +271,9 @@ struct ReaderSettingsSheet: View {
 
         #if os(iOS) || os(macOS)
           Section(header: Text("Live Text")) {
-            Toggle(isOn: $enableLiveText) {
+            Toggle(isOn: liveTextEnabled) {
               Text("Enable Live Text")
             }
-            #if os(iOS)
-              Toggle(isOn: $shakeToOpenLiveText) {
-                Text("Shake to Open Live Text")
-              }
-            #endif
           }
         #endif
 

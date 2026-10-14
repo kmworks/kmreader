@@ -19,6 +19,7 @@
     private var retryToDetailConstraint: NSLayoutConstraint?
 
     private let overlayView = ImageAnalysisOverlayView()
+    private let mangaOverlayView = MangaOverlayView()
     private var analysisTask: Task<Void, Never>?
     private var analyzedImage: NSImage?
     private var analysisRequestID: UInt64 = 0
@@ -65,6 +66,7 @@
       animatedInlineContainer.layer?.contents = nil
       analyzedImage = nil
       analysisSourceImage = nil
+      mangaOverlayView.clear()
       updateSepiaOverlay()
     }
 
@@ -146,6 +148,8 @@
       overlayView.translatesAutoresizingMaskIntoConstraints = true
       addSubview(overlayView)
       overlayView.trackingImageView = imageView
+      mangaOverlayView.isHidden = true
+      addSubview(mangaOverlayView)
 
       progressIndicator.style = .spinning
       progressIndicator.controlSize = .small
@@ -317,6 +321,13 @@
         clearAnalysis()
       }
 
+      mangaOverlayView.update(
+        result: readerViewModel?.mangaTranslationResult(for: data),
+        visible: readerViewModel?.showMangaTranslation ?? false,
+        background: background,
+        direction: AppConfig.mangaTranslation.textDirection,
+        image: pageSourceImage
+      )
       updateShadowAppearance()
       updateContextMenu()
       updateOverlaysPosition()
@@ -533,6 +544,7 @@
       sepiaOverlayView.frame = imgFrame
       animatedInlineContainer.frame = imgFrame
       overlayView.frame = imgFrame
+      mangaOverlayView.frame = imgFrame
 
       let topY = yOffset + actualImageHeight - 36
 

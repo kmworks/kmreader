@@ -92,6 +92,7 @@
       singleTapGesture.cancelsTouchesInView = false
       singleTapGesture.delegate = context.coordinator
       collectionView.addGestureRecognizer(singleTapGesture)
+      context.coordinator.singleTapGesture = singleTapGesture
 
       let doubleTapGesture = UITapGestureRecognizer(
         target: context.coordinator,
@@ -101,6 +102,7 @@
       doubleTapGesture.cancelsTouchesInView = false
       doubleTapGesture.delegate = context.coordinator
       singleTapGesture.require(toFail: doubleTapGesture)
+      singleTapGesture.require(toFail: collectionView.panGestureRecognizer)
       collectionView.addGestureRecognizer(doubleTapGesture)
       context.coordinator.doubleTapGesture = doubleTapGesture
 
@@ -172,6 +174,7 @@
       private var visiblePreloadTask: Task<Void, Never>?
       private var visiblePreloadItem: ReaderViewItem?
       private var applicationWillResignActiveObserver: NSObjectProtocol?
+      weak var singleTapGesture: UITapGestureRecognizer?
       weak var doubleTapGesture: UITapGestureRecognizer?
 
       init(_ parent: ScrollPageView) {
@@ -759,6 +762,7 @@
       /// Leaves drags a whole spread can still follow to the spread's own
       /// scroll view, so the spread pans before the page turns.
       func shouldBeginPaging(with pan: UIPanGestureRecognizer) -> Bool {
+        guard !parent.viewModel.isPageContextMenuPresented else { return false }
         guard let collectionView,
           let dragX = pan.horizontalDrag(in: collectionView),
           let indexPath = collectionView.indexPathForItem(at: pan.location(in: collectionView)),
@@ -1123,6 +1127,14 @@
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
       ) -> Bool {
         true
+      }
+
+      // A tap that catches a gliding page only stops it.
+      func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
+      ) -> Bool {
+        gestureRecognizer === singleTapGesture && SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
       }
 
       func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {

@@ -29,6 +29,13 @@ struct BrowseContentView: View {
   /// In-place scope of the iPhone Library tab root; its header and the
   /// single-library section counts come from `scopeLibraries`.
   let libraryScope: LibraryBrowseScope?
+  /// iPhone Search tab root's scope binding, rendered as a scope menu inside
+  /// the empty placeholder: the auto-focused search field hides the toolbar's
+  /// scope picker, so the placeholder carries the scope identity itself.
+  let searchScope: Binding<LibraryBrowseScope>?
+  /// The library picker sheet stays hosted by the enclosing shell; the
+  /// empty-state scope menu's Pin Libraries entry drives this binding.
+  @Binding var showLibraryPicker: Bool
   let scopeLibraries: [SidebarLibraryItem]
   let allLibrariesEntry: SidebarLibraryItem?
 
@@ -47,6 +54,8 @@ struct BrowseContentView: View {
     showSavedFilters: Binding<Bool> = .constant(false),
     libraryIds: [String]? = nil,
     libraryScope: LibraryBrowseScope? = nil,
+    searchScope: Binding<LibraryBrowseScope>? = nil,
+    showLibraryPicker: Binding<Bool> = .constant(false),
     scopeLibraries: [SidebarLibraryItem] = [],
     allLibrariesEntry: SidebarLibraryItem? = nil
   ) {
@@ -59,6 +68,8 @@ struct BrowseContentView: View {
     self._showSavedFilters = showSavedFilters
     self.libraryIds = libraryIds
     self.libraryScope = libraryScope
+    self.searchScope = searchScope
+    self._showLibraryPicker = showLibraryPicker
     self.scopeLibraries = scopeLibraries
     self.allLibrariesEntry = allLibrariesEntry
   }
@@ -172,6 +183,16 @@ struct BrowseContentView: View {
               String(
                 localized: "search.empty.hint",
                 defaultValue: "Search series, books, collections, and read lists."))
+          } actions: {
+            if let searchScope {
+              LibraryScopeMenu(
+                libraries: scopeLibraries,
+                showLibraryPicker: $showLibraryPicker,
+                scope: searchScope,
+                iconOnly: false
+              )
+              .adaptiveButtonStyle(.bordered)
+            }
           }
           .frame(maxWidth: .infinity, minHeight: 320)
         } else {

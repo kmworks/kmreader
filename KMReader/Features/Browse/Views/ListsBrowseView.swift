@@ -67,38 +67,14 @@ struct ListsBrowseView: View {
       await reloadAll()
     }
     .toolbar {
-      #if os(iOS)
-        if !PlatformHelper.isPad, #available(iOS 26.0, *) {
-          ToolbarItem(placement: .largeTitle) {
-            InlineLargeBarTitle(title: String(localized: "tab.lists", defaultValue: "Lists"))
-          }
-        }
-      #endif
-      #if os(macOS)
-        ToolbarItem(placement: .navigation) {
-          LibraryScopeMenu(
-            libraries: scopeStore.libraries,
-            showLibraryPicker: $showLibraryPicker,
-            scope: scopeMenuBinding)
-        }
-      #endif
-      #if os(iOS)
-        if PlatformHelper.isPad {
-          ToolbarItem(placement: .cancellationAction) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: scopeMenuBinding)
-          }
-        } else {
-          ToolbarItem(placement: .confirmationAction) {
-            LibraryScopeMenu(
-              libraries: scopeStore.libraries,
-              showLibraryPicker: $showLibraryPicker,
-              scope: scopeMenuBinding)
-          }
-        }
-      #endif
+      InlineLargeTitleToolbarItem(title: String(localized: "tab.lists", defaultValue: "Lists"))
+
+      LibraryScopeToolbarItem {
+        LibraryScopeMenu(
+          libraries: scopeStore.libraries,
+          showLibraryPicker: $showLibraryPicker,
+          scope: scopeMenuBinding)
+      }
     }
     .sheet(isPresented: $showLibraryPicker) {
       LibraryPickerSheet()

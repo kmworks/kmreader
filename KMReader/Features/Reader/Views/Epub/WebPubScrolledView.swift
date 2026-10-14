@@ -485,6 +485,7 @@
       longPressRecognizer.delegate = self
       longPressRecognizer.cancelsTouchesInView = false
       tapRecognizer.require(toFail: longPressRecognizer)
+      tapRecognizer.require(toFail: webView.scrollView.panGestureRecognizer)
       view.addGestureRecognizer(longPressRecognizer)
       self.longPressGestureRecognizer = longPressRecognizer
     }
@@ -774,8 +775,11 @@
 
     private func loadContentIfNeeded(force: Bool) {
       guard let chapterURL, let rootURL else { return }
-      let currentURL = webView.url?.standardizedFileURL
-      let urlMatches = currentURL == chapterURL.standardizedFileURL
+      // The web view loads the chapter through the resource scheme, so the raw
+      // chapter URL never matches; compare the rewritten scheme URL instead.
+      let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL)
+      let urlMatches =
+        chapterSchemeURL != nil && webView.url?.deletingFragment == chapterSchemeURL
 
       if urlMatches && isContentLoaded {
         applyPagination(scrollToPage: currentSubPageIndex)
@@ -849,7 +853,11 @@
         language: publicationLanguage,
         readingProgression: publicationReadingProgression
       ) { [weak self] in
-        self?.injectPaginationJS(targetPageIndex: pageIndex, token: currentReadyToken)
+        self?.injectPaginationJS(
+          targetPageIndex: pageIndex,
+          preferLastPage: self?.pendingJumpToLastPage ?? false,
+          token: currentReadyToken
+        )
       }
     }
 
@@ -998,12 +1006,18 @@
       }
     }
 
-    private func injectPaginationJS(targetPageIndex: Int, token: Int) {
+    private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool, token: Int) {
       let js = """
           (function() {
             var target = \(targetPageIndex);
+            var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
             var hasFinalized = false;
+
+            // Offsets past the first page depend on the full content extent;
+            // finalizing while images are still in flight measures a short
+            // document and lands mid-chapter once they load.
+            \(WebPubPagedJavaScriptBuilder.fullExtentGuardScript)
             var installMetricsBridge = function() {
               window.__kmreaderCurrentToken = token;
               if (window.__kmreaderPostMetrics) {
@@ -1164,11 +1178,12 @@
                 }
 
                 var isProbablyReady = (stableCount >= 4);
-                if (target > 0 && currentH <= pageHeight && attempt < 40) {
+                if (needsFullExtent && currentH <= pageHeight && attempt < 40) {
                   isProbablyReady = false;
                 }
 
-                if (isProbablyReady || attempt >= 60) {
+                var waitingForImages = needsFullExtent && attempt < imageWaitMaxAttempts && imagesPending();
+                if ((isProbablyReady || attempt >= 60) && !waitingForImages) {
                   finalize();
                 } else {
                   window.requestAnimationFrame(check);
@@ -1342,8 +1357,7 @@
       if boundaryReadyDirection != candidateDirection {
         boundaryReadyDirection = candidateDirection
         showBoundaryHint(for: candidateDirection, autoHideAfter: nil)
-        let haptic = UIImpactFeedbackGenerator(style: .light)
-        haptic.impactOccurred()
+        HapticFeedback.light()
       }
     }
 

@@ -5,7 +5,7 @@
 
 import Foundation
 
-struct LanguageCodeHelper {
+nonisolated struct LanguageCodeHelper {
   static let commonLanguageCodes: [String] = [
     "en", "zh", "ja", "ko", "fr", "de", "es", "it", "pt", "ru",
     "ar", "th", "vi", "hi", "tr", "pl", "nl", "sv", "da", "fi",
@@ -18,22 +18,11 @@ struct LanguageCodeHelper {
       return "None"
     }
 
-    let components = languageCode.components(separatedBy: "-")
-    let baseCode = components.first ?? languageCode
-    let suffix = components.count > 1 ? components.dropFirst().joined(separator: "-") : nil
-
-    var name: String
-    if let displayName = Locale.current.localizedString(forLanguageCode: baseCode) {
-      name = displayName.capitalized
-    } else {
-      name = baseCode.uppercased()
+    let identifier = languageCode.replacingOccurrences(of: "_", with: "-")
+    if let displayName = Locale.current.localizedString(forIdentifier: identifier) {
+      return displayName.capitalized
     }
-
-    if let suffix = suffix {
-      name += " (\(suffix))"
-    }
-
-    return name
+    return identifier.uppercased()
   }
 
   static func allLanguageCodes() -> [String] {

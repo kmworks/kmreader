@@ -10,6 +10,7 @@
     private let imageView = UIImageView()
     private let sepiaOverlayView = UIView()
     private let animatedInlineContainer = UIView()
+    private let mangaOverlayView = MangaOverlayView()
     private let animatedImageController = AnimatedImagePlayerController()
     private let preparedImageCache = PreparedReaderPageImageCache()
     private let pageNumberLabel = UILabel()
@@ -41,6 +42,7 @@
 
     #if os(iOS)
       private lazy var contextMenuInteraction = UIContextMenuInteraction(delegate: self)
+      private var isPresentingContextMenu = false
     #endif
 
     private var heightConstraint: NSLayoutConstraint?
@@ -69,12 +71,14 @@
       #endif
       #if os(iOS)
         removeContextMenuInteractionIfNeeded()
+        releaseContextMenuSuppression()
       #endif
       updateAnimatedPlayback(sourceFileURL: nil)
       imageView.isHidden = false
       imageView.image = nil
       preparedImageCache.clear()
       animatedInlineContainer.layer.contents = nil
+      mangaOverlayView.clear()
       updateSepiaOverlay()
     }
 
@@ -128,6 +132,8 @@
       animatedInlineContainer.backgroundColor = .clear
       animatedInlineContainer.layer.contentsGravity = .resizeAspect
       addSubview(animatedInlineContainer)
+      mangaOverlayView.isHidden = true
+      addSubview(mangaOverlayView)
 
       loadingIndicator.hidesWhenStopped = true
       loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
@@ -290,6 +296,13 @@
         updateContextMenuInteraction()
       #endif
 
+      mangaOverlayView.update(
+        result: viewModel.mangaTranslationResult(for: data),
+        visible: viewModel.showMangaTranslation,
+        background: background,
+        direction: AppConfig.mangaTranslation.textDirection,
+        image: pageSourceImage
+      )
       updateShadowAppearance()
       setNeedsLayout()
     }
@@ -544,6 +557,7 @@
       imageView.frame = CGRect(x: xOffset, y: yOffset, width: actualImageWidth, height: actualImageHeight)
       sepiaOverlayView.frame = imageView.frame
       animatedInlineContainer.frame = imageView.frame
+      mangaOverlayView.frame = imageView.frame
 
       let topY = yOffset
       let pageLabelWidth = max(30, pageNumberLabel.intrinsicContentSize.width + 16)
@@ -663,7 +677,9 @@
       }
 
       private func makePreview() -> UITargetedPreview? {
-        guard !imageView.bounds.isEmpty else { return nil }
+        // UITargetedPreview traps on a windowless view: the page can already be
+        // gone when a still-presented menu is cancelled during teardown.
+        guard imageView.window != nil, !imageView.bounds.isEmpty else { return nil }
         let parameters = UIPreviewParameters()
         parameters.backgroundColor = .clear
         parameters.visiblePath = UIBezierPath(rect: imageView.bounds)
@@ -697,6 +713,38 @@
         previewForDismissingMenuWithConfiguration configuration: UIContextMenuConfiguration
       ) -> UITargetedPreview? {
         makePreview()
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willDisplayMenuFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        guard !isPresentingContextMenu else { return }
+        isPresentingContextMenu = true
+        viewModel?.presentedPageContextMenuCount += 1
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willEndFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        // Released only once the dismissal animation finishes: touches landing
+        // while the menu fades still belong to the menu, not the reader.
+        guard let animator else {
+          releaseContextMenuSuppression()
+          return
+        }
+        animator.addCompletion { [weak self] in
+          self?.releaseContextMenuSuppression()
+        }
+      }
+
+      private func releaseContextMenuSuppression() {
+        guard isPresentingContextMenu else { return }
+        isPresentingContextMenu = false
+        viewModel?.presentedPageContextMenuCount -= 1
       }
     }
   #endif

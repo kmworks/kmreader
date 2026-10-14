@@ -71,6 +71,9 @@
       tapRecognizer.require(toFail: longPressRecognizer)
       pageVC.view.addGestureRecognizer(longPressRecognizer)
       context.coordinator.longPressGestureRecognizer = longPressRecognizer
+      for case let panRecognizer as UIPanGestureRecognizer in pageVC.gestureRecognizers {
+        tapRecognizer.require(toFail: panRecognizer)
+      }
 
       context.coordinator.installInitialLocation(in: pageVC)
 
@@ -169,6 +172,8 @@
       private(set) var currentChapterController: EpubPageViewController?
       private var nextChapterController: EpubPageViewController?
       private var previousChapterController: EpubPageViewController?
+      private var nextParkedShell: CurlPageShellViewController?
+      private var previousParkedShell: CurlPageShellViewController?
       private var frontShell: CurlPageShellViewController?
       private var turnSession: TurnSession?
       var hasActiveTurnSession: Bool { turnSession != nil }
@@ -193,6 +198,14 @@
 
       private typealias PageTarget = (chapterIndex: Int, subPageIndex: Int, preferLastPage: Bool)
 
+      // Backward flips need the target page's image synchronously, but the
+      // target's controller may not render it in time; pages are captured as
+      // they become the committed page so a back-flip can read them offhand.
+      private let maxCachedBacksideSnapshots = 6
+      private var cachedBacksideImages: [String: UIImage] = [:]
+      private var cachedBacksideImageOrder: [String] = []
+      private var backsideCaptureWorkItem: DispatchWorkItem?
+
       private var paginationLayout: WebPubPaginationLayout {
         parent.paginationLayout
       }
@@ -205,12 +218,17 @@
 
       // MARK: - Installation
 
+      // While the book is loading, the view model's location is not resolved
+      // yet; installing it would pin the coordinator to a stale page that a
+      // later restore can fail to replace (a programmatic turn is dropped
+      // while the presentation transition is still running).
       func installInitialLocation(in pageVC: UIPageViewController) {
         let chapterIndex = parent.viewModel.currentChapterIndex
         let pageCount = parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
         let pageIndex = max(0, min(parent.viewModel.currentPageIndex, pageCount - 1))
         guard chapterIndex >= 0,
           chapterIndex < parent.viewModel.chapterCount,
+          !parent.viewModel.isLoading,
           let controller = makeChapterController(chapterIndex: chapterIndex, subPageIndex: pageIndex)
         else {
           PageCurlControllerPlanner.safeSetViewControllers(
@@ -331,6 +349,9 @@
       }
 
       private func wireController(_ controller: EpubPageViewController) {
+        controller.onRepagination = { [weak self] in
+          self?.invalidateBacksideCache()
+        }
         controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
           guard let self, let controller else { return }
           guard self.currentChapterController === controller, self.turnSession == nil else { return }
@@ -442,6 +463,49 @@
         return (previousChapter, max(0, previousCount - 1), previousCount <= 1)
       }
 
+      // Neighbor chapters are parked inside the front shell so they load and
+      // paginate at the final geometry before the user turns to them; an
+      // off-window web view does neither and would start both mid-turn.
+      private func parkNeighbor(_ controller: EpubPageViewController, isNext: Bool) {
+        guard let frontShell else { return }
+        let slot = isNext ? nextParkedShell : previousParkedShell
+        if let slot, slot.children.first === controller, slot.view.window != nil { return }
+        slot?.unpark()
+        let shell = CurlPageShellViewController()
+        shell.view.frame = frontShell.view.bounds
+        shell.view.isUserInteractionEnabled = false
+        shell.adopt(controller)
+        frontShell.addChild(shell)
+        frontShell.view.insertSubview(shell.view, at: 0)
+        shell.didMove(toParent: frontShell)
+        if isNext {
+          nextParkedShell = shell
+        } else {
+          previousParkedShell = shell
+        }
+      }
+
+      private func unparkNeighbor(isNext: Bool) {
+        if isNext {
+          nextParkedShell?.unpark()
+          nextParkedShell = nil
+        } else {
+          previousParkedShell?.unpark()
+          previousParkedShell = nil
+        }
+      }
+
+      private func unparkIfParked(_ controller: EpubPageViewController) {
+        if nextParkedShell?.children.first === controller {
+          nextParkedShell?.unpark()
+          nextParkedShell = nil
+        }
+        if previousParkedShell?.children.first === controller {
+          previousParkedShell?.unpark()
+          previousParkedShell = nil
+        }
+      }
+
       private func refreshNeighbors(reusing detached: [EpubPageViewController] = []) {
         guard let current = currentChapterController else { return }
         let chapterIndex = current.chapterIndex
@@ -468,8 +532,12 @@
             }
             nextChapterController = host
           }
+          if let host = nextChapterController {
+            parkNeighbor(host, isNext: true)
+          }
         } else {
           nextChapterController = nil
+          unparkNeighbor(isNext: true)
         }
 
         if let prevTarget = previousPageTarget(chapterIndex: chapterIndex, subPageIndex: subPageIndex),
@@ -492,8 +560,12 @@
             }
             previousChapterController = host
           }
+          if let host = previousChapterController {
+            parkNeighbor(host, isNext: false)
+          }
         } else {
           previousChapterController = nil
+          unparkNeighbor(isNext: false)
         }
       }
 
@@ -543,59 +615,183 @@
         )
       }
 
-      private func makeTurnSession(target: TurnTarget, originPage: Int, isInteractive: Bool) -> TurnSession? {
-        guard let pageVC = pageViewController, let leaf = frontShell else { return nil }
+      private func makeTurnSession(
+        target: TurnTarget,
+        originPage: Int,
+        isInteractive: Bool,
+        onReady: @escaping (TurnSession?) -> Void
+      ) {
+        guard let pageVC = pageViewController, let leaf = frontShell else {
+          onReady(nil)
+          return
+        }
         let targetShell = CurlPageShellViewController()
         // Pre-size so the hosted web view never passes through a zero-size layout,
         // which would trigger a throwaway re-pagination.
         targetShell.view.frame = pageVC.view.bounds
 
-        let leafSnapshot: UIView?
-        let mirror: PageCurlBacksideViewController.MirroredSnapshot?
+        func makeSession(
+          snapshot: UIView?,
+          mirror: PageCurlBacksideViewController.MirroredSnapshot?
+        ) -> TurnSession {
+          TurnSession(
+            isInteractive: isInteractive,
+            target: target,
+            targetShell: targetShell,
+            leafShell: leaf,
+            leafSnapshot: snapshot,
+            backside: PageCurlBacksideViewController(
+              destinationToken: "\(target.chapterIndex):\(target.subPageIndex)",
+              style: parent.pageCurlBacksideStyle(),
+              mirroredSnapshot: mirror
+            ),
+            originPage: originPage
+          )
+        }
+
         if target.isCrossChapter {
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
+          unparkIfParked(target.controller)
           targetShell.adopt(target.controller)
-          leafSnapshot = nil
-          mirror = crossChapterMirror(target: target)
-        } else {
-          guard let current = currentChapterController,
-            let snapshot = current.view.snapshotView(afterScreenUpdates: false)
-          else { return nil }
-          mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
-          leaf.pin(snapshot)
-          targetShell.adopt(current)
-          current.scrollToPageIndex(target.subPageIndex)
-          leafSnapshot = snapshot
+          let (mirror, capturedTarget) = crossChapterMirror(target: target)
+          let session = makeSession(snapshot: nil, mirror: mirror)
+          onReady(session)
+          if !target.isForward && !capturedTarget {
+            // The neighbor is still loading or paginating toward the target
+            // page; capture the backside once it becomes ready.
+            target.controller.onPaginationReady = {
+              [weak self, weak controller = target.controller, weak backside = session.backside] in
+              controller?.onPaginationReady = nil
+              guard let self, let controller, let backside,
+                self.turnSession?.backside === backside,
+                let image = controller.makeBacksideSnapshotImage()
+              else { return }
+              backside.updateMirroredSnapshot(
+                PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal)
+              )
+            }
+          }
+          return
         }
 
-        let backside = PageCurlBacksideViewController(
-          destinationToken: "\(target.chapterIndex):\(target.subPageIndex)",
-          style: parent.pageCurlBacksideStyle(),
-          mirroredSnapshot: mirror
-        )
-        return TurnSession(
-          isInteractive: isInteractive,
-          target: target,
-          targetShell: targetShell,
-          leafShell: leaf,
-          leafSnapshot: leafSnapshot,
-          backside: backside,
-          originPage: originPage
-        )
+        guard let current = currentChapterController,
+          let snapshot = current.view.snapshotView(afterScreenUpdates: false)
+        else {
+          onReady(nil)
+          return
+        }
+        let mirror: PageCurlBacksideViewController.MirroredSnapshot?
+        if !target.isForward,
+          let cached = cachedBacksideImage(chapterIndex: target.chapterIndex, pageIndex: target.subPageIndex)
+        {
+          mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: cached, axis: .horizontal)
+        } else {
+          mirror = PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+        }
+        leaf.pin(snapshot)
+        if isInteractive {
+          targetShell.adopt(current)
+          let session = makeSession(snapshot: snapshot, mirror: mirror)
+          onReady(session)
+          if target.isForward {
+            current.scrollToPageIndex(target.subPageIndex)
+          } else {
+            // A backward flip's backside mirrors the target page, whose pixels
+            // exist only once the live view has scrolled there.
+            current.scrollToPageIndexAndSettle(target.subPageIndex) {
+              [weak self, weak current, weak backside = session.backside] in
+              guard let self, let current, let backside,
+                self.turnSession?.backside === backside,
+                let image = current.makeBacksideSnapshotImage()
+              else { return }
+              backside.updateMirroredSnapshot(
+                PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal)
+              )
+            }
+          }
+        } else {
+          // A programmatic curl samples the live view from its first frame, so the
+          // view must already show the target page; it keeps rendering under the
+          // leaf snapshot, keeping the early scroll invisible.
+          current.scrollToPageIndexAndSettle(target.subPageIndex) {
+            let targetMirror =
+              !target.isForward
+              ? (current.makeBacksideSnapshotImage()
+                ?? self.cachedBacksideImage(chapterIndex: target.chapterIndex, pageIndex: target.subPageIndex))
+                .flatMap {
+                  PageCurlBacksideViewController.makeMirroredSnapshot(from: $0, axis: .horizontal)
+                }
+              : nil
+            targetShell.adopt(current)
+            onReady(makeSession(snapshot: snapshot, mirror: targetMirror ?? mirror))
+          }
+        }
       }
 
       private func crossChapterMirror(
         target: TurnTarget
-      ) -> PageCurlBacksideViewController.MirroredSnapshot? {
-        guard let current = currentChapterController else { return nil }
-        if target.isForward {
-          return PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+      ) -> (mirror: PageCurlBacksideViewController.MirroredSnapshot?, capturedTarget: Bool) {
+        if !target.isForward,
+          let image = cachedBacksideImage(chapterIndex: target.chapterIndex, pageIndex: target.subPageIndex)
+            ?? target.controller.makeBacksideSnapshotImage()
+        {
+          return (
+            PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal),
+            true
+          )
         }
-        if let image = target.controller.makeBacksideSnapshotImage() {
-          return PageCurlBacksideViewController.makeMirroredSnapshot(from: image, axis: .horizontal)
+        guard let current = currentChapterController else { return (nil, false) }
+        return (
+          PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal),
+          false
+        )
+      }
+
+      private func backsideCacheKey(chapterIndex: Int, pageIndex: Int) -> String {
+        "\(chapterIndex)-\(pageIndex)"
+      }
+
+      private func cachedBacksideImage(chapterIndex: Int, pageIndex: Int) -> UIImage? {
+        let key = backsideCacheKey(chapterIndex: chapterIndex, pageIndex: pageIndex)
+        guard let image = cachedBacksideImages[key] else { return nil }
+        cachedBacksideImageOrder.removeAll { $0 == key }
+        cachedBacksideImageOrder.append(key)
+        return image
+      }
+
+      private func storeBacksideImage(_ image: UIImage, chapterIndex: Int, pageIndex: Int) {
+        let key = backsideCacheKey(chapterIndex: chapterIndex, pageIndex: pageIndex)
+        cachedBacksideImages[key] = image
+        cachedBacksideImageOrder.removeAll { $0 == key }
+        cachedBacksideImageOrder.append(key)
+        while cachedBacksideImageOrder.count > maxCachedBacksideSnapshots {
+          let removedKey = cachedBacksideImageOrder.removeFirst()
+          cachedBacksideImages.removeValue(forKey: removedKey)
         }
-        return PageCurlBacksideViewController.makeMirroredSnapshot(from: current, axis: .horizontal)
+      }
+
+      private func invalidateBacksideCache() {
+        backsideCaptureWorkItem?.cancel()
+        cachedBacksideImages.removeAll()
+        cachedBacksideImageOrder.removeAll()
+      }
+
+      private func scheduleBacksideImageCapture(chapterIndex: Int, pageIndex: Int) {
+        backsideCaptureWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+          guard let self,
+            let controller = self.currentChapterController,
+            controller.chapterIndex == chapterIndex,
+            controller.currentSubPageIndex == pageIndex,
+            self.turnSession == nil,
+            !self.isAnimating,
+            let image = controller.makeBacksideSnapshotImage()
+          else { return }
+          self.storeBacksideImage(image, chapterIndex: chapterIndex, pageIndex: pageIndex)
+        }
+        backsideCaptureWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
       }
 
       func performProgrammaticTurn(chapterIndex: Int, pageIndex: Int, in pageVC: UIPageViewController) {
@@ -619,29 +815,44 @@
         else { return }
 
         let shouldAnimate = hasCompletedInitialUpdate && parent.animateTapTurns
-        if shouldAnimate,
-          let session = makeTurnSession(target: target, originPage: currentPageIndex, isInteractive: false)
-        {
+        if shouldAnimate {
           isAnimating = true
-          turnSession = session
-          let controllers = parent.pageCurlControllers(
-            primary: session.targetShell,
-            backside: session.backside,
-            animated: true,
-            in: pageVC
-          )
-          PageCurlControllerPlanner.safeSetViewControllers(
-            controllers,
-            on: pageVC,
-            direction: parent.pageCurlNavigationDirection(forward: isForward),
-            animated: true
-          ) { [weak self] completed in
-            guard let self, let session = self.turnSession else { return }
-            self.isAnimating = false
-            if completed {
-              self.commitTurnSession(session, in: pageVC)
-            } else {
-              self.cancelTurnSession(session)
+          makeTurnSession(
+            target: target,
+            originPage: currentPageIndex,
+            isInteractive: false
+          ) { [weak self] session in
+            guard let self else { return }
+            guard let session else {
+              self.isAnimating = false
+              self.installTurnTarget(target, in: pageVC)
+              self.commitLocation(
+                chapterIndex: target.chapterIndex,
+                pageIndex: target.subPageIndex,
+                notify: true
+              )
+              return
+            }
+            self.turnSession = session
+            let controllers = self.parent.pageCurlControllers(
+              primary: session.targetShell,
+              backside: session.backside,
+              animated: true,
+              in: pageVC
+            )
+            PageCurlControllerPlanner.safeSetViewControllers(
+              controllers,
+              on: pageVC,
+              direction: self.parent.pageCurlNavigationDirection(forward: isForward),
+              animated: true
+            ) { [weak self] completed in
+              guard let self, let session = self.turnSession else { return }
+              self.isAnimating = false
+              if completed {
+                self.commitTurnSession(session, in: pageVC)
+              } else {
+                self.cancelTurnSession(session)
+              }
             }
           }
         } else {
@@ -664,6 +875,7 @@
           previousChapterController = nil
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
+          unparkIfParked(target.controller)
           let shell = CurlPageShellViewController()
           shell.view.frame = pageVC.view.bounds
           shell.adopt(target.controller)
@@ -727,12 +939,22 @@
       func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
+        scheduleBacksideImageCapture(chapterIndex: chapterIndex, pageIndex: pageIndex)
         guard notify else {
           if parent.viewModel.currentChapterIndex != chapterIndex {
             parent.viewModel.currentChapterIndex = chapterIndex
           }
           if parent.viewModel.currentPageIndex != pageIndex {
             parent.viewModel.currentPageIndex = pageIndex
+          }
+          // An install that lands on the pending target fulfills it. Leaving
+          // it set would fire a spurious turn back here once the restored
+          // page jump moves the coordinator past it.
+          if parent.viewModel.targetChapterIndex == chapterIndex,
+            parent.viewModel.targetPageIndex == pageIndex
+          {
+            parent.viewModel.targetChapterIndex = nil
+            parent.viewModel.targetPageIndex = nil
           }
           return
         }
@@ -771,6 +993,7 @@
         }
         guard viewController === frontShell,
           turnSession == nil,
+          !isAnimating,
           let current = currentChapterController
         else { return nil }
 
@@ -789,9 +1012,16 @@
             subPageIndex: target.subPageIndex,
             preferLastPageOnReady: target.preferLastPage,
             isForward: isForward
-          ),
-          let session = makeTurnSession(target: turnTarget, originPage: currentPageIndex, isInteractive: true)
+          )
         else { return nil }
+
+        // Interactive sessions are always ready synchronously; UIPageViewController
+        // cannot wait for an async session while a gesture is starting.
+        var session: TurnSession?
+        makeTurnSession(target: turnTarget, originPage: currentPageIndex, isInteractive: true) {
+          session = $0
+        }
+        guard let session else { return nil }
 
         turnSession = session
         return session.backside
@@ -1027,10 +1257,6 @@
 
   @MainActor
   final class CurlPageShellViewController: UIViewController {
-    // Appearance forwarding would re-run pagination in the hosted web view on every
-    // turn; containment alone is enough for safe-area propagation.
-    override var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
-
     override func loadView() {
       let contentView = UIView()
       contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -1062,6 +1288,16 @@
         pin(child.view)
       }
     }
+
+    func unpark() {
+      for child in children {
+        child.willMove(toParent: nil)
+        child.removeFromParent()
+      }
+      willMove(toParent: nil)
+      view.removeFromSuperview()
+      removeFromParent()
+    }
   }
 
   @MainActor
@@ -1086,6 +1322,10 @@
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
     var onPageIndexAdjusted: ((Int) -> Void)?
+    var onPaginationReady: (() -> Void)?
+    // Fires when pagination re-runs on changed geometry (appearance or viewport
+    // size), so page-index-keyed snapshots cached by the coordinator go stale.
+    var onRepagination: (() -> Void)?
     var preferLastPageOnReady = false
     var targetProgressionOnReady: Double?
 
@@ -1184,7 +1424,8 @@
 
     override func viewWillAppear(_ animated: Bool) {
       super.viewWillAppear(animated)
-      refreshDisplay()
+      // Pagination re-runs on size changes in viewDidLayoutSubviews; appearance
+      // fires on every page turn.
       updateOverlayLabels()
     }
 
@@ -1195,6 +1436,7 @@
       let webViewSize = webView?.bounds.size ?? .zero
       if webViewSize.width > 0 && webViewSize.height > 0 && webViewSize != lastLayoutSize {
         lastLayoutSize = webViewSize
+        onRepagination?()
         refreshDisplay()
       }
     }
@@ -1219,6 +1461,7 @@
 
         // Only refresh if WebView has valid size
         if webViewSize.width > 0 && webViewSize.height > 0 {
+          onRepagination?()
           refreshDisplay()
           updateOverlayLabels()
         }
@@ -1300,6 +1543,7 @@
 
       if appearanceChanged {
         applyContainerInsets()
+        onRepagination?()
       }
 
       applyTheme()
@@ -1366,6 +1610,8 @@
     func makeBacksideSnapshotImage() -> UIImage? {
       guard isViewLoaded else { return nil }
       guard isContentLoaded else { return nil }
+      // A mid-pagination capture would record the page while it is still hidden.
+      guard webView.alpha >= 0.1 else { return nil }
       view.layoutIfNeeded()
       let bounds = view.bounds
       guard bounds.width > 1, bounds.height > 1 else { return nil }
@@ -1378,7 +1624,9 @@
       return renderer.image { _ in
         // drawHierarchy goes through the render server, so WKWebView content is
         // captured reliably; layer.render can produce blank images offscreen.
-        view.drawHierarchy(in: bounds, afterScreenUpdates: false)
+        // Forcing a commit keeps the frame current when the view is fully
+        // covered and its latest scroll has not been composited yet.
+        view.drawHierarchy(in: bounds, afterScreenUpdates: true)
       }
     }
 
@@ -1475,8 +1723,11 @@
 
     private func loadContentIfNeeded(force: Bool) {
       guard let chapterURL, let rootURL else { return }
-      let currentURL = webView.url?.standardizedFileURL
-      let urlMatches = currentURL == chapterURL.standardizedFileURL
+      // The web view loads the chapter through the resource scheme, so the raw
+      // chapter URL never matches; compare the rewritten scheme URL instead.
+      let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL)
+      let urlMatches =
+        chapterSchemeURL != nil && webView.url?.deletingFragment == chapterSchemeURL
 
       // If URL matches and content is loaded, just update pagination.
       // We don't hide the webview or show the loader here to avoid flickering
@@ -1634,6 +1885,25 @@
       updateOverlayLabels()
     }
 
+    // Unlike scrollToPageIndex, the completion fires only after the target page has
+    // painted, so transitions that sample the live view can start safely.
+    func scrollToPageIndexAndSettle(_ pageIndex: Int, completion: @escaping () -> Void) {
+      currentSubPageIndex = pageIndex
+      updateOverlayLabels()
+      guard isContentLoaded else {
+        pendingPageIndex = pageIndex
+        completion()
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToPageAndSettleScript(
+        pageIndex: pageIndex,
+        paginationLayout: paginationLayout
+      )
+      webView.callAsyncJavaScript(js, arguments: [:], in: nil, in: .page) { _ in
+        DispatchQueue.main.async(execute: completion)
+      }
+    }
+
     func userContentController(
       _ userContentController: WKUserContentController,
       didReceive message: WKScriptMessage
@@ -1675,6 +1945,7 @@
         // Stop the loading indicator and finally show the WebView content.
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
+        onPaginationReady?()
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
         // Handle incremental layout updates from ResizeObserver
         if let generation = body["generation"] as? Int, generation != paginationGeneration { return }

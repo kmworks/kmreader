@@ -20,6 +20,7 @@ struct ContentView: View {
   @AppStorage("enableSSE") private var enableSSE: Bool = true
   @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("privacyProtection") private var privacyProtection: Bool = false
+  @AppStorage("useClassicPadNavigation") private var useClassicPadNavigation: Bool = false
 
   @State private var showPrivacyBlur = false
   @State private var protectedAccessGate: ProtectedAccessGate = .checking
@@ -83,7 +84,7 @@ struct ContentView: View {
               MainSplitView(context: context)
             #elseif os(iOS)
               if PlatformHelper.isPad {
-                if #available(iOS 18.0, *) {
+                if #available(iOS 18.0, *), !useClassicPadNavigation {
                   PadTabView(context: context)
                 } else {
                   MainSplitView(context: context)

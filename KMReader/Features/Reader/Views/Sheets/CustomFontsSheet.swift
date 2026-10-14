@@ -128,6 +128,7 @@
                 .textSelectionIfAvailable()
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                   Button(role: .destructive) {
+                    HapticFeedback.medium()
                     removeCustomFont(font)
                   } label: {
                     Label("Delete", systemImage: AppIcon.delete)
