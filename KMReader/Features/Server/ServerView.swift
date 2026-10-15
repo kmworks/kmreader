@@ -36,9 +36,9 @@ struct ServerView: View {
           } else {
             Label(
               isOffline
-                ? String(localized: "Check Server Connection")
+                ? String(localized: "Reconnect")
                 : String(localized: "Enter Offline Mode"),
-              systemImage: isOffline ? "wifi" : "wifi.slash")
+              systemImage: isOffline ? AppIcon.connectionOnline : AppIcon.connectionOffline)
           }
         }
         .adaptiveButtonStyle(.bordered)

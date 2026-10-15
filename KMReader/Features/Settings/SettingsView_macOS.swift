@@ -7,6 +7,8 @@ import SwiftUI
 
 #if os(macOS)
   struct SettingsView_macOS: View {
+    let authViewModel: AuthViewModel
+
     @State private var selectedSection: SettingsSection? = .appearance
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -63,6 +65,11 @@ import SwiftUI
           Text("Select a setting")
             .foregroundColor(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+      }
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          ConnectionStatusButton(authViewModel: authViewModel)
         }
       }
     }

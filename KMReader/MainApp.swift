@@ -439,7 +439,7 @@ struct MainApp: App {
 
       Settings {
         databaseGate {
-          SettingsView_macOS()
+          SettingsView_macOS(authViewModel: authViewModel)
         }
         .preferredColorScheme(appColorScheme.colorScheme)
       }

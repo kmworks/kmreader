@@ -9,16 +9,26 @@ import SwiftUI
 /// refreshable-carrying `DashboardView` body never observes state its refresh
 /// mutates (a carrier re-render cancels the in-flight refresh action).
 struct DashboardScopeHeaderView: View {
+  let authViewModel: AuthViewModel
   let scopeStore: LibraryScopeStore
   let dashboardScopeStore: DashboardLibraryScopeStore
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
+  @AppStorage("currentAccount") private var current: Current = .init()
 
   var body: some View {
     LibraryScopeHeader(
+      authViewModel: authViewModel,
+      onReconnected: refreshMetricsAfterReconnect,
       scope: dashboardScopeStore.scope,
       pinnedIds: dashboard.libraryIds,
       libraries: scopeStore.libraries,
       allLibrariesEntry: scopeStore.allLibrariesEntry)
+  }
+
+  private func refreshMetricsAfterReconnect() {
+    Task {
+      await scopeStore.refreshMetrics(instanceId: current.instanceId)
+    }
   }
 }

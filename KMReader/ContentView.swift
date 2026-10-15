@@ -323,9 +323,8 @@ struct ContentView: View {
   /// online. Returns `.retry` when the server is still unreachable, and `.stop`
   /// when recovery is no longer eligible.
   ///
-  /// On successful exit, mirrors what `DashboardView.tryReconnect` does so
-  /// the auto and manual recovery paths converge on identical post-recovery
-  /// state.
+  /// On successful exit, mirrors `AuthViewModel.reconnect()` so the auto and
+  /// manual recovery paths converge on identical post-recovery state.
   private func attemptAutoOfflineRecovery() async -> OfflineRecoveryService.ProbeResult {
     guard isLoggedIn else { return .stop }
     guard AppConfig.isOffline, AppConfig.offlineWasAutomatic else { return .stop }
