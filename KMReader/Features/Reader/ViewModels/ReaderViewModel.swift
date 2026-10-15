@@ -52,6 +52,7 @@ class ReaderViewModel {
   /// Translated/no-text results for this session, keyed by page and geometry.
   /// Failed attempts are never kept so they retry when the page is revisited.
   var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:]
+  var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:]
   @ObservationIgnored
   var mangaTranslationQueueTask: Task<Void, Never>?
   @ObservationIgnored

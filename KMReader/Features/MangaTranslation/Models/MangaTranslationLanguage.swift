@@ -22,6 +22,20 @@ nonisolated enum MangaTranslationLanguage {
     return value.isEmpty ? nil : value
   }
 
+  static func isSameLanguage(source: String, target: String) -> Bool {
+    guard let sourceCode = primaryLanguageCode(source), let targetCode = primaryLanguageCode(target) else {
+      return false
+    }
+    return sourceCode == targetCode
+  }
+
+  private static func primaryLanguageCode(_ language: String) -> String? {
+    normalized(language)?
+      .split(separator: "-")
+      .first?
+      .lowercased()
+  }
+
   // Vertical typesetting reads naturally only for Chinese and Japanese;
   // other targets keep horizontal rendering even for vertical bubbles.
   static func supportsVerticalLayout(_ language: String) -> Bool {

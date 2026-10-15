@@ -253,6 +253,7 @@ struct DivinaControlsOverlayView: View {
             .controlSize(.large)
             .readerControlButtonStyle()
             .frame(width: 44, height: 44)
+            .disabled(viewModel.mangaTranslationLanguagesMatch)
             .highPriorityGesture(
               LongPressGesture().onEnded { _ in
                 HapticFeedback.medium()
