@@ -78,7 +78,6 @@ actor OfflineManager {
   private var syncTask: Task<Void, Never>?
   private var syncTaskID: UUID?
   private var isProcessingQueue = false
-  private var completedDownloadsSinceLastNotification = 0
   /// Deletions staged behind an undo toast stay fully intact until the toast settles;
   /// the Offline pages filter these books out so rows look removed immediately.
   private var pendingDeletions: [UUID: PendingDownloadDeletion] = [:]
@@ -1036,20 +1035,7 @@ actor OfflineManager {
     let pending =
       (try? await DatabaseOperator.database().fetchPendingBooks(instanceId: instanceId)) ?? []
 
-    guard let nextBook = pending.first else {
-      if completedDownloadsSinceLastNotification > 0 {
-        completedDownloadsSinceLastNotification = 0
-        let failedCount =
-          (try? await DatabaseOperator.database().fetchFailedBooksCount(
-            instanceId: instanceId
-          )) ?? 0
-        if failedCount == 0 {
-          await ErrorManager.shared.notify(
-            message: String(localized: "notification.offline.tasksCompleted"))
-        }
-      }
-      return
-    }
+    guard let nextBook = pending.first else { return }
 
     // Proceed to download even if it's read, as it was likely manually requested or reader is opening it.
     await startDownload(instanceId: instanceId, info: nextBook.downloadInfo)
@@ -3269,7 +3255,6 @@ actor OfflineManager {
     await postDownloadProjectionDidChange(bookId: bookId, instanceId: instanceId)
     await refreshQueueStatus(instanceId: instanceId)
     await clearCachesAfterDownload(bookId: bookId, instanceId: instanceId)
-    completedDownloadsSinceLastNotification += 1
     removeActiveTask(bookId)
     scheduleDownloadedSizeUpdate(instanceId: instanceId, bookId: bookId, bookDir: bookDir)
 
