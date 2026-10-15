@@ -13,7 +13,6 @@ struct DashboardView: View {
   @State private var isRefreshing = false
   @State private var showLibraryPicker = false
   @State private var showLibraryAddSheet = false
-  @State private var isCheckingConnection = false
   @State private var scopeStore = LibraryScopeStore()
   @State private var dashboardScopeStore = DashboardLibraryScopeStore.shared
   @State private var viewModel = DashboardViewModel()
@@ -68,79 +67,19 @@ struct DashboardView: View {
           )
         }
 
-        if enableSSE {
-          if isOffline {
-            Button {
-              Task {
-                await tryReconnect()
-              }
-            } label: {
-              if isCheckingConnection {
-                LoadingIcon()
-              } else {
-                Label(String(localized: "settings.offline"), systemImage: "wifi.slash")
-                  .foregroundStyle(.orange)
-              }
+        if enableSSE && !isOffline {
+          Button {
+            Task {
+              await refreshDashboard(reason: "Manual tvOS button")
             }
-            .disabled(isCheckingConnection)
-          } else {
-            Button {
-              Task {
-                await refreshDashboard(reason: "Manual tvOS button")
-              }
-            } label: {
-              Label("Refresh", systemImage: AppIcon.refresh)
-            }
-            .disabled(isRefreshing)
+          } label: {
+            Label("Refresh", systemImage: AppIcon.refresh)
           }
+          .disabled(isRefreshing)
         }
         Spacer()
       }
       .padding()
-    #endif
-  }
-
-  /// Offline status row at the top of the dashboard content; tapping it
-  /// retries the server connection. iOS/macOS only — tvOS keeps the
-  /// reconnect button in its header.
-  @ViewBuilder
-  private var offlineStatusBanner: some View {
-    #if os(iOS) || os(macOS)
-      if isOffline {
-        Button {
-          Task {
-            await tryReconnect()
-          }
-        } label: {
-          HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if isCheckingConnection {
-              LoadingIcon()
-            } else {
-              Image(systemName: "wifi.slash")
-                .font(.body)
-                .imageScale(.small)
-            }
-            Text(String(localized: "settings.offline"))
-              .font(.body)
-              .lineLimit(1)
-            Text(String(localized: "Check Server Connection"))
-              .font(.footnote)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-            Spacer()
-          }
-          .foregroundStyle(.orange)
-          .padding(.horizontal)
-          .padding(.top, LayoutConfig.dashboardScopeHeaderPadding)
-          .contentShape(Rectangle())
-          #if os(macOS)
-            .padding(.leading, 16)
-          #endif
-        }
-        .buttonStyle(.plain)
-        .disabled(isCheckingConnection)
-        .help(String(localized: "Check Server Connection"))
-      }
     #endif
   }
 
@@ -179,9 +118,10 @@ struct DashboardView: View {
       VStack(alignment: .leading, spacing: 0) {
         dashboardHeader
 
-        offlineStatusBanner
-
-        DashboardScopeHeaderView(scopeStore: scopeStore, dashboardScopeStore: dashboardScopeStore)
+        DashboardScopeHeaderView(
+          authViewModel: authViewModel,
+          scopeStore: scopeStore,
+          dashboardScopeStore: dashboardScopeStore)
 
         DashboardEmptyLibraryGuidanceView(scopeStore: scopeStore) {
           showLibraryAddSheet = true
@@ -339,19 +279,5 @@ struct DashboardView: View {
         LibraryPickerSheet()
       }
     #endif
-  }
-
-  private func tryReconnect() async {
-    withAnimation {
-      isCheckingConnection = true
-    }
-    let reconnected = await authViewModel.reconnect()
-    withAnimation {
-      isCheckingConnection = false
-    }
-
-    if reconnected {
-      await scopeStore.refreshMetrics(instanceId: current.instanceId)
-    }
   }
 }

@@ -5,13 +5,15 @@
 
 import SwiftUI
 
-/// Library identity line shown on the Dashboard for the active scope: icon
-/// and title matching the scope menu (books.vertical for All/a library, pin
-/// for Pinned), then a single truncating facts line — file size first, then
-/// series/books counts (admin-only metrics; the line degrades to the bare
-/// title without them). The row always renders — the title stays blank until
-/// the library list arrives — so the sections below never jump when it appears.
+/// Connection status and library identity shown on the Dashboard: a compact
+/// reconnect/offline button, the scope icon and title, then a single
+/// truncating facts line — file size first, then series/books counts
+/// (admin-only metrics; the line degrades to the bare title without them).
+/// The row always renders — the title stays blank until the library list
+/// arrives — so the sections below never jump when it appears.
 struct LibraryScopeHeader: View {
+  let authViewModel: AuthViewModel
+  let onReconnected: () -> Void
   let scope: LibraryBrowseScope
   let pinnedIds: [String]
   let libraries: [SidebarLibraryItem]
@@ -40,6 +42,10 @@ struct LibraryScopeHeader: View {
 
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
+      ConnectionStatusButton(authViewModel: authViewModel, onReconnected: onReconnected)
+        .buttonStyle(.plain)
+        .font(.body)
+        .imageScale(.small)
       Image(systemName: icon)
         .font(.body)
         .imageScale(.small)

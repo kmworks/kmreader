@@ -169,7 +169,7 @@ struct SplashView: View {
                   localized: "splash.offline.enter",
                   defaultValue: "Enter Offline Mode"
                 ),
-                systemImage: "wifi.slash"
+                systemImage: AppIcon.connectionOffline
               )
               .font(.caption)
             }

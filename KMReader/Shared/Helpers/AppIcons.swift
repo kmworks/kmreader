@@ -38,6 +38,11 @@ nonisolated enum AppIcon {
   static let pageJump = "arrow.right.to.line"
   static let mangaTranslation = "translate"
 
+  // MARK: - Connectivity
+
+  static let connectionOnline = "wifi"
+  static let connectionOffline = "wifi.slash"
+
   // MARK: - Offline Downloads
 
   static let download = "icloud.and.arrow.down"
