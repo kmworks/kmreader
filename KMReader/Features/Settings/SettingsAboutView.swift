@@ -36,6 +36,19 @@ struct SettingsAboutView: View {
           SubscriptionView()
         }
 
+        if let guideURL = URL(string: "https://kmworks.date/reader/intro/") {
+          Link(destination: guideURL) {
+            HStack {
+              Label(String(localized: "User Guide"), systemImage: "book")
+              Spacer()
+              Image(systemName: AppIcon.externalLink)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            .contentShape(Rectangle())
+          }
+        }
+
         if let privacyURL = URL(string: "https://kmworks.date/reader/privacy/") {
           Link(destination: privacyURL) {
             HStack {

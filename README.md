@@ -63,6 +63,16 @@
 
 KMReader UI is localized in English, German, French, Japanese, Korean, Simplified Chinese, Traditional Chinese, Italian, Russian, and Spanish.
 
+## User Guide
+
+Learn how to use KMReader beyond the feature list:
+
+- [Reading](https://kmworks.date/reader/reading/): choose and configure DIVINA, EPUB, and PDF readers.
+- [Offline reading and sync](https://kmworks.date/reader/offline/): download strategically, manage storage, and sync progress.
+- [Browse and discover](https://kmworks.date/reader/library/): customize the dashboard, filters, lists, and Apple integrations.
+- [Manga translation](https://kmworks.date/reader/translation/): set up on-device OCR and translation providers.
+- [Settings by scenario](https://kmworks.date/reader/settings/): find which setting to use and what changes when you enable it.
+
 ## Getting Started
 
 ### Prerequisites
