@@ -19,6 +19,18 @@ extension ReaderViewModel {
     return mangaTranslationResults[key]
   }
 
+  var mangaTranslationLanguagesMatch: Bool {
+    guard let bookId = resolvedCurrentPageID?.bookId else { return false }
+    let languages = MangaTranslationConfiguration.resolvedLanguages(
+      sourceLanguage: mangaTranslationMetadataByBookId[bookId]?.sourceLanguage,
+      preferences: AppConfig.mangaTranslation
+    )
+    return MangaTranslationLanguage.isSameLanguage(
+      source: languages.sourceLanguage,
+      target: languages.targetLanguage
+    )
+  }
+
   func mangaTranslationResult(for data: NativePageData) -> MangaPageTranslation? {
     mangaTranslationResult(for: data.pageID, splitMode: data.splitMode)
   }
@@ -28,7 +40,7 @@ extension ReaderViewModel {
   }
 
   func translateCurrentPage() {
-    guard mangaTranslationEnabled, resolvedCurrentPageID != nil else { return }
+    guard mangaTranslationEnabled, resolvedCurrentPageID != nil, !mangaTranslationLanguagesMatch else { return }
     guard !mangaTranslationPhase.isBusy else { return }
     startMangaTranslationQueue(
       keys: desiredQueueKeys(includeCachedFront: true),
@@ -210,6 +222,24 @@ extension ReaderViewModel {
     do {
       let metadata = await mangaTranslationMetadata(for: pageID)
       guard isCurrentMangaTranslationQueue(queueID) else { return }
+      if mangaTranslationMetadataByBookId[pageID.bookId] != metadata {
+        mangaTranslationMetadataByBookId[pageID.bookId] = metadata
+      }
+      let languages = MangaTranslationConfiguration.resolvedLanguages(
+        metadata: metadata,
+        preferences: AppConfig.mangaTranslation
+      )
+      guard
+        !MangaTranslationLanguage.isSameLanguage(
+          source: languages.sourceLanguage,
+          target: languages.targetLanguage
+        )
+      else {
+        if sessionKey == currentMangaTranslationSessionKey() {
+          mangaTranslationPhase = .idle
+        }
+        return
+      }
       let database = await DatabaseOperator.databaseIfConfigured()
       guard
         let configuration = try await MangaTranslationConfiguration.current(

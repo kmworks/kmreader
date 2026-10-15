@@ -66,8 +66,15 @@ struct MangaTranslationConfiguration: Hashable, Sendable {
     metadata: MangaTranslationMetadata?,
     preferences: MangaTranslationPreferences
   ) -> (sourceLanguage: String, targetLanguage: String) {
+    resolvedLanguages(sourceLanguage: metadata?.sourceLanguage, preferences: preferences)
+  }
+
+  nonisolated static func resolvedLanguages(
+    sourceLanguage: String?,
+    preferences: MangaTranslationPreferences
+  ) -> (sourceLanguage: String, targetLanguage: String) {
     let sourceLanguage =
-      MangaTranslationLanguage.normalized(metadata?.sourceLanguage)
+      MangaTranslationLanguage.normalized(sourceLanguage)
       ?? MangaTranslationLanguage.normalized(preferences.sourceLanguage)
       ?? MangaTranslationLanguage.defaultSource
     let targetLanguage =
