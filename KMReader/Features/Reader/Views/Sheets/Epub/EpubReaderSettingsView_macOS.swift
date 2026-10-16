@@ -18,8 +18,6 @@
     @AppStorage("animateEpubTapTurns") private var animateEpubTapTurns: Bool = AppConfig.animateEpubTapTurns
     @AppStorage("epubOverlayPreferences") private var epubOverlayPreferences: EpubOverlayPreferences = AppConfig
       .epubOverlayPreferences
-    @AppStorage("epubShowKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = AppConfig
-      .epubShowKeyboardHelpOverlay
     @AppStorage("epubTapZoneMode") private var epubTapZoneMode: TapZoneMode = AppConfig.epubTapZoneMode
     @AppStorage("epubTapZoneInversionMode") private var epubTapZoneInversionMode: TapZoneInversionMode = AppConfig
       .epubTapZoneInversionMode
@@ -120,19 +118,6 @@
             .pickerStyle(.menu)
             if !inSheet {
               Text("Mirror left and right tap zones manually or automatically for RTL reading")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-          }
-        }
-      }
-
-      Section(String(localized: "Reader Overlay")) {
-        Toggle(isOn: $showKeyboardHelpOverlay) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Auto-Show Keyboard Help")
-            if !inSheet {
-              Text("Briefly show keyboard shortcuts when opening the reader")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }

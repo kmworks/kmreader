@@ -12,8 +12,6 @@
     private var pagePresentation: PdfPagePresentation = AppConfig.pdfPagePresentation
     @AppStorage("pdfIsolateCoverPage")
     private var soloCoverPage: Bool = true
-    @AppStorage("pdfShowKeyboardHelpOverlay")
-    private var showKeyboardHelpOverlay: Bool = AppConfig.pdfShowKeyboardHelpOverlay
     @AppStorage("showPdfControlsGradientBackground")
     private var showControlsGradientBackground: Bool =
       AppConfig.showPdfControlsGradientBackground
@@ -113,15 +111,6 @@
               VStack(alignment: .leading, spacing: 4) {
                 Text("Show Progress Bar While Reading")
                 Text("Keep book progress pinned to the bottom until reader controls are shown.")
-                  .font(.caption)
-                  .foregroundColor(.secondary)
-              }
-            }
-
-            Toggle(isOn: $showKeyboardHelpOverlay) {
-              VStack(alignment: .leading, spacing: 4) {
-                Text("Auto-Show Keyboard Help")
-                Text("Briefly show keyboard shortcuts when opening the reader")
                   .font(.caption)
                   .foregroundColor(.secondary)
               }
