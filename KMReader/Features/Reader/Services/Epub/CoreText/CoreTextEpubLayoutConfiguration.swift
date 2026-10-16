@@ -100,6 +100,8 @@
 
       // Readium removes the browser's default body margin before applying reader insets.
       var styles = ["body { margin: 0 !important; }"]
+      // Matches the WebView engine's ReadiumCSS media ceiling (--RS__maxMediaHeight: 95vh).
+      styles.append("img, svg { max-height: 95vh !important; }")
       if !globalDeclarations.isEmpty {
         styles.append("body, body * {\n\(globalDeclarations.joined(separator: "\n"))\n}")
       }
