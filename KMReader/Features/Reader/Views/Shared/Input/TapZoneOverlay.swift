@@ -25,7 +25,8 @@ struct TapZoneOverlay: View {
     )
     .opacity(showsOverlay ? 1.0 : 0.0)
     .allowsHitTesting(false)
-    .animation(.appCurve(), value: showsOverlay)
+    // Opacity fades need a symmetric curve; appCurve front-loads the change and reads as a snap.
+    .animation(.easeInOut(duration: 0.35), value: showsOverlay)
   }
 }
 
