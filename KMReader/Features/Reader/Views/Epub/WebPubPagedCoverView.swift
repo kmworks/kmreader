@@ -9,6 +9,7 @@
 
   struct WebPubPagedCoverView: UIViewControllerRepresentable {
     @Bindable var viewModel: EpubReaderViewModel
+    var renderingEngine: EpubRenderingEngine = .webView
     let preferences: EpubThemePreferences
     let colorScheme: ColorScheme
     let animateTapTurns: Bool
@@ -280,6 +281,8 @@
         let initialProgression = parent.viewModel.initialProgression(for: chapterIndex)
 
         let controller = EpubPageViewController(
+          renderingEngine: parent.renderingEngine,
+          preferences: parent.preferences,
           chapterURL: chapterURL,
           chapterMediaType: chapterMediaType,
           rootURL: rootURL,
@@ -306,6 +309,12 @@
         controller.preferLastPageOnReady = preferLastPageOnReady
         controller.targetProgressionOnReady = initialProgression
         wireController(controller)
+        controller.onCoreTextError = { [weak self, weak controller] error in
+          guard let self, let controller, self.currentController === controller else { return }
+          Task { @MainActor in
+            self.parent.viewModel.errorMessage = CoreTextEpubError.message(for: error)
+          }
+        }
         controller.onLinkTap = { [weak self] url in
           self?.parent.viewModel.navigateToURL(url)
         }
@@ -326,6 +335,8 @@
           }
           self.parent.viewModel.currentChapterIndex = chapterIndex
           self.parent.viewModel.currentPageIndex = normalizedPageIndex
+          self.parent.viewModel.targetChapterIndex = nil
+          self.parent.viewModel.targetPageIndex = nil
           self.currentChapterIndex = chapterIndex
           self.currentPageIndex = normalizedPageIndex
           self.parent.viewModel.pageDidChange()
@@ -360,6 +371,7 @@
         )
 
         controller.configure(
+          preferences: parent.preferences,
           chapterURL: parent.viewModel.chapterURL(at: chapterIndex),
           chapterMediaType: parent.viewModel.chapterMediaType(at: chapterIndex),
           rootURL: parent.viewModel.resourceRootURL,
@@ -418,8 +430,7 @@
         controller.view.frame = container.view.bounds
         controller.view.isHidden = false
         controller.view.layer.zPosition = 1
-        updateShadow(for: controller.view, isElevated: true, offset: 0)
-        if controller.currentSubPageIndex != subPageIndex {
+        if controller.currentSubPageIndex != subPageIndex, controller.targetProgressionOnReady == nil {
           controller.scrollToPageIndex(subPageIndex)
         }
 
@@ -609,6 +620,10 @@
           return
         }
         Task { @MainActor in
+          if let controller = currentController {
+            controller.preferLastPageOnReady = false
+            controller.targetProgressionOnReady = nil
+          }
           parent.viewModel.currentChapterIndex = chapterIndex
           parent.viewModel.currentPageIndex = pageIndex
           parent.viewModel.targetChapterIndex = nil
@@ -654,7 +669,9 @@
             current.view.isHidden = true
             current.view.layer.zPosition = 0
           } else {
-            current.scrollToPageIndex(target.subPageIndex)
+            if current.targetProgressionOnReady == nil {
+              current.scrollToPageIndex(target.subPageIndex)
+            }
           }
           overlay.layer.zPosition = 2
           updateShadow(for: overlay, isElevated: true, offset: 0)
@@ -1049,6 +1066,11 @@
 
       @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
         guard !isAnimating else { return }
+        if let current = currentController,
+          current.handleCoreTextLinkTap(at: recognizer.location(in: current.view))
+        {
+          return
+        }
         let location = recognizer.location(in: recognizer.view)
         let size = recognizer.view?.bounds.size ?? .zero
         guard size.width > 0, size.height > 0 else { return }

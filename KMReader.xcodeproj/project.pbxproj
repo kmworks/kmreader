@@ -16,6 +16,8 @@
 		19AEFE572EFC62E200EC7D3B /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19AEFE562EFC62E200EC7D3B /* StoreKit.framework */; };
 		19D0A1022F0A000000D0A001 /* LibArchive in Frameworks */ = {isa = PBXBuildFile; productRef = 19D0A1012F0A000000D0A001 /* LibArchive */; };
 		19F0B1022F10000000B10000 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 19F0B1012F10000000B10000 /* GRDB */; };
+		19CC0A032F20000000CC0A03 /* YueduCoreText in Frameworks */ = {isa = PBXBuildFile; productRef = 19CC0A022F20000000CC0A02 /* YueduCoreText */; platformFilter = ios; };
+		19CC0A042F20000000CC0A04 /* YueduCoreTextTypography in Frameworks */ = {isa = PBXBuildFile; productRef = 19CC0A052F20000000CC0A05 /* YueduCoreTextTypography */; platformFilter = ios; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,6 +104,8 @@
 				19D0A1022F0A000000D0A001 /* LibArchive in Frameworks */,
 				19AEFE572EFC62E200EC7D3B /* StoreKit.framework in Frameworks */,
 				19AEC07F2EE714150073EB5F /* Flow in Frameworks */,
+				19CC0A032F20000000CC0A03 /* YueduCoreText in Frameworks */,
+				19CC0A042F20000000CC0A04 /* YueduCoreTextTypography in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -245,6 +249,7 @@
 				19AEC07D2EE714150073EB5F /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */,
 				19D0A1002F0A000000D0A001 /* XCRemoteSwiftPackageReference "libarchive-swift" */,
 				19F0B1002F10000000B10000 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				19CC0A012F20000000CC0A01 /* XCRemoteSwiftPackageReference "YueduCoreText" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 192E6F7E2EC4B4E20040D165 /* Products */;
@@ -693,6 +698,14 @@
 				minimumVersion = 7.11.0;
 			};
 		};
+		19CC0A012F20000000CC0A01 /* XCRemoteSwiftPackageReference "YueduCoreText" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CHANG-JUI-LIN/YueduCoreText";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.9.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -720,6 +733,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 19F0B1002F10000000B10000 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
 			productName = GRDB;
+		};
+		19CC0A022F20000000CC0A02 /* YueduCoreText */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 19CC0A012F20000000CC0A01 /* XCRemoteSwiftPackageReference "YueduCoreText" */;
+			productName = YueduCoreText;
+		};
+		19CC0A052F20000000CC0A05 /* YueduCoreTextTypography */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 19CC0A012F20000000CC0A01 /* XCRemoteSwiftPackageReference "YueduCoreText" */;
+			productName = YueduCoreTextTypography;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

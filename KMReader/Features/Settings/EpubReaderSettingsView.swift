@@ -12,6 +12,7 @@
       self.inSheet = inSheet
     }
 
+    @AppStorage("epubRenderingEngine") private var renderingEngine: EpubRenderingEngine = .webView
     @AppStorage("epubFlowStyle") private var flowStyle: EpubFlowStyle = .paged
     @AppStorage("epubTapScrollPercentage") private var tapScrollPercentage: Double = AppConfig.epubTapScrollPercentage
     @AppStorage("epubPageTransitionStyle") private var epubPageTransitionStyle: PageTransitionStyle = .scroll
@@ -49,6 +50,15 @@
 
     @ViewBuilder
     private var settingsSections: some View {
+      Section(String(localized: "Rendering Engine")) {
+        Picker(String(localized: "Rendering Engine"), selection: $renderingEngine) {
+          ForEach(EpubRenderingEngine.allCases) { engine in
+            Text(engine.displayName).tag(engine)
+          }
+        }
+        .pickerStyle(.menu)
+      }
+
       Section(String(localized: "Page Turn")) {
         Picker(String(localized: "epub.reading_flow"), selection: $flowStyle) {
           ForEach(EpubFlowStyle.allCases) { style in Text(style.displayName).tag(style) }
