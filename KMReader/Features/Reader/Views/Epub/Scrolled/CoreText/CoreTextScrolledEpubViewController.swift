@@ -243,7 +243,7 @@
       scrollView.addSubview(errorView)
       scrollView.contentSize = viewportSize
       self.errorView = errorView
-      viewModel.updateChapterPageCount(1, for: currentChapterIndex)
+      viewModel.markChapterLoadFailed(currentChapterIndex)
       scrollToPage(at: 0, animated: false)
       showContent()
     }

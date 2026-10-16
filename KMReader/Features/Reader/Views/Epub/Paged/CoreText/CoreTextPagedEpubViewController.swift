@@ -28,7 +28,7 @@
     private var layoutGeneration = 0
     private var displayLists: [DisplayList] = []
     private var linkRegions: [LinkInteractionRegionSet] = []
-    private var chapterErrorMessage: String?
+    private var chapterLoadFailed = false
     private var currentChapterIndex: Int
     private var currentPageIndex: Int
     private var pendingPageCommitIndex: Int?
@@ -86,7 +86,7 @@
     }
 
     private var displayedPageCount: Int {
-      chapterErrorMessage != nil ? 1 : displayLists.count
+      chapterLoadFailed ? 1 : displayLists.count
     }
 
     override func viewDidLoad() {
@@ -235,10 +235,10 @@
 
     private func showChapterError(_ error: Error) {
       let message = CoreTextEpubError.message(for: error)
-      chapterErrorMessage = message
+      chapterLoadFailed = true
       displayLists = []
       linkRegions = []
-      viewModel.updateChapterPageCount(1, for: currentChapterIndex)
+      viewModel.markChapterLoadFailed(currentChapterIndex)
       pageViewController.dataSource = self
       let controller = CoreTextErrorPageViewController(message: message, theme: theme)
       pageViewController.setViewControllers([controller], direction: .forward, animated: false)
@@ -262,7 +262,7 @@
       layoutOperation = nil
       displayLists = []
       linkRegions = []
-      chapterErrorMessage = nil
+      chapterLoadFailed = false
       pageViewController.dataSource = nil
       showLoading()
 
@@ -362,7 +362,7 @@
         reloadChapter(preservePosition: true)
         return
       }
-      if chapterErrorMessage != nil {
+      if chapterLoadFailed {
         viewModel.targetChapterIndex = nil
         viewModel.targetPageIndex = nil
         return

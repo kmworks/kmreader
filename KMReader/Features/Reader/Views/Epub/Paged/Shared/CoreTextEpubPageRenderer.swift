@@ -54,10 +54,17 @@
 
     func applyTheme(_ theme: ReaderTheme) {
       displayView.backgroundColor = theme.uiColorBackground
+      errorView?.applyTheme(theme)
     }
 
     func loadIfNeeded(force: Bool) {
-      guard let host, let chapterURL = configuration.chapterURL, let rootURL = configuration.rootURL else { return }
+      guard let host else { return }
+      guard let chapterURL = configuration.chapterURL, let rootURL = configuration.rootURL else {
+        installErrorPage(
+          CoreTextEpubError.message(
+            for: AppErrorType.missingRequiredData(message: "Missing EPUB chapter resources.")))
+        return
+      }
       let viewportSize = displayView.bounds.size
       guard viewportSize.width > 0, viewportSize.height > 0 else { return }
 
@@ -131,7 +138,7 @@
     }
 
     private func installErrorPage(_ message: String) {
-      guard let host else { return }
+      guard let host, errorView == nil else { return }
       displayLists = []
       linkRegions = []
       let errorView = CoreTextChapterErrorView(message: message, theme: configuration.theme)
@@ -145,6 +152,7 @@
       ])
       self.errorView = errorView
       host.rendererDidProducePageCount(1)
+      host.onChapterLoadFailed?()
 
       let previousPageIndex = host.currentSubPageIndex
       host.rendererConsumePendingPageIndex()
