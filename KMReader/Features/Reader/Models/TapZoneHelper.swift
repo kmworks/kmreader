@@ -5,13 +5,6 @@
 
 import Foundation
 
-/// Result of tap zone detection
-enum TapZoneAction {
-  case previous
-  case next
-  case toggleControls
-}
-
 /// Centralized helper to determine tap zone actions based on TapZoneMode and tap location
 enum TapZoneHelper {
   /// Determine the action for a tap at the given normalized location
