@@ -609,8 +609,7 @@
                     viewModel.syncEndProgression()
                     showingEndPage = true
                   }
-                },
-                onClose: closeReader
+                }
               ).readerIgnoresSafeArea()
             case .cover:
               WebPubPagedCoverView(
@@ -671,8 +670,7 @@
                   viewModel.syncEndProgression()
                   showingEndPage = true
                 }
-              },
-              onClose: closeReader
+              }
             ).readerIgnoresSafeArea()
           }
         } else {

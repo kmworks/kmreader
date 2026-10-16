@@ -74,6 +74,11 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 - Book-level reader failures (deleted or unsupported media, missing offline file, load error, no pages, no content) all render through the shared `ReaderUnavailableView`: icon, title, optional message, an optional prominent Retry, and Close. Engines never hand-draw their own error layout or hardcode reader-context colors — the view's adaptive colors already handle the dark reader context.
 
+### Chapter-Level Error Page (CoreText EPUB)
+
+- A chapter the CoreText engine cannot lay out (including missing chapter resources) renders as an in-chapter error page — `CoreTextChapterErrorView`, themed, installed by the paged/scrolled controllers or by `CoreTextEpubPageRenderer` for cover/curl — instead of the book-level `ReaderUnavailableView`. The chapter counts as a single page, so paging gestures, tap zones, boundary flings, and TOC navigation keep working in every CoreText mode. There is no Retry button: paging away and back re-runs the layout.
+- Error chapters never emit reading progress. Error paths mark the chapter through `EpubReaderViewModel.markChapterLoadFailed` (which also reports the single placeholder page), `pageDidChange`/`flushProgress` skip marked chapters, and the next `updateChapterPageCount` report for the chapter clears the mark — a produced page count means the layout succeeded.
+
 ### Next-Book Offline State
 
 - In offline-first reading, `ReaderViewModel.nextBookOfflineState` is the single observable for the next book's offline readiness, rendered by end-page/footer UIs.

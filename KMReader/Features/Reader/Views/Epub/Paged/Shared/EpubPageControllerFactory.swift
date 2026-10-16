@@ -85,6 +85,11 @@
       )
       controller.preferLastPageOnReady = preferLastPageOnReady
       controller.targetProgressionOnReady = initialProgression
+      controller.onChapterLoadFailed = { [weak viewModel] in
+        Task { @MainActor in
+          viewModel?.markChapterLoadFailed(chapterIndex)
+        }
+      }
       return controller
     }
 

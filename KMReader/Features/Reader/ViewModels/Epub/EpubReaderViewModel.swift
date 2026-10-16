@@ -39,6 +39,9 @@
     private var readingOrder: [WebPubLink] = []
     private var pageCountCache: [String: Int] = [:]
     private var chapterPageCounts: [Int: Int] = [:]
+    // Chapters that failed to render show a placeholder error page; they must
+    // not emit reading progress until a layout succeeds again.
+    private var failedChapterIndexes: Set<Int> = []
     private var chapterURLCache: [Int: URL] = [:]
     private var textLengthCache: [String: Int] = [:]
     private var chapterTextWeights: [Int: Int] = [:]
@@ -570,6 +573,12 @@
         logger.warning("⚠️ [Progress/Epub] Skip capture: missing book ID")
         return
       }
+      guard !failedChapterIndexes.contains(chapterIndex) else {
+        logger.debug(
+          "⏭️ [Progress/Epub] Skip capture: chapter failed to render, book=\(bookId), chapterIndex=\(chapterIndex)"
+        )
+        return
+      }
 
       if sessionStartPosition == nil {
         sessionStartPosition = (chapterIndex, pageIndex)
@@ -619,6 +628,12 @@
       }
       guard !bookId.isEmpty else {
         logger.warning("⚠️ [Progress/Epub] Skip flush: missing book ID")
+        return
+      }
+      guard !failedChapterIndexes.contains(chapterIndex) else {
+        logger.debug(
+          "⏭️ [Progress/Epub] Skip flush: chapter failed to render, book=\(bookId), chapterIndex=\(chapterIndex)"
+        )
         return
       }
       guard isProgressRecordingEligible(chapterIndex: chapterIndex, pageIndex: pageIndex) else {
@@ -768,6 +783,8 @@
 
     func updateChapterPageCount(_ pageCount: Int, for chapterIndex: Int) {
       guard chapterIndex >= 0, chapterIndex < readingOrder.count else { return }
+      // A produced page count means the chapter laid out successfully.
+      failedChapterIndexes.remove(chapterIndex)
       let normalizedCount = max(1, pageCount)
       if chapterPageCounts[chapterIndex] == normalizedCount { return }
 
@@ -782,6 +799,11 @@
       guard let href = readingOrder[chapterIndex].href else { return }
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
       pageCountCache[cacheKey] = normalizedCount
+    }
+
+    func markChapterLoadFailed(_ chapterIndex: Int) {
+      updateChapterPageCount(1, for: chapterIndex)
+      failedChapterIndexes.insert(chapterIndex)
     }
 
     var labelTopOffset: CGFloat {
