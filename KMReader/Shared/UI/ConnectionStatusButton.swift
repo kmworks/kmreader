@@ -15,7 +15,17 @@ struct ConnectionStatusButton: View {
   }
 
   @AppStorage("isOffline") private var isOffline: Bool = false
-  @State private var isCheckingConnection = false
+
+  private var isCheckingConnection: Bool {
+    authViewModel.bootstrapState == .validating
+  }
+
+  private var connectionStatusColor: Color {
+    if isCheckingConnection {
+      return .orange
+    }
+    return isOffline ? .red : .green
+  }
 
   private var actionTitle: String {
     if isOffline {
@@ -34,13 +44,10 @@ struct ConnectionStatusButton: View {
         authViewModel.enterOfflineMode()
       }
     } label: {
-      if isCheckingConnection {
-        LoadingIcon()
-      } else {
-        Image(systemName: isOffline ? AppIcon.connectionOffline : AppIcon.connectionOnline)
-          .foregroundStyle(isOffline ? .red : .green)
-          .contentShape(Rectangle())
-      }
+      Image(systemName: isOffline ? AppIcon.connectionOffline : AppIcon.connectionOnline)
+        .foregroundStyle(connectionStatusColor)
+        .contentShape(Rectangle())
+        .symbolEffect(.pulse, options: .repeating, isActive: isCheckingConnection)
     }
     .disabled(isCheckingConnection)
     .accessibilityLabel(actionTitle)
@@ -48,9 +55,7 @@ struct ConnectionStatusButton: View {
   }
 
   private func reconnect() async {
-    isCheckingConnection = true
     let reconnected = await authViewModel.reconnect()
-    isCheckingConnection = false
     if reconnected {
       onReconnected?()
     }

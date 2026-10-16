@@ -5,23 +5,37 @@
 
 import SwiftUI
 
-/// Connection status and library identity shown on the Dashboard: a compact
-/// reconnect/offline button, the scope icon and title, then a single
-/// truncating facts line — file size first, then series/books counts
+/// Connection status and library identity shown on the Dashboard: a status
+/// icon, the scope icon and title, then a single truncating facts line —
+/// file size first, then series/books counts
 /// (admin-only metrics; the line degrades to the bare title without them).
 /// The row always renders — the title stays blank until the library list
 /// arrives — so the sections below never jump when it appears.
 struct LibraryScopeHeader: View {
-  let authViewModel: AuthViewModel
-  let onReconnected: () -> Void
+  let isConnecting: Bool
   let scope: LibraryBrowseScope
   let pinnedIds: [String]
   let libraries: [SidebarLibraryItem]
   let allLibrariesEntry: SidebarLibraryItem?
 
+  @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("showDashboardSectionGradientBackground")
   private var showGradientBackground: Bool =
     AppConfig.showDashboardSectionGradientBackground
+
+  private var connectionStatusColor: Color {
+    if isConnecting {
+      return .orange
+    }
+    return isOffline ? .red : .green
+  }
+
+  private var connectionStatusLabel: String {
+    if isOffline {
+      return String(localized: "Offline")
+    }
+    return String(localized: "Online")
+  }
 
   private var icon: String {
     switch scope {
@@ -42,10 +56,13 @@ struct LibraryScopeHeader: View {
 
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: 8) {
-      ConnectionStatusButton(authViewModel: authViewModel, onReconnected: onReconnected)
-        .buttonStyle(.plain)
+      Image(systemName: isOffline ? AppIcon.connectionOffline : AppIcon.connectionOnline)
         .font(.body)
         .imageScale(.small)
+        .foregroundStyle(connectionStatusColor)
+        .symbolEffect(.pulse, options: .repeating, isActive: isConnecting)
+        .accessibilityLabel(connectionStatusLabel)
+        .help(connectionStatusLabel)
       Image(systemName: icon)
         .font(.body)
         .imageScale(.small)

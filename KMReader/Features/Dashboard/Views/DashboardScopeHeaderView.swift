@@ -15,20 +15,22 @@ struct DashboardScopeHeaderView: View {
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("isOffline") private var isOffline: Bool = false
 
   var body: some View {
     LibraryScopeHeader(
-      authViewModel: authViewModel,
-      onReconnected: refreshMetricsAfterReconnect,
+      isConnecting: authViewModel.bootstrapState == .validating,
       scope: dashboardScopeStore.scope,
       pinnedIds: dashboard.libraryIds,
       libraries: scopeStore.libraries,
-      allLibrariesEntry: scopeStore.allLibrariesEntry)
-  }
-
-  private func refreshMetricsAfterReconnect() {
-    Task {
-      await scopeStore.refreshMetrics(instanceId: current.instanceId)
+      allLibrariesEntry: scopeStore.allLibrariesEntry
+    )
+    .onChange(of: isOffline) { wasOffline, isNowOffline in
+      if wasOffline && !isNowOffline {
+        Task {
+          await scopeStore.refreshMetrics(instanceId: current.instanceId)
+        }
+      }
     }
   }
 }
