@@ -14,7 +14,6 @@
     let bookTitle: String?
     let onCenterTap: () -> Void
     let onEndReached: () -> Void
-    let onClose: () -> Void
 
     @AppStorage("epubTapZoneMode") private var tapZoneMode: TapZoneMode = AppConfig.epubTapZoneMode
     @AppStorage("epubTapZoneInversionMode") private var tapZoneInversionMode: TapZoneInversionMode = AppConfig
@@ -32,7 +31,6 @@
         bookTitle: bookTitle,
         onCenterTap: onCenterTap,
         onEndReached: onEndReached,
-        onClose: onClose,
         tapZoneMode: tapZoneMode,
         tapZoneInversionMode: tapZoneInversionMode
       )
@@ -49,7 +47,6 @@
         bookTitle: bookTitle,
         onCenterTap: onCenterTap,
         onEndReached: onEndReached,
-        onClose: onClose,
         tapZoneMode: tapZoneMode,
         tapZoneInversionMode: tapZoneInversionMode
       )

@@ -14,6 +14,7 @@
     private var layoutGeneration = 0
     private var layoutSize: CGSize = .zero
     private var settleCompletions: [() -> Void] = []
+    private var errorView: CoreTextChapterErrorView?
     private(set) var isContentLoaded = false
 
     var contentView: UIView { displayView }
@@ -80,6 +81,8 @@
       isContentLoaded = false
       host.rendererPrepareForReload()
       displayView.displayList = nil
+      errorView?.removeFromSuperview()
+      errorView = nil
       displayView.alpha = 0.01
       host.rendererStartLoading()
 
@@ -122,10 +125,37 @@
           if error is CancellationError { return }
           self.layoutTask = nil
           self.layoutOperation = nil
-          self.host?.rendererStopLoading()
-          self.host?.onCoreTextError?(error)
+          self.installErrorPage(CoreTextEpubError.message(for: error))
         }
       }
+    }
+
+    private func installErrorPage(_ message: String) {
+      guard let host else { return }
+      displayLists = []
+      linkRegions = []
+      let errorView = CoreTextChapterErrorView(message: message, theme: configuration.theme)
+      errorView.translatesAutoresizingMaskIntoConstraints = false
+      displayView.addSubview(errorView)
+      NSLayoutConstraint.activate([
+        errorView.leadingAnchor.constraint(equalTo: displayView.leadingAnchor),
+        errorView.trailingAnchor.constraint(equalTo: displayView.trailingAnchor),
+        errorView.topAnchor.constraint(equalTo: displayView.topAnchor),
+        errorView.bottomAnchor.constraint(equalTo: displayView.bottomAnchor),
+      ])
+      self.errorView = errorView
+      host.rendererDidProducePageCount(1)
+
+      let previousPageIndex = host.currentSubPageIndex
+      host.rendererConsumePendingPageIndex()
+      isContentLoaded = true
+      showPage(at: 0)
+      if previousPageIndex != 0 {
+        host.onPageIndexAdjusted?(0)
+      }
+      host.rendererStopLoading()
+      host.onPaginationReady?()
+      finishSettleCompletions()
     }
 
     private func installPages(_ pages: [DisplayList], linkRegions: [LinkInteractionRegionSet]) {
@@ -156,7 +186,14 @@
     }
 
     private func showPage(at pageIndex: Int) {
-      guard let host, displayLists.indices.contains(pageIndex) else { return }
+      guard let host else { return }
+      if errorView != nil {
+        host.currentSubPageIndex = 0
+        displayView.alpha = 1
+        host.updateOverlayLabels()
+        return
+      }
+      guard displayLists.indices.contains(pageIndex) else { return }
       host.currentSubPageIndex = pageIndex
       displayView.displayList = displayLists[pageIndex]
       displayView.layer.displayIfNeeded()

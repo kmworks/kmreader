@@ -16,13 +16,11 @@
     private var bookTitle: String?
     private var onCenterTap: () -> Void
     private var onEndReached: () -> Void
-    private var onClose: () -> Void
     private var tapZoneMode: TapZoneMode
     private var tapZoneInversionMode: TapZoneInversionMode
 
     private var pageViewController: UIPageViewController!
     private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
-    private var statusHost: UIViewController?
     private var loadingIndicator: UIActivityIndicatorView?
 
     private var layoutTask: Task<Void, Never>?
@@ -30,6 +28,7 @@
     private var layoutGeneration = 0
     private var displayLists: [DisplayList] = []
     private var linkRegions: [LinkInteractionRegionSet] = []
+    private var chapterErrorMessage: String?
     private var currentChapterIndex: Int
     private var currentPageIndex: Int
     private var pendingPageCommitIndex: Int?
@@ -47,7 +46,6 @@
       bookTitle: String?,
       onCenterTap: @escaping () -> Void,
       onEndReached: @escaping () -> Void,
-      onClose: @escaping () -> Void,
       tapZoneMode: TapZoneMode,
       tapZoneInversionMode: TapZoneInversionMode
     ) {
@@ -60,7 +58,6 @@
       self.bookTitle = bookTitle
       self.onCenterTap = onCenterTap
       self.onEndReached = onEndReached
-      self.onClose = onClose
       self.tapZoneMode = tapZoneMode
       self.tapZoneInversionMode = tapZoneInversionMode
       self.currentChapterIndex = viewModel.currentChapterIndex
@@ -86,6 +83,10 @@
         language: viewModel.publicationLanguage,
         readingProgression: viewModel.publicationReadingProgression
       )
+    }
+
+    private var displayedPageCount: Int {
+      chapterErrorMessage != nil ? 1 : displayLists.count
     }
 
     override func viewDidLoad() {
@@ -121,7 +122,6 @@
       bookTitle: String?,
       onCenterTap: @escaping () -> Void,
       onEndReached: @escaping () -> Void,
-      onClose: @escaping () -> Void,
       tapZoneMode: TapZoneMode,
       tapZoneInversionMode: TapZoneInversionMode
     ) {
@@ -137,7 +137,6 @@
       self.bookTitle = bookTitle
       self.onCenterTap = onCenterTap
       self.onEndReached = onEndReached
-      self.onClose = onClose
       self.tapZoneMode = tapZoneMode
       self.tapZoneInversionMode = tapZoneInversionMode
 
@@ -230,49 +229,26 @@
 
     private func showLoading() {
       isContentReady = false
-      statusHost?.removeFromParent()
-      statusHost?.view.removeFromSuperview()
-      statusHost = nil
       pageViewController.view.alpha = 0.05
       loadingIndicator?.startAnimating()
     }
 
-    private func showError(_ error: Error) {
-      isContentReady = false
-      pageViewController.view.alpha = 0.05
-      loadingIndicator?.stopAnimating()
-      statusHost?.removeFromParent()
-      statusHost?.view.removeFromSuperview()
-      let host = UIHostingController(
-        rootView: ReaderUnavailableView(
-          icon: AppIcon.loadError,
-          title: "Failed to load media",
-          message: CoreTextEpubError.message(for: error),
-          onRetry: { [weak self] in
-            self?.reloadChapter(preservePosition: true)
-          },
-          onClose: onClose
-        )
-      )
-      addChild(host)
-      view.addSubview(host.view)
-      host.view.translatesAutoresizingMaskIntoConstraints = false
-      NSLayoutConstraint.activate([
-        host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-        host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-        host.view.topAnchor.constraint(equalTo: view.topAnchor),
-        host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-      ])
-      host.didMove(toParent: self)
-      statusHost = host
+    private func showChapterError(_ error: Error) {
+      let message = CoreTextEpubError.message(for: error)
+      chapterErrorMessage = message
+      displayLists = []
+      linkRegions = []
+      viewModel.updateChapterPageCount(1, for: currentChapterIndex)
+      pageViewController.dataSource = self
+      let controller = CoreTextErrorPageViewController(message: message, theme: theme)
+      pageViewController.setViewControllers([controller], direction: .forward, animated: false)
+      commitPage(at: 0, notify: true)
+      showContent()
     }
 
     private func showContent() {
       isContentReady = true
       loadingIndicator?.stopAnimating()
-      statusHost?.removeFromParent()
-      statusHost?.view.removeFromSuperview()
-      statusHost = nil
       pageViewController.view.alpha = 1
       updateOverlayLabels()
     }
@@ -286,6 +262,7 @@
       layoutOperation = nil
       displayLists = []
       linkRegions = []
+      chapterErrorMessage = nil
       pageViewController.dataSource = nil
       showLoading()
 
@@ -305,7 +282,7 @@
         if viewModel.isLoading || !viewModel.hasContent {
           showLoading()
         } else {
-          showError(AppErrorType.missingRequiredData(message: "Missing EPUB chapter resources."))
+          showChapterError(AppErrorType.missingRequiredData(message: "Missing EPUB chapter resources."))
         }
         return
       }
@@ -353,7 +330,7 @@
           guard generation == self.layoutGeneration else { return }
           if case HTMLLayoutError.cancelled = error { return }
           if error is CancellationError { return }
-          self.showError(error)
+          self.showChapterError(error)
         }
       }
     }
@@ -379,13 +356,18 @@
     }
 
     private func navigateToTargetIfNeeded() {
-      guard isContentReady, !displayLists.isEmpty else { return }
+      guard isContentReady else { return }
       let targetChapter = viewModel.targetChapterIndex ?? currentChapterIndex
       if targetChapter != currentChapterIndex {
         reloadChapter(preservePosition: true)
         return
       }
-      guard let targetPage = viewModel.targetPageIndex else { return }
+      if chapterErrorMessage != nil {
+        viewModel.targetChapterIndex = nil
+        viewModel.targetPageIndex = nil
+        return
+      }
+      guard !displayLists.isEmpty, let targetPage = viewModel.targetPageIndex else { return }
       let pageIndex = targetPage < 0 ? displayLists.count - 1 : max(0, min(targetPage, displayLists.count - 1))
       if pageIndex != currentPageIndex {
         showPage(at: pageIndex, animated: animatePageTransitions)
@@ -449,7 +431,7 @@
           viewModel.totalProgression(location: $0, chapterProgress: chapterProgress)
         },
         currentPageIndex: currentPageIndex,
-        totalPagesInChapter: displayLists.count,
+        totalPagesInChapter: displayedPageCount,
         showingControls: showingControls,
         isRTL: viewModel.publicationReadingProgression == .rtl,
         overlayPreferences: overlayPreferences
@@ -521,9 +503,9 @@
       withVelocity velocity: CGPoint,
       targetContentOffset: UnsafeMutablePointer<CGPoint>
     ) {
-      guard displayLists.count > 0 else { return }
+      guard displayedPageCount > 0 else { return }
       let isFirst = currentPageIndex == 0
-      let isLast = currentPageIndex == displayLists.count - 1
+      let isLast = currentPageIndex == displayedPageCount - 1
       guard isFirst || isLast else { return }
       let threshold: CGFloat = 450
       if paginationLayout.reversesHorizontalGestureDirection {

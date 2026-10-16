@@ -256,12 +256,6 @@
           )
         else { return nil }
         wireController(controller)
-        controller.onCoreTextError = { [weak self, weak controller] error in
-          guard let self, let controller, self.currentController === controller else { return }
-          Task { @MainActor in
-            self.parent.viewModel.errorMessage = CoreTextEpubError.message(for: error)
-          }
-        }
         controller.onLinkTap = { [weak self] url in
           self?.parent.viewModel.navigateToURL(url)
         }

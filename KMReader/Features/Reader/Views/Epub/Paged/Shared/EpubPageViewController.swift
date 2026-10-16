@@ -14,7 +14,6 @@
     var onLinkTap: ((URL) -> Void)?
     var onPageIndexAdjusted: ((Int) -> Void)?
     var onPaginationReady: (() -> Void)?
-    var onCoreTextError: ((Error) -> Void)?
     // Fires when pagination re-runs on changed geometry (appearance or viewport
     // size), so page-index-keyed snapshots cached by the coordinator go stale.
     var onRepagination: (() -> Void)?
