@@ -6,7 +6,6 @@
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
-    private let hintLabel = UILabel()
 
     init(message: String, theme: ReaderTheme) {
       super.init(frame: .zero)
@@ -25,12 +24,7 @@
       messageLabel.textAlignment = .center
       messageLabel.numberOfLines = 0
 
-      hintLabel.text = String(localized: "Turn the page to continue reading.")
-      hintLabel.font = .preferredFont(forTextStyle: .footnote)
-      hintLabel.textAlignment = .center
-      hintLabel.numberOfLines = 0
-
-      let stack = UIStackView(arrangedSubviews: [iconView, titleLabel, messageLabel, hintLabel])
+      let stack = UIStackView(arrangedSubviews: [iconView, titleLabel, messageLabel])
       stack.axis = .vertical
       stack.alignment = .center
       stack.spacing = 12
@@ -55,7 +49,6 @@
       titleLabel.textColor = theme.uiColorText
       let secondary = theme.uiColorText.withAlphaComponent(0.6)
       messageLabel.textColor = secondary
-      hintLabel.textColor = secondary
       iconView.tintColor = secondary
     }
 
