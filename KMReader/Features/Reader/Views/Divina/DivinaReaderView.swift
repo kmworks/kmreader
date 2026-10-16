@@ -705,7 +705,7 @@ struct DivinaReaderView: View {
     }
     .onChange(of: viewModel.pageCount) { oldCount, newCount in
       if oldCount == 0 && newCount > 0 && readerIsReadyForHints {
-        triggerTapZoneOverlay(timeout: 1)
+        triggerTapZoneOverlay(timeout: 0.4)
         triggerKeyboardHelp(timeout: 1.5)
       }
     }
@@ -714,7 +714,7 @@ struct DivinaReaderView: View {
         hideTapZoneOverlay()
         hideKeyboardHelp()
       } else if readerIsReadyForHints {
-        triggerTapZoneOverlay(timeout: 1)
+        triggerTapZoneOverlay(timeout: 0.4)
         triggerKeyboardHelp(timeout: 1.5)
       }
     }
@@ -747,7 +747,7 @@ struct DivinaReaderView: View {
     .onChange(of: readingDirection) { _, newValue in
       viewModel.updateReadingDirection(newValue)
       #if os(iOS) || os(macOS)
-        triggerTapZoneOverlay(timeout: 1)
+        triggerTapZoneOverlay(timeout: 0.4)
       #endif
     }
     #if os(tvOS)
@@ -973,15 +973,15 @@ struct DivinaReaderView: View {
         .readerIgnoresSafeArea()
         .onChange(of: screenKey) {
           // Show helper overlay when screen orientation changes
-          triggerTapZoneOverlay(timeout: 1)
+          triggerTapZoneOverlay(timeout: 0.4)
         }
         .onChange(of: tapZoneMode) {
           // Show helper overlay when tap zone mode changes
-          triggerTapZoneOverlay(timeout: 1)
+          triggerTapZoneOverlay(timeout: 0.4)
         }
         .onChange(of: tapZoneInversionMode) {
           // Show helper overlay when tap zone mirroring changes
-          triggerTapZoneOverlay(timeout: 1)
+          triggerTapZoneOverlay(timeout: 0.4)
         }
     #else
       EmptyView()
