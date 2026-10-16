@@ -18,8 +18,8 @@
     private var defaultReadingDirection: ReadingDirection = .ltr
     @AppStorage("pdfForceDefaultReadingDirection")
     private var forceDefaultReadingDirection: Bool = false
-    @AppStorage("pdfShowKeyboardHelpOverlay")
-    private var showKeyboardHelpOverlay: Bool = AppConfig.pdfShowKeyboardHelpOverlay
+    @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
+    @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
     @AppStorage("showPdfControlsGradientBackground")
     private var showControlsGradientBackground: Bool =
       AppConfig.showPdfControlsGradientBackground
@@ -697,6 +697,7 @@
         supportsSearch: viewModel.documentURL != nil,
         supportsToggleControls: true,
         hasNextBook: false,
+        spaceKeyAction: spaceKeyAction,
         onDismiss: {
           hideKeyboardHelp()
         }
@@ -776,7 +777,13 @@
       }
 
       if event.matches(.space) {
-        toggleControls()
+        switch spaceKeyAction {
+        case .toggleControls:
+          toggleControls()
+        case .nextPage:
+          guard viewModel.pageCount > 0 else { return false }
+          goToNextPage()
+        }
         return true
       }
 

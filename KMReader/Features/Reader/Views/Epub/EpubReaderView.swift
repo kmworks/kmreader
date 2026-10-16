@@ -29,8 +29,8 @@
     @AppStorage("animateEpubTapTurns") private var animateEpubTapTurns: Bool = AppConfig.animateEpubTapTurns
     @AppStorage("epubOverlayPreferences") private var epubOverlayPreferences: EpubOverlayPreferences = AppConfig
       .epubOverlayPreferences
-    @AppStorage("epubShowKeyboardHelpOverlay")
-    private var showKeyboardHelpOverlay: Bool = AppConfig.epubShowKeyboardHelpOverlay
+    @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
+    @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
 
     @State private var viewModel: EpubReaderViewModel
     @State private var activeThemePreferences: EpubThemePreferences
@@ -1099,6 +1099,7 @@
         supportsJumpToPage: false,
         supportsToggleControls: supportsKeyboardOverlayToggle,
         hasNextBook: false,
+        spaceKeyAction: spaceKeyAction,
         onDismiss: {
           hideKeyboardHelp()
         }
@@ -1164,7 +1165,13 @@
       }
 
       if event.matches(.space) {
-        toggleControls()
+        switch spaceKeyAction {
+        case .toggleControls:
+          toggleControls()
+        case .nextPage:
+          guard viewModel.hasContent else { return false }
+          goToNextEpubPage()
+        }
         return true
       }
 

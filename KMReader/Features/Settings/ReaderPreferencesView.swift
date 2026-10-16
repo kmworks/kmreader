@@ -13,6 +13,8 @@ struct ReaderPreferencesView: View {
   @AppStorage("progressRecordingThreshold") private var progressRecordingThreshold: Int =
     AppConfig.progressRecordingThreshold
   @AppStorage("suggestNextUnreadBook") private var suggestNextUnreadBook: Bool = true
+  @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
+  @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   #if os(iOS)
     @AppStorage("enableReaderLiveActivity") private var enableReaderLiveActivity: Bool = true
   #endif
@@ -93,6 +95,31 @@ struct ReaderPreferencesView: View {
 
       Section(header: Text(String(localized: "Read Lists"))) {
         SettingsReadListContinuationToggle()
+      }
+
+      Section(header: Text("Keyboard")) {
+        Toggle(isOn: $showKeyboardHelpOverlay) {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Auto-Show Keyboard Help")
+            Text("Briefly show keyboard shortcuts when opening the reader")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Picker(selection: $spaceKeyAction) {
+          ForEach(SpaceKeyAction.allCases) { action in
+            Text(action.displayName).tag(action)
+          }
+        } label: {
+          VStack(alignment: .leading, spacing: 4) {
+            Text(String(localized: "reader.spaceKeyAction.title"))
+            Text(String(localized: "reader.spaceKeyAction.caption"))
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
+        .pickerStyle(.menu)
       }
 
       Section(header: Text(String(localized: "Screen"))) {

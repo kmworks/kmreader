@@ -9,7 +9,6 @@ struct DivinaPreferencesView: View {
   @AppStorage("showTapZoneHints") private var showTapZoneHints: Bool = true
   @AppStorage("tapZoneMode") private var tapZoneMode: TapZoneMode = .defaultLayout
   @AppStorage("tapZoneInversionMode") private var tapZoneInversionMode: TapZoneInversionMode = .auto
-  @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   @AppStorage("readerBackground") private var readerBackground: ReaderBackground = .system
   @AppStorage("pageLayout") private var pageLayout: PageLayout = .auto
   @AppStorage("isolateCoverPage") private var soloCoverPage: Bool = true
@@ -293,15 +292,6 @@ struct DivinaPreferencesView: View {
             }
           }
         #endif
-
-        Toggle(isOn: $showKeyboardHelpOverlay) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Auto-Show Keyboard Help")
-            Text("Briefly show keyboard shortcuts when opening the reader")
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
-        }
 
         #if os(iOS) || os(macOS)
           VStack(alignment: .leading, spacing: 8) {

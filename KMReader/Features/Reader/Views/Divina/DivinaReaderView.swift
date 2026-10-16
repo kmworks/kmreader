@@ -33,6 +33,7 @@ struct DivinaReaderView: View {
   @AppStorage("showPageNumber") private var showPageNumber: Bool = true
   @AppStorage("showPageShadow") private var showPageShadow: Bool = AppConfig.showPageShadow
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
+  @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
   @AppStorage("enableLiveText") private var enableLiveText: Bool = false
   @AppStorage("enableDivinaImageContextMenu")
   private var enableDivinaImageContextMenu: Bool = AppConfig.enableDivinaImageContextMenu
@@ -1089,6 +1090,7 @@ struct DivinaReaderView: View {
       supportsJumpToPage: true,
       supportsToggleControls: true,
       hasNextBook: currentSegmentNextBook != nil,
+      spaceKeyAction: spaceKeyAction,
       isInteractive: keyboardHelpOverlayIsInteractive,
       onDismiss: {
         hideKeyboardHelp()
@@ -1126,7 +1128,12 @@ struct DivinaReaderView: View {
     }
 
     if event.matches(.space) {
-      toggleControls()
+      switch spaceKeyAction {
+      case .toggleControls:
+        toggleControls()
+      case .nextPage:
+        goToReaderPosition(.next)
+      }
       return true
     }
 

@@ -21,7 +21,6 @@ struct ReaderSettingsSheet: View {
   @AppStorage("tapZoneInversionMode") private var tapZoneInversionMode: TapZoneInversionMode = .auto
   @AppStorage("showTapZoneHints") private var showTapZoneHints: Bool = true
   @AppStorage("animateTapTurns") private var animateTapTurns: Bool = AppConfig.animateTapTurns
-  @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   @AppStorage("enableLiveText") private var enableLiveText: Bool = false
   @AppStorage("imageUpscalingMode") private var imageUpscalingMode: ReaderImageUpscalingMode =
     AppConfig.imageUpscalingMode
@@ -158,10 +157,6 @@ struct ReaderSettingsSheet: View {
               }
             }
           #endif
-
-          Toggle(isOn: $showKeyboardHelpOverlay) {
-            Text("Auto-Show Keyboard Help")
-          }
 
           #if os(iOS) || os(macOS)
             TapZoneModePicker(

@@ -20,8 +20,6 @@
     @AppStorage("epubShowsStatusBarWhileReading") private var epubShowsStatusBarWhileReading: Bool = false
     @AppStorage("epubOverlayPreferences") private var epubOverlayPreferences: EpubOverlayPreferences = AppConfig
       .epubOverlayPreferences
-    @AppStorage("epubShowKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = AppConfig
-      .epubShowKeyboardHelpOverlay
     @AppStorage("epubTapZoneMode") private var epubTapZoneMode: TapZoneMode = AppConfig.epubTapZoneMode
     @AppStorage("epubTapZoneInversionMode") private var epubTapZoneInversionMode: TapZoneInversionMode = AppConfig
       .epubTapZoneInversionMode
@@ -144,17 +142,6 @@
             Text(String(localized: "Show Status Bar While Reading"))
             if !inSheet {
               Text(String(localized: "Keep time and battery visible when controls are hidden."))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-          }
-        }
-
-        Toggle(isOn: $showKeyboardHelpOverlay) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Auto-Show Keyboard Help")
-            if !inSheet {
-              Text("Briefly show keyboard shortcuts when opening the reader")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }

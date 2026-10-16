@@ -14,6 +14,7 @@ struct KeyboardHelpOverlay: View {
   let supportsSearch: Bool
   let supportsToggleControls: Bool
   let hasNextBook: Bool
+  let spaceKeyAction: SpaceKeyAction
   let isInteractive: Bool
   let onDismiss: () -> Void
 
@@ -26,6 +27,7 @@ struct KeyboardHelpOverlay: View {
     supportsSearch: Bool = false,
     supportsToggleControls: Bool,
     hasNextBook: Bool,
+    spaceKeyAction: SpaceKeyAction,
     isInteractive: Bool = true,
     onDismiss: @escaping () -> Void
   ) {
@@ -37,6 +39,7 @@ struct KeyboardHelpOverlay: View {
     self.supportsSearch = supportsSearch
     self.supportsToggleControls = supportsToggleControls
     self.hasNextBook = hasNextBook
+    self.spaceKeyAction = spaceKeyAction
     self.isInteractive = isInteractive
     self.onDismiss = onDismiss
   }
@@ -71,7 +74,11 @@ struct KeyboardHelpOverlay: View {
             HelpRow(key: "Return", description: "Toggle fullscreen")
           }
           if supportsToggleControls {
-            HelpRow(key: "C / Space", description: "Toggle controls")
+            if spaceKeyAction == .toggleControls {
+              HelpRow(key: "C / Space", description: "Toggle controls")
+            } else {
+              HelpRow(key: "C", description: "Toggle controls")
+            }
           }
           if supportsLiveText {
             HelpRow(key: "L", description: "Toggle Live Text")
@@ -107,6 +114,15 @@ struct KeyboardHelpOverlay: View {
             case .webtoon:
               HelpRow(key: "↓", description: "Scroll down")
               HelpRow(key: "↑", description: "Scroll up")
+            }
+
+            if spaceKeyAction == .nextPage {
+              switch readingDirection {
+              case .webtoon:
+                HelpRow(key: "Space", description: "Scroll down")
+              case .ltr, .rtl, .vertical:
+                HelpRow(key: "Space", description: "Next page")
+              }
             }
           }
         }
