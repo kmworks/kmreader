@@ -948,6 +948,20 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var epubRenderingEngine: EpubRenderingEngine {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "epubRenderingEngine"),
+        let engine = EpubRenderingEngine(rawValue: stored)
+      {
+        return engine
+      }
+      return .webView
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "epubRenderingEngine")
+    }
+  }
+
   static nonisolated var pageTransitionStyle: PageTransitionStyle {
     get {
       if let stored = UserDefaults.standard.string(forKey: "pageTransitionStyle"),

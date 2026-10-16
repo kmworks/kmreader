@@ -7,9 +7,11 @@
   import SwiftUI
   import UIKit
   import WebKit
+  import YueduCoreText
 
   struct WebPubPagedCurlView: UIViewControllerRepresentable {
     @Bindable var viewModel: EpubReaderViewModel
+    var renderingEngine: EpubRenderingEngine = .webView
     let preferences: EpubThemePreferences
     let colorScheme: ColorScheme
     let animateTapTurns: Bool
@@ -315,6 +317,8 @@
         let initialProgression = parent.viewModel.initialProgression(for: chapterIndex)
 
         let controller = EpubPageViewController(
+          renderingEngine: parent.renderingEngine,
+          preferences: parent.preferences,
           chapterURL: chapterURL,
           chapterMediaType: chapterMediaType,
           rootURL: rootURL,
@@ -341,6 +345,12 @@
         controller.preferLastPageOnReady = preferLastPageOnReady
         controller.targetProgressionOnReady = initialProgression
         wireController(controller)
+        controller.onCoreTextError = { [weak self, weak controller] error in
+          guard let self, let controller, self.currentChapterController === controller else { return }
+          Task { @MainActor in
+            self.parent.viewModel.errorMessage = CoreTextEpubError.message(for: error)
+          }
+        }
         controller.onLinkTap = { [weak self] url in
           self?.parent.viewModel.navigateToURL(url)
         }
@@ -364,6 +374,8 @@
           }
           self.parent.viewModel.currentChapterIndex = chapterIndex
           self.parent.viewModel.currentPageIndex = normalizedPageIndex
+          self.parent.viewModel.targetChapterIndex = nil
+          self.parent.viewModel.targetPageIndex = nil
           self.currentChapterIndex = chapterIndex
           self.currentPageIndex = normalizedPageIndex
           self.parent.viewModel.pageDidChange()
@@ -398,6 +410,7 @@
         )
 
         controller.configure(
+          preferences: parent.preferences,
           chapterURL: parent.viewModel.chapterURL(at: chapterIndex),
           chapterMediaType: parent.viewModel.chapterMediaType(at: chapterIndex),
           rootURL: parent.viewModel.resourceRootURL,
@@ -603,13 +616,25 @@
               preferLastPageOnReady: preferLastPageOnReady
             )
         else { return nil }
-        if host.currentSubPageIndex != subPageIndex, !preferLastPageOnReady {
+        // An explicit turn supersedes restoration anchors retained by a reused chapter.
+        host.targetProgressionOnReady = nil
+        var resolvedSubPageIndex = subPageIndex
+        if preferLastPageOnReady {
+          if host.isContentLoaded {
+            resolvedSubPageIndex = max(0, host.totalPagesInChapter - 1)
+            host.preferLastPageOnReady = false
+            host.scrollToPageIndex(resolvedSubPageIndex)
+          } else {
+            host.preferLastPageOnReady = true
+          }
+        } else {
+          host.preferLastPageOnReady = false
           host.scrollToPageIndex(subPageIndex)
         }
         return TurnTarget(
           controller: host,
           chapterIndex: chapterIndex,
-          subPageIndex: subPageIndex,
+          subPageIndex: resolvedSubPageIndex,
           isCrossChapter: true,
           isForward: isForward
         )
@@ -652,9 +677,9 @@
         if target.isCrossChapter {
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
+          let (mirror, capturedTarget) = crossChapterMirror(target: target)
           unparkIfParked(target.controller)
           targetShell.adopt(target.controller)
-          let (mirror, capturedTarget) = crossChapterMirror(target: target)
           let session = makeSession(snapshot: nil, mirror: mirror)
           onReady(session)
           if !target.isForward && !capturedTarget {
@@ -828,7 +853,7 @@
               self.installTurnTarget(target, in: pageVC)
               self.commitLocation(
                 chapterIndex: target.chapterIndex,
-                pageIndex: target.subPageIndex,
+                pageIndex: target.controller.currentSubPageIndex,
                 notify: true
               )
               return
@@ -859,7 +884,7 @@
           installTurnTarget(target, in: pageVC)
           commitLocation(
             chapterIndex: target.chapterIndex,
-            pageIndex: target.subPageIndex,
+            pageIndex: target.controller.currentSubPageIndex,
             notify: true
           )
         }
@@ -888,7 +913,9 @@
           )
           refreshNeighbors(reusing: detached)
         } else {
-          target.controller.scrollToPageIndex(target.subPageIndex)
+          if target.controller.targetProgressionOnReady == nil {
+            target.controller.scrollToPageIndex(target.subPageIndex)
+          }
           refreshNeighbors()
         }
       }
@@ -917,7 +944,7 @@
         }
         commitLocation(
           chapterIndex: session.target.chapterIndex,
-          pageIndex: session.target.subPageIndex,
+          pageIndex: session.target.controller.currentSubPageIndex,
           notify: true
         )
       }
@@ -959,6 +986,10 @@
           return
         }
         Task { @MainActor in
+          if let controller = currentChapterController {
+            controller.preferLastPageOnReady = false
+            controller.targetProgressionOnReady = nil
+          }
           parent.viewModel.currentChapterIndex = chapterIndex
           parent.viewModel.currentPageIndex = pageIndex
           parent.viewModel.targetChapterIndex = nil
@@ -1082,6 +1113,11 @@
 
       @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
         guard !isAnimating else { return }
+        if let current = currentChapterController,
+          current.handleCoreTextLinkTap(at: recognizer.location(in: current.view))
+        {
+          return
+        }
         let location = recognizer.location(in: recognizer.view)
         let size = recognizer.view?.bounds.size ?? .zero
         guard size.width > 0, size.height > 0 else { return }
@@ -1302,7 +1338,17 @@
 
   @MainActor
   final class EpubPageViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+    private let renderingEngine: EpubRenderingEngine
+    private var preferences: EpubThemePreferences
     private var webView: WKWebView!
+    private var coreTextView: CoreTextDisplayListView?
+    private var coreTextDisplayLists: [DisplayList] = []
+    private var coreTextLinkRegions: [LinkInteractionRegionSet] = []
+    private var coreTextLayoutTask: Task<Void, Never>?
+    private var coreTextLayoutSession: BrowserLayoutSession?
+    private var coreTextLayoutGeneration = 0
+    private var coreTextLayoutSize: CGSize = .zero
+    private var coreTextSettleCompletions: [() -> Void] = []
     var chapterIndex: Int
     var currentSubPageIndex: Int
     var totalPagesInChapter: Int
@@ -1317,12 +1363,13 @@
     private var rootURL: URL?
     private var mediaTypesByRelativePath: [String: String]
     private var lastLayoutSize: CGSize = .zero
-    private var isContentLoaded = false
+    private(set) var isContentLoaded = false
     private var pendingPageIndex: Int?
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
     var onPageIndexAdjusted: ((Int) -> Void)?
     var onPaginationReady: (() -> Void)?
+    var onCoreTextError: ((Error) -> Void)?
     // Fires when pagination re-runs on changed geometry (appearance or viewport
     // size), so page-index-keyed snapshots cached by the coordinator go stale.
     var onRepagination: (() -> Void)?
@@ -1352,6 +1399,8 @@
     private var loadingIndicator: UIActivityIndicatorView?
 
     init(
+      renderingEngine: EpubRenderingEngine,
+      preferences: EpubThemePreferences,
       chapterURL: URL?,
       chapterMediaType: String?,
       rootURL: URL?,
@@ -1375,6 +1424,8 @@
       useSafeArea: Bool,
       onPageCountReady: ((Int) -> Void)?
     ) {
+      self.renderingEngine = renderingEngine
+      self.preferences = preferences
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
       self.rootURL = rootURL
@@ -1406,12 +1457,19 @@
     }
 
     deinit {
+      coreTextLayoutTask?.cancel()
+      coreTextLayoutSession = nil
       NotificationCenter.default.removeObserver(self)
     }
 
     override func viewDidLoad() {
       super.viewDidLoad()
-      setupWebView()
+      switch renderingEngine {
+      case .webView:
+        setupWebView()
+      case .coreText:
+        setupCoreTextView()
+      }
       setupOverlayLabels()
       NotificationCenter.default.addObserver(
         self,
@@ -1429,13 +1487,22 @@
       updateOverlayLabels()
     }
 
+    private var renderingContentView: UIView? {
+      switch renderingEngine {
+      case .webView:
+        return webView
+      case .coreText:
+        return coreTextView
+      }
+    }
+
     override func viewDidAppear(_ animated: Bool) {
       super.viewDidAppear(animated)
-      // Force layout and refresh if WebView size was 0 before
-      // This handles cases where UIPageViewController hasn't laid out the WebView yet
-      let webViewSize = webView?.bounds.size ?? .zero
-      if webViewSize.width > 0 && webViewSize.height > 0 && webViewSize != lastLayoutSize {
-        lastLayoutSize = webViewSize
+      let contentSize = renderingContentView?.bounds.size ?? .zero
+      if contentSize.width > 0 && contentSize.height > 0,
+        contentSize != lastLayoutSize || renderingEngine == .coreText
+      {
+        lastLayoutSize = contentSize
         onRepagination?()
         refreshDisplay()
       }
@@ -1449,18 +1516,15 @@
     override func viewDidLayoutSubviews() {
       super.viewDidLayoutSubviews()
       let size = view.bounds.size
-      let webViewSize = webView?.bounds.size ?? .zero
+      let contentSize = renderingContentView?.bounds.size ?? .zero
       guard size.width > 0, size.height > 0 else {
         return
       }
 
-      // Always track WebView size changes, even if it's currently 0x0
-      // This ensures we detect when WebView transitions from 0x0 to valid size
-      if webViewSize != lastLayoutSize {
-        lastLayoutSize = webViewSize
+      if contentSize != lastLayoutSize {
+        lastLayoutSize = contentSize
 
-        // Only refresh if WebView has valid size
-        if webViewSize.width > 0 && webViewSize.height > 0 {
+        if contentSize.width > 0 && contentSize.height > 0 {
           onRepagination?()
           refreshDisplay()
           updateOverlayLabels()
@@ -1469,6 +1533,7 @@
     }
 
     func configure(
+      preferences: EpubThemePreferences,
       chapterURL: URL?,
       chapterMediaType: String?,
       rootURL: URL?,
@@ -1498,7 +1563,8 @@
         || rootURL != self.rootURL
         || mediaTypesByRelativePath != self.mediaTypesByRelativePath
       let appearanceChanged =
-        theme != self.theme
+        preferences != self.preferences
+        || theme != self.theme
         || containerInsets != self.containerInsets
         || contentCSS != self.contentCSS
         || readiumProperties != self.readiumProperties
@@ -1511,8 +1577,10 @@
       // Reset layout size when chapter changes to ensure proper size detection
       if chapterIndex != self.chapterIndex {
         lastLayoutSize = .zero
+        coreTextLayoutSize = .zero
       }
 
+      self.preferences = preferences
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
       self.rootURL = rootURL
@@ -1525,7 +1593,9 @@
       self.publicationLanguage = publicationLanguage
       self.publicationReadingProgression = publicationReadingProgression
       self.chapterIndex = chapterIndex
-      self.currentSubPageIndex = subPageIndex
+      if targetProgressionOnReady == nil && !preferLastPageOnReady {
+        self.currentSubPageIndex = subPageIndex
+      }
       self.totalPagesInChapter = totalPages
       self.bookTitle = bookTitle
       self.chapterTitle = chapterTitle
@@ -1547,7 +1617,7 @@
       }
 
       applyTheme()
-      if shouldReload {
+      if shouldReload || (renderingEngine == .coreText && appearanceChanged) {
         loadContentIfNeeded(force: true)
       } else if appearanceChanged || preferLastPageOnReady {
         applyPagination(scrollToPage: currentSubPageIndex)
@@ -1604,15 +1674,18 @@
     }
 
     func forceEnsureContentLoaded() {
-      loadContentIfNeeded(force: true)
+      loadContentIfNeeded(force: renderingEngine == .webView)
     }
 
     func makeBacksideSnapshotImage() -> UIImage? {
       guard isViewLoaded else { return nil }
       guard isContentLoaded else { return nil }
       // A mid-pagination capture would record the page while it is still hidden.
-      guard webView.alpha >= 0.1 else { return nil }
+      guard let contentView = renderingContentView, contentView.alpha >= 0.1 else { return nil }
+      // Forcing a commit from a detached controller can throw during UIKit's temporary-window move.
+      guard view.window != nil else { return nil }
       view.layoutIfNeeded()
+      coreTextView?.layer.displayIfNeeded()
       let bounds = view.bounds
       guard bounds.width > 1, bounds.height > 1 else { return nil }
 
@@ -1637,17 +1710,7 @@
         trailing: NSLayoutConstraint, bottom: NSLayoutConstraint
       )?
 
-    private func setupWebView() {
-      let config = WKWebViewConfiguration()
-      epubResourceSchemeHandler.configure(rootURL: rootURL, mediaTypesByRelativePath: mediaTypesByRelativePath)
-      config.registerEpubResourceSchemeHandler(epubResourceSchemeHandler)
-      config.defaultWebpagePreferences.preferredContentMode = .mobile
-      let controller = WKUserContentController()
-      // Use weak wrapper to avoid retain cycle (WKUserContentController retains handlers strongly)
-      controller.add(WeakWKScriptMessageHandler(delegate: self), name: "readerBridge")
-      config.userContentController = controller
-
-      // Set background to fill entire view (including safe area)
+    private func setupContentContainer() -> UIView {
       view.backgroundColor = theme.uiColorBackground
 
       let container = UIView()
@@ -1655,7 +1718,6 @@
       view.addSubview(container)
       container.translatesAutoresizingMaskIntoConstraints = false
 
-      // Container respects safe area (or view edges based on policy), with additional label spacing
       let top = container.topAnchor.constraint(equalTo: topAnchor, constant: containerInsets.top)
       let leading = container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: containerInsets.left)
       let trailing = trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: containerInsets.right)
@@ -1666,6 +1728,29 @@
 
       applyContainerInsets()
 
+      let indicator = UIActivityIndicatorView(style: .medium)
+      indicator.hidesWhenStopped = true
+      indicator.translatesAutoresizingMaskIntoConstraints = false
+      view.addSubview(indicator)
+      NSLayoutConstraint.activate([
+        indicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+        indicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      ])
+      loadingIndicator = indicator
+      return container
+    }
+
+    private func setupWebView() {
+      let config = WKWebViewConfiguration()
+      epubResourceSchemeHandler.configure(rootURL: rootURL, mediaTypesByRelativePath: mediaTypesByRelativePath)
+      config.registerEpubResourceSchemeHandler(epubResourceSchemeHandler)
+      config.defaultWebpagePreferences.preferredContentMode = .mobile
+      let controller = WKUserContentController()
+      // Use weak wrapper to avoid retain cycle (WKUserContentController retains handlers strongly)
+      controller.add(WeakWKScriptMessageHandler(delegate: self), name: "readerBridge")
+      config.userContentController = controller
+
+      let container = setupContentContainer()
       webView = WKWebView(frame: .zero, configuration: config)
       webView.navigationDelegate = self
       webView.scrollView.isScrollEnabled = false
@@ -1686,16 +1771,22 @@
         webView.topAnchor.constraint(equalTo: container.topAnchor),
         webView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
       ])
+    }
 
-      let indicator = UIActivityIndicatorView(style: .medium)
-      indicator.hidesWhenStopped = true
-      indicator.translatesAutoresizingMaskIntoConstraints = false
-      view.addSubview(indicator)
+    private func setupCoreTextView() {
+      let container = setupContentContainer()
+      let contentView = CoreTextDisplayListView()
+      contentView.alpha = 0.01
+      container.addSubview(contentView)
+      contentView.translatesAutoresizingMaskIntoConstraints = false
       NSLayoutConstraint.activate([
-        indicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-        indicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+        contentView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        contentView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        contentView.topAnchor.constraint(equalTo: container.topAnchor),
+        contentView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
       ])
-      self.loadingIndicator = indicator
+      coreTextView = contentView
+      applyTheme()
     }
 
     private func applyTheme() {
@@ -1706,6 +1797,7 @@
         webView.backgroundColor = theme.uiColorBackground
         webView.scrollView.backgroundColor = .clear
       }
+      coreTextView?.backgroundColor = theme.uiColorBackground
       loadingIndicator?.color = theme.uiColorText
 
       // Update overlay label colors
@@ -1723,6 +1815,11 @@
 
     private func loadContentIfNeeded(force: Bool) {
       guard let chapterURL, let rootURL else { return }
+      if renderingEngine == .coreText {
+        loadCoreTextIfNeeded(force: force, chapterURL: chapterURL, rootURL: rootURL)
+        return
+      }
+
       // The web view loads the chapter through the resource scheme, so the raw
       // chapter URL never matches; compare the rewritten scheme URL instead.
       let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL)
@@ -1758,6 +1855,160 @@
       }
 
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
+    }
+
+    private func loadCoreTextIfNeeded(force: Bool, chapterURL: URL, rootURL: URL) {
+      guard let coreTextView else { return }
+      let viewportSize = coreTextView.bounds.size
+      guard viewportSize.width > 0, viewportSize.height > 0 else { return }
+
+      if !force {
+        if isContentLoaded && coreTextLayoutSize == viewportSize {
+          showCoreTextPage(at: currentSubPageIndex)
+          return
+        }
+        if coreTextLayoutTask != nil && coreTextLayoutSize == viewportSize {
+          return
+        }
+      }
+
+      coreTextLayoutGeneration += 1
+      let generation = coreTextLayoutGeneration
+      coreTextLayoutTask?.cancel()
+      coreTextLayoutSession?.cancel()
+      coreTextLayoutTask = nil
+      coreTextLayoutSession = nil
+      coreTextLayoutSize = viewportSize
+      coreTextDisplayLists = []
+      coreTextLinkRegions = []
+      isContentLoaded = false
+      pendingPageIndex = currentSubPageIndex
+      coreTextView.displayList = nil
+      coreTextView.alpha = 0.01
+      loadingIndicator?.startAnimating()
+
+      let preferences = preferences
+      let theme = theme
+      let publicationLanguage = publicationLanguage
+      let publicationReadingProgression = publicationReadingProgression
+      let chapterIndex = chapterIndex
+      coreTextLayoutTask = Task { [weak self] in
+        guard let self else { return }
+        do {
+          let fontPath = preferences.fontFamily.fontName.flatMap {
+            CustomFontStore.shared.getFontPath(for: $0)
+          }
+          let loader = CoreTextEpubResourceLoader(
+            rootURL: rootURL,
+            chapterURL: chapterURL,
+            customFontPath: fontPath
+          )
+          var layout = CoreTextEpubLayoutConfiguration(
+            preferences: preferences,
+            theme: theme,
+            viewportSize: viewportSize,
+            publicationLanguage: publicationLanguage,
+            publicationReadingProgression: publicationReadingProgression
+          )
+          layout.configuration.fontResolver = loader.fontResolver
+          let input = try loader.makeInput(userStylesheet: layout.userStylesheet)
+          let document = HTMLLayoutDocument(
+            input: input,
+            configuration: layout.configuration,
+            imageLoader: loader.imageLoader
+          )
+          let session = try document.makePageSession(generation: generation)
+          self.coreTextLayoutSession = session
+          try await session.finish()
+          guard generation == self.coreTextLayoutGeneration else { return }
+
+          let sourceText = session.sourceText
+          let anchors = session.pipelineLinkAnchors
+          let pages = session.completedPages.map { page in
+            DisplayListBuilder.build(for: page, sourceText: sourceText)
+          }
+          guard !pages.isEmpty else {
+            throw AppErrorType.noRenderablePages
+          }
+          let regions = pages.map {
+            LinkInteractionRegionSet.build(from: $0, spineIndex: chapterIndex, anchors: anchors)
+          }
+          self.coreTextLayoutTask = nil
+          self.coreTextLayoutSession = nil
+          self.installCoreTextPages(pages, linkRegions: regions)
+        } catch {
+          guard generation == self.coreTextLayoutGeneration else { return }
+          if case HTMLLayoutError.cancelled = error { return }
+          if error is CancellationError { return }
+          self.coreTextLayoutTask = nil
+          self.coreTextLayoutSession = nil
+          self.loadingIndicator?.stopAnimating()
+          self.onCoreTextError?(error)
+        }
+      }
+    }
+
+    private func installCoreTextPages(_ pages: [DisplayList], linkRegions: [LinkInteractionRegionSet]) {
+      coreTextDisplayLists = pages
+      coreTextLinkRegions = linkRegions
+      totalPagesInChapter = pages.count
+      onPageCountReady?(pages.count)
+
+      let previousPageIndex = currentSubPageIndex
+      let requestedPage: Int
+      if preferLastPageOnReady {
+        requestedPage = pages.count - 1
+      } else if let progression = targetProgressionOnReady {
+        requestedPage = Int(floor(Double(pages.count) * progression))
+      } else {
+        requestedPage = pendingPageIndex ?? currentSubPageIndex
+      }
+      let pageIndex = max(0, min(pages.count - 1, requestedPage))
+      pendingPageIndex = nil
+      isContentLoaded = true
+      showCoreTextPage(at: pageIndex)
+      if previousPageIndex != pageIndex {
+        onPageIndexAdjusted?(pageIndex)
+      }
+      loadingIndicator?.stopAnimating()
+      onPaginationReady?()
+      finishCoreTextSettleCompletions()
+    }
+
+    private func showCoreTextPage(at pageIndex: Int) {
+      guard coreTextDisplayLists.indices.contains(pageIndex) else { return }
+      currentSubPageIndex = pageIndex
+      coreTextView?.displayList = coreTextDisplayLists[pageIndex]
+      coreTextView?.layer.displayIfNeeded()
+      coreTextView?.alpha = 1
+      updateOverlayLabels()
+    }
+
+    private func finishCoreTextSettleCompletions() {
+      let completions = coreTextSettleCompletions
+      coreTextSettleCompletions.removeAll()
+      for completion in completions {
+        completion()
+      }
+    }
+
+    func handleCoreTextLinkTap(at point: CGPoint) -> Bool {
+      guard renderingEngine == .coreText,
+        coreTextDisplayLists.indices.contains(currentSubPageIndex),
+        coreTextLinkRegions.indices.contains(currentSubPageIndex),
+        let coreTextView,
+        let chapterURL
+      else {
+        return false
+      }
+      let contentPoint = coreTextView.convert(point, from: view)
+      guard let region = coreTextLinkRegions[currentSubPageIndex].hitTest(contentPoint),
+        let url = URL(string: region.href, relativeTo: chapterURL)
+      else {
+        return false
+      }
+      onLinkTap?(url)
+      return true
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -1805,6 +2056,17 @@
 
     private func applyPagination(scrollToPage pageIndex: Int) {
       guard isViewLoaded else { return }
+      if renderingEngine == .coreText {
+        guard let chapterURL, let rootURL else { return }
+        let contentSize = coreTextView?.bounds.size ?? .zero
+        let shouldReload = !isContentLoaded || contentSize != coreTextLayoutSize
+        loadCoreTextIfNeeded(force: shouldReload, chapterURL: chapterURL, rootURL: rootURL)
+        if isContentLoaded {
+          showCoreTextPage(at: pageIndex)
+        }
+        return
+      }
+
       guard isContentLoaded else { return }
       let size = webView.bounds.size
       guard size.width > 0, size.height > 0 else { return }
@@ -1866,6 +2128,11 @@
         completion?()
         return
       }
+      if renderingEngine == .coreText {
+        showCoreTextPage(at: pageIndex)
+        completion?()
+        return
+      }
       let js = WebPubPagedJavaScriptBuilder.makeScrollToPageScript(
         pageIndex: pageIndex,
         animated: false,
@@ -1890,6 +2157,19 @@
     func scrollToPageIndexAndSettle(_ pageIndex: Int, completion: @escaping () -> Void) {
       currentSubPageIndex = pageIndex
       updateOverlayLabels()
+      if renderingEngine == .coreText {
+        guard isContentLoaded else {
+          pendingPageIndex = pageIndex
+          coreTextSettleCompletions.append(completion)
+          if let chapterURL, let rootURL {
+            loadCoreTextIfNeeded(force: false, chapterURL: chapterURL, rootURL: rootURL)
+          }
+          return
+        }
+        showCoreTextPage(at: pageIndex)
+        completion()
+        return
+      }
       guard isContentLoaded else {
         pendingPageIndex = pageIndex
         completion()

@@ -20,6 +20,7 @@
 
     @AppStorage("currentAccount") private var current: Current = .init()
     @AppStorage("epubPreferences") private var globalThemePreferences: EpubThemePreferences = .init()
+    @AppStorage("epubRenderingEngine") private var renderingEngine: EpubRenderingEngine = .webView
     @AppStorage("epubFlowStyle") private var epubFlowStyle: EpubFlowStyle = .paged
     @AppStorage("epubTapScrollPercentage") private var epubTapScrollPercentage: Double = AppConfig
       .epubTapScrollPercentage
@@ -587,33 +588,77 @@
           )
         }
       #else
-        switch epubFlowStyle {
-        case .paged:
-          switch epubPageTransitionStyle {
-          case .scroll:
-            WebPubPagedScrollView(
-              viewModel: viewModel,
-              animatePageTransitions: animateEpubTapTurns,
-              preferences: activeThemePreferences,
-              colorScheme: readerColorScheme,
-              overlayPreferences: epubOverlayPreferences,
-              showingControls: shouldShowControls,
-              bookTitle: currentBook?.metadata.title,
-              onCenterTap: {
-                toggleControls()
-              },
-              onEndReached: {
-                if !showingEndPage {
-                  viewModel.syncEndProgression()
-                  showingEndPage = true
+        if renderingEngine == .coreText {
+          switch epubFlowStyle {
+          case .paged:
+            switch epubPageTransitionStyle {
+            case .scroll:
+              CoreTextPagedEpubView(
+                viewModel: viewModel,
+                preferences: activeThemePreferences,
+                colorScheme: readerColorScheme,
+                animatePageTransitions: animateEpubTapTurns,
+                overlayPreferences: epubOverlayPreferences,
+                showingControls: shouldShowControls,
+                bookTitle: currentBook?.metadata.title,
+                onCenterTap: {
+                  toggleControls()
+                },
+                onEndReached: {
+                  if !showingEndPage {
+                    viewModel.syncEndProgression()
+                    showingEndPage = true
+                  }
+                },
+                onClose: closeReader
+              ).readerIgnoresSafeArea()
+            case .cover:
+              WebPubPagedCoverView(
+                viewModel: viewModel,
+                renderingEngine: .coreText,
+                preferences: activeThemePreferences,
+                colorScheme: readerColorScheme,
+                animateTapTurns: animateEpubTapTurns,
+                overlayPreferences: epubOverlayPreferences,
+                showingControls: shouldShowControls,
+                bookTitle: currentBook?.metadata.title,
+                onCenterTap: {
+                  toggleControls()
+                },
+                onEndReached: {
+                  if !showingEndPage {
+                    viewModel.syncEndProgression()
+                    showingEndPage = true
+                  }
                 }
-              }
-            ).readerIgnoresSafeArea()
-          case .cover:
-            WebPubPagedCoverView(
+              ).readerIgnoresSafeArea()
+            case .pageCurl:
+              WebPubPagedCurlView(
+                viewModel: viewModel,
+                renderingEngine: .coreText,
+                preferences: activeThemePreferences,
+                colorScheme: readerColorScheme,
+                animateTapTurns: animateEpubTapTurns,
+                overlayPreferences: epubOverlayPreferences,
+                showingControls: shouldShowControls,
+                bookTitle: currentBook?.metadata.title,
+                onCenterTap: {
+                  toggleControls()
+                },
+                onEndReached: {
+                  if !showingEndPage {
+                    viewModel.syncEndProgression()
+                    showingEndPage = true
+                  }
+                }
+              ).readerIgnoresSafeArea()
+            }
+          case .scrolled:
+            CoreTextScrolledEpubView(
               viewModel: viewModel,
               preferences: activeThemePreferences,
               colorScheme: readerColorScheme,
+              tapScrollPercentage: epubTapScrollPercentage,
               animateTapTurns: animateEpubTapTurns,
               overlayPreferences: epubOverlayPreferences,
               showingControls: shouldShowControls,
@@ -626,13 +671,78 @@
                   viewModel.syncEndProgression()
                   showingEndPage = true
                 }
-              }
+              },
+              onClose: closeReader
             ).readerIgnoresSafeArea()
-          case .pageCurl:
-            WebPubPagedCurlView(
+          }
+        } else {
+          switch epubFlowStyle {
+          case .paged:
+            switch epubPageTransitionStyle {
+            case .scroll:
+              WebPubPagedScrollView(
+                viewModel: viewModel,
+                animatePageTransitions: animateEpubTapTurns,
+                preferences: activeThemePreferences,
+                colorScheme: readerColorScheme,
+                overlayPreferences: epubOverlayPreferences,
+                showingControls: shouldShowControls,
+                bookTitle: currentBook?.metadata.title,
+                onCenterTap: {
+                  toggleControls()
+                },
+                onEndReached: {
+                  if !showingEndPage {
+                    viewModel.syncEndProgression()
+                    showingEndPage = true
+                  }
+                }
+              ).readerIgnoresSafeArea()
+            case .cover:
+              WebPubPagedCoverView(
+                viewModel: viewModel,
+                preferences: activeThemePreferences,
+                colorScheme: readerColorScheme,
+                animateTapTurns: animateEpubTapTurns,
+                overlayPreferences: epubOverlayPreferences,
+                showingControls: shouldShowControls,
+                bookTitle: currentBook?.metadata.title,
+                onCenterTap: {
+                  toggleControls()
+                },
+                onEndReached: {
+                  if !showingEndPage {
+                    viewModel.syncEndProgression()
+                    showingEndPage = true
+                  }
+                }
+              ).readerIgnoresSafeArea()
+            case .pageCurl:
+              WebPubPagedCurlView(
+                viewModel: viewModel,
+                preferences: activeThemePreferences,
+                colorScheme: readerColorScheme,
+                animateTapTurns: animateEpubTapTurns,
+                overlayPreferences: epubOverlayPreferences,
+                showingControls: shouldShowControls,
+                bookTitle: currentBook?.metadata.title,
+                onCenterTap: {
+                  toggleControls()
+                },
+                onEndReached: {
+                  if !showingEndPage {
+                    viewModel.syncEndProgression()
+                    showingEndPage = true
+                  }
+                }
+              ).readerIgnoresSafeArea()
+            }
+          case .scrolled:
+            WebPubScrolledView(
               viewModel: viewModel,
               preferences: activeThemePreferences,
               colorScheme: readerColorScheme,
+              tapScrollPercentage: epubTapScrollPercentage,
               animateTapTurns: animateEpubTapTurns,
               overlayPreferences: epubOverlayPreferences,
               showingControls: shouldShowControls,
@@ -648,26 +758,6 @@
               }
             ).readerIgnoresSafeArea()
           }
-        case .scrolled:
-          WebPubScrolledView(
-            viewModel: viewModel,
-            preferences: activeThemePreferences,
-            colorScheme: readerColorScheme,
-            tapScrollPercentage: epubTapScrollPercentage,
-            animateTapTurns: animateEpubTapTurns,
-            overlayPreferences: epubOverlayPreferences,
-            showingControls: shouldShowControls,
-            bookTitle: currentBook?.metadata.title,
-            onCenterTap: {
-              toggleControls()
-            },
-            onEndReached: {
-              if !showingEndPage {
-                viewModel.syncEndProgression()
-                showingEndPage = true
-              }
-            }
-          ).readerIgnoresSafeArea()
         }
       #endif
     }
