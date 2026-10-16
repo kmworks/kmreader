@@ -34,7 +34,8 @@
     func makeInput(userStylesheet: String) throws -> CSSFrontendInput {
       let html = try loadText(from: chapterURL)
       let document = try SwiftSoup.parse(html, chapterURL.absoluteString)
-      var stylesheets: [String] = []
+      // Match Readium's default link color before publication rules take precedence.
+      var stylesheets = ["a { color: #0000EE; }"]
       var visited: Set<URL> = []
       for link in try document.select("link[rel~=stylesheet]") {
         let href = try link.attr("href").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -150,20 +151,44 @@
       return fileURL.path.hasPrefix(rootPath)
     }
 
+    private static let fontFaceExpression = try! NSRegularExpression(
+      pattern: #"@font-face\s*\{([^}]*)\}"#,
+      options: [.caseInsensitive, .dotMatchesLineSeparators]
+    )
+
+    private static let fontFamilyExpression = try! NSRegularExpression(
+      pattern: #"font-family\s*:\s*([^;]+)"#,
+      options: [.caseInsensitive]
+    )
+
     private func prepareFonts(in css: String, relativeTo baseURL: URL) {
-      for match in Self.cssURLExpression.matches(in: css, range: NSRange(css.startIndex..., in: css)) {
-        guard match.numberOfRanges > 1, let range = match.range(at: 1) as NSRange?,
-          let sourceRange = Range(range, in: css)
+      for match in Self.fontFaceExpression.matches(in: css, range: NSRange(css.startIndex..., in: css)) {
+        guard let blockRange = Range(match.range(at: 1), in: css) else { continue }
+        let block = String(css[blockRange])
+        guard
+          let familyMatch = Self.fontFamilyExpression.firstMatch(
+            in: block,
+            range: NSRange(block.startIndex..., in: block)
+          ),
+          let familyRange = Range(familyMatch.range(at: 1), in: block)
         else {
           continue
         }
-        let source = String(css[sourceRange]).trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-        guard let fileURL = resourceURL(for: source, relativeTo: baseURL) else { continue }
-        prepareFont(at: fileURL)
+        let family = String(block[familyRange])
+        for urlMatch in Self.cssURLExpression.matches(in: block, range: NSRange(block.startIndex..., in: block)) {
+          guard urlMatch.numberOfRanges > 1, let range = urlMatch.range(at: 1) as NSRange?,
+            let sourceRange = Range(range, in: block)
+          else {
+            continue
+          }
+          let source = String(block[sourceRange]).trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+          guard let fileURL = resourceURL(for: source, relativeTo: baseURL) else { continue }
+          prepareFont(at: fileURL, aliases: [family])
+        }
       }
     }
 
-    private func prepareFont(at fileURL: URL) {
+    private func prepareFont(at fileURL: URL, aliases: [String] = []) {
       guard let provider = CGDataProvider(url: fileURL as CFURL),
         let cgFont = CGFont(provider)
       else {
@@ -172,13 +197,14 @@
       let ctFont = CTFontCreateWithGraphicsFont(cgFont, 12, nil, nil)
       // Direct CTFont instances keep embedded fonts scoped to this publication.
       let font = ctFont as UIFont
-      let names = [
+      let internalNames = [
         CTFontCopyFullName(ctFont) as String?,
         CTFontCopyFamilyName(ctFont) as String?,
         CTFontCopyPostScriptName(ctFont) as String?,
       ]
-      for name in names {
-        guard let name, !name.isEmpty else { continue }
+      // A @font-face family is a CSS alias and need not match the font's internal metadata.
+      for name in aliases + internalNames.compactMap({ $0 }) {
+        guard !name.isEmpty else { continue }
         fonts[Self.normalizedFamily(name)] = font
       }
     }

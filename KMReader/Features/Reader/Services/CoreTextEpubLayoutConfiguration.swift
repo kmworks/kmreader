@@ -4,6 +4,7 @@
   import YueduCoreTextTypography
 
   struct CoreTextEpubLayoutConfiguration {
+    private static let rootFontSize: CGFloat = 16
     private static let publisherFontFamilies = [
       "Iowan Old Style", "Sitka", "Sitka Text", "Palatino", "Book Antiqua", "URW Palladio L", "P052", "serif",
     ]
@@ -27,21 +28,25 @@
         || publicationReadingProgression == .ttb
         || publicationReadingProgression == .btt
 
+      let horizontalMargin = isVertical ? 0 : pageMargin
+      let verticalMargin = isVertical ? pageMargin : 0
       configuration = BrowserLayoutConfig(
-        renderWidth: max(1, viewportSize.width - pageMargin * 2),
-        renderHeight: max(1, viewportSize.height - pageMargin * 2),
-        rootFontSize: 17 * (preferences.advancedLayout ? max(0.05, preferences.fontSize) : 1),
+        renderWidth: max(1, viewportSize.width - horizontalMargin * 2),
+        renderHeight: max(1, viewportSize.height - verticalMargin * 2),
+        rootFontSize: Self.rootFontSize,
         fontFamilies: preferences.fontFamily.fontName.map { [$0] } ?? Self.publisherFontFamilies,
         textColor: UIColor(hex: theme.textColorHex) ?? .black,
         backgroundColor: UIColor(hex: theme.backgroundColorHex) ?? .white,
         contentInsets: UIEdgeInsets(
-          top: pageMargin,
-          left: pageMargin,
-          bottom: pageMargin,
-          right: pageMargin
+          top: verticalMargin,
+          left: horizontalMargin,
+          bottom: verticalMargin,
+          right: horizontalMargin
         ),
         lineHeight: preferences.advancedLayout ? max(0.1, preferences.lineHeight) : nil,
+        letterSpacing: preferences.advancedLayout ? max(0, preferences.letterSpacing) * Self.rootFontSize : 0,
         defaultTextAlignment: Self.defaultTextAlignment(for: preferences),
+        textTransform: Self.makeWordSpacingTransform(preferences: preferences),
         writingMode: isVertical ? .verticalRTL : .horizontal,
         cjkTypographyStyle: CJKTypographyStyle.declared(publicationLanguage)
       )
@@ -64,34 +69,56 @@
       preferences: EpubThemePreferences,
       theme: ReaderTheme
     ) -> String {
-      var declarations: [String] = []
+      var globalDeclarations: [String] = []
+      var bodyDeclarations: [String] = []
+      var paragraphDeclarations: [String] = []
+      var alignmentDeclarations: [String] = []
+      var hyphens: String?
+
       if let fontName = preferences.fontFamily.fontName {
-        declarations.append("font-family: \(cssFontFamily(fontName)) !important;")
+        globalDeclarations.append("font-family: \(cssFontFamily(fontName)) !important;")
       }
       if let fontWeight = preferences.fontWeight {
-        declarations.append("font-weight: \(Int(fontWeight.rounded())) !important;")
+        bodyDeclarations.append("font-weight: \(Int(fontWeight.rounded())) !important;")
       }
       if preferences.advancedLayout {
-        declarations.append("word-spacing: \(cssRem(max(0, preferences.wordSpacing))) !important;")
-        declarations.append("text-indent: \(cssRem(max(0, preferences.paragraphIndent))) !important;")
-        declarations.append("letter-spacing: \(cssRem(max(0, preferences.letterSpacing))) !important;")
-        declarations.append("margin-top: \(cssRem(max(0, preferences.paragraphSpacing))) !important;")
-        declarations.append("margin-bottom: \(cssRem(max(0, preferences.paragraphSpacing))) !important;")
+        bodyDeclarations.append("font-size: \(cssPercentage(max(0.05, preferences.fontSize) * 100)) !important;")
+        paragraphDeclarations.append("margin-top: \(cssRem(max(0, preferences.paragraphSpacing))) !important;")
+        paragraphDeclarations.append("margin-bottom: \(cssRem(max(0, preferences.paragraphSpacing))) !important;")
+        paragraphDeclarations.append("text-indent: \(cssRem(max(0, preferences.paragraphIndent))) !important;")
         switch preferences.textAlignment {
         case .publisherDefault:
           break
         case .start:
-          declarations.append("text-align: start !important;")
+          alignmentDeclarations.append("text-align: start !important;")
+          hyphens = "none"
         case .justify:
-          declarations.append("text-align: justify !important;")
-          declarations.append("hyphens: auto !important;")
+          alignmentDeclarations.append("text-align: justify !important;")
+          hyphens = "auto"
         }
       }
 
       // Readium removes the browser's default body margin before applying reader insets.
       var styles = ["body { margin: 0 !important; }"]
-      if !declarations.isEmpty {
-        styles.append("body, body * {\n\(declarations.joined(separator: "\n"))\n}")
+      if !globalDeclarations.isEmpty {
+        styles.append("body, body * {\n\(globalDeclarations.joined(separator: "\n"))\n}")
+      }
+      if !bodyDeclarations.isEmpty {
+        var rule = "body {\n\(bodyDeclarations.joined(separator: "\n"))\n}"
+        if preferences.fontWeight != nil {
+          rule += "\nb, strong {\nfont-weight: bolder;\n}"
+        }
+        styles.append(rule)
+      }
+      if !paragraphDeclarations.isEmpty {
+        styles.append("p {\n\(paragraphDeclarations.joined(separator: "\n"))\n}\np * {\ntext-indent: 0 !important;\n}")
+      }
+      if !alignmentDeclarations.isEmpty {
+        var rule = "body, p, li, dd {\n\(alignmentDeclarations.joined(separator: "\n"))\n}"
+        if let hyphens {
+          rule += "\nbody, p, li, div, dd {\nhyphens: \(hyphens);\n}"
+        }
+        styles.append(rule)
       }
       if theme.isDark {
         styles.append(
@@ -104,16 +131,38 @@
           html, body {
           background-color: \(theme.backgroundColorHex) !important;
           }
-          a:link, a:link * {
+          a, a * {
           color: #63CAFF !important;
-          }
-          a:visited, a:visited * {
-          color: #0099E5 !important;
           }
           """
         )
       }
       return styles.joined(separator: "\n\n")
+    }
+
+    private static func makeWordSpacingTransform(
+      preferences: EpubThemePreferences
+    ) -> ((NSMutableAttributedString) -> Void)? {
+      guard preferences.advancedLayout else { return nil }
+      let spacing = max(0, preferences.wordSpacing) * Self.rootFontSize
+      guard spacing > 0 else { return nil }
+      return { attributed in
+        let text = attributed.string as NSString
+        for match in Self.whitespaceExpression.matches(
+          in: text as String, range: NSRange(location: 0, length: text.length))
+        {
+          let current =
+            (attributed.attribute(.kern, at: match.range.location, effectiveRange: nil) as? NSNumber)?
+            .doubleValue ?? 0
+          attributed.addAttribute(.kern, value: current + spacing, range: match.range)
+        }
+      }
+    }
+
+    private static let whitespaceExpression = try! NSRegularExpression(pattern: #"\s+"#)
+
+    private static func cssPercentage(_ value: Double) -> String {
+      "\(cssNumber(value))%"
     }
 
     private static func cssFontFamily(_ name: String) -> String {
@@ -124,7 +173,11 @@
     }
 
     private static func cssRem(_ value: Double) -> String {
-      String(format: "%.2frem", locale: Locale(identifier: "en_US_POSIX"), value)
+      "\(cssNumber(value))rem"
+    }
+
+    private static func cssNumber(_ value: Double) -> String {
+      String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), value)
     }
   }
 #endif
