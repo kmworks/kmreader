@@ -616,13 +616,25 @@
               preferLastPageOnReady: preferLastPageOnReady
             )
         else { return nil }
-        if host.currentSubPageIndex != subPageIndex, !preferLastPageOnReady, host.targetProgressionOnReady == nil {
+        // An explicit turn supersedes restoration anchors retained by a reused chapter.
+        host.targetProgressionOnReady = nil
+        var resolvedSubPageIndex = subPageIndex
+        if preferLastPageOnReady {
+          if host.isContentLoaded {
+            resolvedSubPageIndex = max(0, host.totalPagesInChapter - 1)
+            host.preferLastPageOnReady = false
+            host.scrollToPageIndex(resolvedSubPageIndex)
+          } else {
+            host.preferLastPageOnReady = true
+          }
+        } else {
+          host.preferLastPageOnReady = false
           host.scrollToPageIndex(subPageIndex)
         }
         return TurnTarget(
           controller: host,
           chapterIndex: chapterIndex,
-          subPageIndex: subPageIndex,
+          subPageIndex: resolvedSubPageIndex,
           isCrossChapter: true,
           isForward: isForward
         )
@@ -665,9 +677,9 @@
         if target.isCrossChapter {
           target.controller.loadViewIfNeeded()
           target.controller.forceEnsureContentLoaded()
+          let (mirror, capturedTarget) = crossChapterMirror(target: target)
           unparkIfParked(target.controller)
           targetShell.adopt(target.controller)
-          let (mirror, capturedTarget) = crossChapterMirror(target: target)
           let session = makeSession(snapshot: nil, mirror: mirror)
           onReady(session)
           if !target.isForward && !capturedTarget {
@@ -841,7 +853,7 @@
               self.installTurnTarget(target, in: pageVC)
               self.commitLocation(
                 chapterIndex: target.chapterIndex,
-                pageIndex: target.subPageIndex,
+                pageIndex: target.controller.currentSubPageIndex,
                 notify: true
               )
               return
@@ -872,7 +884,7 @@
           installTurnTarget(target, in: pageVC)
           commitLocation(
             chapterIndex: target.chapterIndex,
-            pageIndex: target.subPageIndex,
+            pageIndex: target.controller.currentSubPageIndex,
             notify: true
           )
         }
@@ -932,7 +944,7 @@
         }
         commitLocation(
           chapterIndex: session.target.chapterIndex,
-          pageIndex: session.target.subPageIndex,
+          pageIndex: session.target.controller.currentSubPageIndex,
           notify: true
         )
       }
@@ -1670,6 +1682,8 @@
       guard isContentLoaded else { return nil }
       // A mid-pagination capture would record the page while it is still hidden.
       guard let contentView = renderingContentView, contentView.alpha >= 0.1 else { return nil }
+      // Forcing a commit from a detached controller can throw during UIKit's temporary-window move.
+      guard view.window != nil else { return nil }
       view.layoutIfNeeded()
       coreTextView?.layer.displayIfNeeded()
       let bounds = view.bounds
