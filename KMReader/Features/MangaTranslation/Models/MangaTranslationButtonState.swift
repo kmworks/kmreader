@@ -1,15 +1,15 @@
 import Foundation
 
 struct MangaTranslationButtonState: Equatable, Sendable {
-  enum Tint: Equatable, Sendable {
-    case none
-    case active
+  enum Style: Equatable, Sendable {
+    case normal
+    case inverted
     case failure
   }
 
   let icon: String
   let isBusy: Bool
-  let tint: Tint
+  let style: Style
   let isEnabled: Bool
   let accessibilityLabel: String
 }

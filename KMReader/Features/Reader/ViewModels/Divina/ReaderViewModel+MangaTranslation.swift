@@ -37,17 +37,21 @@ extension ReaderViewModel {
 
   /// Per-page state for the translate button pinned to a page image. A nil
   /// state hides the button. Only the focused page surfaces the live phase;
-  /// other pages show their own result and whether they sit in the queue.
+  /// other pages show their own result, any failure from a manual tap, and
+  /// whether they sit in the queue.
   func mangaTranslationButtonState(for pageID: ReaderPageID, splitMode: PageSplitMode)
     -> MangaTranslationButtonState?
   {
     guard mangaTranslationEnabled else { return nil }
-    let result = mangaTranslationResult(for: pageID, splitMode: splitMode)
+    let key = sessionKey(for: pageID, splitMode: splitMode)
+    let result = mangaTranslationResults[key]
     let phase = resolvedCurrentPageID == pageID ? mangaTranslationPhase : nil
     let overlayVisible =
       result?.isTranslated == true && mangaTranslationOverlayVisible(for: pageID, splitMode: splitMode)
-    let tint: MangaTranslationButtonState.Tint =
-      phase?.isFailed == true ? .failure : (overlayVisible ? .active : .none)
+    let style: MangaTranslationButtonState.Style =
+      (phase?.isFailed == true || mangaTranslationFailures[key] != nil)
+      ? .failure
+      : (overlayVisible ? .inverted : .normal)
     let isBusy = phase?.isBusy ?? mangaTranslationIsActive(for: pageID, splitMode: splitMode)
     let accessibilityLabel: String
     if result?.isTranslated == true {
@@ -61,7 +65,7 @@ extension ReaderViewModel {
     return MangaTranslationButtonState(
       icon: phase?.icon ?? AppIcon.mangaTranslation,
       isBusy: isBusy,
-      tint: tint,
+      style: style,
       isEnabled: !mangaTranslationLanguagesMatch(forBookId: pageID.bookId),
       accessibilityLabel: accessibilityLabel
     )
@@ -91,7 +95,8 @@ extension ReaderViewModel {
 
   /// Translates one tapped page. A page in the current view item rides the
   /// usual item-wide queue so a dual-page spread still switches together; any
-  /// other page (webtoon) gets a queue of its own.
+  /// other page (webtoon) cuts to the front of the queue while the work
+  /// already queued keeps its place behind it instead of being discarded.
   func translatePage(_ pageID: ReaderPageID, splitMode: PageSplitMode) {
     guard mangaTranslationEnabled, !mangaTranslationLanguagesMatch(forBookId: pageID.bookId) else { return }
     if let item = currentViewItem(), item.pageIDs.contains(pageID) {
@@ -99,9 +104,10 @@ extension ReaderViewModel {
       return
     }
     let key = sessionKey(for: pageID, splitMode: splitMode)
-    guard mangaTranslationInFlightKey != key else { return }
+    let pendingKeys = pendingMangaTranslationQueueKeys()
+    guard !pendingKeys.contains(key) else { return }
     startMangaTranslationQueue(
-      keys: [key],
+      keys: [key] + pendingKeys,
       frontForceRetry: mangaTranslationResults[key] != nil,
       frontManual: true
     )
@@ -125,14 +131,6 @@ extension ReaderViewModel {
     )
   }
 
-  func toggleMangaTranslation() {
-    setMangaTranslationVisibility(!showMangaTranslation)
-    // A global flip re-applies the shared default to every page holding a
-    // result, dropping individual overrides.
-    mangaTranslationVisibilityOverrides = [:]
-    notifyPagePresentationInvalidation(.all)
-  }
-
   private func setMangaTranslationVisibility(_ isVisible: Bool) {
     showMangaTranslation = isVisible
     guard AppConfig.mangaTranslation.showTranslation != isVisible else { return }
@@ -146,6 +144,7 @@ extension ReaderViewModel {
     mangaTranslationResults = [:]
     mangaTranslationResultOrder = []
     mangaTranslationVisibilityOverrides = [:]
+    mangaTranslationFailures = [:]
     mangaTranslationPhase = .idle
   }
 
@@ -263,15 +262,19 @@ extension ReaderViewModel {
   }
 
   private func runMangaTranslationQueue(queueID: UUID) async {
+    var isFrontItem = true
     while !mangaTranslationQueueSnapshot.isEmpty {
       guard isCurrentMangaTranslationQueue(queueID) else { return }
       let sessionKey = mangaTranslationQueueSnapshot.removeFirst()
-      // Only the page the user is looking at reports failures; the queue
-      // front is pure prefetch whenever the current page is already cached.
+      // The front owns the user-visible attempt: a tapped page reports its
+      // failures wherever it sits, while automatic attempts report only for
+      // the page being viewed so prefetch stays silent.
       let isCurrentPageItem = sessionKey == currentMangaTranslationSessionKey()
-      let forceProviderRetry = isCurrentPageItem && mangaTranslationQueueFrontForceRetry
-      let isManual = isCurrentPageItem && mangaTranslationQueueFrontManual
+      let forceProviderRetry = isFrontItem && mangaTranslationQueueFrontForceRetry
+      let isManual = isFrontItem && mangaTranslationQueueFrontManual
       if mangaTranslationResults[sessionKey] != nil { continue }
+      isFrontItem = false
+      mangaTranslationFailures.removeValue(forKey: sessionKey)
       mangaTranslationInFlightKey = sessionKey
       await processMangaTranslationItem(
         sessionKey,
@@ -419,6 +422,7 @@ extension ReaderViewModel {
     mangaTranslationResults[sessionKey] = result
     // A fresh result always shows; an individual hide does not survive it.
     mangaTranslationVisibilityOverrides.removeValue(forKey: sessionKey)
+    mangaTranslationFailures.removeValue(forKey: sessionKey)
     let overflow = mangaTranslationResultOrder.count - Self.mangaTranslationResultCacheLimit
     if overflow > 0 {
       for evictedKey in mangaTranslationResultOrder.prefix(overflow) {
@@ -439,15 +443,19 @@ extension ReaderViewModel {
     reportsFailure: Bool,
     isManual: Bool
   ) {
+    // An empty recognition is not an error and keeps the normal icon.
+    if isManual, failure != .noText {
+      mangaTranslationFailures[sessionKey] = failure
+    }
     if sessionKey == currentMangaTranslationSessionKey() {
       mangaTranslationPhase = failure == .noText ? .noText : .failed(failure)
     }
     reportMangaTranslationFailure(failure, reportsFailure: reportsFailure, isManual: isManual)
   }
 
-  /// Prefetch failures stay silent; the current page reports configuration
-  /// and network problems even on automatic attempts, and everything on a
-  /// manual one.
+  /// Prefetch failures stay silent; the page being viewed reports
+  /// configuration and network problems even on automatic attempts, and a
+  /// manually tapped page reports everything wherever it sits.
   private func reportMangaTranslationFailure(
     _ failure: MangaTranslationFailure?,
     reportsFailure: Bool,

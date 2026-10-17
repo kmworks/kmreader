@@ -124,9 +124,9 @@
         mangaOverlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
 
         translationButton.trailingAnchor.constraint(
-          equalTo: contentView.trailingAnchor, constant: -MangaTranslationButton.cornerInset),
+          equalTo: contentView.trailingAnchor, constant: -MangaTranslationButtonMetrics.cornerInset),
         translationButton.bottomAnchor.constraint(
-          equalTo: contentView.bottomAnchor, constant: -MangaTranslationButton.cornerInset),
+          equalTo: contentView.bottomAnchor, constant: -MangaTranslationButtonMetrics.cornerInset),
 
         pageMarkerLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
         pageMarkerLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),

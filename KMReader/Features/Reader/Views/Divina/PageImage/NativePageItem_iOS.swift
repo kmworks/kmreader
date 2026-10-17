@@ -621,8 +621,8 @@
       #if os(iOS)
         let buttonSize = translationButton.intrinsicContentSize
         translationButton.frame = CGRect(
-          x: imageView.frame.maxX - buttonSize.width - MangaTranslationButton.cornerInset,
-          y: imageView.frame.maxY - buttonSize.height - MangaTranslationButton.cornerInset,
+          x: imageView.frame.maxX - buttonSize.width - MangaTranslationButtonMetrics.cornerInset,
+          y: imageView.frame.maxY - buttonSize.height - MangaTranslationButtonMetrics.cornerInset,
           width: buttonSize.width,
           height: buttonSize.height
         )

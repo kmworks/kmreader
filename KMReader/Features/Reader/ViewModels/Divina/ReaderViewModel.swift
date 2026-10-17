@@ -65,6 +65,11 @@ class ReaderViewModel {
   var mangaTranslationVisibilityOverrides: [MangaTranslationSessionKey: Bool] = [:] {
     didSet { notifyMangaTranslationStateChanged() }
   }
+  /// Failures from manual page taps that produced no result, kept so their
+  /// buttons can show the failure tint until the page is retried.
+  var mangaTranslationFailures: [MangaTranslationSessionKey: MangaTranslationFailure] = [:] {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
   var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:] {
     didSet { notifyMangaTranslationStateChanged() }
   }
@@ -75,7 +80,8 @@ class ReaderViewModel {
   @ObservationIgnored
   var mangaTranslationResultOrder: [MangaTranslationSessionKey] = []
   /// Snapshot of the running queue so repeated syncs with the same work are
-  /// no-ops. The front key is the current page; the rest is silent prefetch.
+  /// no-ops. The front key owns the user-visible attempt; the rest is
+  /// silent prefetch.
   @ObservationIgnored
   var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = [] {
     didSet { notifyMangaTranslationStateChanged() }
@@ -416,7 +422,8 @@ class ReaderViewModel {
   /// Drives the per-page translate buttons, which live in UIKit/AppKit page
   /// hosts that cannot observe `@Observable` changes on their own.
   private func notifyMangaTranslationStateChanged() {
-    for handler in mangaTranslationStateHandlers.values {
+    // Handlers are allowed to unregister themselves while being called.
+    for handler in Array(mangaTranslationStateHandlers.values) {
       handler()
     }
   }

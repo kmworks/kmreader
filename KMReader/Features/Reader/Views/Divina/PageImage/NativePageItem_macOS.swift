@@ -598,10 +598,10 @@
       overlayView.frame = imgFrame
       mangaOverlayView.frame = imgFrame
       translationButton.frame = NSRect(
-        x: imgFrame.maxX - MangaTranslationButton.size - MangaTranslationButton.cornerInset,
-        y: imgFrame.minY + MangaTranslationButton.cornerInset,
-        width: MangaTranslationButton.size,
-        height: MangaTranslationButton.size
+        x: imgFrame.maxX - MangaTranslationButtonMetrics.size - MangaTranslationButtonMetrics.cornerInset,
+        y: imgFrame.minY + MangaTranslationButtonMetrics.cornerInset,
+        width: MangaTranslationButtonMetrics.size,
+        height: MangaTranslationButtonMetrics.size
       )
 
       let topY = yOffset + actualImageHeight - 36

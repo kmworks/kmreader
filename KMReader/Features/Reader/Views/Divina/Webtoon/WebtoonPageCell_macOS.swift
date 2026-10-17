@@ -123,12 +123,12 @@
       retryToErrorConstraint?.isActive = true
 
       NSLayoutConstraint.activate([
-        translationButton.widthAnchor.constraint(equalToConstant: MangaTranslationButton.size),
-        translationButton.heightAnchor.constraint(equalToConstant: MangaTranslationButton.size),
+        translationButton.widthAnchor.constraint(equalToConstant: MangaTranslationButtonMetrics.size),
+        translationButton.heightAnchor.constraint(equalToConstant: MangaTranslationButtonMetrics.size),
         translationButton.trailingAnchor.constraint(
-          equalTo: view.trailingAnchor, constant: -MangaTranslationButton.cornerInset),
+          equalTo: view.trailingAnchor, constant: -MangaTranslationButtonMetrics.cornerInset),
         translationButton.bottomAnchor.constraint(
-          equalTo: view.bottomAnchor, constant: -MangaTranslationButton.cornerInset),
+          equalTo: view.bottomAnchor, constant: -MangaTranslationButtonMetrics.cornerInset),
 
         pageMarkerContainer.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
         pageMarkerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
