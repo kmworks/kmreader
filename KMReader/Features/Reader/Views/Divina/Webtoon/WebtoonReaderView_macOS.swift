@@ -221,7 +221,6 @@
           [weak self] _ in
           guard let self, let collectionView else { return }
           self.refreshVisibleFooterCells(in: collectionView)
-          self.refreshVisibleMangaTranslationCells(in: collectionView)
         }
       }
 
@@ -247,21 +246,6 @@
             nextBookOfflineState: viewModel?.nextBookOfflineState(forSegmentBookId: segmentBookId),
             remainingUnreadCount: viewModel?.remainingUnreadCount(forSegmentBookId: segmentBookId),
             onDismiss: onDismiss
-          )
-        }
-      }
-
-      private func refreshVisibleMangaTranslationCells(in collectionView: NSCollectionView) {
-        for indexPath in collectionView.indexPathsForVisibleItems() {
-          guard indexPath.item < scrollEngine.contentItems.count,
-            case .page(let pageID) = scrollEngine.contentItems[indexPath.item],
-            let cell = collectionView.item(at: indexPath) as? WebtoonPageCell
-          else {
-            continue
-          }
-          cell.updateMangaTranslation(
-            result: viewModel?.mangaTranslationResult(for: pageID, splitMode: .none),
-            visible: viewModel?.showMangaTranslation ?? false
           )
         }
       }
@@ -796,10 +780,6 @@
             pageLabel: pageLabel,
             image: displayImage,
             showPageNumber: showPageNumber
-          )
-          cell.updateMangaTranslation(
-            result: viewModel?.mangaTranslationResult(for: pageID, splitMode: .none),
-            visible: viewModel?.showMangaTranslation ?? false
           )
 
           if displayImage == nil, hasKnownHeight(for: pageID, page: page) {

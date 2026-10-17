@@ -20,6 +20,7 @@
 
     private let overlayView = ImageAnalysisOverlayView()
     private let mangaOverlayView = MangaOverlayView()
+    private let translationButton = MangaTranslationButton()
     private var analysisTask: Task<Void, Never>?
     private var analyzedImage: NSImage?
     private var analysisRequestID: UInt64 = 0
@@ -59,6 +60,7 @@
     func prepareForDismantle() {
       clearAnalysis()
       updateContextMenu(menu: nil)
+      translationButton.isHidden = true
       updateAnimatedPlayback(sourceFileURL: nil)
       imageView.isHidden = false
       imageView.image = nil
@@ -91,6 +93,7 @@
           }
         }
         updateContextMenu()
+        updateTranslationButton()
       }
     }
 
@@ -150,6 +153,11 @@
       overlayView.trackingImageView = imageView
       mangaOverlayView.isHidden = true
       addSubview(mangaOverlayView)
+
+      translationButton.isHidden = true
+      translationButton.target = self
+      translationButton.action = #selector(handleTranslationButtonClicked)
+      addSubview(translationButton)
 
       progressIndicator.style = .spinning
       progressIndicator.controlSize = .small
@@ -323,15 +331,36 @@
 
       mangaOverlayView.update(
         result: readerViewModel?.mangaTranslationResult(for: data),
-        visible: readerViewModel?.showMangaTranslation ?? false,
+        visible: readerViewModel?.mangaTranslationOverlayVisible(
+          for: data.pageID, splitMode: data.splitMode) ?? false,
         background: background,
         direction: AppConfig.mangaTranslation.textDirection,
         shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageSourceImage
       )
+      updateTranslationButton()
       updateShadowAppearance()
       updateContextMenu()
       updateOverlaysPosition()
+    }
+
+    private func updateTranslationButton() {
+      guard let data = currentData,
+        let viewModel = readerViewModel,
+        let state = viewModel.mangaTranslationButtonState(for: data.pageID, splitMode: data.splitMode),
+        imageView.image != nil,
+        data.failure == nil
+      else {
+        translationButton.isHidden = true
+        return
+      }
+      translationButton.isHidden = false
+      translationButton.update(state: state)
+    }
+
+    @objc private func handleTranslationButtonClicked() {
+      guard let data = currentData else { return }
+      readerViewModel?.handleMangaTranslationButtonTap(for: data.pageID, splitMode: data.splitMode)
     }
 
     private func updateShadowAppearance() {
@@ -546,6 +575,12 @@
       animatedInlineContainer.frame = imgFrame
       overlayView.frame = imgFrame
       mangaOverlayView.frame = imgFrame
+      translationButton.frame = NSRect(
+        x: imgFrame.maxX - MangaTranslationButtonMetrics.size - MangaTranslationButtonMetrics.cornerInset,
+        y: imgFrame.minY + MangaTranslationButtonMetrics.cornerInset,
+        width: MangaTranslationButtonMetrics.size,
+        height: MangaTranslationButtonMetrics.size
+      )
 
       let topY = yOffset + actualImageHeight - 36
 

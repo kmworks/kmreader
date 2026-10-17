@@ -45,14 +45,34 @@ class ReaderViewModel {
   @ObservationIgnored
   var presentedPageContextMenuCount = 0
   var isPageContextMenuPresented: Bool { presentedPageContextMenuCount > 0 }
-  var mangaTranslationPhase: MangaTranslationPhase = .idle
-  var showMangaTranslation = AppConfig.mangaTranslation.showTranslation
+  var mangaTranslationPhase: MangaTranslationPhase = .idle {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
+  var showMangaTranslation = AppConfig.mangaTranslation.showTranslation {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
   /// Session-scoped on purpose: every reader session starts with translation off.
-  var mangaTranslationEnabled = false
+  var mangaTranslationEnabled = false {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
   /// Translated/no-text results for this session, keyed by page and geometry.
   /// Failed attempts are never kept so they retry when the page is revisited.
-  var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:]
-  var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:]
+  var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:] {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
+  /// Per-page overlay visibility overrides, falling back to the shared
+  /// showMangaTranslation default when a page has no entry.
+  var mangaTranslationVisibilityOverrides: [MangaTranslationSessionKey: Bool] = [:] {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
+  /// Failures from manual page taps that produced no result, kept so their
+  /// buttons can show the failure tint until the page is retried.
+  var mangaTranslationFailures: [MangaTranslationSessionKey: MangaTranslationFailure] = [:] {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
+  var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:] {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
   @ObservationIgnored
   var mangaTranslationQueueTask: Task<Void, Never>?
   @ObservationIgnored
@@ -60,11 +80,16 @@ class ReaderViewModel {
   @ObservationIgnored
   var mangaTranslationResultOrder: [MangaTranslationSessionKey] = []
   /// Snapshot of the running queue so repeated syncs with the same work are
-  /// no-ops. The front key is the current page; the rest is silent prefetch.
+  /// no-ops. The front key owns the user-visible attempt; the rest is
+  /// silent prefetch.
   @ObservationIgnored
-  var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = []
+  var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = [] {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
   @ObservationIgnored
-  var mangaTranslationInFlightKey: MangaTranslationSessionKey?
+  var mangaTranslationInFlightKey: MangaTranslationSessionKey? {
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
+  }
   @ObservationIgnored
   var mangaTranslationQueueFrontForceRetry = false
   @ObservationIgnored
@@ -1431,7 +1456,12 @@ class ReaderViewModel {
   func updateReadingDirection(_ direction: ReadingDirection) {
     guard readingDirection != direction else { return }
     readingDirection = direction
-    syncMangaTranslationPage()
+    if direction == .webtoon {
+      cancelMangaTranslation()
+      notifyPagePresentationInvalidation(.all)
+    } else {
+      syncMangaTranslationPage()
+    }
   }
 
   func updateSplitWidePageMode(_ mode: SplitWidePageMode) {

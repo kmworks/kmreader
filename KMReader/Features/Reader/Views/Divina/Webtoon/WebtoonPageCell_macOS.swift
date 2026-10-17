@@ -10,7 +10,6 @@
   class WebtoonPageCell: NSCollectionViewItem {
     private let pageImageView = NSImageView()
     private let sepiaOverlayView = NSView()
-    private let mangaOverlayView = MangaOverlayView()
     private let loadingIndicator = NSProgressIndicator()
     private let pageMarkerLabel = NSTextField(labelWithString: "")
     private let pageMarkerContainer = NSView()
@@ -21,8 +20,6 @@
     private var retryToDetailConstraint: NSLayoutConstraint?
 
     var onRetry: (() -> Void)?
-    private var mangaTranslationResult: MangaPageTranslation?
-    private var showsMangaTranslation = false
 
     var readerBackground: ReaderBackground = .system {
       didSet {
@@ -55,10 +52,6 @@
       sepiaOverlayView.autoresizingMask = [.width, .height]
       sepiaOverlayView.frame = view.bounds
       view.addSubview(sepiaOverlayView)
-
-      mangaOverlayView.autoresizingMask = [.width, .height]
-      mangaOverlayView.frame = view.bounds
-      view.addSubview(mangaOverlayView)
 
       pageMarkerContainer.wantsLayer = true
       pageMarkerContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
@@ -151,7 +144,6 @@
       super.viewDidLayout()
       pageImageView.frame = view.bounds
       sepiaOverlayView.frame = view.bounds
-      mangaOverlayView.frame = view.bounds
     }
 
     private class FlippedView: NSView {
@@ -162,14 +154,6 @@
       view.layer?.backgroundColor = NSColor(readerBackground.color).cgColor
       pageImageView.layer?.backgroundColor = NSColor(readerBackground.color).cgColor
       updateSepiaOverlay()
-      mangaOverlayView.update(
-        result: mangaTranslationResult,
-        visible: showsMangaTranslation,
-        background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
-        image: pageImageView.image
-      )
     }
 
     private func updateSepiaOverlay() {
@@ -182,19 +166,6 @@
       sepiaOverlayView.isHidden = false
       sepiaOverlayView.layer?.backgroundColor = NSColor(readerBackground.color).cgColor
       sepiaOverlayView.layer?.compositingFilter = "multiplyBlendMode"
-    }
-
-    func updateMangaTranslation(result: MangaPageTranslation?, visible: Bool) {
-      mangaTranslationResult = result
-      showsMangaTranslation = visible
-      mangaOverlayView.update(
-        result: result,
-        visible: visible,
-        background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
-        image: pageImageView.image
-      )
     }
 
     func configure(
@@ -226,7 +197,6 @@
       retryButton.isHidden = true
       pageImageView.image = image
       pageImageView.alphaValue = 1.0
-      updateMangaTranslation(result: mangaTranslationResult, visible: showsMangaTranslation)
     }
 
     func showError(failure: ReaderPageLoadFailure? = nil) {
@@ -250,9 +220,6 @@
       errorDetailLabel.isHidden = true
       retryButton.isHidden = true
       onRetry = nil
-      mangaTranslationResult = nil
-      showsMangaTranslation = false
-      mangaOverlayView.clear()
       pageMarkerContainer.isHidden = true
     }
   }

@@ -653,7 +653,7 @@
         guard let collectionView else { return }
 
         switch invalidation {
-        case .all:
+        case .all, .mangaTranslation:
           refreshVisibleItems(in: collectionView)
         case .pages(let pageIDs):
           refreshVisibleItems(in: collectionView, matching: pageIDs)

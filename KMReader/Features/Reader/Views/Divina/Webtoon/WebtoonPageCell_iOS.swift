@@ -10,7 +10,6 @@
   class WebtoonPageCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let sepiaOverlayView = UIView()
-    private let mangaOverlayView = MangaOverlayView()
     private let loadingIndicator = UIActivityIndicatorView(style: .medium)
     private let pageMarkerContainer = UIView()
     private let pageMarkerLabel = UILabel()
@@ -21,8 +20,6 @@
     private var retryToDetailConstraint: NSLayoutConstraint?
 
     var onRetry: (() -> Void)?
-    private var mangaTranslationResult: MangaPageTranslation?
-    private var showsMangaTranslation = false
 
     var readerBackground: ReaderBackground = .system {
       didSet {
@@ -54,9 +51,6 @@
       sepiaOverlayView.isHidden = true
       sepiaOverlayView.translatesAutoresizingMaskIntoConstraints = false
       contentView.addSubview(sepiaOverlayView)
-
-      mangaOverlayView.translatesAutoresizingMaskIntoConstraints = false
-      contentView.addSubview(mangaOverlayView)
 
       pageMarkerLabel.font = .systemFont(ofSize: PlatformHelper.pageNumberFontSize, weight: .semibold)
       pageMarkerLabel.textColor = .white
@@ -110,11 +104,6 @@
         sepiaOverlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
         sepiaOverlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
 
-        mangaOverlayView.topAnchor.constraint(equalTo: imageView.topAnchor),
-        mangaOverlayView.leadingAnchor.constraint(equalTo: imageView.leadingAnchor),
-        mangaOverlayView.trailingAnchor.constraint(equalTo: imageView.trailingAnchor),
-        mangaOverlayView.bottomAnchor.constraint(equalTo: imageView.bottomAnchor),
-
         pageMarkerLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
         pageMarkerLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
         pageMarkerLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 30),
@@ -148,14 +137,6 @@
       contentView.backgroundColor = UIColor(readerBackground.color)
       imageView.backgroundColor = UIColor(readerBackground.color)
       updateSepiaOverlay()
-      mangaOverlayView.update(
-        result: mangaTranslationResult,
-        visible: showsMangaTranslation,
-        background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
-        image: imageView.image
-      )
     }
 
     private func updateSepiaOverlay() {
@@ -168,19 +149,6 @@
       sepiaOverlayView.isHidden = false
       sepiaOverlayView.backgroundColor = UIColor(readerBackground.color)
       sepiaOverlayView.layer.compositingFilter = "multiplyBlendMode"
-    }
-
-    func updateMangaTranslation(result: MangaPageTranslation?, visible: Bool) {
-      mangaTranslationResult = result
-      showsMangaTranslation = visible
-      mangaOverlayView.update(
-        result: result,
-        visible: visible,
-        background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
-        image: imageView.image
-      )
     }
 
     func configure(
@@ -214,7 +182,6 @@
       retryButton.isHidden = true
       imageView.image = image
       imageView.alpha = 1.0
-      updateMangaTranslation(result: mangaTranslationResult, visible: showsMangaTranslation)
     }
 
     func showError(failure: ReaderPageLoadFailure? = nil) {
@@ -239,9 +206,6 @@
       errorDetailLabel.isHidden = true
       retryButton.isHidden = true
       onRetry = nil
-      mangaTranslationResult = nil
-      showsMangaTranslation = false
-      mangaOverlayView.clear()
       pageMarkerLabel.isHidden = true
     }
   }

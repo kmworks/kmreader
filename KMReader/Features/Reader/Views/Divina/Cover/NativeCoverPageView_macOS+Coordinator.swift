@@ -128,7 +128,7 @@
         guard let containerView else { return }
 
         switch invalidation {
-        case .all:
+        case .all, .mangaTranslation:
           containerView.slotViews.forEach { slotView in
             guard !slotView.isHidden else { return }
             slotView.refreshContent()
