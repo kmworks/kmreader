@@ -43,9 +43,10 @@ enum MangaBubbleBackground {
 
   static func textFrame(forBoxSize size: CGSize, boxKind: MangaTextBoxKind, shape: MangaBubbleShape) -> CGRect {
     if shape == .ellipse && boxKind == .bubble {
-      // the inscribed rect (1/√2) touches the ellipse rim; shrink further to
-      // keep glyphs on the opaque core
-      let scale: CGFloat = 0.6
+      // the inscribed rect (1/√2) touches the ellipse rim; whole-bubble boxes
+      // already include the bubble's padding, so the text area shrinks further
+      // to keep glyphs on the opaque core with a manga-like white margin
+      let scale: CGFloat = 0.5
       return CGRect(
         x: size.width * (1 - scale) / 2,
         y: size.height * (1 - scale) / 2,
