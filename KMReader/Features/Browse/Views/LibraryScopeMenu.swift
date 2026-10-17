@@ -48,8 +48,6 @@ struct LibraryScopeMenu: View {
   var body: some View {
     Menu {
       Picker(selection: $scope) {
-        Label(String(localized: "All Libraries"), systemImage: ContentIcon.library)
-          .tag(LibraryBrowseScope.all)
         if !dashboard.libraryIds.isEmpty {
           Label(
             String(localized: "library.scope.pinned", defaultValue: "Pinned"),
@@ -57,6 +55,8 @@ struct LibraryScopeMenu: View {
           )
           .tag(LibraryBrowseScope.pinned)
         }
+        Label(String(localized: "All Libraries"), systemImage: ContentIcon.library)
+          .tag(LibraryBrowseScope.all)
       } label: {
         EmptyView()
       }

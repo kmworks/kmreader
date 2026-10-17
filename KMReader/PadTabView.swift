@@ -48,15 +48,10 @@ import SwiftUI
         if !store.libraries.isEmpty {
           // The aggregate tabs lead the Libraries section itself: splitting
           // them into their own section makes the tab bar's Libraries item
-          // land on the first library instead of All Libraries.
+          // land on the first library instead of the aggregates. The pinned
+          // aggregate leads while pins exist, so that item opens the pinned
+          // scope (the default everywhere else) rather than All Libraries.
           TabSection(String(localized: "Libraries")) {
-            Tab(value: PadTab.libraries(.all)) {
-              PushableNavigationStack {
-                rootContent(for: .browse(scope: .all))
-              }
-            } label: {
-              Text(String(localized: "All Libraries"))
-            }
             if !dashboard.libraryIds.isEmpty {
               Tab(value: PadTab.libraries(.pinned)) {
                 PushableNavigationStack {
@@ -65,6 +60,13 @@ import SwiftUI
               } label: {
                 Text(String(localized: "library.scope.pinned", defaultValue: "Pinned"))
               }
+            }
+            Tab(value: PadTab.libraries(.all)) {
+              PushableNavigationStack {
+                rootContent(for: .browse(scope: .all))
+              }
+            } label: {
+              Text(String(localized: "All Libraries"))
             }
             ForEach(store.libraries) { library in
               Tab(value: PadTab.library(library.libraryId)) {
