@@ -313,7 +313,6 @@
         visible: viewModel.mangaTranslationOverlayVisible(for: data.pageID, splitMode: data.splitMode),
         background: background,
         direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageSourceImage
       )
       #if os(iOS)

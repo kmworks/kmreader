@@ -10,14 +10,10 @@ import Foundation
     var feather: CGFloat = 10 {
       didSet { if feather != oldValue { setNeedsLayout() } }
     }
-    var shape: MangaBubbleShape = .ellipse {
-      didSet { if shape != oldValue { setNeedsLayout() } }
-    }
 
     private var renderedSize: CGSize?
     private var renderedColor: UIColor?
     private var renderedFeather: CGFloat = 0
-    private var renderedShape: MangaBubbleShape?
 
     override init(frame: CGRect) {
       super.init(frame: frame)
@@ -41,16 +37,13 @@ import Foundation
         renderedSize = nil
         return
       }
-      guard
-        size != renderedSize || fillColor != renderedColor || feather != renderedFeather
-          || shape != renderedShape
+      guard size != renderedSize || fillColor != renderedColor || feather != renderedFeather
       else { return }
       renderedSize = size
       renderedColor = fillColor
       renderedFeather = feather
-      renderedShape = shape
       layer.contents = MangaBubbleBackground.blobImage(
-        size: size, feather: feather, shape: shape, color: fillColor.cgColor)
+        size: size, feather: feather, color: fillColor.cgColor)
     }
   }
 #elseif os(macOS)
@@ -63,14 +56,10 @@ import Foundation
     var feather: CGFloat = 10 {
       didSet { if feather != oldValue { needsLayout = true } }
     }
-    var shape: MangaBubbleShape = .ellipse {
-      didSet { if shape != oldValue { needsLayout = true } }
-    }
 
     private var renderedSize: CGSize?
     private var renderedColor: NSColor?
     private var renderedFeather: CGFloat = 0
-    private var renderedShape: MangaBubbleShape?
 
     override init(frame frameRect: NSRect) {
       super.init(frame: frameRect)
@@ -92,16 +81,13 @@ import Foundation
         renderedSize = nil
         return
       }
-      guard
-        size != renderedSize || fillColor != renderedColor || feather != renderedFeather
-          || shape != renderedShape
+      guard size != renderedSize || fillColor != renderedColor || feather != renderedFeather
       else { return }
       renderedSize = size
       renderedColor = fillColor
       renderedFeather = feather
-      renderedShape = shape
       layer?.contents = MangaBubbleBackground.blobImage(
-        size: size, feather: feather, shape: shape, color: fillColor.cgColor)
+        size: size, feather: feather, color: fillColor.cgColor)
     }
   }
 #endif
