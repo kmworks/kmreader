@@ -18,12 +18,20 @@ struct ListsBrowseContentView: View {
 
   @Environment(\.pushNavDestination) private var pushNavDestination
 
+  @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("pinnedSmartListIds") private var pinnedStore: PinnedSmartListIds = .init()
+
   private var isCompletelyEmpty: Bool {
     initialLoadDone
       && !collectionsViewModel.isLoading && !readListsViewModel.isLoading
       && !smartListsViewModel.isLoading
       && collectionsViewModel.pagination.isEmpty && readListsViewModel.pagination.isEmpty
       && smartListsViewModel.smartLists.isEmpty
+  }
+
+  /// Strips prepend pinned items like the full pages; pins are client-local.
+  private var orderedSmartLists: [SmartList] {
+    pinnedStore.pinnedFirst(smartListsViewModel.smartLists, instanceId: current.instanceId)
   }
 
   var body: some View {
@@ -78,7 +86,7 @@ struct ListsBrowseContentView: View {
             destination: .browseSmartLists,
             isEmpty: !smartListsViewModel.isSupported || smartListsViewModel.smartLists.isEmpty
           ) {
-            ForEach(smartListsViewModel.smartLists.prefix(20)) { smartList in
+            ForEach(orderedSmartLists.prefix(20)) { smartList in
               SmartListCardView(smartList: smartList)
                 .id(smartList.id)
                 .frame(width: LayoutConfig.gridCardWidth)
@@ -117,6 +125,7 @@ struct ListsBrowseContentView: View {
           LazyHStack(alignment: .top, spacing: LayoutConfig.defaultSpacing) {
             content()
           }
+          .animation(.appCurve(), value: pinnedStore)
           .padding(.top, LayoutConfig.dashboardSectionHeaderSpacing)
           .padding(.bottom, LayoutConfig.dashboardSectionBottomPadding(gradientBackground: false))
         }

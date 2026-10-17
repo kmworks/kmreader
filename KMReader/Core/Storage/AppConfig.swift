@@ -1155,6 +1155,26 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var pinnedSmartListIds: PinnedSmartListIds {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "pinnedSmartListIds"),
+        let pinned = PinnedSmartListIds(rawValue: stored)
+      {
+        return pinned
+      }
+      return PinnedSmartListIds()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "pinnedSmartListIds")
+    }
+  }
+
+  static nonisolated func setSmartListPinned(smartListId: String, instanceId: String, pinned: Bool) {
+    var value = pinnedSmartListIds
+    value.setPinned(pinned, smartListId: smartListId, instanceId: instanceId)
+    pinnedSmartListIds = value
+  }
+
   private static nonisolated var recentlyReadRecordTimeByInstance: [String: TimeInterval] {
     get {
       guard

@@ -11,39 +11,53 @@ struct SmartListContextMenu: View {
   var onDeleteRequested: (() -> Void)? = nil
 
   @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("isOffline") private var isOffline: Bool = false
+  @AppStorage("pinnedSmartListIds") private var pinnedStore: PinnedSmartListIds = .init()
 
   private var canManage: Bool {
     smartList.ownerId == current.userId || current.isAdmin
   }
 
+  private var isPinned: Bool {
+    pinnedStore.isPinned(smartListId: smartList.id, instanceId: current.instanceId)
+  }
+
   var body: some View {
     Group {
-      NavigationLink(value: NavDestination.smartListDetail(smartListId: smartList.id)) {
-        Label("View Details", systemImage: AppIcon.details)
-      }
-
-      Divider()
-
-      if canManage, onEditRequested != nil {
-        Button {
-          deferMenuActionPresentation { onEditRequested?() }
-        } label: {
-          Label("Edit Smart List", systemImage: AppIcon.edit)
-        }
-      }
-
       Button {
-        refreshCover()
+        AppConfig.setSmartListPinned(
+          smartListId: smartList.id, instanceId: current.instanceId, pinned: !isPinned)
       } label: {
-        Label("Refresh Cover", systemImage: AppIcon.refresh)
+        Label(
+          isPinned ? String(localized: "action.unpinFromTop") : String(localized: "action.pinToTop"),
+          systemImage: isPinned ? "pin.slash" : "pin"
+        )
       }
 
-      if canManage, onDeleteRequested != nil {
+      if !isOffline {
         Divider()
-        Button(role: .destructive) {
-          deferMenuActionPresentation { onDeleteRequested?() }
+
+        if canManage, onEditRequested != nil {
+          Button {
+            deferMenuActionPresentation { onEditRequested?() }
+          } label: {
+            Label("Edit", systemImage: AppIcon.edit)
+          }
+        }
+
+        Button {
+          refreshCover()
         } label: {
-          Label("Delete Smart List", systemImage: AppIcon.delete)
+          Label("Refresh Cover", systemImage: AppIcon.refresh)
+        }
+
+        if canManage, onDeleteRequested != nil {
+          Divider()
+          Button(role: .destructive) {
+            deferMenuActionPresentation { onDeleteRequested?() }
+          } label: {
+            Label("Delete Smart List", systemImage: AppIcon.delete)
+          }
         }
       }
     }
