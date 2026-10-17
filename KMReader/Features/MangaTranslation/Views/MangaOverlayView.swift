@@ -115,13 +115,12 @@ import SwiftUI
           height: region.box.height * bounds.height + 4
         )
 
-        let cornerRadius = min(32, max(12, min(container.bounds.width, container.bounds.height) * 0.4))
-        let feather = MangaBubbleBackground.feather(forCoreSize: container.bounds.size)
+        let feather = MangaBubbleBackground.feather(forBoxSize: container.bounds.size)
         if let bubbleBackground = container.subviews.first(where: {
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
-          bubbleBackground.frame = container.bounds.insetBy(dx: -feather, dy: -feather)
-          bubbleBackground.cornerRadius = cornerRadius
+          bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
+            forBoxSize: container.bounds.size)
           bubbleBackground.feather = feather
         }
 
@@ -285,13 +284,12 @@ import SwiftUI
           height: region.box.height * bounds.height + 4
         )
 
-        let cornerRadius = min(32, max(12, min(container.bounds.width, container.bounds.height) * 0.4))
-        let feather = MangaBubbleBackground.feather(forCoreSize: container.bounds.size)
+        let feather = MangaBubbleBackground.feather(forBoxSize: container.bounds.size)
         if let bubbleBackground = container.subviews.first(where: {
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
-          bubbleBackground.frame = container.bounds.insetBy(dx: -feather, dy: -feather)
-          bubbleBackground.cornerRadius = cornerRadius
+          bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
+            forBoxSize: container.bounds.size)
           bubbleBackground.feather = feather
         }
 

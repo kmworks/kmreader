@@ -7,16 +7,12 @@ import Foundation
     var fillColor: UIColor = .white {
       didSet { if fillColor != oldValue { setNeedsLayout() } }
     }
-    var cornerRadius: CGFloat = 12 {
-      didSet { if cornerRadius != oldValue { setNeedsLayout() } }
-    }
     var feather: CGFloat = 10 {
       didSet { if feather != oldValue { setNeedsLayout() } }
     }
 
     private var renderedSize: CGSize?
     private var renderedColor: UIColor?
-    private var renderedCornerRadius: CGFloat = 0
     private var renderedFeather: CGFloat = 0
 
     override init(frame: CGRect) {
@@ -42,15 +38,13 @@ import Foundation
         return
       }
       guard
-        size != renderedSize || fillColor != renderedColor || cornerRadius != renderedCornerRadius
-          || feather != renderedFeather
+        size != renderedSize || fillColor != renderedColor || feather != renderedFeather
       else { return }
       renderedSize = size
       renderedColor = fillColor
-      renderedCornerRadius = cornerRadius
       renderedFeather = feather
       layer.contents = MangaBubbleBackground.blobImage(
-        size: size, feather: feather, cornerRadius: cornerRadius, color: fillColor.cgColor)
+        size: size, feather: feather, color: fillColor.cgColor)
     }
   }
 #elseif os(macOS)
@@ -60,16 +54,12 @@ import Foundation
     var fillColor: NSColor = .white {
       didSet { if fillColor != oldValue { needsLayout = true } }
     }
-    var cornerRadius: CGFloat = 12 {
-      didSet { if cornerRadius != oldValue { needsLayout = true } }
-    }
     var feather: CGFloat = 10 {
       didSet { if feather != oldValue { needsLayout = true } }
     }
 
     private var renderedSize: CGSize?
     private var renderedColor: NSColor?
-    private var renderedCornerRadius: CGFloat = 0
     private var renderedFeather: CGFloat = 0
 
     override init(frame frameRect: NSRect) {
@@ -93,15 +83,13 @@ import Foundation
         return
       }
       guard
-        size != renderedSize || fillColor != renderedColor || cornerRadius != renderedCornerRadius
-          || feather != renderedFeather
+        size != renderedSize || fillColor != renderedColor || feather != renderedFeather
       else { return }
       renderedSize = size
       renderedColor = fillColor
-      renderedCornerRadius = cornerRadius
       renderedFeather = feather
       layer?.contents = MangaBubbleBackground.blobImage(
-        size: size, feather: feather, cornerRadius: cornerRadius, color: fillColor.cgColor)
+        size: size, feather: feather, color: fillColor.cgColor)
     }
   }
 #endif

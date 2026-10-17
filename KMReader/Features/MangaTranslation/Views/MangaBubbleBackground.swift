@@ -11,11 +11,24 @@ import Foundation
 enum MangaBubbleBackground {
   private static let ciContext = CIContext()
 
-  static func feather(forCoreSize size: CGSize) -> CGFloat {
+  static func feather(forBoxSize size: CGSize) -> CGFloat {
     min(14, max(6, min(size.width, size.height) * 0.12))
   }
 
-  static func blobImage(size: CGSize, feather: CGFloat, cornerRadius: CGFloat, color: CGColor) -> CGImage? {
+  /// an ellipse must outgrow the box to still cover its corners (√2 to touch them)
+  static func backgroundFrame(forBoxSize size: CGSize) -> CGRect {
+    let feather = feather(forBoxSize: size)
+    let coreWidth = size.width * 1.5
+    let coreHeight = size.height * 1.5
+    return CGRect(
+      x: (size.width - coreWidth) / 2 - feather,
+      y: (size.height - coreHeight) / 2 - feather,
+      width: coreWidth + feather * 2,
+      height: coreHeight + feather * 2
+    )
+  }
+
+  static func blobImage(size: CGSize, feather: CGFloat, color: CGColor) -> CGImage? {
     let width = Int(size.width.rounded())
     let height = Int(size.height.rounded())
     guard width > 0, height > 0, feather * 2 < size.width, feather * 2 < size.height else { return nil }
@@ -37,9 +50,7 @@ enum MangaBubbleBackground {
       height: size.height - feather * 2
     )
     context.setFillColor(color)
-    context.addPath(
-      CGPath(roundedRect: coreRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
-    )
+    context.addPath(CGPath(ellipseIn: coreRect, transform: nil))
     context.fillPath()
     guard let solid = context.makeImage() else { return nil }
     // sigma ≈ feather/2.2 keeps the fade inside the feather band (α < 2% at the edge)
