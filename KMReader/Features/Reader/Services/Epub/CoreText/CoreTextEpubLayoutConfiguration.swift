@@ -11,6 +11,7 @@
 
     var configuration: BrowserLayoutConfig
     let userStylesheet: String
+    let baseStylesheet: String
 
     init(
       preferences: EpubThemePreferences,
@@ -51,6 +52,12 @@
         cjkTypographyStyle: CJKTypographyStyle.declared(publicationLanguage)
       )
       userStylesheet = Self.makeUserStylesheet(preferences: preferences, theme: theme)
+      // Mirrors the WebView engine's ReadiumCSS base (KMReadiumCSS-before.css):
+      // everything inherits 1.5, headings stay normal. The advanced-layout mode
+      // drives line-height through the engine configuration instead.
+      baseStylesheet =
+        preferences.advancedLayout
+        ? "" : "body { line-height: 1.5; }\nh1, h2, h3 { line-height: normal; }"
     }
 
     private static func defaultTextAlignment(for preferences: EpubThemePreferences) -> NSTextAlignment {

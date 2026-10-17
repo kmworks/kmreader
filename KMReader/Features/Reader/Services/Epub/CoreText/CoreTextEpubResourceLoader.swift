@@ -31,11 +31,16 @@
       }
     }
 
-    func makeInput(userStylesheet: String) throws -> CSSFrontendInput {
+    func makeInput(userStylesheet: String, baseStylesheet: String = "") throws -> CSSFrontendInput {
       let html = try loadText(from: chapterURL)
       let document = try SwiftSoup.parse(html, chapterURL.absoluteString)
       // Match Readium's default link color before publication rules take precedence.
       var stylesheets = ["a { color: #0000EE; }"]
+      if !baseStylesheet.isEmpty {
+        // Reader defaults sit at ReadiumCSS-before's cascade level: publication
+        // stylesheets still override them.
+        stylesheets.append(baseStylesheet)
+      }
       var visited: Set<URL> = []
       for link in try document.select("link[rel~=stylesheet]") {
         let href = try link.attr("href").trimmingCharacters(in: .whitespacesAndNewlines)
