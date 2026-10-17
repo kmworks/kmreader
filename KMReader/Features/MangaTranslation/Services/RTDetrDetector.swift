@@ -3,6 +3,7 @@ import CoreML
 import Foundation
 
 nonisolated struct RTDetrDetector: MangaTextDetecting {
+  let boxKind: MangaTextBoxKind = .text
   let models: MangaModelSet
 
   func detect(

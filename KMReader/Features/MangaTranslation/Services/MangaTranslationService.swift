@@ -139,12 +139,15 @@ actor MangaTranslationService {
     }
 
     let regions: [MangaTextRegion]
+    let boxKind: MangaTextBoxKind
     if let cached, !cached.regions.isEmpty {
       regions = cached.regions
+      boxKind = cached.boxKind
     } else {
       let detectorModels = try await models(archive: configuration.detectorArchive, storage: storage)
       try ensureTranslationCurrent(for: key, generation: generation)
       let detector = try detectorModels.makeDetector()
+      boxKind = detector.boxKind
       await onProgress(.detecting)
       let detectedRegions = try await runInference {
         try detector.detect(
@@ -208,6 +211,7 @@ actor MangaTranslationService {
           regions: translatedRegions,
           status: status,
           targetLanguage: configuration.targetLanguage,
+          boxKind: boxKind,
           createdAt: Date()
         )
         try? await MangaTranslationStore.save(result, database: database)
@@ -225,6 +229,7 @@ actor MangaTranslationService {
       regions: regions,
       status: status,
       targetLanguage: configuration.targetLanguage,
+      boxKind: boxKind,
       createdAt: Date()
     )
     try ensureTranslationCurrent(for: key, generation: generation)

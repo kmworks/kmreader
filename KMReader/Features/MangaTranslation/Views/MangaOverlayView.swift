@@ -120,14 +120,12 @@ import SwiftUI
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
           bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
-            forBoxSize: container.bounds.size)
+            forBoxSize: container.bounds.size, boxKind: result.boxKind)
           bubbleBackground.feather = feather
         }
 
-        let textFrame = container.bounds.insetBy(
-          dx: min(5, max(2, container.bounds.width * 0.04)),
-          dy: min(4, max(1, container.bounds.height * 0.03))
-        )
+        let textFrame = MangaBubbleBackground.textFrame(
+          forBoxSize: container.bounds.size, boxKind: result.boxKind)
         guard
           let child = container.subviews.first(where: {
             $0 is UILabel || $0 is MangaVerticalTextLabel
@@ -289,14 +287,12 @@ import SwiftUI
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
           bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
-            forBoxSize: container.bounds.size)
+            forBoxSize: container.bounds.size, boxKind: result.boxKind)
           bubbleBackground.feather = feather
         }
 
-        let textFrame = container.bounds.insetBy(
-          dx: min(5, max(2, container.bounds.width * 0.04)),
-          dy: min(4, max(1, container.bounds.height * 0.03))
-        )
+        let textFrame = MangaBubbleBackground.textFrame(
+          forBoxSize: container.bounds.size, boxKind: result.boxKind)
         guard
           let child = container.subviews.first(where: {
             $0 is NSTextField || $0 is MangaVerticalTextLabel

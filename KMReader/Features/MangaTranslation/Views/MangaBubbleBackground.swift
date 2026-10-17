@@ -15,17 +15,40 @@ enum MangaBubbleBackground {
     min(14, max(6, min(size.width, size.height) * 0.12))
   }
 
-  /// an ellipse must outgrow the box to still cover its corners (√2 to touch them)
-  static func backgroundFrame(forBoxSize size: CGSize) -> CGRect {
+  /// Text-tight boxes wrap the glyphs, so the ellipse must outgrow the box to
+  /// still cover its corners (√2 to touch them); whole-bubble boxes already
+  /// bound the bubble, so the ellipse stays inscribed.
+  static func backgroundFrame(forBoxSize size: CGSize, boxKind: MangaTextBoxKind) -> CGRect {
+    let coreScale: CGFloat = boxKind == .text ? 1.5 : 1
     let feather = feather(forBoxSize: size)
-    let coreWidth = size.width * 1.5
-    let coreHeight = size.height * 1.5
+    let coreWidth = size.width * coreScale
+    let coreHeight = size.height * coreScale
     return CGRect(
       x: (size.width - coreWidth) / 2 - feather,
       y: (size.height - coreHeight) / 2 - feather,
       width: coreWidth + feather * 2,
       height: coreHeight + feather * 2
     )
+  }
+
+  static func textFrame(forBoxSize size: CGSize, boxKind: MangaTextBoxKind) -> CGRect {
+    switch boxKind {
+    case .text:
+      return CGRect(x: 0, y: 0, width: size.width, height: size.height).insetBy(
+        dx: min(5, max(2, size.width * 0.04)),
+        dy: min(4, max(1, size.height * 0.03))
+      )
+    case .bubble:
+      // the inscribed rect (1/√2) touches the ellipse rim; shrink further to
+      // keep glyphs on the opaque core
+      let scale: CGFloat = 0.6
+      return CGRect(
+        x: size.width * (1 - scale) / 2,
+        y: size.height * (1 - scale) / 2,
+        width: size.width * scale,
+        height: size.height * scale
+      )
+    }
   }
 
   static func blobImage(size: CGSize, feather: CGFloat, color: CGColor) -> CGImage? {

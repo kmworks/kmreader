@@ -6,6 +6,7 @@ nonisolated struct YOLOSegDetector: MangaTextDetecting {
   private static let inputSize = 640
   private static let scoreThreshold: Float = 0.3
 
+  let boxKind: MangaTextBoxKind = .bubble
   let models: MangaModelSet
 
   func detect(
