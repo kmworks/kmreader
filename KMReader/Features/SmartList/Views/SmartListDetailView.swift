@@ -9,6 +9,7 @@ struct SmartListDetailView: View {
   let smartListId: String
 
   @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("pinnedSmartListIds") private var pinnedStore: PinnedSmartListIds = .init()
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -52,6 +53,10 @@ struct SmartListDetailView: View {
   private var canDelete: Bool {
     guard let smartList else { return false }
     return smartList.ownerId == current.userId || current.isAdmin
+  }
+
+  private var isPinned: Bool {
+    pinnedStore.isPinned(smartListId: smartListId, instanceId: current.instanceId)
   }
 
   var body: some View {
@@ -200,6 +205,18 @@ extension SmartListDetailView {
   @ViewBuilder
   private var smartListToolbarContent: some View {
     Menu {
+      Button {
+        AppConfig.setSmartListPinned(
+          smartListId: smartListId, instanceId: current.instanceId, pinned: !isPinned)
+      } label: {
+        Label(
+          isPinned ? String(localized: "action.unpinFromTop") : String(localized: "action.pinToTop"),
+          systemImage: isPinned ? "pin.slash" : "pin"
+        )
+      }
+
+      Divider()
+
       if canDelete {
         Button {
           deferMenuActionPresentation { showEditSheet = true }
@@ -218,7 +235,7 @@ extension SmartListDetailView {
         Divider()
 
         Button(role: .destructive) {
-          showDeleteConfirmation = true
+          deferMenuActionPresentation { showDeleteConfirmation = true }
         } label: {
           Label("Delete Smart List", systemImage: AppIcon.delete)
         }

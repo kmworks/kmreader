@@ -17,11 +17,6 @@ struct CollectionContextMenu: View {
 
   var body: some View {
     Group {
-      NavigationLink(value: NavDestination.collectionDetail(collectionId: collectionId)) {
-        Label("View Details", systemImage: AppIcon.details)
-      }
-
-      Divider()
       Button {
         onPinToggleRequested?()
       } label: {
@@ -32,29 +27,28 @@ struct CollectionContextMenu: View {
       }
 
       if !isOffline {
+        Divider()
         if current.isAdmin {
-          Divider()
           Button {
-            onEditRequested?()
+            deferMenuActionPresentation { onEditRequested?() }
           } label: {
             Label("Edit", systemImage: AppIcon.edit)
           }
-
-          if onDeleteRequested != nil {
-            Divider()
-            Button(role: .destructive) {
-              deferMenuActionPresentation { onDeleteRequested?() }
-            } label: {
-              Label("Delete Collection", systemImage: AppIcon.delete)
-            }
-          }
         }
 
-        Divider()
         Button {
           refreshCover()
         } label: {
           Label("Refresh Cover", systemImage: AppIcon.refresh)
+        }
+
+        if current.isAdmin, onDeleteRequested != nil {
+          Divider()
+          Button(role: .destructive) {
+            deferMenuActionPresentation { onDeleteRequested?() }
+          } label: {
+            Label("Delete Collection", systemImage: AppIcon.delete)
+          }
         }
       }
     }

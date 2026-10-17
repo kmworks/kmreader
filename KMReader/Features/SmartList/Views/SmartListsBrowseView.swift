@@ -11,6 +11,8 @@ struct SmartListsBrowseView: View {
 
   @AppStorage("smartListBrowseLayout") private var browseLayout: BrowseLayoutMode = .grid
   @AppStorage("isOffline") private var isOffline: Bool = false
+  @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("pinnedSmartListIds") private var pinnedStore: PinnedSmartListIds = .init()
   @State private var viewModel = SmartListsViewModel()
   @State private var hasInitialized = false
   @State private var showCreateSheet = false
@@ -24,10 +26,12 @@ struct SmartListsBrowseView: View {
   }
 
   /// The endpoint has no search param, so the submitted query filters the
-  /// unpaged list client-side.
+  /// unpaged list client-side. Pins are client-local and prepend like the
+  /// collection/read-list pages.
   private var displayedSmartLists: [SmartList] {
-    guard !searchText.isEmpty else { return viewModel.smartLists }
-    return viewModel.smartLists.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    let ordered = pinnedStore.pinnedFirst(viewModel.smartLists, instanceId: current.instanceId)
+    guard !searchText.isEmpty else { return ordered }
+    return ordered.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
   }
 
   private var emptyMessage: LocalizedStringKey {
@@ -109,6 +113,7 @@ struct SmartListsBrowseView: View {
                 )
               }
             }
+            .animation(.appCurve(), value: pinnedStore)
             .padding(.horizontal)
           case .list:
             LazyVStack {
@@ -119,6 +124,7 @@ struct SmartListsBrowseView: View {
                 }
               }
             }
+            .animation(.appCurve(), value: pinnedStore)
             .padding(.horizontal)
           }
         }

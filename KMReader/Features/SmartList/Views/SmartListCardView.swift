@@ -10,6 +10,9 @@ struct SmartListCardView: View {
   /// Text styles scale with this width.
   var cardWidth: CGFloat = LayoutConfig.gridCardWidth
 
+  @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("pinnedSmartListIds") private var pinnedStore: PinnedSmartListIds = .init()
+
   @State private var showDeleteConfirmation = false
   @State private var showEditSheet = false
 
@@ -19,7 +22,9 @@ struct SmartListCardView: View {
       thumbnailType: .smartList,
       title: smartList.name,
       cardWidth: cardWidth,
-      navigationLink: NavDestination.smartListDetail(smartListId: smartList.id)
+      navigationLink: NavDestination.smartListDetail(smartListId: smartList.id),
+      titleLeadingSystemImage: pinnedStore.isPinned(
+        smartListId: smartList.id, instanceId: current.instanceId) ? "pin.fill" : nil
     ) {
       SmartListContextMenu(
         smartList: smartList,

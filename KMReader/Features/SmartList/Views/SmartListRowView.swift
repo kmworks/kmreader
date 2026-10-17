@@ -8,6 +8,9 @@ import SwiftUI
 struct SmartListRowView: View {
   let smartList: SmartList
 
+  @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("pinnedSmartListIds") private var pinnedStore: PinnedSmartListIds = .init()
+
   @State private var showDeleteConfirmation = false
   @State private var showEditSheet = false
 
@@ -20,9 +23,16 @@ struct SmartListRowView: View {
 
       VStack(alignment: .leading, spacing: 6) {
         NavigationLink(value: NavDestination.smartListDetail(smartListId: smartList.id)) {
-          Text(smartList.name)
-            .font(.callout)
-            .lineLimit(2)
+          HStack(spacing: 6) {
+            Text(smartList.name)
+              .font(.callout)
+              .lineLimit(2)
+            if pinnedStore.isPinned(smartListId: smartList.id, instanceId: current.instanceId) {
+              Image(systemName: "pin.fill")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+          }
         }.adaptiveButtonStyle(.plain)
 
         HStack {
