@@ -361,9 +361,10 @@ struct DivinaControlsOverlayView: View {
           .allowsHitTesting(false)
       }
 
+      // No container contentShape: empty areas must fall through to the
+      // reader — per-page translate buttons sit under the bar in landscape.
       bottomOverlayContent(showPageButton: true)
         .padding()
-        .contentShape(Rectangle())
     }
     .background {
       gradientBackground(
