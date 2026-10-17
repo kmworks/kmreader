@@ -58,9 +58,12 @@ enum MangaBubbleBackground {
   }
 
   static func blobImage(size: CGSize, feather: CGFloat, color: CGColor) -> CGImage? {
+    // The opaque core must survive even on tiny boxes, so the feather can
+    // never eat half the box.
+    let feather = min(feather, (min(size.width, size.height) - 1) / 2)
     let width = Int(size.width.rounded())
     let height = Int(size.height.rounded())
-    guard width > 0, height > 0, feather * 2 < size.width, feather * 2 < size.height else { return nil }
+    guard width > 0, height > 0, feather > 0 else { return nil }
     guard
       let context = CGContext(
         data: nil,
