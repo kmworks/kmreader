@@ -35,7 +35,8 @@
         publicationReadingProgression: publicationReadingProgression
       )
       layout.configuration.fontResolver = resourceLoader.fontResolver
-      let input = try resourceLoader.makeInput(userStylesheet: layout.userStylesheet)
+      let input = try resourceLoader.makeInput(
+        userStylesheet: layout.userStylesheet, baseStylesheet: layout.baseStylesheet)
       document = HTMLLayoutDocument(
         input: input,
         configuration: layout.configuration,
