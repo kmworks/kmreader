@@ -49,6 +49,10 @@ struct MangaTranslationSettingsView: View {
           Text(String(localized: "Horizontal")).tag(MangaTranslationTextDirection.horizontal)
           Text(String(localized: "Vertical")).tag(MangaTranslationTextDirection.vertical)
         }
+        Picker(String(localized: "Bubble Shape"), selection: $preferences.bubbleShape) {
+          Text(String(localized: "Ellipse")).tag(MangaBubbleShape.ellipse)
+          Text(String(localized: "Rounded Rectangle")).tag(MangaBubbleShape.roundedRect)
+        }
       }
 
       Section(

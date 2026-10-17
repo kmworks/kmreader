@@ -9,6 +9,7 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
   var includeMetadata: Bool
   var showTranslation: Bool
   var textDirection: MangaTranslationTextDirection
+  var bubbleShape: MangaBubbleShape
 
   init(
     selectedProviderID: String = "",
@@ -16,7 +17,8 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     targetLanguage: String = "",
     includeMetadata: Bool = false,
     showTranslation: Bool = true,
-    textDirection: MangaTranslationTextDirection = .auto
+    textDirection: MangaTranslationTextDirection = .auto,
+    bubbleShape: MangaBubbleShape = .ellipse
   ) {
     self.selectedProviderID = selectedProviderID
     self.sourceLanguage = sourceLanguage
@@ -24,6 +26,7 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     self.includeMetadata = includeMetadata
     self.showTranslation = showTranslation
     self.textDirection = textDirection
+    self.bubbleShape = bubbleShape
   }
 
   init?(rawValue: String) {
@@ -45,7 +48,8 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
       includeMetadata: try container.decodeIfPresent(Bool.self, forKey: .includeMetadata) ?? false,
       showTranslation: try container.decodeIfPresent(Bool.self, forKey: .showTranslation) ?? true,
       textDirection: try container.decodeIfPresent(
-        MangaTranslationTextDirection.self, forKey: .textDirection) ?? .auto
+        MangaTranslationTextDirection.self, forKey: .textDirection) ?? .auto,
+      bubbleShape: try container.decodeIfPresent(MangaBubbleShape.self, forKey: .bubbleShape) ?? .ellipse
     )
   }
 
@@ -57,6 +61,7 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     try container.encode(includeMetadata, forKey: .includeMetadata)
     try container.encode(showTranslation, forKey: .showTranslation)
     try container.encode(textDirection, forKey: .textDirection)
+    try container.encode(bubbleShape, forKey: .bubbleShape)
   }
 
   nonisolated var rawValue: String {
@@ -73,5 +78,6 @@ nonisolated struct MangaTranslationPreferences: Codable, Equatable, RawRepresent
     case includeMetadata
     case showTranslation
     case textDirection
+    case bubbleShape
   }
 }

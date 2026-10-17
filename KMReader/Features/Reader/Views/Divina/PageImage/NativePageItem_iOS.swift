@@ -301,6 +301,7 @@
         visible: viewModel.showMangaTranslation,
         background: background,
         direction: AppConfig.mangaTranslation.textDirection,
+        shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageSourceImage
       )
       updateShadowAppearance()

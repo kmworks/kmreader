@@ -8,6 +8,7 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
+    private var shape: MangaBubbleShape = .ellipse
     private var sourceImageID: ObjectIdentifier?
     private var regionColors: [CGColor] = []
 
@@ -27,13 +28,14 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection, image: PlatformImage?
+      direction: MangaTranslationTextDirection, shape: MangaBubbleShape, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
+      self.shape = shape
       let imageID = image.map { ObjectIdentifier($0) }
       let imageChanged = imageID != sourceImageID
       sourceImageID = imageID
@@ -120,12 +122,13 @@ import SwiftUI
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
           bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
-            forBoxSize: container.bounds.size, boxKind: result.boxKind)
+            forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
           bubbleBackground.feather = feather
+          bubbleBackground.shape = shape
         }
 
         let textFrame = MangaBubbleBackground.textFrame(
-          forBoxSize: container.bounds.size, boxKind: result.boxKind)
+          forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
         guard
           let child = container.subviews.first(where: {
             $0 is UILabel || $0 is MangaVerticalTextLabel
@@ -172,6 +175,7 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
+    private var shape: MangaBubbleShape = .ellipse
     private var sourceImageID: ObjectIdentifier?
     private var regionColors: [CGColor] = []
 
@@ -191,13 +195,14 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection, image: PlatformImage?
+      direction: MangaTranslationTextDirection, shape: MangaBubbleShape, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
+      self.shape = shape
       let imageID = image.map { ObjectIdentifier($0) }
       let imageChanged = imageID != sourceImageID
       sourceImageID = imageID
@@ -287,12 +292,13 @@ import SwiftUI
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
           bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
-            forBoxSize: container.bounds.size, boxKind: result.boxKind)
+            forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
           bubbleBackground.feather = feather
+          bubbleBackground.shape = shape
         }
 
         let textFrame = MangaBubbleBackground.textFrame(
-          forBoxSize: container.bounds.size, boxKind: result.boxKind)
+          forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
         guard
           let child = container.subviews.first(where: {
             $0 is NSTextField || $0 is MangaVerticalTextLabel
