@@ -83,14 +83,24 @@ extension ReaderViewModel {
   }
 
   func handleMangaTranslationButtonTap(for pageID: ReaderPageID, splitMode: PageSplitMode) {
-    if mangaTranslationResult(for: pageID, splitMode: splitMode)?.isTranslated == true {
-      let key = sessionKey(for: pageID, splitMode: splitMode)
+    let key = sessionKey(for: pageID, splitMode: splitMode)
+    if mangaTranslationResults[key]?.isTranslated == true {
       mangaTranslationVisibilityOverrides[key] = !mangaTranslationOverlayVisible(
         for: pageID, splitMode: splitMode)
-      notifyPagePresentationInvalidation(.pages([pageID]))
-    } else {
+    } else if key == currentMangaTranslationSessionKey() {
       translateCurrentPage()
+    } else {
+      translateTappedPage(key)
     }
+  }
+
+  /// A tapped sibling page translates on its own queue: routing it through the
+  /// current page would force-retry the focused page's result and drop the
+  /// tapped page's manual failure reporting.
+  private func translateTappedPage(_ key: MangaTranslationSessionKey) {
+    guard mangaTranslationEnabled, !mangaTranslationPhase.isBusy else { return }
+    guard !mangaTranslationLanguagesMatch(forBookId: key.pageID.bookId) else { return }
+    startMangaTranslationQueue(keys: [key], frontForceRetry: false, frontManual: true)
   }
 
   /// A page's overlay shows unless it was individually hidden; the shared
@@ -232,7 +242,6 @@ extension ReaderViewModel {
       // A manual retry hides the previous overlay while it re-runs.
       mangaTranslationResults.removeValue(forKey: front)
       mangaTranslationResultOrder.removeAll { $0 == front }
-      notifyPagePresentationInvalidation(.pages([front.pageID]))
     }
     stopMangaTranslationQueue()
     let queueID = UUID()
@@ -419,7 +428,6 @@ extension ReaderViewModel {
       }
       mangaTranslationResultOrder.removeFirst(overflow)
     }
-    notifyPagePresentationInvalidation(.pages([sessionKey.pageID]))
     if sessionKey == currentMangaTranslationSessionKey() {
       mangaTranslationPhase = phase(for: result)
     }
