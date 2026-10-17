@@ -126,12 +126,6 @@ struct SidebarView: View {
 
     if !store.libraries.isEmpty {
       Section(isExpanded: librariesExpandedBinding) {
-        NavigationLink(value: NavDestination.browse(scope: .all)) {
-          SidebarItemLabel(
-            title: String(localized: "All Libraries"),
-            count: nil
-          )
-        }
         if !dashboard.libraryIds.isEmpty {
           NavigationLink(value: NavDestination.browse(scope: .pinned)) {
             SidebarItemLabel(
@@ -139,6 +133,12 @@ struct SidebarView: View {
               count: nil
             )
           }
+        }
+        NavigationLink(value: NavDestination.browse(scope: .all)) {
+          SidebarItemLabel(
+            title: String(localized: "All Libraries"),
+            count: nil
+          )
         }
         ForEach(store.libraries) { library in
           let destination = NavDestination.browseLibrary(
