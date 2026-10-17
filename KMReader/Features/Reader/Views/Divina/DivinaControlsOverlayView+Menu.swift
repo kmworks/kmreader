@@ -92,23 +92,25 @@ extension DivinaControlsOverlayView {
       }
 
       #if os(iOS) || os(macOS)
-        Divider()
+        if viewModel.mangaTranslationSupported {
+          Divider()
 
-        Button {
-          viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
-        } label: {
-          Label(
-            String(localized: "Manga Translation"),
-            systemImage: viewModel.mangaTranslationEnabled
-              ? AppIcon.confirm : AppIcon.mangaTranslation
-          )
-        }
-
-        if viewModel.mangaTranslationEnabled {
           Button {
-            showingMangaTranslationSettings = true
+            viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
           } label: {
-            Label(String(localized: "Translation Settings"), systemImage: "slider.horizontal.3")
+            Label(
+              String(localized: "Manga Translation"),
+              systemImage: viewModel.mangaTranslationEnabled
+                ? AppIcon.confirm : AppIcon.mangaTranslation
+            )
+          }
+
+          if viewModel.mangaTranslationEnabled {
+            Button {
+              showingMangaTranslationSettings = true
+            } label: {
+              Label(String(localized: "Translation Settings"), systemImage: "slider.horizontal.3")
+            }
           }
         }
       #endif

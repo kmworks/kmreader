@@ -66,7 +66,7 @@
         effectView.isHidden = false
         layer?.backgroundColor = nil
         glyphView.contentTintColor = .black
-      case .inverted:
+      case .overlayVisible:
         effectView.isHidden = true
         layer?.backgroundColor = NSColor.black.cgColor
         glyphView.contentTintColor = .white

@@ -21,8 +21,6 @@
     private let overlayView = ImageAnalysisOverlayView()
     private let mangaOverlayView = MangaOverlayView()
     private let translationButton = MangaTranslationButton()
-    private var translationObserverToken: UUID?
-    private weak var translationObserverViewModel: ReaderViewModel?
     private var analysisTask: Task<Void, Never>?
     private var analyzedImage: NSImage?
     private var analysisRequestID: UInt64 = 0
@@ -62,11 +60,6 @@
     func prepareForDismantle() {
       clearAnalysis()
       updateContextMenu(menu: nil)
-      if let token = translationObserverToken {
-        translationObserverViewModel?.removeMangaTranslationStateObserver(token)
-        translationObserverToken = nil
-        translationObserverViewModel = nil
-      }
       translationButton.isHidden = true
       updateAnimatedPlayback(sourceFileURL: nil)
       imageView.isHidden = false
@@ -100,10 +93,7 @@
           }
         }
         updateContextMenu()
-        if let viewModel = readerViewModel {
-          updateTranslationStateObserver(viewModel)
-          updateTranslationButton()
-        }
+        updateTranslationButton()
       }
     }
 
@@ -348,22 +338,10 @@
         shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageSourceImage
       )
-      updateTranslationStateObserver(viewModel)
       updateTranslationButton()
       updateShadowAppearance()
       updateContextMenu()
       updateOverlaysPosition()
-    }
-
-    private func updateTranslationStateObserver(_ viewModel: ReaderViewModel) {
-      guard translationObserverViewModel !== viewModel || translationObserverToken == nil else { return }
-      if let token = translationObserverToken {
-        translationObserverViewModel?.removeMangaTranslationStateObserver(token)
-      }
-      translationObserverViewModel = viewModel
-      translationObserverToken = viewModel.addMangaTranslationStateObserver { [weak self] in
-        self?.updateTranslationButton()
-      }
     }
 
     private func updateTranslationButton() {

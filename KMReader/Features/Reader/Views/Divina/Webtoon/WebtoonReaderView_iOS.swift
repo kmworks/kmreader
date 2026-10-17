@@ -152,7 +152,6 @@
       private var sizeProbeTasks: [ReaderPageID: Task<Void, Never>] = [:]
       private var pendingMeasuredPageIDs: Set<ReaderPageID> = []
       private var pagePresentationObserverToken: UUID?
-      private var mangaTranslationObserverToken: UUID?
 
       private struct ScrollAnchor {
         let pageID: ReaderPageID
@@ -616,23 +615,13 @@
           [weak self] _ in
           guard let self, let collectionView else { return }
           self.refreshVisibleFooterCells(in: collectionView)
-          self.refreshVisibleMangaTranslationCells(in: collectionView)
-        }
-        mangaTranslationObserverToken = viewModel.addMangaTranslationStateObserver { [weak self] in
-          guard let self, let collectionView else { return }
-          self.refreshVisibleMangaTranslationCells(in: collectionView)
         }
       }
 
       private func unregisterViewModelObservation() {
-        if let token = pagePresentationObserverToken {
-          viewModel?.removePagePresentationInvalidationObserver(token)
-          pagePresentationObserverToken = nil
-        }
-        if let token = mangaTranslationObserverToken {
-          viewModel?.removeMangaTranslationStateObserver(token)
-          mangaTranslationObserverToken = nil
-        }
+        guard let token = pagePresentationObserverToken else { return }
+        viewModel?.removePagePresentationInvalidationObserver(token)
+        pagePresentationObserverToken = nil
       }
 
       private func refreshVisibleFooterCells(in collectionView: UICollectionView) {
@@ -652,28 +641,6 @@
             nextBookOfflineState: viewModel?.nextBookOfflineState(forSegmentBookId: segmentBookId),
             remainingUnreadCount: viewModel?.remainingUnreadCount(forSegmentBookId: segmentBookId),
             onDismiss: onDismiss
-          )
-        }
-      }
-
-      private func refreshVisibleMangaTranslationCells(in collectionView: UICollectionView) {
-        for cell in collectionView.visibleCells {
-          guard let pageCell = cell as? WebtoonPageCell,
-            let indexPath = collectionView.indexPath(for: pageCell),
-            indexPath.item < scrollEngine.contentItems.count,
-            case .page(let pageID) = scrollEngine.contentItems[indexPath.item]
-          else {
-            continue
-          }
-          pageCell.updateMangaTranslation(
-            result: viewModel?.mangaTranslationResult(for: pageID, splitMode: .none),
-            visible: viewModel?.mangaTranslationOverlayVisible(for: pageID, splitMode: .none) ?? false
-          )
-          pageCell.onTranslationTapped = { [weak self] in
-            self?.viewModel?.handleMangaTranslationButtonTap(for: pageID, splitMode: .none)
-          }
-          pageCell.updateTranslationButton(
-            state: viewModel?.mangaTranslationButtonState(for: pageID, splitMode: .none)
           )
         }
       }
@@ -842,16 +809,6 @@
             pageLabel: pageLabel,
             image: displayImage,
             showPageNumber: showPageNumber
-          )
-          cell.updateMangaTranslation(
-            result: viewModel?.mangaTranslationResult(for: pageID, splitMode: .none),
-            visible: viewModel?.mangaTranslationOverlayVisible(for: pageID, splitMode: .none) ?? false
-          )
-          cell.onTranslationTapped = { [weak self] in
-            self?.viewModel?.handleMangaTranslationButtonTap(for: pageID, splitMode: .none)
-          }
-          cell.updateTranslationButton(
-            state: viewModel?.mangaTranslationButtonState(for: pageID, splitMode: .none)
           )
 
           return cell

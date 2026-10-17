@@ -1637,7 +1637,7 @@ struct DivinaReaderView: View {
         supportsRotationSelection: readingDirection != .webtoon,
         supportsDualPageOptions: supportsDualPageOptions,
         supportsSplitWidePageMode: supportsSplitWidePageMode,
-        supportsMangaTranslation: true,
+        supportsMangaTranslation: viewModel.mangaTranslationSupported,
         mangaTranslationEnabled: viewModel.mangaTranslationEnabled
       )
     }

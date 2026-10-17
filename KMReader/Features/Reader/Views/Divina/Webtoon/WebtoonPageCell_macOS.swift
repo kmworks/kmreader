@@ -10,8 +10,6 @@
   class WebtoonPageCell: NSCollectionViewItem {
     private let pageImageView = NSImageView()
     private let sepiaOverlayView = NSView()
-    private let mangaOverlayView = MangaOverlayView()
-    private let translationButton = MangaTranslationButton()
     private let loadingIndicator = NSProgressIndicator()
     private let pageMarkerLabel = NSTextField(labelWithString: "")
     private let pageMarkerContainer = NSView()
@@ -22,10 +20,6 @@
     private var retryToDetailConstraint: NSLayoutConstraint?
 
     var onRetry: (() -> Void)?
-    var onTranslationTapped: (() -> Void)?
-    private var mangaTranslationResult: MangaPageTranslation?
-    private var showsMangaTranslation = false
-    private var translationButtonState: MangaTranslationButtonState?
 
     var readerBackground: ReaderBackground = .system {
       didSet {
@@ -58,16 +52,6 @@
       sepiaOverlayView.autoresizingMask = [.width, .height]
       sepiaOverlayView.frame = view.bounds
       view.addSubview(sepiaOverlayView)
-
-      mangaOverlayView.autoresizingMask = [.width, .height]
-      mangaOverlayView.frame = view.bounds
-      view.addSubview(mangaOverlayView)
-
-      translationButton.isHidden = true
-      translationButton.target = self
-      translationButton.action = #selector(handleTranslationClicked)
-      translationButton.translatesAutoresizingMaskIntoConstraints = false
-      view.addSubview(translationButton)
 
       pageMarkerContainer.wantsLayer = true
       pageMarkerContainer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
@@ -123,13 +107,6 @@
       retryToErrorConstraint?.isActive = true
 
       NSLayoutConstraint.activate([
-        translationButton.widthAnchor.constraint(equalToConstant: MangaTranslationButtonMetrics.size),
-        translationButton.heightAnchor.constraint(equalToConstant: MangaTranslationButtonMetrics.size),
-        translationButton.trailingAnchor.constraint(
-          equalTo: view.trailingAnchor, constant: -MangaTranslationButtonMetrics.cornerInset),
-        translationButton.bottomAnchor.constraint(
-          equalTo: view.bottomAnchor, constant: -MangaTranslationButtonMetrics.cornerInset),
-
         pageMarkerContainer.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
         pageMarkerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
         pageMarkerContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 30),
@@ -163,31 +140,10 @@
       onRetry?()
     }
 
-    @objc private func handleTranslationClicked() {
-      onTranslationTapped?()
-    }
-
-    func updateTranslationButton(state: MangaTranslationButtonState?) {
-      translationButtonState = state
-      applyTranslationButton()
-    }
-
-    /// The button rides on the image, so it only exists once a page image is
-    /// actually displayed — never over the loading or error state.
-    private func applyTranslationButton() {
-      guard let state = translationButtonState, pageImageView.image != nil, errorLabel.isHidden else {
-        translationButton.isHidden = true
-        return
-      }
-      translationButton.isHidden = false
-      translationButton.update(state: state)
-    }
-
     override func viewDidLayout() {
       super.viewDidLayout()
       pageImageView.frame = view.bounds
       sepiaOverlayView.frame = view.bounds
-      mangaOverlayView.frame = view.bounds
     }
 
     private class FlippedView: NSView {
@@ -198,14 +154,6 @@
       view.layer?.backgroundColor = NSColor(readerBackground.color).cgColor
       pageImageView.layer?.backgroundColor = NSColor(readerBackground.color).cgColor
       updateSepiaOverlay()
-      mangaOverlayView.update(
-        result: mangaTranslationResult,
-        visible: showsMangaTranslation,
-        background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
-        image: pageImageView.image
-      )
     }
 
     private func updateSepiaOverlay() {
@@ -218,19 +166,6 @@
       sepiaOverlayView.isHidden = false
       sepiaOverlayView.layer?.backgroundColor = NSColor(readerBackground.color).cgColor
       sepiaOverlayView.layer?.compositingFilter = "multiplyBlendMode"
-    }
-
-    func updateMangaTranslation(result: MangaPageTranslation?, visible: Bool) {
-      mangaTranslationResult = result
-      showsMangaTranslation = visible
-      mangaOverlayView.update(
-        result: result,
-        visible: visible,
-        background: readerBackground,
-        direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
-        image: pageImageView.image
-      )
     }
 
     func configure(
@@ -251,7 +186,6 @@
         errorDetailLabel.isHidden = true
         retryButton.isHidden = true
         loadingIndicator.startAnimation(nil)
-        applyTranslationButton()
       }
     }
 
@@ -263,8 +197,6 @@
       retryButton.isHidden = true
       pageImageView.image = image
       pageImageView.alphaValue = 1.0
-      updateMangaTranslation(result: mangaTranslationResult, visible: showsMangaTranslation)
-      applyTranslationButton()
     }
 
     func showError(failure: ReaderPageLoadFailure? = nil) {
@@ -277,7 +209,6 @@
       retryToDetailConstraint?.isActive = failure?.detail != nil
       retryToErrorConstraint?.isActive = failure?.detail == nil
       retryButton.isHidden = false
-      applyTranslationButton()
     }
 
     override func prepareForReuse() {
@@ -289,12 +220,6 @@
       errorDetailLabel.isHidden = true
       retryButton.isHidden = true
       onRetry = nil
-      onTranslationTapped = nil
-      translationButtonState = nil
-      translationButton.isHidden = true
-      mangaTranslationResult = nil
-      showsMangaTranslation = false
-      mangaOverlayView.clear()
       pageMarkerContainer.isHidden = true
     }
   }

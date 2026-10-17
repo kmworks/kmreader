@@ -46,32 +46,32 @@ class ReaderViewModel {
   var presentedPageContextMenuCount = 0
   var isPageContextMenuPresented: Bool { presentedPageContextMenuCount > 0 }
   var mangaTranslationPhase: MangaTranslationPhase = .idle {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   var showMangaTranslation = AppConfig.mangaTranslation.showTranslation {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   /// Session-scoped on purpose: every reader session starts with translation off.
   var mangaTranslationEnabled = false {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   /// Translated/no-text results for this session, keyed by page and geometry.
   /// Failed attempts are never kept so they retry when the page is revisited.
   var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:] {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   /// Per-page overlay visibility overrides, falling back to the shared
   /// showMangaTranslation default when a page has no entry.
   var mangaTranslationVisibilityOverrides: [MangaTranslationSessionKey: Bool] = [:] {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   /// Failures from manual page taps that produced no result, kept so their
   /// buttons can show the failure tint until the page is retried.
   var mangaTranslationFailures: [MangaTranslationSessionKey: MangaTranslationFailure] = [:] {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:] {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   @ObservationIgnored
   var mangaTranslationQueueTask: Task<Void, Never>?
@@ -84,11 +84,11 @@ class ReaderViewModel {
   /// silent prefetch.
   @ObservationIgnored
   var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = [] {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   @ObservationIgnored
   var mangaTranslationInFlightKey: MangaTranslationSessionKey? {
-    didSet { notifyMangaTranslationStateChanged() }
+    didSet { notifyPagePresentationInvalidation(.mangaTranslation) }
   }
   @ObservationIgnored
   var mangaTranslationQueueFrontForceRetry = false
@@ -109,9 +109,6 @@ class ReaderViewModel {
   typealias PagePresentationInvalidationHandler = @MainActor (ReaderPagePresentationInvalidation) -> Void
   @ObservationIgnored
   private var pagePresentationInvalidationHandlers: [UUID: PagePresentationInvalidationHandler] = [:]
-  typealias MangaTranslationStateHandler = @MainActor () -> Void
-  @ObservationIgnored
-  private var mangaTranslationStateHandlers: [UUID: MangaTranslationStateHandler] = [:]
   @ObservationIgnored
   private var pdfPreparationTasks: [String: Task<Void, Never>] = [:]
   @ObservationIgnored
@@ -405,27 +402,6 @@ class ReaderViewModel {
 
   func removePagePresentationInvalidationObserver(_ token: UUID) {
     pagePresentationInvalidationHandlers.removeValue(forKey: token)
-  }
-
-  func addMangaTranslationStateObserver(
-    _ handler: @escaping MangaTranslationStateHandler
-  ) -> UUID {
-    let token = UUID()
-    mangaTranslationStateHandlers[token] = handler
-    return token
-  }
-
-  func removeMangaTranslationStateObserver(_ token: UUID) {
-    mangaTranslationStateHandlers.removeValue(forKey: token)
-  }
-
-  /// Drives the per-page translate buttons, which live in UIKit/AppKit page
-  /// hosts that cannot observe `@Observable` changes on their own.
-  private func notifyMangaTranslationStateChanged() {
-    // Handlers are allowed to unregister themselves while being called.
-    for handler in Array(mangaTranslationStateHandlers.values) {
-      handler()
-    }
   }
 
   func notifyPagePresentationInvalidation(
@@ -1480,7 +1456,12 @@ class ReaderViewModel {
   func updateReadingDirection(_ direction: ReadingDirection) {
     guard readingDirection != direction else { return }
     readingDirection = direction
-    syncMangaTranslationPage()
+    if direction == .webtoon {
+      cancelMangaTranslation()
+      notifyPagePresentationInvalidation(.all)
+    } else {
+      syncMangaTranslationPage()
+    }
   }
 
   func updateSplitWidePageMode(_ mode: SplitWidePageMode) {

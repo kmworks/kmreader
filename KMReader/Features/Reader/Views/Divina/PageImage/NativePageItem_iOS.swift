@@ -42,8 +42,6 @@
 
     #if os(iOS)
       private let translationButton = MangaTranslationButton()
-      private var translationObserverToken: UUID?
-      private weak var translationObserverViewModel: ReaderViewModel?
     #endif
 
     #if os(iOS)
@@ -78,11 +76,6 @@
       #if os(iOS)
         removeContextMenuInteractionIfNeeded()
         releaseContextMenuSuppression()
-        if let token = translationObserverToken {
-          translationObserverViewModel?.removeMangaTranslationStateObserver(token)
-          translationObserverToken = nil
-          translationObserverViewModel = nil
-        }
         translationButton.isHidden = true
       #endif
       updateAnimatedPlayback(sourceFileURL: nil)
@@ -118,10 +111,7 @@
         #endif
         #if os(iOS)
           updateContextMenuInteraction()
-          if let viewModel {
-            updateTranslationStateObserver(viewModel)
-            updateTranslationButton()
-          }
+          updateTranslationButton()
         #endif
       }
     }
@@ -327,7 +317,6 @@
         image: pageSourceImage
       )
       #if os(iOS)
-        updateTranslationStateObserver(viewModel)
         updateTranslationButton()
       #endif
       updateShadowAppearance()
@@ -335,17 +324,6 @@
     }
 
     #if os(iOS)
-      private func updateTranslationStateObserver(_ viewModel: ReaderViewModel) {
-        guard translationObserverViewModel !== viewModel || translationObserverToken == nil else { return }
-        if let token = translationObserverToken {
-          translationObserverViewModel?.removeMangaTranslationStateObserver(token)
-        }
-        translationObserverViewModel = viewModel
-        translationObserverToken = viewModel.addMangaTranslationStateObserver { [weak self] in
-          self?.updateTranslationButton()
-        }
-      }
-
       private func updateTranslationButton() {
         guard let data = currentData,
           let viewModel,

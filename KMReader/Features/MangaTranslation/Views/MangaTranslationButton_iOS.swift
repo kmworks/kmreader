@@ -52,7 +52,7 @@
         blurView.effect = UIBlurEffect(style: .systemThickMaterial)
         blurView.backgroundColor = .clear
         glyphView.tintColor = .black
-      case .inverted:
+      case .overlayVisible:
         blurView.effect = nil
         blurView.backgroundColor = .black
         glyphView.tintColor = .white

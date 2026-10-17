@@ -24,6 +24,13 @@ extension ReaderViewModel {
     return mangaTranslationLanguagesMatch(forBookId: bookId)
   }
 
+  /// Webtoon strips have no per-page translation: a long strip binds several
+  /// pages into one view item, so page-level triggering and feedback cannot
+  /// be attributed cleanly.
+  var mangaTranslationSupported: Bool {
+    readingDirection != .webtoon
+  }
+
   func mangaTranslationLanguagesMatch(forBookId bookId: String) -> Bool {
     let languages = MangaTranslationConfiguration.resolvedLanguages(
       sourceLanguage: mangaTranslationMetadataByBookId[bookId]?.sourceLanguage,
@@ -51,7 +58,7 @@ extension ReaderViewModel {
     let style: MangaTranslationButtonState.Style =
       (phase?.isFailed == true || mangaTranslationFailures[key] != nil)
       ? .failure
-      : (overlayVisible ? .inverted : .normal)
+      : (overlayVisible ? .overlayVisible : .normal)
     let isBusy = phase?.isBusy ?? mangaTranslationIsActive(for: pageID, splitMode: splitMode)
     let accessibilityLabel: String
     if result?.isTranslated == true {
@@ -82,7 +89,7 @@ extension ReaderViewModel {
         for: pageID, splitMode: splitMode)
       notifyPagePresentationInvalidation(.pages([pageID]))
     } else {
-      translatePage(pageID, splitMode: splitMode)
+      translateCurrentPage()
     }
   }
 
@@ -91,26 +98,6 @@ extension ReaderViewModel {
   func mangaTranslationOverlayVisible(for pageID: ReaderPageID, splitMode: PageSplitMode) -> Bool {
     mangaTranslationVisibilityOverrides[sessionKey(for: pageID, splitMode: splitMode)]
       ?? showMangaTranslation
-  }
-
-  /// Translates one tapped page. A page in the current view item rides the
-  /// usual item-wide queue so a dual-page spread still switches together; any
-  /// other page (webtoon) cuts to the front of the queue while the work
-  /// already queued keeps its place behind it instead of being discarded.
-  func translatePage(_ pageID: ReaderPageID, splitMode: PageSplitMode) {
-    guard mangaTranslationEnabled, !mangaTranslationLanguagesMatch(forBookId: pageID.bookId) else { return }
-    if let item = currentViewItem(), item.pageIDs.contains(pageID) {
-      translateCurrentPage()
-      return
-    }
-    let key = sessionKey(for: pageID, splitMode: splitMode)
-    let pendingKeys = pendingMangaTranslationQueueKeys()
-    guard !pendingKeys.contains(key) else { return }
-    startMangaTranslationQueue(
-      keys: [key] + pendingKeys,
-      frontForceRetry: mangaTranslationResults[key] != nil,
-      frontManual: true
-    )
   }
 
   func mangaTranslationResult(for data: NativePageData) -> MangaPageTranslation? {
@@ -168,6 +155,7 @@ extension ReaderViewModel {
 
   func setMangaTranslationEnabled(_ isEnabled: Bool) {
     guard mangaTranslationEnabled != isEnabled else { return }
+    guard !isEnabled || mangaTranslationSupported else { return }
     mangaTranslationEnabled = isEnabled
     if isEnabled {
       // Live Text and the translation overlay cannot analyze the same page.
@@ -496,8 +484,8 @@ extension ReaderViewModel {
     MangaTranslationSessionKey(
       pageID: pageID,
       splitMode: splitMode,
-      rotation: currentMangaRotation,
-      borderCropMode: currentMangaBorderCropMode,
+      rotation: rotation,
+      borderCropMode: AppConfig.divinaPageBorderCropMode,
       configurationStamp: MangaTranslationSessionKey.currentConfigurationStamp()
     )
   }
@@ -524,14 +512,6 @@ extension ReaderViewModel {
       readingDirection: readingDirection,
       splitWidePageMode: splitWidePageMode
     ) ? .leftHalf : .rightHalf
-  }
-
-  private var currentMangaRotation: ReaderRotation {
-    readingDirection == .webtoon ? .none : rotation
-  }
-
-  private var currentMangaBorderCropMode: ReaderPageBorderCropMode {
-    readingDirection == .webtoon ? .disabled : AppConfig.divinaPageBorderCropMode
   }
 
   private func makeTranslationKey(
