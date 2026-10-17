@@ -335,7 +335,6 @@
           for: data.pageID, splitMode: data.splitMode) ?? false,
         background: background,
         direction: AppConfig.mangaTranslation.textDirection,
-        shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageSourceImage
       )
       updateTranslationButton()

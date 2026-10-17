@@ -8,7 +8,6 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
-    private var shape: MangaBubbleShape = .ellipse
     private var sourceImageID: ObjectIdentifier?
     private var regionColors: [CGColor] = []
 
@@ -28,14 +27,13 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection, shape: MangaBubbleShape, image: PlatformImage?
+      direction: MangaTranslationTextDirection, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
-      self.shape = shape
       let imageID = image.map { ObjectIdentifier($0) }
       let imageChanged = imageID != sourceImageID
       sourceImageID = imageID
@@ -122,13 +120,12 @@ import SwiftUI
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
           bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
-            forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
+            forBoxSize: container.bounds.size, boxKind: result.boxKind)
           bubbleBackground.feather = feather
-          bubbleBackground.shape = shape
         }
 
         let textFrame = MangaBubbleBackground.textFrame(
-          forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
+          forBoxSize: container.bounds.size, boxKind: result.boxKind)
         guard
           let child = container.subviews.first(where: {
             $0 is UILabel || $0 is MangaVerticalTextLabel
@@ -151,14 +148,13 @@ import SwiftUI
     private func fitFont(for bubble: UILabel) {
       guard bubble.bounds.width > 0, bubble.bounds.height > 0 else { return }
       var fontSize = min(17, max(12, bubble.bounds.height * 0.35))
-      for _ in 0..<4 {
+      for _ in 0..<5 {
         bubble.font = .systemFont(ofSize: fontSize, weight: .medium)
         let neededSize = bubble.sizeThatFits(
           CGSize(width: bubble.bounds.width, height: .greatestFiniteMagnitude)
         )
         if neededSize.height <= bubble.bounds.height + 0.5 { break }
-        let scale = max(0.7, bubble.bounds.height / max(neededSize.height, 1))
-        let nextSize = max(8, fontSize * scale)
+        let nextSize = max(8, fontSize * 0.85)
         if nextSize == fontSize { break }
         fontSize = nextSize
       }
@@ -175,7 +171,6 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
-    private var shape: MangaBubbleShape = .ellipse
     private var sourceImageID: ObjectIdentifier?
     private var regionColors: [CGColor] = []
 
@@ -195,14 +190,13 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection, shape: MangaBubbleShape, image: PlatformImage?
+      direction: MangaTranslationTextDirection, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
-      self.shape = shape
       let imageID = image.map { ObjectIdentifier($0) }
       let imageChanged = imageID != sourceImageID
       sourceImageID = imageID
@@ -292,13 +286,12 @@ import SwiftUI
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
           bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
-            forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
+            forBoxSize: container.bounds.size, boxKind: result.boxKind)
           bubbleBackground.feather = feather
-          bubbleBackground.shape = shape
         }
 
         let textFrame = MangaBubbleBackground.textFrame(
-          forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
+          forBoxSize: container.bounds.size, boxKind: result.boxKind)
         guard
           let child = container.subviews.first(where: {
             $0 is NSTextField || $0 is MangaVerticalTextLabel
@@ -321,14 +314,13 @@ import SwiftUI
     private func fitFont(for bubble: NSTextField) {
       guard bubble.bounds.width > 0, bubble.bounds.height > 0 else { return }
       var fontSize = min(17, max(12, bubble.bounds.height * 0.35))
-      for _ in 0..<4 {
+      for _ in 0..<5 {
         bubble.font = .systemFont(ofSize: fontSize, weight: .medium)
         let neededSize = bubble.sizeThatFits(
           CGSize(width: bubble.bounds.width, height: .greatestFiniteMagnitude)
         )
         if neededSize.height <= bubble.bounds.height + 0.5 { break }
-        let scale = max(0.7, bubble.bounds.height / max(neededSize.height, 1))
-        let nextSize = max(8, fontSize * scale)
+        let nextSize = max(8, fontSize * 0.85)
         if nextSize == fontSize { break }
         fontSize = nextSize
       }

@@ -41,7 +41,8 @@ nonisolated struct MangaPageTranslation: Codable, Hashable, Sendable {
     // language, which keeps their rendering horizontal.
     targetLanguage = try container.decodeIfPresent(String.self, forKey: .targetLanguage) ?? ""
     // Rows cached before the field existed fall back to text-tight geometry:
-    // its outgrown ellipse keeps corner text covered for either box kind.
+    // the rounded rectangle hugs the box for either kind, and the small-inset
+    // text area still lands inside the bubble.
     boxKind = try container.decodeIfPresent(MangaTextBoxKind.self, forKey: .boxKind) ?? .text
     createdAt = try container.decode(Date.self, forKey: .createdAt)
   }
