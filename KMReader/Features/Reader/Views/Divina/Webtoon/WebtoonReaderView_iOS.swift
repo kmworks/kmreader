@@ -152,6 +152,7 @@
       private var sizeProbeTasks: [ReaderPageID: Task<Void, Never>] = [:]
       private var pendingMeasuredPageIDs: Set<ReaderPageID> = []
       private var pagePresentationObserverToken: UUID?
+      private var mangaTranslationObserverToken: UUID?
 
       private struct ScrollAnchor {
         let pageID: ReaderPageID
@@ -617,12 +618,21 @@
           self.refreshVisibleFooterCells(in: collectionView)
           self.refreshVisibleMangaTranslationCells(in: collectionView)
         }
+        mangaTranslationObserverToken = viewModel.addMangaTranslationStateObserver { [weak self] in
+          guard let self, let collectionView else { return }
+          self.refreshVisibleMangaTranslationCells(in: collectionView)
+        }
       }
 
       private func unregisterViewModelObservation() {
-        guard let token = pagePresentationObserverToken else { return }
-        viewModel?.removePagePresentationInvalidationObserver(token)
-        pagePresentationObserverToken = nil
+        if let token = pagePresentationObserverToken {
+          viewModel?.removePagePresentationInvalidationObserver(token)
+          pagePresentationObserverToken = nil
+        }
+        if let token = mangaTranslationObserverToken {
+          viewModel?.removeMangaTranslationStateObserver(token)
+          mangaTranslationObserverToken = nil
+        }
       }
 
       private func refreshVisibleFooterCells(in collectionView: UICollectionView) {
@@ -657,7 +667,13 @@
           }
           pageCell.updateMangaTranslation(
             result: viewModel?.mangaTranslationResult(for: pageID, splitMode: .none),
-            visible: viewModel?.showMangaTranslation ?? false
+            visible: viewModel?.mangaTranslationOverlayVisible(for: pageID, splitMode: .none) ?? false
+          )
+          pageCell.onTranslationTapped = { [weak self] in
+            self?.viewModel?.handleMangaTranslationButtonTap(for: pageID, splitMode: .none)
+          }
+          pageCell.updateTranslationButton(
+            state: viewModel?.mangaTranslationButtonState(for: pageID, splitMode: .none)
           )
         }
       }
@@ -829,7 +845,13 @@
           )
           cell.updateMangaTranslation(
             result: viewModel?.mangaTranslationResult(for: pageID, splitMode: .none),
-            visible: viewModel?.showMangaTranslation ?? false
+            visible: viewModel?.mangaTranslationOverlayVisible(for: pageID, splitMode: .none) ?? false
+          )
+          cell.onTranslationTapped = { [weak self] in
+            self?.viewModel?.handleMangaTranslationButtonTap(for: pageID, splitMode: .none)
+          }
+          cell.updateTranslationButton(
+            state: viewModel?.mangaTranslationButtonState(for: pageID, splitMode: .none)
           )
 
           return cell

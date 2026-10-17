@@ -92,6 +92,8 @@ extension DivinaControlsOverlayView {
       }
 
       #if os(iOS) || os(macOS)
+        Divider()
+
         Button {
           viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
         } label: {
@@ -100,6 +102,14 @@ extension DivinaControlsOverlayView {
             systemImage: viewModel.mangaTranslationEnabled
               ? AppIcon.confirm : AppIcon.mangaTranslation
           )
+        }
+
+        if viewModel.mangaTranslationEnabled {
+          Button {
+            showingMangaTranslationSettings = true
+          } label: {
+            Label(String(localized: "Translation Settings"), systemImage: "slider.horizontal.3")
+          }
         }
       #endif
     }

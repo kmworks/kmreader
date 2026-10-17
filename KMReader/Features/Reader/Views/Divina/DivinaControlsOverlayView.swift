@@ -118,16 +118,6 @@ struct DivinaControlsOverlayView: View {
     viewModel.displayPageNumber(for: pageID) ?? pageID.pageNumber + 1
   }
 
-  private var mangaTranslationVisibilityTitle: String {
-    viewModel.showMangaTranslation
-      ? String(localized: "Hide Translation")
-      : String(localized: "Show Translation")
-  }
-
-  private var mangaTranslationOverlayVisible: Bool {
-    viewModel.mangaTranslationResult?.isTranslated == true && viewModel.showMangaTranslation
-  }
-
   private static let scrimExtensionHeight: CGFloat = 120
   private static let topScrimPeakOpacity: Double = 0.65
   private static let bottomScrimPeakOpacity: Double = 0.7
@@ -136,14 +126,11 @@ struct DivinaControlsOverlayView: View {
 
   var body: some View {
     ZStack(alignment: .bottom) {
-      ZStack(alignment: .bottom) {
-        topControlsLayer
-        bottomControlsLayer
-        hiddenProgressLayer
-      }
-      .allowsHitTesting(controlsVisible)
-      mangaTranslationFloatingLayer
+      topControlsLayer
+      bottomControlsLayer
+      hiddenProgressLayer
     }
+    .allowsHitTesting(controlsVisible)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .animation(visibilityAnimation, value: controlsVisible)
     .animation(visibilityAnimation, value: showProgressBarWhileReading)
@@ -182,62 +169,6 @@ struct DivinaControlsOverlayView: View {
         }
       }
       .focusSection()
-    #endif
-  }
-
-  @ViewBuilder
-  private var mangaTranslationFloatingLayer: some View {
-    #if os(iOS) || os(macOS)
-      if viewModel.mangaTranslationEnabled, currentPageID != nil {
-        VStack {
-          Spacer()
-          HStack {
-            Spacer()
-            Button {
-              if viewModel.mangaTranslationResult?.isTranslated != true {
-                viewModel.translateCurrentPage()
-              } else {
-                viewModel.toggleMangaTranslation()
-              }
-            } label: {
-              Image(systemName: viewModel.mangaTranslationPhase.icon)
-                .contentTransition(.symbolEffect(.replace))
-                .foregroundColor(
-                  viewModel.mangaTranslationPhase.isFailed
-                    ? .red
-                    : mangaTranslationOverlayVisible ? .blue : nil
-                )
-                .symbolEffect(.pulse, options: .repeating, isActive: viewModel.mangaTranslationPhase.isBusy)
-                .animation(animation, value: viewModel.mangaTranslationPhase)
-                .animation(animation, value: mangaTranslationOverlayVisible)
-                .contentShape(Circle())
-            }
-            .accessibilityLabel(
-              Text(
-                viewModel.mangaTranslationResult?.isTranslated == true
-                  ? mangaTranslationVisibilityTitle
-                  : viewModel.mangaTranslationPhase.title
-              )
-            )
-            .buttonBorderShape(.circle)
-            .controlSize(.large)
-            .readerControlButtonStyle()
-            .frame(width: 44, height: 44)
-            .disabled(viewModel.mangaTranslationLanguagesMatch)
-            .highPriorityGesture(
-              LongPressGesture().onEnded { _ in
-                HapticFeedback.medium()
-                showingMangaTranslationSettings = true
-              }
-            )
-            .accessibilityAction(named: String(localized: "Settings")) {
-              showingMangaTranslationSettings = true
-            }
-          }
-        }
-        .padding()
-        .padding(.bottom, controlsVisible ? 64 : 0)
-      }
     #endif
   }
 

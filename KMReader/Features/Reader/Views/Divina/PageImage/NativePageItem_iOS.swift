@@ -41,6 +41,12 @@
     #endif
 
     #if os(iOS)
+      private let translationButton = MangaTranslationButton()
+      private var translationObserverToken: UUID?
+      private weak var translationObserverViewModel: ReaderViewModel?
+    #endif
+
+    #if os(iOS)
       private lazy var contextMenuInteraction = UIContextMenuInteraction(delegate: self)
       private var isPresentingContextMenu = false
     #endif
@@ -72,6 +78,12 @@
       #if os(iOS)
         removeContextMenuInteractionIfNeeded()
         releaseContextMenuSuppression()
+        if let token = translationObserverToken {
+          translationObserverViewModel?.removeMangaTranslationStateObserver(token)
+          translationObserverToken = nil
+          translationObserverViewModel = nil
+        }
+        translationButton.isHidden = true
       #endif
       updateAnimatedPlayback(sourceFileURL: nil)
       imageView.isHidden = false
@@ -106,6 +118,10 @@
         #endif
         #if os(iOS)
           updateContextMenuInteraction()
+          if let viewModel {
+            updateTranslationStateObserver(viewModel)
+            updateTranslationButton()
+          }
         #endif
       }
     }
@@ -134,6 +150,12 @@
       addSubview(animatedInlineContainer)
       mangaOverlayView.isHidden = true
       addSubview(mangaOverlayView)
+
+      #if os(iOS)
+        translationButton.isHidden = true
+        translationButton.addTarget(self, action: #selector(handleTranslationButtonTapped), for: .touchUpInside)
+        addSubview(translationButton)
+      #endif
 
       loadingIndicator.hidesWhenStopped = true
       loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
@@ -298,15 +320,51 @@
 
       mangaOverlayView.update(
         result: viewModel.mangaTranslationResult(for: data),
-        visible: viewModel.showMangaTranslation,
+        visible: viewModel.mangaTranslationOverlayVisible(for: data.pageID, splitMode: data.splitMode),
         background: background,
         direction: AppConfig.mangaTranslation.textDirection,
         shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageSourceImage
       )
+      #if os(iOS)
+        updateTranslationStateObserver(viewModel)
+        updateTranslationButton()
+      #endif
       updateShadowAppearance()
       setNeedsLayout()
     }
+
+    #if os(iOS)
+      private func updateTranslationStateObserver(_ viewModel: ReaderViewModel) {
+        guard translationObserverViewModel !== viewModel || translationObserverToken == nil else { return }
+        if let token = translationObserverToken {
+          translationObserverViewModel?.removeMangaTranslationStateObserver(token)
+        }
+        translationObserverViewModel = viewModel
+        translationObserverToken = viewModel.addMangaTranslationStateObserver { [weak self] in
+          self?.updateTranslationButton()
+        }
+      }
+
+      private func updateTranslationButton() {
+        guard let data = currentData,
+          let viewModel,
+          let state = viewModel.mangaTranslationButtonState(for: data.pageID, splitMode: data.splitMode),
+          imageView.image != nil,
+          data.failure == nil
+        else {
+          translationButton.isHidden = true
+          return
+        }
+        translationButton.isHidden = false
+        translationButton.update(state: state)
+      }
+
+      @objc private func handleTranslationButtonTapped() {
+        guard let data = currentData else { return }
+        viewModel?.handleMangaTranslationButtonTap(for: data.pageID, splitMode: data.splitMode)
+      }
+    #endif
 
     /// Size of the prepared image shown for `pageID` (rotated and cropped), or
     /// nil while it is not displayed.
@@ -559,6 +617,16 @@
       sepiaOverlayView.frame = imageView.frame
       animatedInlineContainer.frame = imageView.frame
       mangaOverlayView.frame = imageView.frame
+
+      #if os(iOS)
+        let buttonSize = translationButton.intrinsicContentSize
+        translationButton.frame = CGRect(
+          x: imageView.frame.maxX - buttonSize.width - MangaTranslationButton.cornerInset,
+          y: imageView.frame.maxY - buttonSize.height - MangaTranslationButton.cornerInset,
+          width: buttonSize.width,
+          height: buttonSize.height
+        )
+      #endif
 
       let topY = yOffset
       let pageLabelWidth = max(30, pageNumberLabel.intrinsicContentSize.width + 16)

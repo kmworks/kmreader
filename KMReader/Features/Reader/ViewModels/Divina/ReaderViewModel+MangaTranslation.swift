@@ -21,6 +21,10 @@ extension ReaderViewModel {
 
   var mangaTranslationLanguagesMatch: Bool {
     guard let bookId = resolvedCurrentPageID?.bookId else { return false }
+    return mangaTranslationLanguagesMatch(forBookId: bookId)
+  }
+
+  func mangaTranslationLanguagesMatch(forBookId bookId: String) -> Bool {
     let languages = MangaTranslationConfiguration.resolvedLanguages(
       sourceLanguage: mangaTranslationMetadataByBookId[bookId]?.sourceLanguage,
       preferences: AppConfig.mangaTranslation
@@ -28,6 +32,78 @@ extension ReaderViewModel {
     return MangaTranslationLanguage.isSameLanguage(
       source: languages.sourceLanguage,
       target: languages.targetLanguage
+    )
+  }
+
+  /// Per-page state for the translate button pinned to a page image. A nil
+  /// state hides the button. Only the focused page surfaces the live phase;
+  /// other pages show their own result and whether they sit in the queue.
+  func mangaTranslationButtonState(for pageID: ReaderPageID, splitMode: PageSplitMode)
+    -> MangaTranslationButtonState?
+  {
+    guard mangaTranslationEnabled else { return nil }
+    let result = mangaTranslationResult(for: pageID, splitMode: splitMode)
+    let phase = resolvedCurrentPageID == pageID ? mangaTranslationPhase : nil
+    let overlayVisible =
+      result?.isTranslated == true && mangaTranslationOverlayVisible(for: pageID, splitMode: splitMode)
+    let tint: MangaTranslationButtonState.Tint =
+      phase?.isFailed == true ? .failure : (overlayVisible ? .active : .none)
+    let isBusy = phase?.isBusy ?? mangaTranslationIsActive(for: pageID, splitMode: splitMode)
+    let accessibilityLabel: String
+    if result?.isTranslated == true {
+      accessibilityLabel =
+        overlayVisible
+        ? String(localized: "Hide Translation")
+        : String(localized: "Show Translation")
+    } else {
+      accessibilityLabel = phase?.title ?? String(localized: "manga.action.translatePage")
+    }
+    return MangaTranslationButtonState(
+      icon: phase?.icon ?? AppIcon.mangaTranslation,
+      isBusy: isBusy,
+      tint: tint,
+      isEnabled: !mangaTranslationLanguagesMatch(forBookId: pageID.bookId),
+      accessibilityLabel: accessibilityLabel
+    )
+  }
+
+  func mangaTranslationIsActive(for pageID: ReaderPageID, splitMode: PageSplitMode) -> Bool {
+    pendingMangaTranslationQueueKeys().contains(sessionKey(for: pageID, splitMode: splitMode))
+  }
+
+  func handleMangaTranslationButtonTap(for pageID: ReaderPageID, splitMode: PageSplitMode) {
+    if mangaTranslationResult(for: pageID, splitMode: splitMode)?.isTranslated == true {
+      let key = sessionKey(for: pageID, splitMode: splitMode)
+      mangaTranslationVisibilityOverrides[key] = !mangaTranslationOverlayVisible(
+        for: pageID, splitMode: splitMode)
+      notifyPagePresentationInvalidation(.pages([pageID]))
+    } else {
+      translatePage(pageID, splitMode: splitMode)
+    }
+  }
+
+  /// A page's overlay shows unless it was individually hidden; the shared
+  /// showMangaTranslation preference is the default for untouched pages.
+  func mangaTranslationOverlayVisible(for pageID: ReaderPageID, splitMode: PageSplitMode) -> Bool {
+    mangaTranslationVisibilityOverrides[sessionKey(for: pageID, splitMode: splitMode)]
+      ?? showMangaTranslation
+  }
+
+  /// Translates one tapped page. A page in the current view item rides the
+  /// usual item-wide queue so a dual-page spread still switches together; any
+  /// other page (webtoon) gets a queue of its own.
+  func translatePage(_ pageID: ReaderPageID, splitMode: PageSplitMode) {
+    guard mangaTranslationEnabled, !mangaTranslationLanguagesMatch(forBookId: pageID.bookId) else { return }
+    if let item = currentViewItem(), item.pageIDs.contains(pageID) {
+      translateCurrentPage()
+      return
+    }
+    let key = sessionKey(for: pageID, splitMode: splitMode)
+    guard mangaTranslationInFlightKey != key else { return }
+    startMangaTranslationQueue(
+      keys: [key],
+      frontForceRetry: mangaTranslationResults[key] != nil,
+      frontManual: true
     )
   }
 
@@ -51,8 +127,9 @@ extension ReaderViewModel {
 
   func toggleMangaTranslation() {
     setMangaTranslationVisibility(!showMangaTranslation)
-    // Visibility applies to every page holding a result, not just the
-    // current one — a dual-page pair flips together.
+    // A global flip re-applies the shared default to every page holding a
+    // result, dropping individual overrides.
+    mangaTranslationVisibilityOverrides = [:]
     notifyPagePresentationInvalidation(.all)
   }
 
@@ -68,6 +145,7 @@ extension ReaderViewModel {
     stopMangaTranslationQueue()
     mangaTranslationResults = [:]
     mangaTranslationResultOrder = []
+    mangaTranslationVisibilityOverrides = [:]
     mangaTranslationPhase = .idle
   }
 
@@ -339,10 +417,13 @@ extension ReaderViewModel {
       mangaTranslationResultOrder.append(sessionKey)
     }
     mangaTranslationResults[sessionKey] = result
+    // A fresh result always shows; an individual hide does not survive it.
+    mangaTranslationVisibilityOverrides.removeValue(forKey: sessionKey)
     let overflow = mangaTranslationResultOrder.count - Self.mangaTranslationResultCacheLimit
     if overflow > 0 {
       for evictedKey in mangaTranslationResultOrder.prefix(overflow) {
         mangaTranslationResults.removeValue(forKey: evictedKey)
+        mangaTranslationVisibilityOverrides.removeValue(forKey: evictedKey)
       }
       mangaTranslationResultOrder.removeFirst(overflow)
     }

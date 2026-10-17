@@ -45,14 +45,29 @@ class ReaderViewModel {
   @ObservationIgnored
   var presentedPageContextMenuCount = 0
   var isPageContextMenuPresented: Bool { presentedPageContextMenuCount > 0 }
-  var mangaTranslationPhase: MangaTranslationPhase = .idle
-  var showMangaTranslation = AppConfig.mangaTranslation.showTranslation
+  var mangaTranslationPhase: MangaTranslationPhase = .idle {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
+  var showMangaTranslation = AppConfig.mangaTranslation.showTranslation {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
   /// Session-scoped on purpose: every reader session starts with translation off.
-  var mangaTranslationEnabled = false
+  var mangaTranslationEnabled = false {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
   /// Translated/no-text results for this session, keyed by page and geometry.
   /// Failed attempts are never kept so they retry when the page is revisited.
-  var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:]
-  var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:]
+  var mangaTranslationResults: [MangaTranslationSessionKey: MangaPageTranslation] = [:] {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
+  /// Per-page overlay visibility overrides, falling back to the shared
+  /// showMangaTranslation default when a page has no entry.
+  var mangaTranslationVisibilityOverrides: [MangaTranslationSessionKey: Bool] = [:] {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
+  var mangaTranslationMetadataByBookId: [String: MangaTranslationMetadata] = [:] {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
   @ObservationIgnored
   var mangaTranslationQueueTask: Task<Void, Never>?
   @ObservationIgnored
@@ -62,9 +77,13 @@ class ReaderViewModel {
   /// Snapshot of the running queue so repeated syncs with the same work are
   /// no-ops. The front key is the current page; the rest is silent prefetch.
   @ObservationIgnored
-  var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = []
+  var mangaTranslationQueueSnapshot: [MangaTranslationSessionKey] = [] {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
   @ObservationIgnored
-  var mangaTranslationInFlightKey: MangaTranslationSessionKey?
+  var mangaTranslationInFlightKey: MangaTranslationSessionKey? {
+    didSet { notifyMangaTranslationStateChanged() }
+  }
   @ObservationIgnored
   var mangaTranslationQueueFrontForceRetry = false
   @ObservationIgnored
@@ -84,6 +103,9 @@ class ReaderViewModel {
   typealias PagePresentationInvalidationHandler = @MainActor (ReaderPagePresentationInvalidation) -> Void
   @ObservationIgnored
   private var pagePresentationInvalidationHandlers: [UUID: PagePresentationInvalidationHandler] = [:]
+  typealias MangaTranslationStateHandler = @MainActor () -> Void
+  @ObservationIgnored
+  private var mangaTranslationStateHandlers: [UUID: MangaTranslationStateHandler] = [:]
   @ObservationIgnored
   private var pdfPreparationTasks: [String: Task<Void, Never>] = [:]
   @ObservationIgnored
@@ -377,6 +399,26 @@ class ReaderViewModel {
 
   func removePagePresentationInvalidationObserver(_ token: UUID) {
     pagePresentationInvalidationHandlers.removeValue(forKey: token)
+  }
+
+  func addMangaTranslationStateObserver(
+    _ handler: @escaping MangaTranslationStateHandler
+  ) -> UUID {
+    let token = UUID()
+    mangaTranslationStateHandlers[token] = handler
+    return token
+  }
+
+  func removeMangaTranslationStateObserver(_ token: UUID) {
+    mangaTranslationStateHandlers.removeValue(forKey: token)
+  }
+
+  /// Drives the per-page translate buttons, which live in UIKit/AppKit page
+  /// hosts that cannot observe `@Observable` changes on their own.
+  private func notifyMangaTranslationStateChanged() {
+    for handler in mangaTranslationStateHandlers.values {
+      handler()
+    }
   }
 
   func notifyPagePresentationInvalidation(
