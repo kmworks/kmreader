@@ -167,6 +167,7 @@
         visible: showsMangaTranslation,
         background: readerBackground,
         direction: AppConfig.mangaTranslation.textDirection,
+        shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageImageView.image
       )
     }
@@ -191,6 +192,7 @@
         visible: visible,
         background: readerBackground,
         direction: AppConfig.mangaTranslation.textDirection,
+        shape: AppConfig.mangaTranslation.bubbleShape,
         image: pageImageView.image
       )
     }

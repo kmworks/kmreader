@@ -7,17 +7,17 @@ import Foundation
     var fillColor: UIColor = .white {
       didSet { if fillColor != oldValue { setNeedsLayout() } }
     }
-    var cornerRadius: CGFloat = 12 {
-      didSet { if cornerRadius != oldValue { setNeedsLayout() } }
-    }
     var feather: CGFloat = 10 {
       didSet { if feather != oldValue { setNeedsLayout() } }
+    }
+    var shape: MangaBubbleShape = .ellipse {
+      didSet { if shape != oldValue { setNeedsLayout() } }
     }
 
     private var renderedSize: CGSize?
     private var renderedColor: UIColor?
-    private var renderedCornerRadius: CGFloat = 0
     private var renderedFeather: CGFloat = 0
+    private var renderedShape: MangaBubbleShape?
 
     override init(frame: CGRect) {
       super.init(frame: frame)
@@ -42,15 +42,15 @@ import Foundation
         return
       }
       guard
-        size != renderedSize || fillColor != renderedColor || cornerRadius != renderedCornerRadius
-          || feather != renderedFeather
+        size != renderedSize || fillColor != renderedColor || feather != renderedFeather
+          || shape != renderedShape
       else { return }
       renderedSize = size
       renderedColor = fillColor
-      renderedCornerRadius = cornerRadius
       renderedFeather = feather
+      renderedShape = shape
       layer.contents = MangaBubbleBackground.blobImage(
-        size: size, feather: feather, cornerRadius: cornerRadius, color: fillColor.cgColor)
+        size: size, feather: feather, shape: shape, color: fillColor.cgColor)
     }
   }
 #elseif os(macOS)
@@ -60,17 +60,17 @@ import Foundation
     var fillColor: NSColor = .white {
       didSet { if fillColor != oldValue { needsLayout = true } }
     }
-    var cornerRadius: CGFloat = 12 {
-      didSet { if cornerRadius != oldValue { needsLayout = true } }
-    }
     var feather: CGFloat = 10 {
       didSet { if feather != oldValue { needsLayout = true } }
+    }
+    var shape: MangaBubbleShape = .ellipse {
+      didSet { if shape != oldValue { needsLayout = true } }
     }
 
     private var renderedSize: CGSize?
     private var renderedColor: NSColor?
-    private var renderedCornerRadius: CGFloat = 0
     private var renderedFeather: CGFloat = 0
+    private var renderedShape: MangaBubbleShape?
 
     override init(frame frameRect: NSRect) {
       super.init(frame: frameRect)
@@ -93,15 +93,15 @@ import Foundation
         return
       }
       guard
-        size != renderedSize || fillColor != renderedColor || cornerRadius != renderedCornerRadius
-          || feather != renderedFeather
+        size != renderedSize || fillColor != renderedColor || feather != renderedFeather
+          || shape != renderedShape
       else { return }
       renderedSize = size
       renderedColor = fillColor
-      renderedCornerRadius = cornerRadius
       renderedFeather = feather
+      renderedShape = shape
       layer?.contents = MangaBubbleBackground.blobImage(
-        size: size, feather: feather, cornerRadius: cornerRadius, color: fillColor.cgColor)
+        size: size, feather: feather, shape: shape, color: fillColor.cgColor)
     }
   }
 #endif

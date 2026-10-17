@@ -5,6 +5,7 @@ nonisolated struct MangaPageTranslation: Codable, Hashable, Sendable {
   let regions: [MangaTextRegion]
   let status: MangaTranslationStatus
   let targetLanguage: String
+  let boxKind: MangaTextBoxKind
   let createdAt: Date
 
   var isTranslated: Bool { status == .translated }
@@ -20,12 +21,14 @@ nonisolated struct MangaPageTranslation: Codable, Hashable, Sendable {
     regions: [MangaTextRegion],
     status: MangaTranslationStatus,
     targetLanguage: String,
+    boxKind: MangaTextBoxKind,
     createdAt: Date
   ) {
     self.key = key
     self.regions = regions
     self.status = status
     self.targetLanguage = targetLanguage
+    self.boxKind = boxKind
     self.createdAt = createdAt
   }
 
@@ -37,6 +40,9 @@ nonisolated struct MangaPageTranslation: Codable, Hashable, Sendable {
     // Rows cached before the field existed fall back to an unknown
     // language, which keeps their rendering horizontal.
     targetLanguage = try container.decodeIfPresent(String.self, forKey: .targetLanguage) ?? ""
+    // Rows cached before the field existed fall back to text-tight geometry:
+    // its outgrown ellipse keeps corner text covered for either box kind.
+    boxKind = try container.decodeIfPresent(MangaTextBoxKind.self, forKey: .boxKind) ?? .text
     createdAt = try container.decode(Date.self, forKey: .createdAt)
   }
 }

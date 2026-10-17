@@ -11,11 +11,56 @@ import Foundation
 enum MangaBubbleBackground {
   private static let ciContext = CIContext()
 
-  static func feather(forCoreSize size: CGSize) -> CGFloat {
+  static func feather(forBoxSize size: CGSize) -> CGFloat {
     min(14, max(6, min(size.width, size.height) * 0.12))
   }
 
-  static func blobImage(size: CGSize, feather: CGFloat, cornerRadius: CGFloat, color: CGColor) -> CGImage? {
+  static func cornerRadius(forBoxSize size: CGSize) -> CGFloat {
+    min(32, max(12, min(size.width, size.height) * 0.4))
+  }
+
+  /// Text-tight boxes wrap the glyphs, so the ellipse must outgrow the box to
+  /// still cover its corners (√2 to touch them); whole-bubble boxes already
+  /// bound the bubble, and the rounded rectangle hugs the box for either kind.
+  static func backgroundFrame(
+    forBoxSize size: CGSize, boxKind: MangaTextBoxKind, shape: MangaBubbleShape
+  ) -> CGRect {
+    let coreScale: CGFloat
+    switch (shape, boxKind) {
+    case (.ellipse, .text): coreScale = 1.5
+    case (.ellipse, .bubble), (.roundedRect, _): coreScale = 1
+    }
+    let feather = feather(forBoxSize: size)
+    let coreWidth = size.width * coreScale
+    let coreHeight = size.height * coreScale
+    return CGRect(
+      x: (size.width - coreWidth) / 2 - feather,
+      y: (size.height - coreHeight) / 2 - feather,
+      width: coreWidth + feather * 2,
+      height: coreHeight + feather * 2
+    )
+  }
+
+  static func textFrame(forBoxSize size: CGSize, boxKind: MangaTextBoxKind, shape: MangaBubbleShape) -> CGRect {
+    if shape == .ellipse && boxKind == .bubble {
+      // the inscribed rect (1/√2) touches the ellipse rim; whole-bubble boxes
+      // already include the bubble's padding, so the text area shrinks further
+      // to keep glyphs on the opaque core with a manga-like white margin
+      let scale: CGFloat = 0.5
+      return CGRect(
+        x: size.width * (1 - scale) / 2,
+        y: size.height * (1 - scale) / 2,
+        width: size.width * scale,
+        height: size.height * scale
+      )
+    }
+    return CGRect(x: 0, y: 0, width: size.width, height: size.height).insetBy(
+      dx: min(5, max(2, size.width * 0.04)),
+      dy: min(4, max(1, size.height * 0.03))
+    )
+  }
+
+  static func blobImage(size: CGSize, feather: CGFloat, shape: MangaBubbleShape, color: CGColor) -> CGImage? {
     let width = Int(size.width.rounded())
     let height = Int(size.height.rounded())
     guard width > 0, height > 0, feather * 2 < size.width, feather * 2 < size.height else { return nil }
@@ -37,9 +82,15 @@ enum MangaBubbleBackground {
       height: size.height - feather * 2
     )
     context.setFillColor(color)
-    context.addPath(
-      CGPath(roundedRect: coreRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
-    )
+    switch shape {
+    case .ellipse:
+      context.addPath(CGPath(ellipseIn: coreRect, transform: nil))
+    case .roundedRect:
+      let radius = cornerRadius(forBoxSize: coreRect.size)
+      context.addPath(
+        CGPath(roundedRect: coreRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+      )
+    }
     context.fillPath()
     guard let solid = context.makeImage() else { return nil }
     // sigma ≈ feather/2.2 keeps the fade inside the feather band (α < 2% at the edge)

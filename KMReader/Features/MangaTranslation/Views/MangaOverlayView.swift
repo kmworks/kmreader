@@ -8,6 +8,7 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
+    private var shape: MangaBubbleShape = .ellipse
     private var sourceImageID: ObjectIdentifier?
     private var regionColors: [CGColor] = []
 
@@ -27,13 +28,14 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection, image: PlatformImage?
+      direction: MangaTranslationTextDirection, shape: MangaBubbleShape, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
+      self.shape = shape
       let imageID = image.map { ObjectIdentifier($0) }
       let imageChanged = imageID != sourceImageID
       sourceImageID = imageID
@@ -115,20 +117,18 @@ import SwiftUI
           height: region.box.height * bounds.height + 4
         )
 
-        let cornerRadius = min(32, max(12, min(container.bounds.width, container.bounds.height) * 0.4))
-        let feather = MangaBubbleBackground.feather(forCoreSize: container.bounds.size)
+        let feather = MangaBubbleBackground.feather(forBoxSize: container.bounds.size)
         if let bubbleBackground = container.subviews.first(where: {
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
-          bubbleBackground.frame = container.bounds.insetBy(dx: -feather, dy: -feather)
-          bubbleBackground.cornerRadius = cornerRadius
+          bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
+            forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
           bubbleBackground.feather = feather
+          bubbleBackground.shape = shape
         }
 
-        let textFrame = container.bounds.insetBy(
-          dx: min(5, max(2, container.bounds.width * 0.04)),
-          dy: min(4, max(1, container.bounds.height * 0.03))
-        )
+        let textFrame = MangaBubbleBackground.textFrame(
+          forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
         guard
           let child = container.subviews.first(where: {
             $0 is UILabel || $0 is MangaVerticalTextLabel
@@ -175,6 +175,7 @@ import SwiftUI
     private var visible = true
     private var background: ReaderBackground = .system
     private var direction: MangaTranslationTextDirection = .auto
+    private var shape: MangaBubbleShape = .ellipse
     private var sourceImageID: ObjectIdentifier?
     private var regionColors: [CGColor] = []
 
@@ -194,13 +195,14 @@ import SwiftUI
 
     func update(
       result: MangaPageTranslation?, visible: Bool, background: ReaderBackground,
-      direction: MangaTranslationTextDirection, image: PlatformImage?
+      direction: MangaTranslationTextDirection, shape: MangaBubbleShape, image: PlatformImage?
     ) {
       self.visible = visible
       let backgroundChanged = self.background != background
       self.background = background
       let directionChanged = self.direction != direction
       self.direction = direction
+      self.shape = shape
       let imageID = image.map { ObjectIdentifier($0) }
       let imageChanged = imageID != sourceImageID
       sourceImageID = imageID
@@ -285,20 +287,18 @@ import SwiftUI
           height: region.box.height * bounds.height + 4
         )
 
-        let cornerRadius = min(32, max(12, min(container.bounds.width, container.bounds.height) * 0.4))
-        let feather = MangaBubbleBackground.feather(forCoreSize: container.bounds.size)
+        let feather = MangaBubbleBackground.feather(forBoxSize: container.bounds.size)
         if let bubbleBackground = container.subviews.first(where: {
           $0 is MangaBubbleBackgroundView
         }) as? MangaBubbleBackgroundView {
-          bubbleBackground.frame = container.bounds.insetBy(dx: -feather, dy: -feather)
-          bubbleBackground.cornerRadius = cornerRadius
+          bubbleBackground.frame = MangaBubbleBackground.backgroundFrame(
+            forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
           bubbleBackground.feather = feather
+          bubbleBackground.shape = shape
         }
 
-        let textFrame = container.bounds.insetBy(
-          dx: min(5, max(2, container.bounds.width * 0.04)),
-          dy: min(4, max(1, container.bounds.height * 0.03))
-        )
+        let textFrame = MangaBubbleBackground.textFrame(
+          forBoxSize: container.bounds.size, boxKind: result.boxKind, shape: shape)
         guard
           let child = container.subviews.first(where: {
             $0 is NSTextField || $0 is MangaVerticalTextLabel
