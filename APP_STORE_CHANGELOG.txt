@@ -1,28 +1,18 @@
 New
-- Manga translation: translate manga pages with downloadable model packs. Text detection and OCR run entirely on your device, page images never leave the device, and translated text renders over the original bubbles, including vertical typesetting for vertical bubbles when translating to Chinese or Japanese.
-- Translation runs per reading session and translates the next pages ahead as you read. Enable it from the reader's ⋯ menu, and choose a custom AI provider or the system translation fallback (iOS/macOS 26) in Settings → Manga Translation. Detection and recognition models can be picked independently.
-- iPad on iOS 18+ gains a Classic Navigation toggle in Settings → Appearance that restores the previous split-view sidebar layout, with one-tap library switching in portrait.
+- EPUB on iOS gains an optional Core Text engine with paged, scrolled, cover, and page-curl layouts, embedded fonts, themes, offline resources, and reliable reading-position restoration.
+- Manga translation on iOS and macOS now has a Live Text-style button on every displayed page. Translate one page or switch between original and translated text independently, including individual pages in a spread.
+- On supported servers, smart lists can be pinned alongside collections and read lists, with pinned items appearing first on the Lists page and in browse results.
+- New translation providers start with OpenRouter preselected, while custom endpoints remain available.
 
 Reader
-- EPUB page-curl mode respects the safe area again, and dragging back across a chapter boundary in cover mode now reveals the correct page instead of briefly showing the wrong one.
-- Page-curl tap turns now wait for the new page to paint before animating, so the peel no longer reveals the old page and snaps; cross-chapter turns no longer spin while neighbors load.
-- EPUB cold-start restore is fixed: opening a book now returns to your saved position in page-curl and paged-scroll modes.
-- Jumping back to the previous chapter in EPUB now lands on its last page instead of mid-chapter, and backward page-curl flips show the previous page mirrored on the backside.
-- EPUB chapters paginate faster in every paged mode, and page-curl transitions use far less memory.
-- Catching a gliding whole spread mid-flick now keeps panning it under your finger, and taps that stop a glide no longer also trigger their tap zone.
-- Drags in the reader no longer trigger tap actions when the gesture ends.
-- Manga translation now covers both pages of a dual-page spread and both halves of a merged wide page, and missing system translation language packs now produce an actionable error telling you where to download them.
-- Fixed a crash when opening a page context menu during a page turn on iOS 26+.
-- The Scroll split-wide-page mode gets a pan icon that reads clearly across languages.
-- Oversized pages decode at display size, roughly halving peak reader memory with no visible change; shared or exported pages still use the original full-resolution image.
-- Covers render sharper on every surface, fixing blurry iPad covers and reducing moiré on high-frequency artwork.
-- AI upscaling loses its "Always" mode; "Auto" covers the useful cases, and users who had "Always" selected move to "Auto" automatically.
+- Translated bubbles are easier to read: English words stay intact when wrapping, text adapts to light and dark backgrounds, and backgrounds no longer blur the original bubble border.
+- Translation now skips pages whose source and target languages match, treating Simplified and Traditional Chinese as the same language. Page-level translation is no longer offered in Webtoon mode.
+- Core Text EPUB rendering improves oversized images, table layouts, line spacing, margins, superscripts, subscripts, and letter spacing. A chapter that cannot render becomes an inline error page instead of blocking the whole book.
+- Choose what the Space bar does while reading: Toggle Controls or Next Page, across DIVINA, EPUB, and PDF with an external keyboard.
+- The iOS Home indicator hides automatically while reading.
 
-Improvements
-- Page isolation is renamed to Solo: menu actions now read Show Solo, Cancel Solo, and Show Page N Solo, and the dual-page cover preference reads Solo Cover Page.
-- The Dashboard no longer stutters on first load or pull-to-refresh, the library info row appears immediately, and cards no longer flash white when switching library scope.
-- Removed the redundant Settings gear from the Dashboard on iPad and macOS (Settings stays in its tab/sidebar/scene).
-- Fixed the iPhone dashboard getting stuck in a perpetual refresh animation after rotating landscape → portrait.
-- Queued downloads now show an hourglass instead of a stuck 0% progress pie.
-- The iPhone Search tab's empty-state placeholder shows the current library scope as a tappable menu, so you can see and switch scope while the search field is focused.
-- Haptic feedback for the translation button long-press, EPUB rubber-band boundaries, and swipe deletes.
+Browse & Offline
+- Pinned libraries now lead library scope selectors, and the iPad Libraries tab opens the pinned scope by default.
+- Collection, read list, and smart list menus now share a consistent set of actions.
+- Connection status uses compact icons instead of the persistent Dashboard offline banner, and successful downloads no longer interrupt reading with a completion toast.
+- Scenario-based user guides are available from Settings → About.

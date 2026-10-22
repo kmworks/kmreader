@@ -1,6 +1,6 @@
 import Foundation
 
-struct OpenAICompatibleTranslationProvider: MangaTranslationProvider {
+struct CustomTranslationProvider: MangaTranslationProvider {
   private let logger = AppLogger(.reader)
 
   func translate(
