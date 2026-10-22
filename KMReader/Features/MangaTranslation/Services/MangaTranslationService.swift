@@ -13,7 +13,7 @@ actor MangaTranslationService {
   private var translationGeneration: UInt64 = 0
   private var translationGenerationByKey: [MangaTranslationPageKey: UInt64] = [:]
 
-  init(provider: any MangaTranslationProvider = OpenAICompatibleTranslationProvider()) {
+  init(provider: any MangaTranslationProvider = CustomTranslationProvider()) {
     self.provider = provider
   }
 

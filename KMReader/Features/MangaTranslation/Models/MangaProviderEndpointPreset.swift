@@ -2,7 +2,6 @@ import Foundation
 
 enum MangaProviderEndpointPreset: String, CaseIterable, Identifiable {
   case openRouter
-  case deepSeek
   case custom
 
   var id: Self { self }
@@ -11,8 +10,6 @@ enum MangaProviderEndpointPreset: String, CaseIterable, Identifiable {
     switch self {
     case .openRouter:
       return "OpenRouter"
-    case .deepSeek:
-      return "DeepSeek"
     case .custom:
       return String(localized: "Custom")
     }
@@ -22,8 +19,6 @@ enum MangaProviderEndpointPreset: String, CaseIterable, Identifiable {
     switch self {
     case .openRouter:
       return "https://openrouter.ai/api/v1"
-    case .deepSeek:
-      return "https://api.deepseek.com/v1"
     case .custom:
       return nil
     }
