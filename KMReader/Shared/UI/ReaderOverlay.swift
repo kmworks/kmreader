@@ -53,6 +53,9 @@ import SwiftUI
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+      #if os(iOS)
+        .persistentSystemOverlays(.hidden)
+      #endif
       .komgaHandoff(
         title: readerPresentation.handoffTitle,
         url: readerPresentation.handoffURL,
