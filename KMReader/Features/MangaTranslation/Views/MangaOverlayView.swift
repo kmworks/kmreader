@@ -138,14 +138,14 @@ import SwiftUI
           height: max(0, textFrame.height)
         )
         if let bubble = child as? UILabel {
-          fitFont(for: bubble)
+          fitFont(for: bubble, targetLanguage: result.targetLanguage)
         } else if let bubble = child as? MangaVerticalTextLabel {
           bubble.fitFont()
         }
       }
     }
 
-    private func fitFont(for bubble: UILabel) {
+    private func fitFont(for bubble: UILabel, targetLanguage: String) {
       guard bubble.bounds.width > 0, bubble.bounds.height > 0 else { return }
       var fontSize = min(17, max(12, bubble.bounds.height * 0.35))
       for _ in 0..<5 {
@@ -158,6 +158,9 @@ import SwiftUI
         if nextSize == fontSize { break }
         fontSize = nextSize
       }
+      fontSize = MangaHorizontalTextLayout.fittedFontSize(
+        text: bubble.text ?? "", width: bubble.bounds.width, preferredFontSize: fontSize,
+        targetLanguage: targetLanguage)
       bubble.font = .systemFont(ofSize: fontSize, weight: .medium)
     }
   }
@@ -304,14 +307,14 @@ import SwiftUI
           height: max(0, textFrame.height)
         )
         if let bubble = child as? NSTextField {
-          fitFont(for: bubble)
+          fitFont(for: bubble, targetLanguage: result.targetLanguage)
         } else if let bubble = child as? MangaVerticalTextLabel {
           bubble.fitFont()
         }
       }
     }
 
-    private func fitFont(for bubble: NSTextField) {
+    private func fitFont(for bubble: NSTextField, targetLanguage: String) {
       guard bubble.bounds.width > 0, bubble.bounds.height > 0 else { return }
       var fontSize = min(17, max(12, bubble.bounds.height * 0.35))
       for _ in 0..<5 {
@@ -324,6 +327,9 @@ import SwiftUI
         if nextSize == fontSize { break }
         fontSize = nextSize
       }
+      fontSize = MangaHorizontalTextLayout.fittedFontSize(
+        text: bubble.stringValue, width: bubble.bounds.width, preferredFontSize: fontSize,
+        targetLanguage: targetLanguage)
       bubble.font = .systemFont(ofSize: fontSize, weight: .medium)
     }
 
