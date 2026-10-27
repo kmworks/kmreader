@@ -77,8 +77,12 @@ echo -e "${GREEN}Current version: $CURRENT_VERSION -> Next version: $NEXT_VERSIO
 echo -e "${GREEN}Current build: $CURRENT_BUILD -> Next build: $NEXT_BUILD${NC}"
 
 # Update all occurrences of MARKETING_VERSION
-sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $NEXT_VERSION;/g" "$PROJECT"
-sed -i '' "s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $NEXT_BUILD;/g" "$PROJECT"
+# -i.bak (suffix attached) is accepted by both BSD and GNU sed
+sed -i.bak \
+	-e "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $NEXT_VERSION;/g" \
+	-e "s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = $NEXT_BUILD;/g" \
+	"$PROJECT"
+rm -f "$PROJECT.bak"
 
 echo -e "${GREEN}Version bumped successfully!${NC}"
 
