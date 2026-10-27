@@ -28,7 +28,7 @@ After changing code: `make format`, then `make build`. Simulator interaction goe
 ## Coding Conventions
 
 1. **Comments**: minimal, English only; no issue/PR numbers (link issues in the PR description instead).
-2. **Git-facing text**: commit messages, PR titles/bodies, and review comments are always in English.
+2. **Git-facing text**: commit messages, PR titles/bodies, and review comments are always in English. Never add `Co-Authored-By` trailers to commits.
 3. **UI frameworks**: SwiftUI, UIKit, and AppKit are all acceptable; pick per feature and platform.
 4. **No inline `Binding`**.
 5. **No `confirmationDialog`**.
