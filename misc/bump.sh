@@ -44,7 +44,9 @@ NEXT_VERSION=$((CURRENT_VERSION + 1))
 echo -e "${GREEN}Current version: $CURRENT_VERSION -> Next version: $NEXT_VERSION${NC}"
 
 # Update all occurrences of CURRENT_PROJECT_VERSION
-sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_VERSION;/CURRENT_PROJECT_VERSION = $NEXT_VERSION;/g" "$PROJECT"
+# -i.bak (suffix attached) is accepted by both BSD and GNU sed
+sed -i.bak "s/CURRENT_PROJECT_VERSION = $CURRENT_VERSION;/CURRENT_PROJECT_VERSION = $NEXT_VERSION;/g" "$PROJECT"
+rm -f "$PROJECT.bak"
 
 echo -e "${GREEN}Version bumped successfully!${NC}"
 

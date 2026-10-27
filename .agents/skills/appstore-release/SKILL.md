@@ -238,7 +238,7 @@ make minor
 git status --short --branch
 ```
 
-`make minor` must own the version mutation. Do not edit `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` manually. On Linux, `misc/bump-version.sh` fails because its `sed -i ''` is BSD/macOS-only syntax and GNU sed misparses it; replicate the script's exact mutation with GNU sed (same two replacements, same commit message) instead of hand-editing the version numbers.
+`make minor` must own the version mutation. Do not edit `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` manually. The script runs on both macOS and Linux.
 
 Verify the generated commit and version delta:
 
