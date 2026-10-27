@@ -187,7 +187,9 @@
         paginationLayout: paginationLayout
       )
       webView.callAsyncJavaScript(js, arguments: [:], in: nil, in: .page) { _ in
-        DispatchQueue.main.async(execute: completion)
+        Task { @MainActor in
+          completion()
+        }
       }
     }
 
