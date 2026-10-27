@@ -17,7 +17,7 @@ private struct CornerBadgeSlab: View {
       bottomLeadingRadius: size * 0.65,
       topTrailingRadius: cornerRadius
     )
-    .fill(Color(white: 0.12))
+    .fill(Color(white: 0.12).opacity(0.85))
   }
 }
 
@@ -50,6 +50,7 @@ struct UnreadCountBadge: View {
   var body: some View {
     Text("\(count)")
       .font(badgeFont)
+      .fixedSize(horizontal: true, vertical: false)
       .contentTransition(.numericText())
       .foregroundStyle(.white)
       .padding(.horizontal, size * 0.6)

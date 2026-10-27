@@ -233,14 +233,20 @@ struct LayoutConfig {
     #endif
   }
 
-  /// Corner badge (unread count/indicator) size on card covers. Scales with
-  /// the card width so wide cards get a larger badge; the floor keeps digits
-  /// legible on the smallest dashboard cards.
+  /// Corner badge (unread count/indicator) size on card covers, calibrated
+  /// per platform and card-width band.
   static func cardBadgeSize(cardWidth: CGFloat) -> CGFloat {
     #if os(tvOS)
       return max(UnreadCountBadge.defaultSize, (cardWidth * 0.1).rounded())
+    #elseif os(macOS)
+      if cardWidth <= dashboardSmallCardWidth { return 10 }
+      if cardWidth <= dashboardMediumCardWidth { return 11 }
+      return 12
     #else
-      return max(9, (cardWidth * 0.1).rounded())
+      let isPad = UIDevice.current.userInterfaceIdiom == .pad
+      if cardWidth <= dashboardSmallCardWidth { return isPad ? 10 : 9 }
+      if cardWidth <= dashboardMediumCardWidth { return isPad ? 11 : 10 }
+      return isPad ? 12 : 11
     #endif
   }
 
