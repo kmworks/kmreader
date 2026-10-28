@@ -24,6 +24,7 @@ struct SeriesCardView: View {
   @State private var showCollectionPicker = false
   @State private var showEditSheet = false
   @State private var showKomfIdentify = false
+  @State private var showTrackers = false
 
   var progress: Double {
     guard item.booksCount > 0 else { return 0 }
@@ -90,6 +91,9 @@ struct SeriesCardView: View {
         onKomfIdentifyRequested: {
           showKomfIdentify = true
         },
+        onTrackersRequested: {
+          showTrackers = true
+        },
         onMutationCompleted: onMutationCompleted
       )
     } detail: {
@@ -108,6 +112,13 @@ struct SeriesCardView: View {
     }
     .sheet(isPresented: $showEditSheet) {
       SeriesEditSheet(series: item.series)
+    }
+    .sheet(isPresented: $showTrackers) {
+      TrackerSeriesSheet(
+        seriesId: item.seriesId,
+        libraryId: item.series.libraryId,
+        seriesTitle: item.metaTitle
+      )
     }
     .sheet(isPresented: $showKomfIdentify) {
       KomfIdentifySheet(series: item.series)

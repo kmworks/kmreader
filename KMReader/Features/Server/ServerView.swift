@@ -142,6 +142,17 @@ struct ServerView: View {
         }
         .adaptiveButtonStyle(.plain)
 
+        #if os(iOS) || os(macOS)
+          NavigationLink(value: NavDestination.settingsTrackers) {
+            ServerActionTile(
+              title: ServerSection.trackers.title,
+              systemImage: ServerSection.trackers.icon,
+              color: ServerSection.trackers.color
+            )
+          }
+          .adaptiveButtonStyle(.plain)
+        #endif
+
         NavigationLink(value: NavDestination.settingsAuthenticationActivity) {
           ServerActionTile(
             title: ServerSection.authenticationActivity.title,

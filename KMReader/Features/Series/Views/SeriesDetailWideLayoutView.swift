@@ -83,6 +83,11 @@ struct SeriesDetailWideLayoutView<Actions: View>: View {
         VStack(alignment: .leading, spacing: 16) {
           SeriesSummaryView(series: series)
           SeriesDetailChipsView(series: series)
+          TrackerSeriesSection(
+            seriesId: series.id,
+            libraryId: series.libraryId,
+            seriesTitle: series.metadata.title
+          )
           SeriesAlternateTitlesView(series: series)
         }
       }

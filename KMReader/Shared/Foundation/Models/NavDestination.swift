@@ -84,6 +84,9 @@ enum NavDestination: Hashable {
   case settingsServers
   case settingsApiKey
   case settingsAccountSessions
+  case settingsTrackers
+  case settingsTrackerBindings
+  case settingsTrackerLedger
   case settingsAuthenticationActivity
   case settingsAccount
   case settingsAbout
@@ -304,6 +307,12 @@ enum NavDestination: Hashable {
       ApiKeysView()
     case .settingsAccountSessions:
       ServerSessionsView(scope: .own)
+    case .settingsTrackers:
+      TrackerAccountsView()
+    case .settingsTrackerBindings:
+      TrackerBindingsView()
+    case .settingsTrackerLedger:
+      TrackerLedgerView()
     case .settingsAuthenticationActivity:
       AccountActivityView()
     case .settingsAccount:

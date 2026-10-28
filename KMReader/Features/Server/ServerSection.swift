@@ -17,6 +17,7 @@ enum ServerSection: String, CaseIterable {
   case account
   case apiKeys
   case accountSessions
+  case trackers
   case authenticationActivity
 
   var icon: String {
@@ -40,6 +41,8 @@ enum ServerSection: String, CaseIterable {
       return "key"
     case .accountSessions:
       return "person.2"
+    case .trackers:
+      return "arrow.triangle.2.circlepath"
     case .authenticationActivity:
       return "person.badge.key"
 
@@ -67,6 +70,8 @@ enum ServerSection: String, CaseIterable {
       return .yellow
     case .accountSessions:
       return .blue
+    case .trackers:
+      return .purple
     case .authenticationActivity:
       return .gray
     }
@@ -93,6 +98,8 @@ enum ServerSection: String, CaseIterable {
       return String(localized: "API Keys")
     case .accountSessions:
       return String(localized: "Sessions")
+    case .trackers:
+      return String(localized: "Trackers")
     case .authenticationActivity:
       return String(localized: "Authentication Activity")
     }
