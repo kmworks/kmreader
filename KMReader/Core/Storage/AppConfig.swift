@@ -1141,6 +1141,34 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var serverManagementCapability: ServerCapability {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverManagementCapability"),
+        let capability = ServerCapability(rawValue: stored)
+      {
+        return capability
+      }
+      return ServerCapability()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverManagementCapability")
+    }
+  }
+
+  static nonisolated var serverSessionsCapability: ServerCapability {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverSessionsCapability"),
+        let capability = ServerCapability(rawValue: stored)
+      {
+        return capability
+      }
+      return ServerCapability()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverSessionsCapability")
+    }
+  }
+
   static nonisolated var serverSmartListCapability: ServerSmartListCapability {
     get {
       if let stored = UserDefaults.standard.string(forKey: "serverSmartListCapability"),

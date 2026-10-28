@@ -15,6 +15,8 @@ struct ServerInfoView: View {
   @AppStorage("taskQueueStatus") private var taskQueueStatus: TaskQueueSSEDto = TaskQueueSSEDto()
 
   @State private var serverInfo: ActuatorInfoResponse?
+  @State private var updateCheck: ServerUpdateCheck?
+  @State private var nativeServerConfirmed = false
   @State private var process = ProcessInfo()
   @State private var content = ContentCounts()
   @State private var isLoading = false
@@ -72,6 +74,12 @@ struct ServerInfoView: View {
                 Self.formatDuration(seconds: uptimeSeconds),
                 "timer")
             }
+          }
+        }
+
+        if let updateCheck {
+          Section(header: Text(String(localized: "Updates"))) {
+            ServerUpdateCheckRow(check: updateCheck)
           }
         }
 
@@ -161,40 +169,44 @@ struct ServerInfoView: View {
           }
         }
 
-        Section(header: Text(String(localized: "Maintenance"))) {
-          #if os(iOS) || os(macOS)
-            if logfileAvailable {
-              Button {
-                downloadLogFile()
+        if showsMaintenance {
+          Section(header: Text(String(localized: "Maintenance"))) {
+            #if os(iOS) || os(macOS)
+              if logfileAvailable {
+                Button {
+                  downloadLogFile()
+                } label: {
+                  HStack {
+                    Label(String(localized: "Download Log File"), systemImage: "doc.text")
+                    Spacer()
+                    if isDownloadingLogs {
+                      ProgressView()
+                    }
+                  }
+                  .contentShape(Rectangle())
+                }
+                .disabled(isDownloadingLogs)
+                .tvFocusableHighlight()
+              }
+            #endif
+
+            if !nativeServerConfirmed {
+              Button(role: .destructive) {
+                showShutdownConfirmation = true
               } label: {
                 HStack {
-                  Label(String(localized: "Download Log File"), systemImage: "doc.text")
+                  Label(String(localized: "Shut Down Server"), systemImage: "power")
                   Spacer()
-                  if isDownloadingLogs {
+                  if isShuttingDown {
                     ProgressView()
                   }
                 }
                 .contentShape(Rectangle())
               }
-              .disabled(isDownloadingLogs)
+              .disabled(isShuttingDown)
               .tvFocusableHighlight()
             }
-          #endif
-
-          Button(role: .destructive) {
-            showShutdownConfirmation = true
-          } label: {
-            HStack {
-              Label(String(localized: "Shut Down Server"), systemImage: "power")
-              Spacer()
-              if isShuttingDown {
-                ProgressView()
-              }
-            }
-            .contentShape(Rectangle())
           }
-          .disabled(isShuttingDown)
-          .tvFocusableHighlight()
         }
       }
     }
@@ -229,6 +241,14 @@ struct ServerInfoView: View {
         await loadServerInfo()
       }
     }
+  }
+
+  private var showsMaintenance: Bool {
+    #if os(iOS) || os(macOS)
+      return logfileAvailable || !nativeServerConfirmed
+    #else
+      return !nativeServerConfirmed
+    #endif
   }
 
   private var commitDescription: String? {
@@ -268,8 +288,18 @@ struct ServerInfoView: View {
     guard !AppConfig.isOffline else { return }
     isLoading = true
 
+    async let nativeInfoRequest = ManagementService.getNativeInfoIfSupported()
+    async let updateCheckRequest = ManagementService.getUpdateCheck()
+
     do {
-      serverInfo = try await ManagementService.getInfo()
+      if let nativeInfo = try await nativeInfoRequest {
+        nativeServerConfirmed = true
+        serverInfo = nativeInfo
+      } else {
+        nativeServerConfirmed = false
+        serverInfo = try await ManagementService.getInfo()
+      }
+      updateCheck = try await updateCheckRequest
     } catch {
       ErrorManager.shared.alert(error: error)
       isLoading = false

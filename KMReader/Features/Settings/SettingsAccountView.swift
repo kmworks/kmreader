@@ -77,6 +77,13 @@ struct SettingsAccountView: View {
             color: ServerSection.apiKeys.color
           )
         }
+        NavigationLink(value: NavDestination.settingsAccountSessions) {
+          SettingsBadgeRow(
+            title: ServerSection.accountSessions.title,
+            icon: ServerSection.accountSessions.icon,
+            color: ServerSection.accountSessions.color
+          )
+        }
         NavigationLink(value: NavDestination.settingsAuthenticationActivity) {
           SettingsBadgeRow(
             title: ServerSection.authenticationActivity.title,
