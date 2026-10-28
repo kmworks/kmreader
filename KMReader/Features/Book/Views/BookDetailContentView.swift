@@ -183,6 +183,11 @@ struct BookDetailContentView: View {
         )
       }
 
+      NotableEntityChipFlows(
+        entities: book.metadata.notableEntities ?? [],
+        target: .books
+      )
+
       DetailChipFlow(items: tagItems, collapsedLimit: collapsedLinkLimit, glass: false)
 
       DetailChipFlow(items: linkItems, collapsedLimit: collapsedLinkLimit)

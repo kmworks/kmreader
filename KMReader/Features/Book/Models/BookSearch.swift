@@ -53,6 +53,8 @@ nonisolated struct BookSearchFilters {
   var authorsLogic: FilterLogic = .all
   var tags: [String]? = nil
   var tagsLogic: FilterLogic = .all
+  var notableEntities: [NotableEntity]? = nil
+  var notableEntitiesLogic: FilterLogic = .all
 }
 
 // Helper functions to build conditions
@@ -142,6 +144,19 @@ extension BookSearch {
       }
       let wrapperKey = filters.tagsLogic == .all ? "allOf" : "anyOf"
       conditions.append([wrapperKey: tagConditions])
+    }
+
+    if let entities = filters.notableEntities, !entities.isEmpty {
+      let entityConditions = entities.map { entity in
+        [
+          "notableEntity": [
+            "operator": "is",
+            "value": ["kind": entity.kind, "name": entity.name],
+          ]
+        ]
+      }
+      let wrapperKey = filters.notableEntitiesLogic == .all ? "allOf" : "anyOf"
+      conditions.append([wrapperKey: entityConditions])
     }
 
     if conditions.isEmpty {

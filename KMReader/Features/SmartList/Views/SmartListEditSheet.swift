@@ -318,13 +318,14 @@ struct SmartListEditSheet: View {
 
   private func metadataValueCount(_ config: MetadataFilterConfig, seriesKinds: Bool) -> Int {
     var values: [[String]?] = [config.authors, config.tags]
+    let notableCount = config.notableEntities?.count ?? 0
     if seriesKinds {
       values += [
         config.publishers, config.genres, config.languages, config.ageRatings,
         config.releaseYears,
       ]
     }
-    return values.reduce(0) { $0 + ($1?.count ?? 0) }
+    return values.reduce(0) { $0 + ($1?.count ?? 0) } + notableCount
   }
 
   private func toggleShareTarget(_ id: String) {

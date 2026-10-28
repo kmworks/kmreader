@@ -126,7 +126,8 @@ struct BookBrowseOptionsSheet: View {
           libraryIds: libraryIds,
           seriesId: seriesId,
           showAuthors: true,
-          showTags: true
+          showTags: true,
+          showNotableEntities: true
         )
 
       }

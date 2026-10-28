@@ -60,6 +60,8 @@ nonisolated struct SeriesSearchFilters {
   var genresLogic: FilterLogic = .all
   var tags: [String]? = nil
   var tagsLogic: FilterLogic = .all
+  var notableEntities: [NotableEntity]? = nil
+  var notableEntitiesLogic: FilterLogic = .all
   var languages: [String]? = nil
   var languagesLogic: FilterLogic = .all
   var ageRatings: [Int]? = nil
@@ -180,6 +182,19 @@ extension SeriesSearch {
       }
       let wrapperKey = filters.tagsLogic == .all ? "allOf" : "anyOf"
       conditions.append([wrapperKey: tagConditions])
+    }
+
+    if let entities = filters.notableEntities, !entities.isEmpty {
+      let entityConditions = entities.map { entity in
+        [
+          "notableEntity": [
+            "operator": "is",
+            "value": ["kind": entity.kind, "name": entity.name],
+          ]
+        ]
+      }
+      let wrapperKey = filters.notableEntitiesLogic == .all ? "allOf" : "anyOf"
+      conditions.append([wrapperKey: entityConditions])
     }
 
     if let languages = filters.languages, !languages.isEmpty {

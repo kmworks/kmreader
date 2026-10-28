@@ -120,7 +120,9 @@ extension BookBrowseOptions {
       authors: metadataFilter.authors,
       authorsLogic: metadataFilter.authorsLogic,
       tags: metadataFilter.tags,
-      tagsLogic: metadataFilter.tagsLogic
+      tagsLogic: metadataFilter.tagsLogic,
+      notableEntities: metadataFilter.notableEntities,
+      notableEntitiesLogic: metadataFilter.notableEntitiesLogic
     )
   }
 }

@@ -308,6 +308,13 @@ extension DatabaseOperator {
       return false
     }
 
+    if !(book.metadata?.notableEntities ?? []).matches(
+      filter.notableEntities,
+      logic: filter.notableEntitiesLogic
+    ) {
+      return false
+    }
+
     return true
   }
 
@@ -347,10 +354,9 @@ extension DatabaseOperator {
       return false
     }
 
-    if !MetadataIndex.matches(
-      index: series.metaLanguageIndex,
-      values: filter.languages,
-      logic: filter.languagesLogic
+    if !(series.booksMetadata?.notableEntities ?? []).matches(
+      filter.notableEntities,
+      logic: filter.notableEntitiesLogic
     ) {
       return false
     }

@@ -506,6 +506,7 @@ extension DatabaseOperator {
       browseOpts.completeFilter.isActive
       || !browseOpts.includeSeriesStatuses.isEmpty
       || !browseOpts.excludeSeriesStatuses.isEmpty
+      || browseOpts.metadataFilter.notableEntities != nil
 
     if !requiresResidualFilter {
       return try fetchBrowseSeriesSQLCandidates(
