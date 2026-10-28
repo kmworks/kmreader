@@ -23,6 +23,9 @@ actor SSEService {
 
   private var isConnected = false
   private var streamTask: Task<Void, Never>?
+  private var reconnectTask: Task<Void, Never>?
+  private var lastEventID: String?
+  private var cursorInstanceId: String?
 
   var connected: Bool {
     isConnected
@@ -56,18 +59,33 @@ actor SSEService {
 
     logger.info("🔌 Connecting to SSE: \(url.absoluteString)")
     streamTask?.cancel()
+    reconnectTask?.cancel()
+    reconnectTask = nil
+    let instanceId = AppConfig.current.instanceId
+    if cursorInstanceId != instanceId {
+      lastEventID = nil
+      cursorInstanceId = instanceId
+    }
+    let lastEventID = self.lastEventID
     streamTask = Task.detached(priority: .utility) {
-      await SSEService.shared.handleSSEStream(url: url)
+      await SSEService.shared.handleSSEStream(
+        url: url, instanceId: instanceId, lastEventID: lastEventID)
     }
     isConnected = true
   }
 
-  func disconnect(notify: Bool = true) {
-    guard isConnected else { return }
+  func disconnect(notify: Bool = true, resettingCursor: Bool = false) {
+    if resettingCursor {
+      lastEventID = nil
+      cursorInstanceId = nil
+    }
+    guard isConnected || streamTask != nil || reconnectTask != nil else { return }
 
     logger.info("🔌 Disconnecting SSE")
     streamTask?.cancel()
     streamTask = nil
+    reconnectTask?.cancel()
+    reconnectTask = nil
     isConnected = false
 
     // Clear task queue status when disconnecting
@@ -81,9 +99,15 @@ actor SSEService {
     }
   }
 
-  fileprivate func handleSSEStream(url: URL) async {
+  fileprivate func handleSSEStream(url: URL, instanceId: String, lastEventID: String?) async {
+    guard isStreamCurrent(url: url, instanceId: instanceId, lastEventID: lastEventID) else {
+      return
+    }
     var request = URLRequest(url: url)
     request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+    if let lastEventID, !lastEventID.isEmpty {
+      request.setValue(lastEventID, forHTTPHeaderField: "Last-Event-ID")
+    }
 
     request.setValue(AppConfig.userAgent, forHTTPHeaderField: "User-Agent")
 
@@ -100,7 +124,10 @@ actor SSEService {
         (200...299).contains(httpResponse.statusCode)
       else {
         logger.error("SSE connection failed: \(response)")
-        self.isConnected = false
+        if isStreamCurrent(url: url, instanceId: instanceId, lastEventID: lastEventID) {
+          self.isConnected = false
+        }
+        scheduleReconnectIfNeeded(url: url, instanceId: instanceId, lastEventID: lastEventID)
         return
       }
 
@@ -112,79 +139,88 @@ actor SSEService {
           message: String(localized: "notification.sse.connected"))
       }
 
-      var lineBuffer = ""
       var currentEventType: String?
-      var currentData: String?
+      var currentEventID: String?
+      var currentData: [String] = []
 
-      for try await byte in asyncBytes {
-        if Task.isCancelled {
-          break
+      for try await line in asyncBytes.lines {
+        guard isStreamCurrent(url: url, instanceId: instanceId, lastEventID: lastEventID) else {
+          return
         }
 
-        let character = Character(UnicodeScalar(byte))
-
-        if character == "\n" {
-          // Process complete line
-          let line = lineBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-          lineBuffer = ""
-
-          if line.isEmpty {
-            // Empty line indicates end of message
-            if let eventType = currentEventType, let data = currentData {
-              await handleSSEEvent(type: eventType, data: data)
+        if line.isEmpty {
+          if let eventType = currentEventType, !currentData.isEmpty {
+            if let currentEventID, !currentEventID.isEmpty,
+              cursorInstanceId == instanceId
+            {
+              self.lastEventID = currentEventID
             }
-            currentEventType = nil
-            currentData = nil
-          } else if line.hasPrefix(":") {
-            // SSE comment line (heartbeat) - ignore but confirms connection is alive
-          } else if line.hasPrefix("event:") {
-            currentEventType = String(line.dropFirst(6).trimmingCharacters(in: .whitespaces))
-          } else if line.hasPrefix("data:") {
-            let data = String(line.dropFirst(5).trimmingCharacters(in: .whitespaces))
-            if currentData == nil {
-              currentData = data
-            } else {
-              // Multi-line data
-              currentData! += "\n" + data
-            }
+            await handleSSEEvent(type: eventType, data: currentData.joined(separator: "\n"))
           }
-          // Ignore id: and retry: lines
-        } else {
-          lineBuffer.append(character)
+          currentEventType = nil
+          currentEventID = nil
+          currentData = []
+        } else if line.hasPrefix(":") {
+          continue
+        } else if let (field, value) = Self.parseField(line) {
+          switch field {
+          case "event":
+            currentEventType = value
+          case "id":
+            currentEventID = value
+          case "data":
+            currentData.append(value)
+          default:
+            break
+          }
         }
       }
 
       // Stream ended - connection closed
       logger.warning("SSE stream ended - connection closed")
-      self.isConnected = false
-
-      // Attempt to reconnect if still logged in
-      if AppConfig.isLoggedIn && AppConfig.enableSSE && !AppConfig.isOffline && !Task.isCancelled {
-        Task {
-          try? await Task.sleep(nanoseconds: 5_000_000_000)  // 5 seconds
-          if AppConfig.isLoggedIn && !isConnected && AppConfig.enableSSE && !AppConfig.isOffline {
-            logger.info("Reconnecting SSE after stream ended")
-            self.connect()
-          }
-        }
-      }
+      scheduleReconnectIfNeeded(url: url, instanceId: instanceId, lastEventID: lastEventID)
     } catch {
       if !Task.isCancelled {
         logger.error("SSE stream error: \(error.localizedDescription)")
-        self.isConnected = false
-
-        // Attempt to reconnect after a delay
-        if AppConfig.isLoggedIn && AppConfig.enableSSE && !AppConfig.isOffline {
-          Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)  // 5 seconds
-            if AppConfig.isLoggedIn && !isConnected && AppConfig.enableSSE && !AppConfig.isOffline {
-              logger.info("Reconnecting SSE after error")
-              self.connect()
-            }
-          }
-        }
+        scheduleReconnectIfNeeded(url: url, instanceId: instanceId, lastEventID: lastEventID)
       }
     }
+  }
+
+  private func isStreamCurrent(url: URL, instanceId: String, lastEventID: String?) -> Bool {
+    guard AppConfig.current.instanceId == instanceId,
+      AppConfig.current.serverURL + "/sse/v1/events" == url.absoluteString
+    else { return false }
+    return cursorInstanceId == instanceId && self.lastEventID == lastEventID
+  }
+
+  private func scheduleReconnectIfNeeded(url: URL, instanceId: String, lastEventID: String?) {
+    guard isStreamCurrent(url: url, instanceId: instanceId, lastEventID: lastEventID) else {
+      return
+    }
+    isConnected = false
+    streamTask = nil
+    guard AppConfig.isLoggedIn, AppConfig.enableSSE, !AppConfig.isOffline else { return }
+    reconnectTask = Task {
+      try? await Task.sleep(nanoseconds: 5_000_000_000)
+      guard !Task.isCancelled, AppConfig.isLoggedIn, !isConnected,
+        AppConfig.enableSSE, !AppConfig.isOffline,
+        isStreamCurrent(url: url, instanceId: instanceId, lastEventID: lastEventID)
+      else { return }
+      reconnectTask = nil
+      logger.info("Reconnecting SSE")
+      connect()
+    }
+  }
+
+  private static func parseField(_ line: String) -> (field: String, value: String)? {
+    guard let separator = line.firstIndex(of: ":") else { return (line, "") }
+    let field = String(line[..<separator])
+    var value = line[line.index(after: separator)...]
+    if value.hasPrefix(" ") {
+      value = value.dropFirst()
+    }
+    return (field, String(value))
   }
 
   private func handleSSEEvent(type: String, data: String) async {

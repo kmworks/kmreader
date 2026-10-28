@@ -130,7 +130,7 @@ class AuthViewModel {
     Task {
       await DashboardLibrarySelectionStore.persistSelection(libraryIds, instanceId: instanceId)
       // Disconnect SSE before logout
-      await SSEService.shared.disconnect()
+      await SSEService.shared.disconnect(resettingCursor: true)
       try? await AuthService.logout(clearCurrent: clearCurrent)
     }
     // ViewModel-specific cleanup
@@ -288,7 +288,7 @@ class AuthViewModel {
 
         // Switch to offline mode
         AppConfig.enterAutoOfflineMode()
-        await SSEService.shared.disconnect()
+        await SSEService.shared.disconnect(resettingCursor: true)
 
         // We cannot load the user object offline, but isLoggedIn=true allows entry
         var current = AppConfig.current
@@ -336,6 +336,7 @@ class AuthViewModel {
     let serverURL = Current.normalizeServerURL(serverURL)
 
     // Update AppConfig only after validation succeeds
+    await SSEService.shared.disconnect(notify: false, resettingCursor: true)
     APIClient.shared.setServer(url: serverURL)
     APIClient.shared.setAuthToken(authToken)
     await DashboardLibrarySelectionStore.persistCurrentSelection()

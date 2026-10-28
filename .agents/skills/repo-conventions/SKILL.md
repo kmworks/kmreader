@@ -115,6 +115,7 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 ### SSE
 
 - SSE callbacks are single-assignment closures; implement dispatchers when multiple components need the same event.
+- `SSEService` keeps the last received domain-event ID in memory, scoped to the current instance and stream, and sends it as `Last-Event-ID` on reconnect so kmrs can replay a complete retained history. The cursor survives lifecycle suspension, offline recovery, and SSE preference toggles; login, logout, and account/server switching reset it explicitly. Old streams cannot update state after their cursor or identity changes; delayed reconnects are single-assignment and cancelled by explicit connection/disconnection. Task snapshots and heartbeats do not advance the cursor.
 
 ### Read Progress
 
