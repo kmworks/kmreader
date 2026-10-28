@@ -12,6 +12,7 @@ struct SeriesDetailChipsView: View {
   private let collapsedLinkLimit = 6
 
   var body: some View {
+    NotableEntityChipFlows(entities: series.booksMetadata.notableEntities ?? [], target: .series)
     DetailChipFlow(items: genreItems, collapsedLimit: collapsedLinkLimit, glass: false)
     DetailChipFlow(items: tagItems, collapsedLimit: collapsedLinkLimit, glass: false)
     DetailChipFlow(items: linkItems, collapsedLimit: collapsedLinkLimit)

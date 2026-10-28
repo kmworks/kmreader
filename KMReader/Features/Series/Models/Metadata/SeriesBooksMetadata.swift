@@ -10,6 +10,7 @@ nonisolated struct SeriesBooksMetadata: Codable, Equatable, Hashable, Sendable {
     created: nil,
     lastModified: nil,
     authors: nil,
+    notableEntities: nil,
     tags: nil,
     releaseDate: nil,
     summary: nil,
@@ -19,6 +20,7 @@ nonisolated struct SeriesBooksMetadata: Codable, Equatable, Hashable, Sendable {
   let created: String?
   let lastModified: String?
   let authors: [Author]?
+  let notableEntities: [NotableEntity]?
   let tags: [String]?
   let releaseDate: String?
   let summary: String?

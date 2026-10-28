@@ -21,6 +21,8 @@ struct BookMetadataUpdate: Codable {
   var isbnLock: Bool
   var authors: [Author]
   var authorsLock: Bool
+  var notableEntities: [NotableEntity]
+  var notableEntitiesLock: Bool
   var tags: [String]
   var tagsLock: Bool
   var links: [WebLink]
@@ -52,6 +54,8 @@ struct BookMetadataUpdate: Codable {
       isbnLock: book.metadata.isbnLock ?? false,
       authors: book.metadata.authors ?? [],
       authorsLock: book.metadata.authorsLock ?? false,
+      notableEntities: book.metadata.notableEntities ?? [],
+      notableEntitiesLock: book.metadata.notableEntitiesLock ?? false,
       tags: book.metadata.tags ?? [],
       tagsLock: book.metadata.tagsLock ?? false,
       links: book.metadata.links ?? [],
@@ -101,6 +105,11 @@ struct BookMetadataUpdate: Codable {
       dict["authors"] = authors.map { ["name": $0.name, "role": $0.role.rawValue] }
     }
     dict["authorsLock"] = authorsLock
+
+    if notableEntities != (original.metadata.notableEntities ?? []) {
+      dict["notableEntities"] = notableEntities.map { ["kind": $0.kind, "name": $0.name] }
+    }
+    dict["notableEntitiesLock"] = notableEntitiesLock
 
     if tags != (original.metadata.tags ?? []) {
       dict["tags"] = tags

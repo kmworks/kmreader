@@ -159,6 +159,8 @@ extension SeriesBrowseOptions {
       genresLogic: metadataFilter.genresLogic,
       tags: metadataFilter.tags,
       tagsLogic: metadataFilter.tagsLogic,
+      notableEntities: metadataFilter.notableEntities,
+      notableEntitiesLogic: metadataFilter.notableEntitiesLogic,
       languages: metadataFilter.languages,
       languagesLogic: metadataFilter.languagesLogic,
       ageRatings: metadataFilter.ageRatings?.compactMap { Int($0) },

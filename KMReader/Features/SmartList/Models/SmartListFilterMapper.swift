@@ -261,7 +261,7 @@ private nonisolated struct SearchDocumentParser {
         excludeSeriesStatuses.formUnion(statuses)
       }
       seriesStatusLogic = logic
-    case "author", "tag", "genre", "publisher", "language", "ageRating":
+    case "author", "tag", "genre", "publisher", "language", "ageRating", "notableEntity":
       parseMetadataLeafGroup(key: key, bodies: bodies, logic: logic)
     default:
       lossy = true
@@ -307,7 +307,7 @@ private nonisolated struct SearchDocumentParser {
       seriesStatusLogic = .all
     case "oneShot", "deleted", "complete":
       parseFlagLeaf(key: key, body: body)
-    case "author", "tag", "genre", "publisher", "language", "ageRating":
+    case "author", "tag", "genre", "publisher", "language", "ageRating", "notableEntity":
       parseMetadataLeafGroup(key: key, bodies: [body], logic: .all)
     default:
       // Scoping ids (seriesId, readListId, collectionId), releaseDate outside a
@@ -369,6 +369,12 @@ private nonisolated struct SearchDocumentParser {
     case "language":
       metadata.languages = (metadata.languages ?? []) + values
       metadata.languagesLogic = logic
+    case "notableEntity":
+      metadata.notableEntities =
+        (metadata.notableEntities ?? [])
+        + values.compactMap(
+          NotableEntity.fromFilterKey)
+      metadata.notableEntitiesLogic = logic
     default:
       metadata.ageRatings = (metadata.ageRatings ?? []) + values
       metadata.ageRatingsLogic = logic
@@ -388,6 +394,12 @@ private nonisolated struct SearchDocumentParser {
     case "genre", "publisher", "language":
       guard target == .series else { return nil }
       return stringValue(body["value"])
+    case "notableEntity":
+      guard case .dictionary(let value) = body["value"],
+        case .string(let kind) = value["kind"],
+        case .string(let name) = value["name"]
+      else { return nil }
+      return NotableEntity(kind: kind, name: name).filterKey
     case "ageRating":
       guard target == .series else { return nil }
       switch body["value"] {

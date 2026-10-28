@@ -13,6 +13,8 @@ enum MetadataFilterItemSource: Sendable {
   case languages(libraryIds: [String]?, collectionId: String?)
   case ageRatings(libraryIds: [String]?, collectionId: String?)
   case releaseYears(libraryIds: [String]?, collectionId: String?)
+  case notableEntities(
+    libraryIds: [String]?, collectionId: String?, seriesId: String?, readListId: String?)
 
   func load() async throws -> [String] {
     switch self {
@@ -52,6 +54,14 @@ enum MetadataFilterItemSource: Sendable {
         libraryIds: libraryIds,
         collectionId: collectionId
       )
+    case .notableEntities(let libraryIds, let collectionId, let seriesId, let readListId):
+      let entities = try await ReferentialService.getNotableEntities(
+        libraryIds: libraryIds,
+        collectionId: collectionId,
+        seriesId: seriesId,
+        readListId: readListId
+      )
+      return entities.map(\.filterKey)
     case .releaseYears(let libraryIds, let collectionId):
       return try await ReferentialService.getReleaseYears(
         libraryIds: libraryIds,

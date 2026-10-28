@@ -32,6 +32,8 @@ enum NavDestination: Hashable {
   case browseSeriesWithTag(tag: String)
   case browseBooksWithAuthor(author: String)
   case browseBooksWithTag(tag: String)
+  case browseSeriesWithNotableEntity(entity: NotableEntity)
+  case browseBooksWithNotableEntity(entity: NotableEntity)
 
   case seriesDetail(seriesId: String)
   case bookDetail(bookId: String)
@@ -200,6 +202,18 @@ enum NavDestination: Hashable {
         authViewModel: context.authViewModel,
         fixedContent: .books,
         metadataFilter: MetadataFilterConfig.forTags([tag])
+      )
+    case .browseSeriesWithNotableEntity(let entity):
+      BrowseView(
+        authViewModel: context.authViewModel,
+        fixedContent: .series,
+        metadataFilter: MetadataFilterConfig.forNotableEntity(entity)
+      )
+    case .browseBooksWithNotableEntity(let entity):
+      BrowseView(
+        authViewModel: context.authViewModel,
+        fixedContent: .books,
+        metadataFilter: MetadataFilterConfig.forNotableEntity(entity)
       )
 
     case .seriesDetail(let seriesId):

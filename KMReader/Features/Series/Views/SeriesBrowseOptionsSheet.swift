@@ -158,6 +158,7 @@ struct SeriesBrowseOptionsSheet: View {
           showAuthors: true,
           showGenres: true,
           showTags: true,
+          showNotableEntities: true,
           showLanguages: true,
           showAgeRatings: true,
           showReleaseYears: true

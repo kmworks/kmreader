@@ -17,6 +17,8 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
   var genresLogic: FilterLogic = .all
   var tags: [String]?
   var tagsLogic: FilterLogic = .all
+  var notableEntities: [NotableEntity]?
+  var notableEntitiesLogic: FilterLogic = .all
   var languages: [String]?
   var languagesLogic: FilterLogic = .all
   var ageRatings: [String]?
@@ -33,6 +35,8 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
     genresLogic: FilterLogic = .all,
     tags: [String]? = nil,
     tagsLogic: FilterLogic = .all,
+    notableEntities: [NotableEntity]? = nil,
+    notableEntitiesLogic: FilterLogic = .all,
     languages: [String]? = nil,
     languagesLogic: FilterLogic = .all,
     ageRatings: [String]? = nil,
@@ -48,6 +52,8 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
     self.genresLogic = genresLogic
     self.tags = tags
     self.tagsLogic = tagsLogic
+    self.notableEntities = notableEntities
+    self.notableEntitiesLogic = notableEntitiesLogic
     self.languages = languages
     self.languagesLogic = languagesLogic
     self.ageRatings = ageRatings
@@ -58,7 +64,8 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
 
   /// Check if any filter is active
   var hasAnyFilter: Bool {
-    return publishers != nil || authors != nil || genres != nil || tags != nil || languages != nil
+    return publishers != nil || authors != nil || genres != nil || tags != nil
+      || notableEntities != nil || languages != nil
       || ageRatings != nil || releaseYears != nil
   }
 
@@ -80,6 +87,10 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
       dict["tags"] = tags
     }
     dict["tagsLogic"] = tagsLogic.rawValue
+    if let notableEntities {
+      dict["notableEntities"] = notableEntities.map(\.filterKey)
+    }
+    dict["notableEntitiesLogic"] = notableEntitiesLogic.rawValue
     if let languages = languages {
       dict["languages"] = languages
     }
@@ -140,6 +151,15 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
       self.tagsLogic = logic
     } else {
       self.tagsLogic = .all
+    }
+    self.notableEntities = (dict["notableEntities"] as? [String])?.compactMap(
+      NotableEntity.fromFilterKey)
+    if let raw = dict["notableEntitiesLogic"] as? String,
+      let logic = FilterLogic(rawValue: raw)
+    {
+      self.notableEntitiesLogic = logic
+    } else {
+      self.notableEntitiesLogic = .all
     }
     self.languages = dict["languages"] as? [String]
     if let languagesLogicRaw = dict["languagesLogic"] as? String,
@@ -205,6 +225,10 @@ nonisolated struct MetadataFilterConfig: Equatable, RawRepresentable, Sendable {
   /// Create config for tags filter
   static func forTags(_ tags: [String]) -> MetadataFilterConfig {
     return MetadataFilterConfig(tags: tags)
+  }
+
+  static func forNotableEntity(_ entity: NotableEntity) -> MetadataFilterConfig {
+    MetadataFilterConfig(notableEntities: [entity])
   }
 
   /// Create config for age rating filter

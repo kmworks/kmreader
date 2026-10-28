@@ -56,6 +56,30 @@ nonisolated enum ReferentialService {
     }
   }
 
+  static func getNotableEntities(
+    libraryIds: [String]? = nil,
+    collectionId: String? = nil,
+    seriesId: String? = nil,
+    readListId: String? = nil
+  ) async throws -> [NotableEntity] {
+    var queryItems = [URLQueryItem(name: "unpaged", value: "true")]
+    for id in libraryIds ?? [] where !id.isEmpty {
+      queryItems.append(URLQueryItem(name: "library_id", value: id))
+    }
+    if let collectionId {
+      queryItems.append(URLQueryItem(name: "collection_id", value: collectionId))
+    }
+    if let seriesId {
+      queryItems.append(URLQueryItem(name: "series_id", value: seriesId))
+    }
+    if let readListId {
+      queryItems.append(URLQueryItem(name: "readlist_id", value: readListId))
+    }
+    let page: PageResponse<NotableEntity> = try await apiClient.request(
+      path: "/api/v3/notable-entities", queryItems: queryItems)
+    return page.content
+  }
+
   static func getPublishers(libraryIds: [String]? = nil, collectionId: String? = nil) async throws
     -> [String]
   {

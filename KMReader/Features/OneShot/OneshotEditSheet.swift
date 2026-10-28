@@ -85,7 +85,13 @@ struct OneshotEditSheet: View {
   }
 
   private var authorsTab: some View {
-    authorsSection
+    Group {
+      authorsSection
+      NotableEntitiesEditor(
+        entities: $bookMetadataUpdate.notableEntities,
+        isLocked: $bookMetadataUpdate.notableEntitiesLock
+      )
+    }
   }
 
   private var tagsTab: some View {

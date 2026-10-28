@@ -152,6 +152,16 @@ struct BookEditSheet: View {
   }
 
   private var authorsTab: some View {
+    Group {
+      authorsSection
+      NotableEntitiesEditor(
+        entities: $bookMetadataUpdate.notableEntities,
+        isLocked: $bookMetadataUpdate.notableEntitiesLock
+      )
+    }
+  }
+
+  private var authorsSection: some View {
     Section {
       ForEach(bookMetadataUpdate.authors.indices, id: \.self) { index in
         HStack {

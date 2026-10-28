@@ -21,6 +21,8 @@ nonisolated struct BookMetadata: Codable, Equatable, Hashable, Sendable {
     releaseDateLock: nil,
     authors: nil,
     authorsLock: nil,
+    notableEntities: nil,
+    notableEntitiesLock: nil,
     tags: nil,
     tagsLock: nil,
     isbn: nil,
@@ -43,6 +45,8 @@ nonisolated struct BookMetadata: Codable, Equatable, Hashable, Sendable {
   let releaseDateLock: Bool?
   let authors: [Author]?
   let authorsLock: Bool?
+  let notableEntities: [NotableEntity]?
+  let notableEntitiesLock: Bool?
   let tags: [String]?
   let tagsLock: Bool?
   let isbn: String?

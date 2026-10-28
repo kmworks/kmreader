@@ -184,6 +184,8 @@ struct OneShotDetailContentView: View {
         )
       }
 
+      NotableEntityChipFlows(entities: book.metadata.notableEntities ?? [], target: .books)
+
       DetailChipFlow(items: genreItems, collapsedLimit: collapsedLinkLimit, glass: false)
 
       DetailChipFlow(items: tagItems, collapsedLimit: collapsedLinkLimit, glass: false)

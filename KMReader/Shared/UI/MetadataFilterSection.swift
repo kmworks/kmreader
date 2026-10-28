@@ -15,6 +15,7 @@ struct MetadataFilterSection: View {
   let showAuthors: Bool
   let showGenres: Bool
   let showTags: Bool
+  let showNotableEntities: Bool
   let showLanguages: Bool
   let showAgeRatings: Bool
   let showReleaseYears: Bool
@@ -23,6 +24,7 @@ struct MetadataFilterSection: View {
   @State private var authors: [String]?
   @State private var genres: [String]?
   @State private var tags: [String]?
+  @State private var notableEntities: [String]?
   @State private var languages: [String]?
   @State private var ageRatings: [String]?
   @State private var releaseYears: [String]?
@@ -37,6 +39,7 @@ struct MetadataFilterSection: View {
     showAuthors: Bool = false,
     showGenres: Bool = false,
     showTags: Bool = false,
+    showNotableEntities: Bool = false,
     showLanguages: Bool = false,
     showAgeRatings: Bool = false,
     showReleaseYears: Bool = false
@@ -50,13 +53,16 @@ struct MetadataFilterSection: View {
     self.showAuthors = showAuthors
     self.showGenres = showGenres
     self.showTags = showTags
+    self.showNotableEntities = showNotableEntities
     self.showLanguages = showLanguages
     self.showAgeRatings = showAgeRatings
     self.showReleaseYears = showReleaseYears
   }
 
   var body: some View {
-    if showPublisher || showAuthors || showGenres || showTags || showLanguages || showAgeRatings || showReleaseYears {
+    if showPublisher || showAuthors || showGenres || showTags || showNotableEntities || showLanguages || showAgeRatings
+      || showReleaseYears
+    {
       Section(String(localized: "Metadata")) {
         if showPublisher {
           publisherPicker
@@ -72,6 +78,10 @@ struct MetadataFilterSection: View {
 
         if showTags {
           tagsSection
+        }
+
+        if showNotableEntities {
+          notableEntitiesSection
         }
 
         if showLanguages {
@@ -209,6 +219,49 @@ struct MetadataFilterSection: View {
         }
       }
     }
+  }
+
+  @ViewBuilder
+  private var notableEntitiesSection: some View {
+    NavigationLink {
+      MetadataMultiSelectLoader(
+        title: String(localized: "Notable Entities"),
+        cachedItems: $notableEntities,
+        source: .notableEntities(
+          libraryIds: libraryIds,
+          collectionId: collectionId,
+          seriesId: seriesId,
+          readListId: readListId
+        ),
+        selectedItems: Binding(
+          get: { Set((metadataFilter.notableEntities ?? []).map(\.filterKey)) },
+          set: { selected in
+            metadataFilter.notableEntities =
+              selected.isEmpty
+              ? nil
+              : selected.sorted().compactMap(NotableEntity.fromFilterKey)
+          }
+        ),
+        logic: $metadataFilter.notableEntitiesLogic,
+        emptyDescription: String(localized: "No notable entities available"),
+        displayStyle: .notableEntity
+      )
+    } label: {
+      HStack {
+        Text(String(localized: "Notable Entities"))
+        Spacer()
+        if let entities = metadataFilter.notableEntities, !entities.isEmpty {
+          let logicSymbol = metadataFilter.notableEntitiesLogic == .all ? "∧" : "∨"
+          Text(entities.map(notableDisplayName).joined(separator: " \(logicSymbol) "))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+      }
+    }
+  }
+
+  private func notableDisplayName(_ entity: NotableEntity) -> String {
+    MetadataFilterDisplayStyle.notableEntity.displayName(for: entity.filterKey)
   }
 
   @ViewBuilder
