@@ -285,7 +285,7 @@ struct ContentView: View {
             OfflineRecoveryService.shared.probe = nil
             NetworkPathMonitorService.shared.onPathBecameSatisfied = nil
             Task {
-              await SSEService.shared.disconnect(notify: false)
+              await SSEService.shared.disconnect(notify: false, resettingCursor: true)
             }
           }
       }
