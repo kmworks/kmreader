@@ -39,6 +39,45 @@ nonisolated enum ManagementService {
     try await apiClient.request(path: "/actuator/info")
   }
 
+  static func getNativeInfoIfSupported() async throws -> ActuatorInfoResponse? {
+    guard shouldQueryNativeAPI else { return nil }
+    do {
+      let info: NativeServerInfo = try await apiClient.request(path: "/api/v1/server/info")
+      recordNativeCapability(supported: true)
+      return info.actuatorInfo
+    } catch let error as APIError {
+      guard case .notFound = error else { throw error }
+      recordNativeCapability(supported: false)
+      return nil
+    }
+  }
+
+  static func getUpdateCheck() async throws -> ServerUpdateCheck? {
+    guard AppConfig.current.isAdmin else {
+      throw AppErrorType.operationNotAllowed(message: "Admin access required")
+    }
+    guard shouldQueryNativeAPI else { return nil }
+    do {
+      let check: ServerUpdateCheck = try await apiClient.request(path: "/api/v1/update-check")
+      recordNativeCapability(supported: true)
+      return check
+    } catch let error as APIError {
+      guard case .notFound = error else { throw error }
+      recordNativeCapability(supported: false)
+      return nil
+    }
+  }
+
+  private static var shouldQueryNativeAPI: Bool {
+    AppConfig.serverManagementCapability.shouldQuery(instanceId: AppConfig.current.instanceId)
+  }
+
+  private static func recordNativeCapability(supported: Bool) {
+    var capability = AppConfig.serverManagementCapability
+    capability.record(instanceId: AppConfig.current.instanceId, supported: supported)
+    AppConfig.serverManagementCapability = capability
+  }
+
   static func getHealth() async throws -> ActuatorHealthResponse {
     guard AppConfig.current.isAdmin else {
       throw AppErrorType.operationNotAllowed(message: "Admin access required")
@@ -71,6 +110,54 @@ nonisolated enum ManagementService {
       path: "/actuator/sessions",
       queryItems: [URLQueryItem(name: "username", value: username)]
     )
+  }
+
+  static func getNativeSessions(scope: ServerSessionScope, page: Int, size: Int) async throws
+    -> Page<ServerSession>?
+  {
+    guard shouldQueryNativeSessions else { return nil }
+    let path = scope == .own ? "/api/v2/users/me/sessions" : "/api/v2/users/sessions"
+    do {
+      let page: Page<NativeServerSession> = try await apiClient.request(
+        path: path,
+        queryItems: [
+          URLQueryItem(name: "page", value: "\(page)"),
+          URLQueryItem(name: "size", value: "\(size)"),
+        ]
+      )
+      recordNativeSessionsCapability(supported: true)
+      return Page(
+        content: page.content.map(\.serverSession),
+        pageable: page.pageable,
+        totalElements: page.totalElements,
+        totalPages: page.totalPages,
+        last: page.last,
+        size: page.size,
+        number: page.number,
+        numberOfElements: page.numberOfElements,
+        first: page.first,
+        empty: page.empty
+      )
+    } catch let error as APIError {
+      guard case .notFound = error else { throw error }
+      recordNativeSessionsCapability(supported: false)
+      return nil
+    }
+  }
+
+  static func deleteNativeSession(id: String, scope: ServerSessionScope) async throws {
+    let path = scope == .own ? "/api/v2/users/me/sessions/\(id)" : "/api/v2/users/sessions/\(id)"
+    let _: EmptyResponse = try await apiClient.request(path: path, method: "DELETE")
+  }
+
+  private static var shouldQueryNativeSessions: Bool {
+    AppConfig.serverSessionsCapability.shouldQuery(instanceId: AppConfig.current.instanceId)
+  }
+
+  private static func recordNativeSessionsCapability(supported: Bool) {
+    var capability = AppConfig.serverSessionsCapability
+    capability.record(instanceId: AppConfig.current.instanceId, supported: supported)
+    AppConfig.serverSessionsCapability = capability
   }
 
   static func deleteSession(id: String) async throws {

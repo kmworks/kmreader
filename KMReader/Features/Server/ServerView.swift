@@ -133,6 +133,15 @@ struct ServerView: View {
         }
         .adaptiveButtonStyle(.plain)
 
+        NavigationLink(value: NavDestination.settingsAccountSessions) {
+          ServerActionTile(
+            title: ServerSection.accountSessions.title,
+            systemImage: ServerSection.accountSessions.icon,
+            color: ServerSection.accountSessions.color
+          )
+        }
+        .adaptiveButtonStyle(.plain)
+
         NavigationLink(value: NavDestination.settingsAuthenticationActivity) {
           ServerActionTile(
             title: ServerSection.authenticationActivity.title,

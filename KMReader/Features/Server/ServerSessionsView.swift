@@ -1,21 +1,24 @@
 //
 // ServerSessionsView.swift
 //
-//
 
 import SwiftUI
 
-/// Active server sessions from `/actuator/sessions` (admin only), most
-/// recently active first, with per-session kick. kmrs lists every session;
-/// Komga only answers the per-username variant, so the list falls back to
-/// the current user's own sessions there.
 struct ServerSessionsView: View {
-  @AppStorage("currentAccount") private var current: Current = .init()
+  let scope: ServerSessionScope
 
-  @State private var sessions: [ActuatorSessionsResponse.Session] = []
+  @AppStorage("currentAccount") private var current: Current = .init()
+  @State private var pagination = PaginationState<ServerSession>(pageSize: 20)
   @State private var isLoading = false
   @State private var kickingSessionId: String?
   @State private var hasLoaded = false
+  @State private var nativeUnsupported = false
+  @State private var usesNativeAPI = false
+  @State private var loadedInstanceId: String?
+
+  init(scope: ServerSessionScope = .all) {
+    self.scope = scope
+  }
 
   var body: some View {
     Form {
@@ -26,7 +29,15 @@ struct ServerSessionsView: View {
             ProgressView()
             Spacer()
           }
-        } else if sessions.isEmpty {
+        } else if showsUnavailable {
+          ContentUnavailableView {
+            Label(String(localized: "Sessions Unavailable"), systemImage: "person.2")
+          } description: {
+            Text(String(localized: "This server does not support managing your sessions."))
+          }
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 16)
+        } else if pagination.isEmpty {
           ContentUnavailableView {
             Label(String(localized: "No Sessions"), systemImage: "person.2")
           } description: {
@@ -35,68 +46,28 @@ struct ServerSessionsView: View {
           .frame(maxWidth: .infinity)
           .padding(.vertical, 16)
         } else {
-          ForEach(sessions) { session in
-            VStack(alignment: .leading, spacing: 6) {
-              HStack {
-                Text(session.id)
-                  .font(.caption.monospaced())
-                  .lineLimit(1)
-                  .truncationMode(.middle)
-                  .textSelectionIfAvailable()
-                Spacer()
-                if session.expired {
-                  Text(String(localized: "Expired"))
-                    .font(.caption)
-                    .foregroundColor(.red)
-                } else {
-                  Text(String(localized: "Active"))
-                    .font(.caption)
-                    .foregroundColor(.green)
-                }
-              }
-
-              HStack {
-                if let createdAt = session.createdAt {
-                  Text(
-                    String.localizedStringWithFormat(
-                      String(localized: "session.created", defaultValue: "Created %@"),
-                      createdAt.formatted(.relative(presentation: .named))
-                    )
-                  )
-                }
-                if let lastAccessedAt = session.lastAccessedAt {
-                  Text("·")
-                  Text(
-                    String.localizedStringWithFormat(
-                      String(localized: "session.lastActive", defaultValue: "Active %@"),
-                      lastAccessedAt.formatted(.relative(presentation: .named))
-                    )
-                  )
-                }
-                Spacer()
-                Button(role: .destructive) {
-                  kick(session)
-                } label: {
-                  Group {
-                    if kickingSessionId == session.id {
-                      ProgressView()
-                    } else {
-                      Text(String(localized: "Kick"))
-                    }
-                  }
-                  .contentShape(Rectangle())
-                }
-                .disabled(kickingSessionId != nil)
-              }
-              .font(.caption)
-              .foregroundColor(.secondary)
+          ForEach(pagination.items) { session in
+            ServerSessionRow(
+              session: session,
+              isKicking: kickingSessionId == session.id,
+              canKick: kickingSessionId == nil && !session.isCurrent
+            ) {
+              kick(session)
             }
-            .padding(.vertical, 2)
-            .tvFocusableHighlight()
+            .onAppear {
+              loadMoreIfNeeded(session)
+            }
+          }
+          if isLoading && hasLoaded {
+            HStack {
+              Spacer()
+              ProgressView()
+              Spacer()
+            }
           }
         }
       } footer: {
-        if !sessions.isEmpty {
+        if !pagination.isEmpty {
           Text(String(localized: "Kicking a session signs that device out immediately."))
         }
       }
@@ -104,57 +75,97 @@ struct ServerSessionsView: View {
     .formStyle(.grouped)
     .platformNavigationTitle(String(localized: "Sessions"))
     .task {
-      await loadSessions()
+      guard loadedInstanceId != current.instanceId else { return }
+      loadedInstanceId = current.instanceId
+      await loadSessions(refresh: true)
     }
     .refreshable {
-      await loadSessions()
+      await loadSessions(refresh: true)
     }
   }
 
-  private func loadSessions() async {
+  private var showsUnavailable: Bool {
+    nativeUnsupported && scope == .own
+  }
+
+  private func loadSessions(refresh: Bool) async {
+    if refresh {
+      pagination.reset()
+      hasLoaded = false
+    }
+    guard !isLoading else { return }
     isLoading = true
+    defer { isLoading = false }
+
+    do {
+      if let page = try await ManagementService.getNativeSessions(
+        scope: scope, page: pagination.currentPage, size: pagination.pageSize)
+      {
+        usesNativeAPI = true
+        nativeUnsupported = false
+        apply(page)
+      } else if scope == .all {
+        usesNativeAPI = false
+        try await loadActuatorSessions()
+      } else {
+        nativeUnsupported = true
+      }
+      hasLoaded = true
+    } catch {
+      ErrorManager.shared.alert(error: error)
+    }
+  }
+
+  private func loadActuatorSessions() async throws {
     do {
       let response = try await ManagementService.getSessions()
-      apply(response)
+      apply(response.sessions.map(\.serverSession), hasMore: false)
     } catch let error as APIError {
-      // Komga rejects the cross-user listing (400/404); retry per-user.
-      if case .notFound = error, !current.username.isEmpty {
-        await loadOwnSessions()
-      } else if case .badRequest = error, !current.username.isEmpty {
-        await loadOwnSessions()
+      guard !current.username.isEmpty else { throw error }
+      if case .notFound = error {
+        try await loadOwnActuatorSessions()
+      } else if case .badRequest = error {
+        try await loadOwnActuatorSessions()
       } else {
-        ErrorManager.shared.alert(error: error)
+        throw error
       }
-    } catch {
-      ErrorManager.shared.alert(error: error)
-    }
-    isLoading = false
-  }
-
-  private func loadOwnSessions() async {
-    do {
-      let response = try await ManagementService.getSessions(username: current.username)
-      apply(response)
-    } catch {
-      ErrorManager.shared.alert(error: error)
     }
   }
 
-  private func apply(_ response: ActuatorSessionsResponse) {
-    sessions = response.sessions.sorted {
-      ($0.lastAccessedAt ?? .distantPast) > ($1.lastAccessedAt ?? .distantPast)
-    }
-    hasLoaded = true
+  private func loadOwnActuatorSessions() async throws {
+    let response = try await ManagementService.getSessions(username: current.username)
+    apply(response.sessions.map(\.serverSession), hasMore: false)
   }
 
-  private func kick(_ session: ActuatorSessionsResponse.Session) {
-    guard kickingSessionId == nil else { return }
+  private func apply(_ page: Page<ServerSession>) {
+    _ = pagination.applyPage(page.content)
+    pagination.advance(moreAvailable: !page.last)
+  }
+
+  private func apply(_ newSessions: [ServerSession], hasMore: Bool) {
+    _ = pagination.applyPage(newSessions)
+    pagination.advance(moreAvailable: hasMore)
+  }
+
+  private func loadMoreIfNeeded(_ session: ServerSession) {
+    guard usesNativeAPI, pagination.shouldLoadMore(after: session), !isLoading else { return }
+    Task {
+      await loadSessions(refresh: false)
+    }
+  }
+
+  private func kick(_ session: ServerSession) {
+    guard kickingSessionId == nil, !session.isCurrent else { return }
     kickingSessionId = session.id
     Task {
       do {
-        try await ManagementService.deleteSession(id: session.id)
+        if usesNativeAPI {
+          try await ManagementService.deleteNativeSession(id: session.id, scope: scope)
+        } else {
+          try await ManagementService.deleteSession(id: session.id)
+        }
         ErrorManager.shared.notify(message: String(localized: "notification.session.kicked"))
-        await loadSessions()
+        await loadSessions(refresh: true)
       } catch {
         ErrorManager.shared.alert(error: error)
       }
