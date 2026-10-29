@@ -25,11 +25,60 @@ nonisolated struct TrackerSearchItem: Codable, Equatable, Identifiable, Sendable
   let coverUrl: String?
   let description: String?
   let tracked: Bool
-  let mediaType: String?
+  let mediaType: TrackerMediaType?
+  let series: Bool
   let url: String?
+
+  init(
+    id: String,
+    title: String,
+    coverUrl: String? = nil,
+    description: String? = nil,
+    tracked: Bool = false,
+    mediaType: TrackerMediaType? = nil,
+    series: Bool = false,
+    url: String? = nil
+  ) {
+    self.id = id
+    self.title = title
+    self.coverUrl = coverUrl
+    self.description = description
+    self.tracked = tracked
+    self.mediaType = mediaType
+    self.series = series
+    self.url = url
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    title = try container.decode(String.self, forKey: .title)
+    coverUrl = try container.decodeIfPresent(String.self, forKey: .coverUrl)
+    description = try container.decodeIfPresent(String.self, forKey: .description)
+    tracked = try container.decodeIfPresent(Bool.self, forKey: .tracked) ?? false
+    mediaType = try container.decodeIfPresent(String.self, forKey: .mediaType)
+      .flatMap(TrackerMediaType.init(rawValue:))
+    series = try container.decodeIfPresent(Bool.self, forKey: .series) ?? false
+    url = try container.decodeIfPresent(String.self, forKey: .url)
+  }
 
   var remoteURL: URL? {
     url.flatMap(URL.init(string:))
+  }
+
+  var kindLabel: String? {
+    if series {
+      switch mediaType {
+      case .manga: return String(localized: "Manga Series")
+      case .novel: return String(localized: "Novel Series")
+      case nil: return String(localized: "Series")
+      }
+    }
+    switch mediaType {
+    case .manga: return String(localized: "Manga")
+    case .novel: return String(localized: "Novel")
+    case nil: return nil
+    }
   }
 }
 

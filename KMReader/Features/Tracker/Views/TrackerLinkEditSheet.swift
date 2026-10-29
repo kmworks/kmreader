@@ -9,6 +9,7 @@ struct TrackerLinkEditSheet: View {
   let seriesId: String
   let seriesTitle: String
   let alternateTitles: [String]
+  let seriesLinks: [WebLink]
   let link: TrackerLink
   let onSaved: () async -> Void
 
@@ -16,6 +17,7 @@ struct TrackerLinkEditSheet: View {
 
   @State private var selectedItem: TrackerSearchItem?
   @State private var searchResults: [TrackerSearchItem] = []
+  @State private var suggestedResult: TrackerSearchItem?
   @State private var query: String
   @State private var searchTask: Task<Void, Never>?
   @State private var remoteLoadTask: Task<Void, Never>?
@@ -36,12 +38,14 @@ struct TrackerLinkEditSheet: View {
     seriesId: String,
     seriesTitle: String,
     alternateTitles: [String],
+    seriesLinks: [WebLink],
     link: TrackerLink,
     onSaved: @escaping () async -> Void
   ) {
     self.seriesId = seriesId
     self.seriesTitle = seriesTitle
     self.alternateTitles = alternateTitles
+    self.seriesLinks = seriesLinks
     self.link = link
     self.onSaved = onSaved
     _query = State(initialValue: link.title ?? seriesTitle)
@@ -50,15 +54,7 @@ struct TrackerLinkEditSheet: View {
     _selectedItem = State(
       initialValue: link.trackId.isEmpty
         ? nil
-        : TrackerSearchItem(
-          id: link.trackId,
-          title: link.title ?? link.trackId,
-          coverUrl: nil,
-          description: nil,
-          tracked: true,
-          mediaType: nil,
-          url: nil
-        )
+        : TrackerSearchItem(id: link.trackId, title: link.title ?? link.trackId)
     )
   }
 
@@ -73,6 +69,15 @@ struct TrackerLinkEditSheet: View {
     return titles
   }
 
+  private var suggestedURL: URL? {
+    TrackerProvider.entryURLs(in: seriesLinks)[link.provider]
+  }
+
+  private var visibleResults: [TrackerSearchItem] {
+    guard let suggestedResult else { return searchResults }
+    return searchResults.filter { $0.id != suggestedResult.id }
+  }
+
   var body: some View {
     SheetView(
       title: link.provider.displayName,
@@ -80,21 +85,31 @@ struct TrackerLinkEditSheet: View {
       applyFormStyle: true
     ) {
       Form {
-        Section(header: Text(String(localized: "Tracker Entry"))) {
-          if let selectedItem {
+        if let selectedItem {
+          Section(header: Text(String(localized: "Tracker Entry"))) {
+            TrackerSearchResultRow(result: selectedItem)
             HStack {
-              Text(selectedItem.title)
+              Text(verbatim: "#\(selectedItem.id)")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
               Spacer()
+              if let url = selectedItem.remoteURL ?? link.provider.entryURL(trackId: selectedItem.id) {
+                Link(destination: url) {
+                  Label(String(localized: "Open"), systemImage: "arrow.up.right.square")
+                    .font(.caption)
+                }
+                .buttonStyle(.borderless)
+              }
               Button(String(localized: "Change")) {
                 self.selectedItem = nil
                 remoteState = nil
               }
               .font(.caption)
+              .buttonStyle(.borderless)
             }
-            Text(selectedItem.id)
-              .font(.caption.monospaced())
-              .foregroundStyle(.secondary)
-          } else {
+          }
+        } else {
+          Section(header: Text(String(localized: "Tracker Entry"))) {
             TextField(String(localized: "Search Title or URL"), text: $query)
               .onChange(of: query) { _, _ in scheduleSearch() }
             if searchTitles.count > 1 {
@@ -125,17 +140,29 @@ struct TrackerLinkEditSheet: View {
                 }
               }
             }
-            if isSearching {
-              ProgressView()
+          }
+
+          if let suggestedResult {
+            Section(header: Text(String(localized: "From Series Links"))) {
+              resultButton(suggestedResult)
             }
-            ForEach(searchResults) { result in
-              Button {
-                select(result)
-              } label: {
-                TrackerSearchResultRow(result: result)
-                  .contentShape(Rectangle())
+          }
+
+          if isSearching || !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Section(header: Text(String(localized: "Search Results"))) {
+              if isSearching {
+                HStack {
+                  Spacer()
+                  ProgressView()
+                  Spacer()
+                }
+              } else if visibleResults.isEmpty {
+                Text(String(localized: "No results"))
+                  .foregroundStyle(.secondary)
               }
-              .adaptiveButtonStyle(.plain)
+              ForEach(visibleResults) { result in
+                resultButton(result)
+              }
             }
           }
         }
@@ -203,6 +230,9 @@ struct TrackerLinkEditSheet: View {
         scheduleSearch()
       }
     }
+    .task {
+      await loadSuggestion()
+    }
     .onDisappear {
       searchTask?.cancel()
       remoteLoadTask?.cancel()
@@ -215,20 +245,44 @@ struct TrackerLinkEditSheet: View {
     }
   }
 
+  private func resultButton(_ result: TrackerSearchItem) -> some View {
+    Button {
+      select(result)
+    } label: {
+      TrackerSearchResultRow(result: result)
+        .contentShape(Rectangle())
+    }
+    .adaptiveButtonStyle(.plain)
+  }
+
+  private func loadSuggestion() async {
+    guard let suggestedURL else { return }
+    do {
+      let results = try await TrackerService.search(provider: link.provider, name: suggestedURL.absoluteString)
+      guard !Task.isCancelled else { return }
+      suggestedResult = results.first
+    } catch {}
+  }
+
   private func scheduleSearch() {
     searchTask?.cancel()
     let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !text.isEmpty else {
       searchResults = []
+      isSearching = false
       return
     }
+    isSearching = true
     searchTask = Task {
       try? await Task.sleep(nanoseconds: 300_000_000)
       guard !Task.isCancelled else { return }
-      isSearching = true
-      defer { isSearching = false }
+      defer {
+        if !Task.isCancelled { isSearching = false }
+      }
       do {
-        searchResults = try await TrackerService.search(provider: link.provider, name: text)
+        let results = try await TrackerService.search(provider: link.provider, name: text)
+        guard !Task.isCancelled else { return }
+        searchResults = results
       } catch {
         if !Task.isCancelled {
           ErrorManager.shared.alert(error: error)

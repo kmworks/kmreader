@@ -10,6 +10,7 @@ struct TrackerSeriesSection: View {
   let libraryId: String
   let seriesTitle: String
   let alternateTitles: [String]
+  let seriesLinks: [WebLink]
 
   @State private var links: [TrackerLink] = []
   @State private var states: [TrackerProvider: TrackerRemoteState] = [:]
@@ -62,7 +63,8 @@ struct TrackerSeriesSection: View {
             seriesId: seriesId,
             libraryId: libraryId,
             seriesTitle: seriesTitle,
-            alternateTitles: alternateTitles
+            alternateTitles: alternateTitles,
+            seriesLinks: seriesLinks
           )
         }
         .sheet(item: $editingLink) { link in
@@ -70,6 +72,7 @@ struct TrackerSeriesSection: View {
             seriesId: seriesId,
             seriesTitle: seriesTitle,
             alternateTitles: alternateTitles,
+            seriesLinks: seriesLinks,
             link: link
           ) {
             await load()

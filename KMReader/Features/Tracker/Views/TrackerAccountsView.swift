@@ -13,6 +13,8 @@ struct TrackerAccountsView: View {
   @State private var isLoading = false
   @State private var isSavingPreferences = false
   @State private var pendingProvider: TrackerProvider?
+  @State private var disconnectingProvider: TrackerProvider?
+  @State private var showDisconnectConfirmation = false
   @State private var loadedInstanceId: String?
   @State private var hasLoaded = false
 
@@ -47,7 +49,8 @@ struct TrackerAccountsView: View {
               isPending: pendingProvider == provider,
               webURL: webURL
             ) {
-              logout(provider)
+              disconnectingProvider = provider
+              showDisconnectConfirmation = true
             }
           }
         } header: {
@@ -97,6 +100,23 @@ struct TrackerAccountsView: View {
     }
     .refreshable {
       await load()
+    }
+    .alert(
+      String(localized: "Disconnect Tracker"),
+      isPresented: $showDisconnectConfirmation,
+      presenting: disconnectingProvider
+    ) { provider in
+      Button(String(localized: "Cancel"), role: .cancel) {}
+      Button(String(localized: "Disconnect"), role: .destructive) { logout(provider) }
+    } message: { provider in
+      Text(
+        String.localizedStringWithFormat(
+          String(
+            localized:
+              "Disconnecting %@ removes its authorization from the server. You will need to connect again in the server web interface."
+          ),
+          provider.displayName
+        ))
     }
   }
 
