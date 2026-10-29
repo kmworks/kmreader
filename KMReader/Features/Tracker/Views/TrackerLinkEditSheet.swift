@@ -2,11 +2,13 @@
 // TrackerLinkEditSheet.swift
 //
 
+import Flow
 import SwiftUI
 
 struct TrackerLinkEditSheet: View {
   let seriesId: String
   let seriesTitle: String
+  let alternateTitles: [String]
   let link: TrackerLink
   let onSaved: () async -> Void
 
@@ -33,11 +35,13 @@ struct TrackerLinkEditSheet: View {
   init(
     seriesId: String,
     seriesTitle: String,
+    alternateTitles: [String],
     link: TrackerLink,
     onSaved: @escaping () async -> Void
   ) {
     self.seriesId = seriesId
     self.seriesTitle = seriesTitle
+    self.alternateTitles = alternateTitles
     self.link = link
     self.onSaved = onSaved
     _query = State(initialValue: link.title ?? seriesTitle)
@@ -56,6 +60,17 @@ struct TrackerLinkEditSheet: View {
           url: nil
         )
     )
+  }
+
+  private var searchTitles: [String] {
+    var titles: [String] = []
+    for title in [seriesTitle] + alternateTitles {
+      let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+      if !title.isEmpty, !titles.contains(title) {
+        titles.append(title)
+      }
+    }
+    return titles
   }
 
   var body: some View {
@@ -82,6 +97,34 @@ struct TrackerLinkEditSheet: View {
           } else {
             TextField(String(localized: "Search Title or URL"), text: $query)
               .onChange(of: query) { _, _ in scheduleSearch() }
+            if searchTitles.count > 1 {
+              HFlow(itemSpacing: 8) {
+                ForEach(searchTitles, id: \.self) { title in
+                  Button {
+                    query = title
+                    scheduleSearch()
+                  } label: {
+                    Text(title)
+                      .font(.caption)
+                      .lineLimit(1)
+                      .padding(.horizontal, 10)
+                      .padding(.vertical, 6)
+                      .background(
+                        query == title ? Color.accentColor.opacity(0.15) : LayoutConfig.neutralFillColor,
+                        in: Capsule()
+                      )
+                      .overlay {
+                        Capsule()
+                          .strokeBorder(
+                            query == title ? Color.accentColor.opacity(0.4) : Color.secondary.opacity(0.2)
+                          )
+                      }
+                      .contentShape(Capsule())
+                  }
+                  .adaptiveButtonStyle(.plain)
+                }
+              }
+            }
             if isSearching {
               ProgressView()
             }
@@ -155,6 +198,9 @@ struct TrackerLinkEditSheet: View {
       remoteLoadTask?.cancel()
       remoteLoadTask = Task {
         await loadRemoteState()
+      }
+      if selectedItem == nil, link.trackId.isEmpty {
+        scheduleSearch()
       }
     }
     .onDisappear {

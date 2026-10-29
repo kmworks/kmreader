@@ -8,6 +8,7 @@ struct TrackerSeriesSheet: View {
   let seriesId: String
   let libraryId: String
   let seriesTitle: String
+  let alternateTitles: [String]
   let onLinksChanged: (() async -> Void)?
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -23,11 +24,13 @@ struct TrackerSeriesSheet: View {
     seriesId: String,
     libraryId: String,
     seriesTitle: String,
+    alternateTitles: [String] = [],
     onLinksChanged: (() async -> Void)? = nil
   ) {
     self.seriesId = seriesId
     self.libraryId = libraryId
     self.seriesTitle = seriesTitle
+    self.alternateTitles = alternateTitles
     self.onLinksChanged = onLinksChanged
   }
 
@@ -144,6 +147,7 @@ struct TrackerSeriesSheet: View {
       TrackerLinkEditSheet(
         seriesId: seriesId,
         seriesTitle: seriesTitle,
+        alternateTitles: alternateTitles,
         link: link
       ) {
         await load()

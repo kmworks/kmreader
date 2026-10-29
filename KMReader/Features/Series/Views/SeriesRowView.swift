@@ -185,7 +185,8 @@ struct SeriesRowView: View {
       TrackerSeriesSheet(
         seriesId: item.seriesId,
         libraryId: item.series.libraryId,
-        seriesTitle: item.metaTitle
+        seriesTitle: item.metaTitle,
+        alternateTitles: (item.series.metadata.alternateTitles ?? []).map(\.title)
       )
     }
     .sheet(isPresented: $showKomfIdentify) {

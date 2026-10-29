@@ -64,7 +64,8 @@ struct SeriesDetailContentView<Actions: View>: View {
       TrackerSeriesSection(
         seriesId: series.id,
         libraryId: series.libraryId,
-        seriesTitle: series.metadata.title
+        seriesTitle: series.metadata.title,
+        alternateTitles: (series.metadata.alternateTitles ?? []).map(\.title)
       )
 
       SeriesAlternateTitlesView(series: series)
