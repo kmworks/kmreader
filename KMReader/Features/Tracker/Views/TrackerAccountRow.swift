@@ -25,9 +25,11 @@ struct TrackerAccountRow: View {
           .lineLimit(1)
         Button(String(localized: "Disconnect"), role: .destructive, action: onLogout)
           .font(.caption)
+          .buttonStyle(.borderless)
       } else if let webURL {
         Link(String(localized: "Connect on Web"), destination: webURL)
           .font(.caption)
+          .buttonStyle(.borderless)
       }
     }
   }

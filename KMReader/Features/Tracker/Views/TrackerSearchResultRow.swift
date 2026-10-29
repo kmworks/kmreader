@@ -14,17 +14,41 @@ struct TrackerSearchResultRow: View {
         case .success(let image):
           image.resizable().aspectRatio(contentMode: .fill)
         case .failure:
-          Image(systemName: "book.closed").foregroundStyle(.secondary)
+          Image(systemName: ContentIcon.book).foregroundStyle(.secondary)
         default:
-          ProgressView()
+          if result.coverUrl == nil {
+            Image(systemName: ContentIcon.book).foregroundStyle(.secondary)
+          } else {
+            ProgressView()
+          }
         }
       }
       .frame(width: 40, height: 60)
-      .clipped()
+      .background(LayoutConfig.neutralFillColor)
       .clipShape(RoundedRectangle(cornerRadius: 4))
 
-      VStack(alignment: .leading, spacing: 3) {
-        Text(result.title).lineLimit(2)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(result.title)
+          .font(.subheadline.weight(.medium))
+          .lineLimit(2)
+        if result.kindLabel != nil || result.tracked {
+          HStack(spacing: 6) {
+            if let kindLabel = result.kindLabel {
+              Text(kindLabel)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(LayoutConfig.neutralFillColor, in: RoundedRectangle(cornerRadius: 4))
+            }
+            if result.tracked {
+              Label(String(localized: "In Your List"), systemImage: "bookmark")
+                .symbolVariant(.fill)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Color.accentColor)
+            }
+          }
+        }
         if let description = result.description, !description.isEmpty {
           Text(description)
             .font(.caption)
@@ -32,7 +56,7 @@ struct TrackerSearchResultRow: View {
             .lineLimit(2)
         }
       }
-      Spacer()
+      Spacer(minLength: 0)
     }
   }
 }

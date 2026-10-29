@@ -10,14 +10,18 @@ struct TrackerBindingsView: View {
   @State private var counts: TrackerLinkCounts?
   @State private var isLoading = false
   @State private var loadTask: Task<Void, Never>?
+  @State private var unlinkingLink: TrackerLink?
+  @State private var showUnlinkConfirmation = false
 
   var body: some View {
     List {
       Section {
         Picker(String(localized: "Provider"), selection: $provider) {
-          Text(String(localized: "All")).tag(TrackerProvider?.none)
+          Text(filterLabel(String(localized: "All"), count: counts?.series))
+            .tag(TrackerProvider?.none)
           ForEach(TrackerProvider.allCases, id: \.self) { provider in
-            Text(provider.displayName).tag(TrackerProvider?.some(provider))
+            Text(filterLabel(provider.displayName, count: counts?.providers[provider.rawValue]))
+              .tag(TrackerProvider?.some(provider))
           }
         }
         .onChange(of: provider) { _, _ in
@@ -36,23 +40,9 @@ struct TrackerBindingsView: View {
       } else {
         Section {
           ForEach(pagination.items) { group in
-            VStack(alignment: .leading, spacing: 8) {
-              SeriesQueryItemView(seriesId: group.seriesId, layout: .list)
-              ForEach(group.links) { link in
-                if let url = link.provider.entryURL(trackId: link.trackId) {
-                  Link(destination: url) {
-                    HStack {
-                      Text(link.provider.displayName)
-                      Spacer()
-                      Text(link.displayTitle)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    }
-                    .font(.caption)
-                    .contentShape(Rectangle())
-                  }
-                }
-              }
+            TrackerBindingRow(group: group) { link in
+              unlinkingLink = link
+              showUnlinkConfirmation = true
             }
             .onAppear { loadMoreIfNeeded(group) }
           }
@@ -81,6 +71,34 @@ struct TrackerBindingsView: View {
     .refreshable {
       await load(refresh: true)
     }
+    .alert(
+      String(localized: "Unlink Tracker"),
+      isPresented: $showUnlinkConfirmation,
+      presenting: unlinkingLink
+    ) { link in
+      Button(String(localized: "Cancel"), role: .cancel) {}
+      Button(String(localized: "Unlink"), role: .destructive) { unlink(link) }
+    } message: { _ in
+      Text(String(localized: "This removes the series binding but does not change the remote entry."))
+    }
+  }
+
+  private func unlink(_ link: TrackerLink) {
+    Task {
+      do {
+        try await TrackerService.deleteLink(seriesId: link.seriesId, provider: link.provider)
+        ErrorManager.shared.notify(message: String(localized: "Tracker unlinked."))
+        loadTask?.cancel()
+        await load(refresh: true)
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func filterLabel(_ name: String, count: Int?) -> String {
+    guard let count else { return name }
+    return "\(name) (\(count))"
   }
 
   private func load(refresh: Bool) async {

@@ -186,7 +186,8 @@ struct SeriesRowView: View {
         seriesId: item.seriesId,
         libraryId: item.series.libraryId,
         seriesTitle: item.metaTitle,
-        alternateTitles: (item.series.metadata.alternateTitles ?? []).map(\.title)
+        alternateTitles: (item.series.metadata.alternateTitles ?? []).map(\.title),
+        seriesLinks: item.series.metadata.links ?? []
       )
     }
     .sheet(isPresented: $showKomfIdentify) {
