@@ -2,6 +2,7 @@
 // TrackerSeriesSection.swift
 //
 
+import Flow
 import SwiftUI
 
 struct TrackerSeriesSection: View {
@@ -10,36 +11,42 @@ struct TrackerSeriesSection: View {
   let seriesTitle: String
 
   @State private var links: [TrackerLink] = []
+  @State private var states: [TrackerProvider: TrackerRemoteState] = [:]
+  @State private var providersRequiringLogin: Set<TrackerProvider> = []
+  @State private var editingLink: TrackerLink?
   @State private var showManage = false
 
   var body: some View {
     #if os(iOS) || os(macOS)
       if TrackerCapabilityStore.shared.isSupported,
-        TrackerCapabilityStore.shared.allows(libraryId: libraryId),
-        !links.isEmpty
+        TrackerCapabilityStore.shared.allows(libraryId: libraryId)
       {
-        VStack(alignment: .leading, spacing: 8) {
-          Text(String(localized: "Trackers"))
-            .font(.headline)
-          Button {
-            showManage = true
-          } label: {
-            HStack {
-              ForEach(links) { link in
-                Text(link.provider.displayName)
-                  .font(.caption)
-                  .padding(.horizontal, 10)
-                  .padding(.vertical, 5)
-                  .background(LayoutConfig.neutralFillColor, in: Capsule())
-              }
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HFlow(itemSpacing: 8) {
+          ForEach(links) { link in
+            Button {
+              editingLink = link
+            } label: {
+              TrackerLinkChip(
+                link: link,
+                state: states[link.provider],
+                requiresLogin: providersRequiringLogin.contains(link.provider)
+              )
             }
-            .contentShape(Rectangle())
+            .adaptiveButtonStyle(.plain)
           }
-          .adaptiveButtonStyle(.plain)
+          if links.count < TrackerProvider.allCases.count {
+            Button {
+              showManage = true
+            } label: {
+              Label(String(localized: "Add Tracker"), systemImage: "plus")
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .contentShape(Capsule())
+            }
+            .adaptiveButtonStyle(.plain)
+          }
         }
         .task(id: seriesId) {
           await load()
@@ -56,6 +63,15 @@ struct TrackerSeriesSection: View {
             seriesTitle: seriesTitle
           )
         }
+        .sheet(item: $editingLink) { link in
+          TrackerLinkEditSheet(
+            seriesId: seriesId,
+            seriesTitle: seriesTitle,
+            link: link
+          ) {
+            await load()
+          }
+        }
       }
     #endif
   }
@@ -63,7 +79,21 @@ struct TrackerSeriesSection: View {
   private func load() async {
     guard !AppConfig.isOffline else { return }
     do {
-      links = try await TrackerService.getLinks(seriesId: seriesId)
+      let loadedLinks = try await TrackerService.getLinks(seriesId: seriesId)
+      guard !Task.isCancelled else { return }
+      links = loadedLinks
+      states = [:]
+      providersRequiringLogin = []
+      for link in loadedLinks {
+        do {
+          let state = try await TrackerService.getState(
+            provider: link.provider, trackId: link.trackId)
+          guard !Task.isCancelled else { return }
+          states[link.provider] = state
+        } catch APIError.unauthorized {
+          providersRequiringLogin.insert(link.provider)
+        } catch {}
+      }
     } catch {
       links = []
     }

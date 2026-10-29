@@ -19,6 +19,15 @@ nonisolated enum TrackerProvider: String, CaseIterable, Codable, Sendable {
     }
   }
 
+  var imageName: String {
+    switch self {
+    case .anilist: return "TrackerAniList"
+    case .mal: return "TrackerMyAnimeList"
+    case .bangumi: return "TrackerBangumi"
+    case .mangabaka: return "TrackerMangaBaka"
+    }
+  }
+
   func entryURL(trackId: String) -> URL? {
     switch self {
     case .anilist: return URL(string: "https://anilist.co/manga/\(trackId)")
