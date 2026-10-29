@@ -8,6 +8,7 @@ struct TrackerSeriesSheet: View {
   let seriesId: String
   let libraryId: String
   let seriesTitle: String
+  let onLinksChanged: (() async -> Void)?
 
   @AppStorage("currentAccount") private var current: Current = .init()
   @Environment(\.dismiss) private var dismiss
@@ -17,6 +18,18 @@ struct TrackerSeriesSheet: View {
   @State private var preferences: TrackerPreferences?
   @State private var isLoading = false
   @State private var editingLink: TrackerLink?
+
+  init(
+    seriesId: String,
+    libraryId: String,
+    seriesTitle: String,
+    onLinksChanged: (() async -> Void)? = nil
+  ) {
+    self.seriesId = seriesId
+    self.libraryId = libraryId
+    self.seriesTitle = seriesTitle
+    self.onLinksChanged = onLinksChanged
+  }
 
   private var webURL: URL? {
     URL(string: current.serverURL + "/account/trackers")
@@ -55,7 +68,9 @@ struct TrackerSeriesSheet: View {
               Button {
                 editingLink = link
               } label: {
-                HStack {
+                HStack(spacing: 12) {
+                  TrackerLogo(provider: link.provider)
+                    .frame(width: 28, height: 28)
                   VStack(alignment: .leading, spacing: 3) {
                     Text(link.provider.displayName)
                     Text(link.displayTitle)
@@ -132,6 +147,7 @@ struct TrackerSeriesSheet: View {
         link: link
       ) {
         await load()
+        await onLinksChanged?()
       }
     }
   }

@@ -12,7 +12,9 @@ struct TrackerAccountRow: View {
   let onLogout: () -> Void
 
   var body: some View {
-    HStack {
+    HStack(spacing: 12) {
+      TrackerLogo(provider: provider)
+        .frame(width: 28, height: 28)
       Text(provider.displayName)
       Spacer()
       if isPending {
