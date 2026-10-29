@@ -20,6 +20,7 @@ struct SeriesContextMenu: View {
   var onDeleteRequested: (() -> Void)? = nil
   var onEditRequested: (() -> Void)? = nil
   var onKomfIdentifyRequested: (() -> Void)? = nil
+  var onTrackersRequested: (() -> Void)? = nil
   var onMutationCompleted: (() -> Void)? = nil
 
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -88,6 +89,19 @@ struct SeriesContextMenu: View {
             Label("Mark as Unread", systemImage: AppIcon.markUnread)
           }
         }
+
+        #if os(iOS) || os(macOS)
+          if TrackerCapabilityStore.shared.isSupported,
+            TrackerCapabilityStore.shared.allows(libraryId: libraryId),
+            onTrackersRequested != nil
+          {
+            Button {
+              deferMenuActionPresentation { onTrackersRequested?() }
+            } label: {
+              Label("Trackers", systemImage: "arrow.triangle.2.circlepath")
+            }
+          }
+        #endif
 
         Divider()
 

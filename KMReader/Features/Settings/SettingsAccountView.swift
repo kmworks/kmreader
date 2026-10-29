@@ -84,6 +84,15 @@ struct SettingsAccountView: View {
             color: ServerSection.accountSessions.color
           )
         }
+        #if os(iOS) || os(macOS)
+          NavigationLink(value: NavDestination.settingsTrackers) {
+            SettingsBadgeRow(
+              title: ServerSection.trackers.title,
+              icon: ServerSection.trackers.icon,
+              color: ServerSection.trackers.color
+            )
+          }
+        #endif
         NavigationLink(value: NavDestination.settingsAuthenticationActivity) {
           SettingsBadgeRow(
             title: ServerSection.authenticationActivity.title,

@@ -1,0 +1,287 @@
+//
+// TrackerLinkEditSheet.swift
+//
+
+import SwiftUI
+
+struct TrackerLinkEditSheet: View {
+  let seriesId: String
+  let seriesTitle: String
+  let link: TrackerLink
+  let onSaved: () async -> Void
+
+  @Environment(\.dismiss) private var dismiss
+
+  @State private var selectedItem: TrackerSearchItem?
+  @State private var searchResults: [TrackerSearchItem] = []
+  @State private var query: String
+  @State private var searchTask: Task<Void, Never>?
+  @State private var remoteLoadTask: Task<Void, Never>?
+  @State private var isSearching = false
+  @State private var mode: TrackerMode
+  @State private var chapterOffset: Int
+  @State private var remoteState: TrackerRemoteState?
+  @State private var status: TrackerStatus?
+  @State private var score = ""
+  @State private var chapter = ""
+  @State private var volume = ""
+  @State private var startDate = ""
+  @State private var finishDate = ""
+  @State private var isSaving = false
+  @State private var showDeleteConfirmation = false
+
+  init(
+    seriesId: String,
+    seriesTitle: String,
+    link: TrackerLink,
+    onSaved: @escaping () async -> Void
+  ) {
+    self.seriesId = seriesId
+    self.seriesTitle = seriesTitle
+    self.link = link
+    self.onSaved = onSaved
+    _query = State(initialValue: link.title ?? seriesTitle)
+    _mode = State(initialValue: link.trackMode)
+    _chapterOffset = State(initialValue: link.chapterOffset)
+    _selectedItem = State(
+      initialValue: link.trackId.isEmpty
+        ? nil
+        : TrackerSearchItem(
+          id: link.trackId,
+          title: link.title ?? link.trackId,
+          coverUrl: nil,
+          description: nil,
+          tracked: true,
+          mediaType: nil,
+          url: nil
+        )
+    )
+  }
+
+  var body: some View {
+    SheetView(
+      title: link.provider.displayName,
+      size: .large,
+      applyFormStyle: true
+    ) {
+      Form {
+        Section(header: Text(String(localized: "Tracker Entry"))) {
+          if let selectedItem {
+            HStack {
+              Text(selectedItem.title)
+              Spacer()
+              Button(String(localized: "Change")) {
+                self.selectedItem = nil
+                remoteState = nil
+              }
+              .font(.caption)
+            }
+            Text(selectedItem.id)
+              .font(.caption.monospaced())
+              .foregroundStyle(.secondary)
+          } else {
+            TextField(String(localized: "Search Title or URL"), text: $query)
+              .onChange(of: query) { _, _ in scheduleSearch() }
+            if isSearching {
+              ProgressView()
+            }
+            ForEach(searchResults) { result in
+              Button {
+                select(result)
+              } label: {
+                TrackerSearchResultRow(result: result)
+                  .contentShape(Rectangle())
+              }
+              .adaptiveButtonStyle(.plain)
+            }
+          }
+        }
+
+        if selectedItem != nil {
+          Section(header: Text(String(localized: "Progress Mapping"))) {
+            Picker(String(localized: "Mode"), selection: $mode) {
+              ForEach(TrackerMode.allCases, id: \.self) { mode in
+                Text(mode.displayName).tag(mode)
+              }
+            }
+            #if os(tvOS)
+              TextField(
+                String(localized: "Chapter Offset"),
+                value: $chapterOffset,
+                format: .number
+              )
+            #else
+              Stepper(String(localized: "Chapter Offset"), value: $chapterOffset, in: -10000...10000)
+            #endif
+          }
+
+          if remoteState != nil {
+            Section {
+              Picker(String(localized: "Status"), selection: $status) {
+                Text(String(localized: "Unchanged")).tag(TrackerStatus?.none)
+                ForEach(TrackerStatus.allCases, id: \.self) { status in
+                  Text(status.displayName).tag(TrackerStatus?.some(status))
+                }
+              }
+              TextField(String(localized: "Score"), text: $score)
+              TextField(String(localized: "Chapter"), text: $chapter)
+              TextField(String(localized: "Volume"), text: $volume)
+              TextField(String(localized: "Start Date (YYYY-MM-DD)"), text: $startDate)
+              TextField(String(localized: "Finish Date (YYYY-MM-DD)"), text: $finishDate)
+            } header: {
+              Text(String(localized: "Remote Progress"))
+            } footer: {
+              Text(
+                String(
+                  localized:
+                    "Only changed, nonempty fields are submitted. Automatic sync still follows the series' completed books."
+                ))
+            }
+          }
+        }
+      }
+      .disabled(isSaving)
+    } controls: {
+      if link.trackId.isEmpty == false {
+        Button(String(localized: "Unlink"), role: .destructive) {
+          showDeleteConfirmation = true
+        }
+        .disabled(isSaving)
+      }
+      Button(String(localized: "Save")) { save() }
+        .disabled(selectedItem == nil || isSaving)
+    }
+    .task(id: selectedItem?.id) {
+      remoteLoadTask?.cancel()
+      remoteLoadTask = Task {
+        await loadRemoteState()
+      }
+    }
+    .onDisappear {
+      searchTask?.cancel()
+      remoteLoadTask?.cancel()
+    }
+    .alert(String(localized: "Unlink Tracker"), isPresented: $showDeleteConfirmation) {
+      Button(String(localized: "Cancel"), role: .cancel) {}
+      Button(String(localized: "Unlink"), role: .destructive) { unlink() }
+    } message: {
+      Text(String(localized: "This removes the series binding but does not change the remote entry."))
+    }
+  }
+
+  private func scheduleSearch() {
+    searchTask?.cancel()
+    let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !text.isEmpty else {
+      searchResults = []
+      return
+    }
+    searchTask = Task {
+      try? await Task.sleep(nanoseconds: 300_000_000)
+      guard !Task.isCancelled else { return }
+      isSearching = true
+      defer { isSearching = false }
+      do {
+        searchResults = try await TrackerService.search(provider: link.provider, name: text)
+      } catch {
+        if !Task.isCancelled {
+          ErrorManager.shared.alert(error: error)
+        }
+      }
+    }
+  }
+
+  private func select(_ result: TrackerSearchItem) {
+    selectedItem = result
+    searchResults = []
+    query = result.title
+  }
+
+  private func loadRemoteState() async {
+    guard let selectedItem else { return }
+    do {
+      let state = try await TrackerService.getState(
+        provider: link.provider, trackId: selectedItem.id)
+      guard !Task.isCancelled, self.selectedItem?.id == selectedItem.id else { return }
+      remoteState = state
+      status = state.status
+      score = state.score.map(String.init) ?? ""
+      chapter =
+        state.lastReadChapter.map { $0.truncatingRemainder(dividingBy: 1) == 0 ? String(Int($0)) : String($0) } ?? ""
+      volume = state.lastReadVolume.map(String.init) ?? ""
+      startDate = state.startReadDate ?? ""
+      finishDate = state.finishReadDate ?? ""
+    } catch {
+      ErrorManager.shared.alert(error: error)
+    }
+  }
+
+  private func save() {
+    guard let selectedItem, !isSaving else { return }
+    isSaving = true
+    Task {
+      do {
+        _ = try await TrackerService.upsertLink(
+          seriesId: seriesId,
+          provider: link.provider,
+          trackId: selectedItem.id,
+          title: selectedItem.title,
+          mode: mode,
+          chapterOffset: chapterOffset
+        )
+        let remoteChanges = changedRemoteFields()
+        if remoteState != nil, !remoteChanges.isEmpty {
+          try await TrackerService.updateState(
+            provider: link.provider,
+            trackId: selectedItem.id,
+            state: remoteChanges
+          )
+        }
+        await onSaved()
+        ErrorManager.shared.notify(message: String(localized: "Tracker link saved."))
+        dismiss()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+      isSaving = false
+    }
+  }
+
+  private func changedRemoteFields() -> [String: Any] {
+    var fields: [String: Any] = [:]
+    if let status, status != remoteState?.status {
+      fields["status"] = status.rawValue
+    }
+    if let score = Int(score), score != remoteState?.score {
+      fields["score"] = score
+    }
+    if let chapter = Double(chapter), chapter != remoteState?.lastReadChapter {
+      fields["lastReadChapter"] = chapter
+    }
+    if let volume = Int(volume), volume != remoteState?.lastReadVolume {
+      fields["lastReadVolume"] = volume
+    }
+    if !startDate.isEmpty, startDate != remoteState?.startReadDate {
+      fields["startReadDate"] = startDate
+    }
+    if !finishDate.isEmpty, finishDate != remoteState?.finishReadDate {
+      fields["finishReadDate"] = finishDate
+    }
+    return fields
+  }
+
+  private func unlink() {
+    isSaving = true
+    Task {
+      do {
+        try await TrackerService.deleteLink(seriesId: seriesId, provider: link.provider)
+        await onSaved()
+        ErrorManager.shared.notify(message: String(localized: "Tracker unlinked."))
+        dismiss()
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+      isSaving = false
+    }
+  }
+}

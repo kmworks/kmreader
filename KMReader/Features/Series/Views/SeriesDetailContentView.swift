@@ -61,6 +61,12 @@ struct SeriesDetailContentView<Actions: View>: View {
 
       SeriesDetailChipsView(series: series)
 
+      TrackerSeriesSection(
+        seriesId: series.id,
+        libraryId: series.libraryId,
+        seriesTitle: series.metadata.title
+      )
+
       SeriesAlternateTitlesView(series: series)
     }
     .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { contentWidth = $0 }

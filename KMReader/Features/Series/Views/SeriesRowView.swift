@@ -17,6 +17,7 @@ struct SeriesRowView: View {
   @State private var showCollectionPicker = false
   @State private var showEditSheet = false
   @State private var showKomfIdentify = false
+  @State private var showTrackers = false
 
   var series: Series {
     item.series
@@ -158,6 +159,9 @@ struct SeriesRowView: View {
                 onKomfIdentifyRequested: {
                   showKomfIdentify = true
                 },
+                onTrackersRequested: {
+                  showTrackers = true
+                },
                 onMutationCompleted: onMutationCompleted
               )
               .id(item.seriesId)
@@ -176,6 +180,13 @@ struct SeriesRowView: View {
     }
     .sheet(isPresented: $showEditSheet) {
       SeriesEditSheet(series: series)
+    }
+    .sheet(isPresented: $showTrackers) {
+      TrackerSeriesSheet(
+        seriesId: item.seriesId,
+        libraryId: item.series.libraryId,
+        seriesTitle: item.metaTitle
+      )
     }
     .sheet(isPresented: $showKomfIdentify) {
       KomfIdentifySheet(series: series)

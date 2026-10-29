@@ -1169,6 +1169,20 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var serverTrackerCapability: ServerCapability {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverTrackerCapability"),
+        let capability = ServerCapability(rawValue: stored)
+      {
+        return capability
+      }
+      return ServerCapability()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverTrackerCapability")
+    }
+  }
+
   static nonisolated var serverSmartListCapability: ServerSmartListCapability {
     get {
       if let stored = UserDefaults.standard.string(forKey: "serverSmartListCapability"),

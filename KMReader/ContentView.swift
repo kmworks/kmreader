@@ -139,6 +139,7 @@ struct ContentView: View {
           #if os(iOS) || os(macOS)
             Task {
               await KomfIntegrationStore.shared.refresh(isAdmin: current.isAdmin)
+              await TrackerCapabilityStore.shared.refresh()
             }
           #endif
           await ExternalContentSurfaceService.refreshWidgetsForCurrentInstance()

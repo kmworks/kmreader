@@ -28,6 +28,7 @@ struct SeriesDetailView: View {
   @State private var showSavedFilters = false
   @State private var showKomfIdentify = false
   @State private var showKomfResetConfirmation = false
+  @State private var showTrackers = false
   @State private var readingTargetBook: Book?
   @State private var readingTargetInstanceId: String?
   @State private var readingTargetIsOffline: Bool?
@@ -266,6 +267,15 @@ struct SeriesDetailView: View {
               await refreshSeriesData()
             }
           }
+      }
+    }
+    .sheet(isPresented: $showTrackers) {
+      if let series {
+        TrackerSeriesSheet(
+          seriesId: series.id,
+          libraryId: series.libraryId,
+          seriesTitle: series.metadata.title
+        )
       }
     }
     .sheet(isPresented: $showKomfIdentify) {
@@ -589,6 +599,19 @@ extension SeriesDetailView {
             Label(String(localized: "Share"), systemImage: AppIcon.share)
           }
 
+          Divider()
+        }
+      #endif
+
+      #if os(iOS) || os(macOS)
+        if TrackerCapabilityStore.shared.isSupported, let series,
+          TrackerCapabilityStore.shared.allows(libraryId: series.libraryId)
+        {
+          Button {
+            deferMenuActionPresentation { showTrackers = true }
+          } label: {
+            Label("Trackers", systemImage: "arrow.triangle.2.circlepath")
+          }
           Divider()
         }
       #endif
