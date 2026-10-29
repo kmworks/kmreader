@@ -9,6 +9,7 @@ struct TrackerSeriesSection: View {
   let seriesId: String
   let libraryId: String
   let seriesTitle: String
+  let alternateTitles: [String]
 
   @State private var links: [TrackerLink] = []
   @State private var states: [TrackerProvider: TrackerRemoteState] = [:]
@@ -60,13 +61,15 @@ struct TrackerSeriesSection: View {
           TrackerSeriesSheet(
             seriesId: seriesId,
             libraryId: libraryId,
-            seriesTitle: seriesTitle
+            seriesTitle: seriesTitle,
+            alternateTitles: alternateTitles
           )
         }
         .sheet(item: $editingLink) { link in
           TrackerLinkEditSheet(
             seriesId: seriesId,
             seriesTitle: seriesTitle,
+            alternateTitles: alternateTitles,
             link: link
           ) {
             await load()
@@ -81,21 +84,26 @@ struct TrackerSeriesSection: View {
     do {
       let loadedLinks = try await TrackerService.getLinks(seriesId: seriesId)
       guard !Task.isCancelled else { return }
-      links = loadedLinks
-      states = [:]
-      providersRequiringLogin = []
+      if links != loadedLinks {
+        withAnimation(.appCurve()) {
+          links = loadedLinks
+        }
+      }
       for link in loadedLinks {
         do {
           let state = try await TrackerService.getState(
             provider: link.provider, trackId: link.trackId)
           guard !Task.isCancelled else { return }
-          states[link.provider] = state
+          withAnimation(.appCurve()) {
+            states[link.provider] = state
+            providersRequiringLogin.remove(link.provider)
+          }
         } catch APIError.unauthorized {
-          providersRequiringLogin.insert(link.provider)
+          _ = withAnimation(.appCurve()) {
+            providersRequiringLogin.insert(link.provider)
+          }
         } catch {}
       }
-    } catch {
-      links = []
-    }
+    } catch {}
   }
 }
