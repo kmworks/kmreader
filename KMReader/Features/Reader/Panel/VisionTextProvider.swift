@@ -12,7 +12,7 @@ import CoreGraphics
 /// that a page is vertical CJK (OCR reads horizontal/Latin only). A nil provider disables the readability
 /// paths with no other code change.
 protocol VisionTextProvider: Sendable {
-    var version: String { get }
-    /// Normalized OCR line boxes for a page, unordered. Empty on failure or vertical CJK.
-    func detectText(image: CGImage) async -> [PanelRect]
+  var version: String { get }
+  /// Normalized OCR line boxes for a page, unordered. Empty on failure or vertical CJK.
+  func detectText(image: CGImage) async -> [PanelRect]
 }

@@ -18,58 +18,58 @@ import Foundation
 
 @MainActor
 final class PanelTextScriptCache {
-    /// A book's learned text orientation. `unknown`/`horizontal` run OCR; `vertical` skips it.
-    enum Script: Equatable {
-        /// Not yet determined — run OCR and learn from the result.
-        case unknown
-        /// Latin/horizontal: OCR reads it, and the readability gate needs its per-line counts, so OCR
-        /// keeps running. Sticky — a book that ever yields real OCR text stays horizontal.
-        case horizontal
-        /// CJK/vertical: OCR is blind here, so skip it and let the bubble-walk use the detector text size.
-        case vertical
+  /// A book's learned text orientation. `unknown`/`horizontal` run OCR; `vertical` skips it.
+  enum Script: Equatable {
+    /// Not yet determined — run OCR and learn from the result.
+    case unknown
+    /// Latin/horizontal: OCR reads it, and the readability gate needs its per-line counts, so OCR
+    /// keeps running. Sticky — a book that ever yields real OCR text stays horizontal.
+    case horizontal
+    /// CJK/vertical: OCR is blind here, so skip it and let the bubble-walk use the detector text size.
+    case vertical
+  }
+
+  /// Vertical is locked only after this many text-bearing pages where OCR found nothing, so a single
+  /// OCR miss on a Latin page (low contrast, stylized) cannot mislock a book into skipping OCR.
+  private let verticalEvidenceThreshold: Int
+
+  private var scripts: [String: Script] = [:]
+  private var verticalEvidence: [String: Int] = [:]
+
+  init(verticalEvidenceThreshold: Int = 2) {
+    self.verticalEvidenceThreshold = verticalEvidenceThreshold
+  }
+
+  /// Whether to run the OCR pass for this book. False only once the book is known vertical/CJK.
+  func shouldRunOCR(bookId: String) -> Bool {
+    scripts[bookId, default: .unknown] != .vertical
+  }
+
+  /// The learned script for a book (diagnostics / tests).
+  func script(bookId: String) -> Script {
+    scripts[bookId, default: .unknown]
+  }
+
+  /// Fold one OCR outcome into the book's learned script. `ocrFoundLines` = OCR returned at least one
+  /// line; `detectorHasText` = the detector found text bubbles on the page (so an empty OCR result is
+  /// meaningful evidence of vertical text rather than just a textless page).
+  func record(bookId: String, ocrFoundLines: Bool, detectorHasText: Bool) {
+    if scripts[bookId] == .horizontal { return }
+    if ocrFoundLines {
+      scripts[bookId] = .horizontal
+      verticalEvidence[bookId] = 0
+      return
     }
-
-    /// Vertical is locked only after this many text-bearing pages where OCR found nothing, so a single
-    /// OCR miss on a Latin page (low contrast, stylized) cannot mislock a book into skipping OCR.
-    private let verticalEvidenceThreshold: Int
-
-    private var scripts: [String: Script] = [:]
-    private var verticalEvidence: [String: Int] = [:]
-
-    init(verticalEvidenceThreshold: Int = 2) {
-        self.verticalEvidenceThreshold = verticalEvidenceThreshold
+    guard detectorHasText else { return }
+    let evidence = (verticalEvidence[bookId] ?? 0) + 1
+    verticalEvidence[bookId] = evidence
+    if evidence >= verticalEvidenceThreshold {
+      scripts[bookId] = .vertical
     }
+  }
 
-    /// Whether to run the OCR pass for this book. False only once the book is known vertical/CJK.
-    func shouldRunOCR(bookId: String) -> Bool {
-        scripts[bookId, default: .unknown] != .vertical
-    }
-
-    /// The learned script for a book (diagnostics / tests).
-    func script(bookId: String) -> Script {
-        scripts[bookId, default: .unknown]
-    }
-
-    /// Fold one OCR outcome into the book's learned script. `ocrFoundLines` = OCR returned at least one
-    /// line; `detectorHasText` = the detector found text bubbles on the page (so an empty OCR result is
-    /// meaningful evidence of vertical text rather than just a textless page).
-    func record(bookId: String, ocrFoundLines: Bool, detectorHasText: Bool) {
-        if scripts[bookId] == .horizontal { return }
-        if ocrFoundLines {
-            scripts[bookId] = .horizontal
-            verticalEvidence[bookId] = 0
-            return
-        }
-        guard detectorHasText else { return }
-        let evidence = (verticalEvidence[bookId] ?? 0) + 1
-        verticalEvidence[bookId] = evidence
-        if evidence >= verticalEvidenceThreshold {
-            scripts[bookId] = .vertical
-        }
-    }
-
-    func removeAll() {
-        scripts.removeAll()
-        verticalEvidence.removeAll()
-    }
+  func removeAll() {
+    scripts.removeAll()
+    verticalEvidence.removeAll()
+  }
 }

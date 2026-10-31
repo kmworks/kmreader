@@ -9,7 +9,7 @@ import CoreGraphics
 /// Abstracted so the orchestrator can be exercised with a controllable loader
 /// (see the debug harness) without disk/network.
 protocol PanelImageLoading: Sendable {
-    func pageImage(bookId: String, page: BookPage) async -> CGImage?
+  func pageImage(bookId: String, page: BookPage) async -> CGImage?
 }
 
 extension PanelPageImageLoader: PanelImageLoading {}

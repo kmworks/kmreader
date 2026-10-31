@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ReaderSettingsSheet: View {
   let readingDirection: ReadingDirection
+  let panelModeEnabled: Bool
 
   // Persisted settings (via @AppStorage)
   @AppStorage("readerBackground") private var readerBackground: ReaderBackground = .system
@@ -15,6 +16,7 @@ struct ReaderSettingsSheet: View {
   @AppStorage("showPageNumber") private var showPageNumber: Bool = true
   @AppStorage("showPageShadow") private var showPageShadow: Bool = AppConfig.showPageShadow
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
+  @AppStorage("panelZoomFillFactor") private var panelZoomFillFactor: Double = 0.9
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
   @AppStorage("pageTransitionStyle") private var pageTransitionStyle: PageTransitionStyle = .cover
   @AppStorage("tapZoneMode") private var tapZoneMode: TapZoneMode = .defaultLayout
@@ -195,6 +197,26 @@ struct ReaderSettingsSheet: View {
             }
           #endif
         }
+
+        #if os(iOS) || os(macOS)
+          if panelModeEnabled {
+            Section(header: Text("Panel Mode")) {
+              VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                  Text("Panel Zoom Fill")
+                  Spacer()
+                  Text(String(format: "%.0f%%", panelZoomFillFactor * 100))
+                    .foregroundColor(.secondary)
+                }
+                Slider(
+                  value: $panelZoomFillFactor,
+                  in: 0.75...1.0,
+                  step: 0.05
+                )
+              }
+            }
+          }
+        #endif
 
         Section(header: Text("Performance")) {
           Picker("Image Preloading", selection: $divinaPreloadProfile) {

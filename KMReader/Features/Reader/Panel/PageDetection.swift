@@ -11,12 +11,12 @@
 import Foundation
 
 nonisolated struct PageDetection: Equatable, Sendable {
-    /// Kept panel boxes (post-suppression, unordered — composition orders them).
-    var panels: [PanelRect]
-    /// Speech/caption boxes (text class), deduped, unordered.
-    var texts: [PanelRect]
-    /// Character/figure boxes (body class), deduped, unordered.
-    var bodies: [PanelRect]
+  /// Kept panel boxes (post-suppression, unordered — composition orders them).
+  var panels: [PanelRect]
+  /// Speech/caption boxes (text class), deduped, unordered.
+  var texts: [PanelRect]
+  /// Character/figure boxes (body class), deduped, unordered.
+  var bodies: [PanelRect]
 
-    static let empty = PageDetection(panels: [], texts: [], bodies: [])
+  static let empty = PageDetection(panels: [], texts: [], bodies: [])
 }
