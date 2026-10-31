@@ -2,7 +2,7 @@ import CoreGraphics
 import CoreImage
 import Foundation
 
-nonisolated struct MangaPreparedGeometry {
+nonisolated struct PreparedReaderPageGeometry {
   static func cropRect(
     for image: CGImage,
     rotation: ReaderRotation,
