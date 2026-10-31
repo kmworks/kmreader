@@ -1,4 +1,5 @@
 #if os(macOS)
+  import AVFoundation
   import AppKit
   import SwiftUI
 
@@ -190,6 +191,82 @@
           targetHeight: targetHeight
         )
       }
+    }
+
+    // MARK: - Panel mode zoom (driven by PanelZoomController via the cover coordinator)
+    // NOTE: coordinate centering uses the flipped-document math below and is unverified on
+    // a real Mac — confirm panel framing on macOS before relying on it.
+
+    func zoomToPanelRect(_ panel: PanelRect, animated: Bool) {
+      let size = scrollView.bounds.size
+      guard size.width > 0, size.height > 0 else { return }
+      let fitted = fittedImageRect(in: CGRect(origin: .zero, size: size))
+      let targetW = max(panel.width * fitted.width, 1)
+      let targetH = max(panel.height * fitted.height, 1)
+      let mag = min(min(size.width / targetW, size.height / targetH), scrollView.maxMagnification)
+      let clamped = max(mag, scrollView.minMagnification)
+      let centerX = fitted.minX + (panel.x + panel.width / 2) * fitted.width
+      let centerYTopDown = fitted.minY + (panel.y + panel.height / 2) * fitted.height
+      let documentView = scrollView.documentView
+      let docHeight = documentView?.bounds.height ?? size.height
+      let flipped = documentView?.isFlipped ?? false
+      let center = CGPoint(x: centerX, y: flipped ? centerYTopDown : docHeight - centerYTopDown)
+      if animated {
+        NSAnimationContext.runAnimationGroup { context in
+          context.duration = PanelZoomTuning.stepDuration
+          context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+          scrollView.animator().setMagnification(clamped, centeredAt: center)
+        }
+      } else {
+        scrollView.setMagnification(clamped, centeredAt: center)
+      }
+      if tracksGlobalZoomState, let viewModel {
+        let zoomed = clamped > (scrollView.minMagnification + 0.01)
+        if viewModel.isZoomed != zoomed { viewModel.isZoomed = zoomed }
+      }
+    }
+
+    func resetPanelZoomToFit(animated: Bool) {
+      guard scrollView.magnification != scrollView.minMagnification else { return }
+      if animated {
+        NSAnimationContext.runAnimationGroup { context in
+          context.duration = PanelZoomTuning.stepDuration
+          context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+          scrollView.animator().magnification = scrollView.minMagnification
+        }
+        if tracksGlobalZoomState, let viewModel, viewModel.isZoomed {
+          viewModel.isZoomed = false
+        }
+      } else {
+        resetMagnification()
+      }
+    }
+
+    /// Convert a (bottom-up) container point to normalized [0,1] top-down image-space.
+    func normalizedImagePoint(forContainerPoint point: CGPoint) -> CGPoint? {
+      let size = scrollView.bounds.size
+      guard size.width > 0, size.height > 0 else { return nil }
+      let fitted = fittedImageRect(in: CGRect(origin: .zero, size: size))
+      guard fitted.width > 0, fitted.height > 0 else { return nil }
+      let topDownY = size.height - point.y
+      return CGPoint(
+        x: (point.x - fitted.minX) / fitted.width,
+        y: (topDownY - fitted.minY) / fitted.height
+      )
+    }
+
+    private func fittedImageRect(in container: CGRect) -> CGRect {
+      guard let imageSize = currentDisplayedImageSize(),
+        imageSize.width > 0, imageSize.height > 0
+      else {
+        return container
+      }
+      return AVMakeRect(aspectRatio: imageSize, insideRect: container)
+    }
+
+    private func currentDisplayedImageSize() -> CGSize? {
+      guard let viewModel, let data = currentPageData.first else { return nil }
+      return viewModel.preloadedImage(for: data.pageID)?.size
     }
 
     private func resetMagnification() {

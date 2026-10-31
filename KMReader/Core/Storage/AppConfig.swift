@@ -778,6 +778,49 @@ enum AppConfig {
     }
   }
 
+  private static nonisolated var panelModeByBook: [String: Bool] {
+    get {
+      guard
+        let stored = UserDefaults.standard.string(forKey: "panelModeByBook"),
+        let data = stored.data(using: .utf8),
+        let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Bool]
+      else {
+        return [:]
+      }
+      return dict
+    }
+    set {
+      if newValue.isEmpty {
+        UserDefaults.standard.removeObject(forKey: "panelModeByBook")
+        return
+      }
+
+      guard
+        let data = try? JSONSerialization.data(withJSONObject: newValue, options: [.sortedKeys]),
+        let encoded = String(data: data, encoding: .utf8)
+      else {
+        return
+      }
+      UserDefaults.standard.set(encoded, forKey: "panelModeByBook")
+    }
+  }
+
+  static nonisolated func panelMode(for bookId: String) -> Bool {
+    guard !bookId.isEmpty else { return false }
+    return panelModeByBook[bookId] ?? false
+  }
+
+  static nonisolated func setPanelMode(_ enabled: Bool, for bookId: String) {
+    guard !bookId.isEmpty else { return }
+    var store = panelModeByBook
+    if enabled {
+      store[bookId] = true
+    } else {
+      store.removeValue(forKey: bookId)
+    }
+    panelModeByBook = store
+  }
+
   static nonisolated var forceDefaultReadingDirection: Bool {
     get {
       if UserDefaults.standard.object(forKey: "forceDefaultReadingDirection") != nil {
@@ -940,6 +983,20 @@ enum AppConfig {
     }
     set {
       UserDefaults.standard.set(newValue, forKey: "doubleTapZoomScale")
+    }
+  }
+
+  /// Fraction of the viewport a focused panel fills in panel mode; the remainder shows neighbor
+  /// context. Clamped to 0.75...1.0 so a stored value can never fall outside the slider's range.
+  static nonisolated var panelZoomFillFactor: Double {
+    get {
+      guard UserDefaults.standard.object(forKey: "panelZoomFillFactor") != nil else {
+        return 0.9
+      }
+      return min(max(UserDefaults.standard.double(forKey: "panelZoomFillFactor"), 0.75), 1.0)
+    }
+    set {
+      UserDefaults.standard.set(min(max(newValue, 0.75), 1.0), forKey: "panelZoomFillFactor")
     }
   }
 

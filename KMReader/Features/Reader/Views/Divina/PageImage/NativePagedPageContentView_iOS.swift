@@ -1,4 +1,5 @@
 #if os(iOS) || os(tvOS)
+  import AVFoundation
   import SwiftUI
   import UIKit
 
@@ -251,6 +252,7 @@
       #endif
       isUpdatingZoomState = true
       scrollView.setZoomScale(scrollView.minimumZoomScale, animated: false)
+      scrollView.contentInset = .zero
       scrollView.contentOffset = .zero
       isUpdatingZoomState = false
       scrollController.setNeedsPlacement()
@@ -265,6 +267,149 @@
     func forceResetZoom() {
       resetScrollViewportState()
       scrollController.updateLayout(viewportSize: bounds.size)
+    }
+
+    // MARK: - Panel mode zoom (driven by PanelZoomController via the cover coordinator)
+
+    /// Zoom to a normalized [0,1] page-space panel rect, centered with a margin so a sliver of
+    /// the neighboring panels stays visible (never cropped). The panel rect is expanded to the
+    /// viewport's aspect ratio and enlarged by 1/fillFactor, then handed to UIScrollView's
+    /// `zoom(to:)`, which fits and centers it — the panel lands centered with the margin using
+    /// only the proven zoom path (no manual offset/inset). Lets `scrollViewDidZoom` set `isZoomed`.
+    func zoomToPanelRect(_ panel: PanelRect, animated: Bool) {
+      let container = CGRect(origin: .zero, size: scrollView.bounds.size)
+      guard container.width > 0, container.height > 0 else { return }
+      let fitted = fittedImageRect(in: container)
+      let panelRect = CGRect(
+        x: fitted.minX + panel.x * fitted.width,
+        y: fitted.minY + panel.y * fitted.height,
+        width: max(panel.width * fitted.width, 1),
+        height: max(panel.height * fitted.height, 1)
+      )
+
+      // Expand to the viewport aspect ratio (centered on the panel), enlarged by the fill
+      // factor so the panel fills ~90% and the rest shows neighbor context. zoom(to:) fits
+      // and centers this rect, so the panel ends up centered with the margin.
+      let aspect = container.width / container.height
+      var w = panelRect.width / PanelZoomTuning.fillFactor
+      var h = panelRect.height / PanelZoomTuning.fillFactor
+      if w / h > aspect { h = w / aspect } else { w = h * aspect }
+
+      // Cap the per-step zoom (separate from the pinch-zoom max): if filling this small a panel
+      // would zoom past maxStepZoom, grow the target so it just hits the cap — the panel fills a
+      // bit less and shows more context, instead of an over-magnified, soft crop.
+      let minTargetW = container.width / PanelZoomTuning.maxStepZoom
+      let minTargetH = container.height / PanelZoomTuning.maxStepZoom
+      if w < minTargetW || h < minTargetH {
+        let grow = max(minTargetW / w, minTargetH / h)
+        w *= grow
+        h *= grow
+      }
+
+      let target = CGRect(
+        x: panelRect.midX - w / 2,
+        y: panelRect.midY - h / 2,
+        width: w,
+        height: h
+      )
+
+      // Slack on every side so zoom(to:) can CENTER panels sitting against the page edge (and
+      // full-width panels) — showing a little background past the page instead of clamping the
+      // panel to the screen edge. Tightened to the landed position right after the zoom (else it
+      // doubles as pannable range); cleared on disengage (resetScrollViewportState / Fit).
+      scrollView.contentInset = UIEdgeInsets(
+        top: container.height, left: container.width,
+        bottom: container.height, right: container.width
+      )
+
+      if animated {
+        // Drive a non-animated zoom inside an explicit block so the step uses the tunable
+        // PanelZoomTuning.stepDuration instead of UIScrollView's fixed ~0.3s.
+        UIView.animate(
+          withDuration: PanelZoomTuning.stepDuration,
+          delay: 0,
+          options: [.curveEaseInOut, .beginFromCurrentState]
+        ) {
+          self.scrollView.zoom(to: target, animated: false)
+          self.clampPanelPanRange()
+        }
+      } else {
+        scrollView.zoom(to: target, animated: false)
+        clampPanelPanRange()
+      }
+    }
+
+    /// Shrink the oversized centering inset to exactly the overhang the landed zoom position
+    /// uses. The full-viewport slack above exists only so `zoom(to:)` can center edge-hugging
+    /// panels; left in place it also becomes pannable range, letting the page drag a whole
+    /// screen out of bounds in every direction while engaged. Clamped to the landed overhang,
+    /// panning matches the plain double-tap zoom guard: an interior panel pans strictly within
+    /// the page content, an edge panel can expose only the margin its centering already shows.
+    private func clampPanelPanRange() {
+      scrollView.layoutIfNeeded()
+      let offset = scrollView.contentOffset
+      let viewport = scrollView.bounds.size
+      let content = scrollView.contentSize
+      scrollView.contentInset = UIEdgeInsets(
+        top: max(0, -offset.y),
+        left: max(0, -offset.x),
+        bottom: max(0, offset.y + viewport.height - content.height),
+        right: max(0, offset.x + viewport.width - content.width)
+      )
+    }
+
+    /// Reset back to the whole, fitted page. Clears the panel-walk zoom AND the centering
+    /// inset/offset — a full-width panel sits at min zoom but is still inset-shifted, so a
+    /// plain zoomScale check would miss it.
+    func resetPanelZoomToFit(animated: Bool) {
+      let atRest =
+        scrollView.zoomScale == scrollView.minimumZoomScale
+        && scrollView.contentInset == .zero
+        && scrollView.contentOffset == .zero
+      guard !atRest else { return }
+      if animated {
+        UIView.animate(
+          withDuration: PanelZoomTuning.stepDuration,
+          delay: 0,
+          options: [.curveEaseInOut, .beginFromCurrentState]
+        ) {
+          self.scrollView.contentInset = .zero
+          self.scrollView.setZoomScale(self.scrollView.minimumZoomScale, animated: false)
+          self.scrollView.contentOffset = .zero
+        }
+      } else {
+        forceResetZoom()
+        if tracksGlobalZoomState, let viewModel, viewModel.isZoomed {
+          viewModel.isZoomed = false
+        }
+      }
+    }
+
+    /// Convert a point in this view's coordinate space to normalized [0,1] image-space
+    /// (through the aspect-fit frame). Points in the letterbox fall outside [0,1].
+    func normalizedImagePoint(forContainerPoint point: CGPoint) -> CGPoint? {
+      let container = CGRect(origin: .zero, size: scrollView.bounds.size)
+      guard container.width > 0, container.height > 0 else { return nil }
+      let fitted = fittedImageRect(in: container)
+      guard fitted.width > 0, fitted.height > 0 else { return nil }
+      return CGPoint(
+        x: (point.x - fitted.minX) / fitted.width,
+        y: (point.y - fitted.minY) / fitted.height
+      )
+    }
+
+    private func fittedImageRect(in container: CGRect) -> CGRect {
+      guard let imageSize = currentDisplayedImageSize(),
+        imageSize.width > 0, imageSize.height > 0
+      else {
+        return container
+      }
+      return AVMakeRect(aspectRatio: imageSize, insideRect: container)
+    }
+
+    private func currentDisplayedImageSize() -> CGSize? {
+      guard let data = currentPageData.first else { return nil }
+      return displayedImageSize(for: data.pageID)
     }
 
     func pageScrollControllerDidZoom(_ controller: PageScrollController) {
