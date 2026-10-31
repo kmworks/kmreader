@@ -64,6 +64,16 @@ actor RFDETRCoreMLDetector {
 
   private static let upgradeRetryDelays: [TimeInterval] = [30, 120, 480]
 
+  /// Compute units to try, best first. The simulator runs CPU-only: its GPU path corrupts the
+  /// model's outputs (every query scores above threshold), so there is nothing to upgrade to.
+  private static let computeUnitLadder: [MLComputeUnits] = {
+    #if targetEnvironment(simulator)
+      return [.cpuOnly]
+    #else
+      return [.all, .cpuAndGPU, .cpuOnly]
+    #endif
+  }()
+
   /// Bundled model basename (Resources/Models/<name>.mlpackage → compiled .mlmodelc).
   private static let modelResource = "rfdetr_panel_detection_med"
   private static let imageInputName = "image"
@@ -233,14 +243,14 @@ actor RFDETRCoreMLDetector {
       // an A12-class device (which rejects both ANE and GPU here) lands on CPU. A fallback result
       // is not final: `upgradeIfDue` retries `.all` in the background, since the failure can be
       // a transient compile-service error rather than a capability gap.
-      for units in [MLComputeUnits.all, .cpuAndGPU, .cpuOnly] {
+      for units in Self.computeUnitLadder {
         let config = MLModelConfiguration()
         config.computeUnits = units
         if let loaded = try? MLModel(contentsOf: compiledURL, configuration: config) {
           model = loaded
           loadedUnits = units
           compiledModelURL = compiledURL
-          if units != .all {
+          if units != Self.computeUnitLadder[0] {
             upgradeAttemptsRemaining = Self.upgradeRetryDelays.count
             upgradeNotBefore = Date().addingTimeInterval(Self.upgradeRetryDelays[0])
           }
@@ -269,14 +279,14 @@ actor RFDETRCoreMLDetector {
   /// in-flight detections — the fallback model keeps serving until the swap (the two models
   /// briefly coexist during a retry; the spike is transient and the retry is rare by construction).
   private func upgradeIfDue() {
-    guard model != nil, let units = loadedUnits, units != .all,
+    guard model != nil, let units = loadedUnits, units != Self.computeUnitLadder[0],
       upgradeAttemptsRemaining > 0, Date() >= upgradeNotBefore,
       upgradeTask == nil, let url = compiledModelURL
     else { return }
     upgradeAttemptsRemaining -= 1
     upgradeTask = Task.detached(priority: .utility) { [self] in
       let config = MLModelConfiguration()
-      config.computeUnits = .all
+      config.computeUnits = Self.computeUnitLadder[0]
       let upgraded = try? MLModel(contentsOf: url, configuration: config)
       await completeUpgrade(with: upgraded)
     }
@@ -286,7 +296,7 @@ actor RFDETRCoreMLDetector {
     upgradeTask = nil
     if let upgraded {
       model = upgraded
-      loadedUnits = .all
+      loadedUnits = Self.computeUnitLadder[0]
       upgradeAttemptsRemaining = 0
       logger.debug(
         "[PanelRFCoreML] model upgraded — computeUnits=.all — ANE IN USE "
