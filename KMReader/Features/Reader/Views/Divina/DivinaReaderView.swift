@@ -234,6 +234,9 @@ struct DivinaReaderView: View {
         adjacentPages.append(page)
       }
     }
+    // Adopt the page synchronously so no tap can reach the previous page's walk; the
+    // detection itself resolves asynchronously.
+    panelModeController.beginPage(bookId: bookId, page: bookPage, presentation: presentation)
     Task {
       await panelModeController.updateCurrentPage(
         bookId: bookId, page: bookPage, presentation: presentation, adjacentPages: adjacentPages)
@@ -1897,7 +1900,9 @@ struct DivinaReaderView: View {
       case .previous: forward = false
       }
       if case .turnPage(let turnForward) = panelModeController.step(forward: forward) {
-        goToPagedReaderPosition(turnForward ? .next : .previous)
+        goToPagedReaderPosition(turnForward ? .next : .previous) {
+          panelModeController.pageTurnDidNotHappen()
+        }
       }
       return
     }
@@ -1909,7 +1914,10 @@ struct DivinaReaderView: View {
     }
   }
 
-  private func goToPagedReaderPosition(_ step: ReaderNavigationStep) {
+  private func goToPagedReaderPosition(
+    _ step: ReaderNavigationStep,
+    onNoPageChange: (() -> Void)? = nil
+  ) {
     let offset: Int =
       switch step {
       case .previous:
@@ -1922,6 +1930,7 @@ struct DivinaReaderView: View {
       Task { @MainActor in
         if await !navigateAcrossBoundaryIfNeeded(offset: offset) {
           performBoundaryNudge(for: step)
+          onNoPageChange?()
         }
       }
     }

@@ -46,6 +46,17 @@ final class PanelModeController {
   private var sequence: PanelSequence = .empty
   private var cursor = 0
   private var pendingTurnForward: Bool?
+  /// True from a page or presentation change until that page's sequence resolves. While set,
+  /// `sequence` is `.empty` rather than the previous page's walk, so neither a step nor an engage
+  /// can act on stale rects.
+  private var isResolving = false
+  /// True from a step that asked the host to turn the page until the new page arrives (or the host
+  /// reports that no turn happened). The turn animates first, and a step taken meanwhile must not
+  /// ask for another turn from the previous page's end.
+  private var awaitingPageTurn = false
+  /// The latest step requested while `isResolving` or `awaitingPageTurn`, applied once the new
+  /// page's sequence is ready.
+  private var queuedStepForward: Bool?
 
   init(
     provider: any PanelDetectionProvider = StubPanelProvider(),
@@ -67,24 +78,41 @@ final class PanelModeController {
     }
   }
 
-  /// Called by the reader whenever the displayed page changes (armed or engaged).
-  /// Eager-fetches the sequence; if a page turn is pending, lands the cursor on the
-  /// whole-page bookend of the freshly turned-to page. `adjacentPages` are the
-  /// same-segment neighbors to lazy-warm so a page turn lands on a ready sequence.
+  /// Synchronous half of a page or presentation change: adopt the new page and drop the previous
+  /// page's walk at once, before anything awaits, so a step arriving before the new sequence
+  /// resolves cannot act on stale state. Idempotent for an unchanged page and presentation.
+  func beginPage(bookId: String, page: BookPage, presentation: PanelPagePresentation) {
+    let pageChanged = currentBookId != bookId || currentPage?.number != page.number
+    let presentationChanged = currentPresentation != nil && currentPresentation != presentation
+    // A rotation or border-crop change moves every panel on screen; leave the walk rather than
+    // zoom to rects measured for the previous presentation.
+    if engaged, presentationChanged {
+      disengage()
+    }
+    currentBookId = bookId
+    currentPage = page
+    currentPresentation = presentation
+    if pageChanged || presentationChanged {
+      // Keep a step queued during this controller's own page turn: it belongs to the arriving page.
+      if !awaitingPageTurn { queuedStepForward = nil }
+      awaitingPageTurn = false
+      sequence = .empty
+      isResolving = true
+      cursor = 0
+    }
+  }
+
+  /// Called by the reader whenever the displayed page changes (armed or engaged), after
+  /// `beginPage`. Eager-fetches the sequence; if a page turn is pending, lands the cursor on the
+  /// whole-page bookend of the freshly turned-to page. `adjacentPages` are the same-segment
+  /// neighbors to lazy-warm so a page turn lands on a ready sequence.
   func updateCurrentPage(
     bookId: String,
     page: BookPage,
     presentation: PanelPagePresentation,
     adjacentPages: [BookPage] = []
   ) async {
-    // A rotation or border-crop change moves every panel on screen; leave the walk rather than
-    // zoom to rects measured for the previous presentation.
-    if engaged, let currentPresentation, currentPresentation != presentation {
-      disengage()
-    }
-    currentBookId = bookId
-    currentPage = page
-    currentPresentation = presentation
+    beginPage(bookId: bookId, page: page, presentation: presentation)
 
     // Eager-warm this page (`.userInitiated`) + lazy-warm neighbors (`.utility`), and
     // cancel detection that fell outside the new window. The `sequence` await below
@@ -97,12 +125,28 @@ final class PanelModeController {
     // Drop a late result if the page changed again while awaiting.
     guard currentBookId == bookId, currentPage?.number == page.number else { return }
     sequence = resolved
+    isResolving = false
 
-    guard engaged, let forward = pendingTurnForward else { return }
-    pendingTurnForward = nil
-    // Land on the whole-page bookend (fit; completeTransition already reset zoom).
-    cursor = forward ? 0 : max(sequence.count - 1, 0)
-    zoomController.resetToFit(animated: false)
+    guard engaged else {
+      pendingTurnForward = nil
+      queuedStepForward = nil
+      return
+    }
+    if let forward = pendingTurnForward {
+      pendingTurnForward = nil
+      // Land on the whole-page bookend (fit; completeTransition already reset zoom).
+      cursor = forward ? 0 : max(sequence.count - 1, 0)
+      zoomController.resetToFit(animated: false)
+    }
+    if let forward = queuedStepForward {
+      queuedStepForward = nil
+      // A step taken while the walk was resolving moves within the page now that it is ready.
+      // One that would turn the page is dropped: page turns belong to the host, at tap time.
+      if let next = nextCursor(forward: forward) {
+        cursor = next
+        zoomToCurrentCursor(animated: true)
+      }
+    }
   }
 
   /// Double-tap engage at a normalized [0,1] page-space point (gutter → panel 0).
@@ -121,6 +165,7 @@ final class PanelModeController {
         bookId: bookId, page: page, presentation: presentation)
       guard self.currentBookId == bookId, self.currentPage?.number == page.number else { return }
       self.sequence = resolved
+      self.isResolving = false
       guard self.isCurrentPageEngageable else { return }  // genuinely empty → stay armed
       self.performEngage(at: point)
     }
@@ -130,6 +175,8 @@ final class PanelModeController {
     guard engaged else { return }
     engaged = false
     pendingTurnForward = nil
+    awaitingPageTurn = false
+    queuedStepForward = nil
     cursor = 0
     zoomController.resetToFit(animated: true)
   }
@@ -155,21 +202,15 @@ final class PanelModeController {
   @discardableResult
   func step(forward: Bool) -> PanelStepOutcome {
     guard engaged else { return .handled }
-    let lastIndex = sequence.count - 1
-    if lastIndex < 1 {
-      pendingTurnForward = forward
-      return .turnPage(forward: forward)
+    if isResolving || awaitingPageTurn {
+      // The next page is on its way or its walk is not ready yet; remember the intent instead of
+      // acting on the previous page's state.
+      queuedStepForward = forward
+      return .handled
     }
-    let next = forward ? cursor + 1 : cursor - 1
-    // A splash's leading whole-page is a forward-only stop: you glance into the art once going
-    // forward, but stepping backward off the splash turns the page rather than re-showing the
-    // whole page (mirrors how a reader does a close look once, not again when paging back).
-    if case .splash = sequence, !forward, next == 0 {
+    guard let next = nextCursor(forward: forward) else {
       pendingTurnForward = forward
-      return .turnPage(forward: forward)
-    }
-    if next < 0 || next > lastIndex {
-      pendingTurnForward = forward
+      awaitingPageTurn = true
       return .turnPage(forward: forward)
     }
     cursor = next
@@ -177,7 +218,28 @@ final class PanelModeController {
     return .handled
   }
 
+  /// The host could not turn the page a step asked for (a boundary with nowhere to go), so the
+  /// controller stops waiting for a new page and stays on the current one.
+  func pageTurnDidNotHappen() {
+    awaitingPageTurn = false
+    pendingTurnForward = nil
+    queuedStepForward = nil
+  }
+
   // MARK: - Private
+
+  /// The cursor one step from the current one, or nil when the step leaves the page.
+  private func nextCursor(forward: Bool) -> Int? {
+    let lastIndex = sequence.count - 1
+    guard lastIndex >= 1 else { return nil }
+    let next = forward ? cursor + 1 : cursor - 1
+    // A splash's leading whole-page is a forward-only stop: you glance into the art once going
+    // forward, but stepping backward off the splash turns the page rather than re-showing the
+    // whole page (mirrors how a reader does a close look once, not again when paging back).
+    if case .splash = sequence, !forward, next == 0 { return nil }
+    guard next >= 0, next <= lastIndex else { return nil }
+    return next
+  }
 
   /// Await a sequence, surfacing `isInitializing` only if the FIRST-ever detection runs past a short
   /// grace period (the one-time on-device model compile). Once any detection completes, later awaits
