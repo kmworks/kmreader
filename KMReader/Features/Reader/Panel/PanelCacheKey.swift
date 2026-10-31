@@ -27,7 +27,7 @@ struct PanelCacheKey {
   let pageNumber: Int
   let imageIdentity: ImageIdentity
   let detectorVersion: String
-  let direction: ReadingDirection
+  let presentation: PanelPagePresentation
   let preprocessingVersion: String
 
   init(
@@ -35,14 +35,14 @@ struct PanelCacheKey {
     bookId: String,
     page: BookPage,
     detectorVersion: String,
-    direction: ReadingDirection
+    presentation: PanelPagePresentation
   ) {
     self.instanceId = instanceId
     self.bookId = bookId
     self.pageNumber = page.number
     self.imageIdentity = Self.makeImageIdentity(for: page)
     self.detectorVersion = detectorVersion
-    self.direction = direction
+    self.presentation = presentation
     self.preprocessingVersion = Self.preprocessingVersion
   }
 
@@ -63,7 +63,9 @@ struct PanelCacheKey {
       String(pageNumber),
       imageComponent,
       Self.escape(detectorVersion),
-      String(describing: direction),
+      String(describing: presentation.direction),
+      String(presentation.rotation.degrees),
+      presentation.borderCropMode.rawValue,
       Self.escape(preprocessingVersion),
     ].joined(separator: "|")
   }

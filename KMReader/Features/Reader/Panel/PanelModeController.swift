@@ -42,7 +42,7 @@ final class PanelModeController {
   private let orchestrator: PanelSequenceOrchestrator
   private var currentBookId: String?
   private var currentPage: BookPage?
-  private var currentDirection: ReadingDirection = .ltr
+  private var currentPresentation: PanelPagePresentation?
   private var sequence: PanelSequence = .empty
   private var cursor = 0
   private var pendingTurnForward: Bool?
@@ -74,20 +74,25 @@ final class PanelModeController {
   func updateCurrentPage(
     bookId: String,
     page: BookPage,
-    direction: ReadingDirection,
+    presentation: PanelPagePresentation,
     adjacentPages: [BookPage] = []
   ) async {
+    // A rotation or border-crop change moves every panel on screen; leave the walk rather than
+    // zoom to rects measured for the previous presentation.
+    if engaged, let currentPresentation, currentPresentation != presentation {
+      disengage()
+    }
     currentBookId = bookId
     currentPage = page
-    currentDirection = direction
+    currentPresentation = presentation
 
     // Eager-warm this page (`.userInitiated`) + lazy-warm neighbors (`.utility`), and
     // cancel detection that fell outside the new window. The `sequence` await below
     // reuses the in-flight current-page task (per-page dedup), so it is not computed twice.
     orchestrator.handlePageChange(
-      bookId: bookId, currentPage: page, adjacentPages: adjacentPages, direction: direction)
+      bookId: bookId, currentPage: page, adjacentPages: adjacentPages, presentation: presentation)
 
-    let resolved = await firstAwareSequence(bookId: bookId, page: page, direction: direction)
+    let resolved = await firstAwareSequence(bookId: bookId, page: page, presentation: presentation)
 
     // Drop a late result if the page changed again while awaiting.
     guard currentBookId == bookId, currentPage?.number == page.number else { return }
@@ -107,12 +112,13 @@ final class PanelModeController {
       performEngage(at: point)
       return
     }
-    guard let bookId = currentBookId, let page = currentPage else { return }
-    let direction = currentDirection
+    guard let bookId = currentBookId, let page = currentPage, let presentation = currentPresentation else {
+      return
+    }
     Task { [weak self] in
       guard let self else { return }
       let resolved = await self.firstAwareSequence(
-        bookId: bookId, page: page, direction: direction)
+        bookId: bookId, page: page, presentation: presentation)
       guard self.currentBookId == bookId, self.currentPage?.number == page.number else { return }
       self.sequence = resolved
       guard self.isCurrentPageEngageable else { return }  // genuinely empty → stay armed
@@ -177,10 +183,10 @@ final class PanelModeController {
   /// grace period (the one-time on-device model compile). Once any detection completes, later awaits
   /// skip the watchdog entirely.
   private func firstAwareSequence(
-    bookId: String, page: BookPage, direction: ReadingDirection
+    bookId: String, page: BookPage, presentation: PanelPagePresentation
   ) async -> PanelSequence {
     guard !hasDetectedOnce else {
-      return await orchestrator.sequence(bookId: bookId, page: page, direction: direction)
+      return await orchestrator.sequence(bookId: bookId, page: page, presentation: presentation)
     }
     initWatchdog?.cancel()
     initWatchdog = Task { [weak self] in
@@ -188,7 +194,7 @@ final class PanelModeController {
       guard let self, !self.hasDetectedOnce, !Task.isCancelled else { return }
       self.isInitializing = true
     }
-    let sequence = await orchestrator.sequence(bookId: bookId, page: page, direction: direction)
+    let sequence = await orchestrator.sequence(bookId: bookId, page: page, presentation: presentation)
     initWatchdog?.cancel()
     hasDetectedOnce = true
     isInitializing = false

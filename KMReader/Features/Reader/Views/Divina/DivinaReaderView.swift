@@ -46,6 +46,8 @@ struct DivinaReaderView: View {
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
   @State private var panelModeEnabled: Bool = false
+  @AppStorage("divinaPageBorderCropMode") private var divinaPageBorderCropMode: ReaderPageBorderCropMode =
+    AppConfig.divinaPageBorderCropMode
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
   @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("offlineFirstReading") private var offlineFirstReading: Bool = false
@@ -216,7 +218,11 @@ struct DivinaReaderView: View {
       let bookPage = viewModel.page(for: readerPage.id)
     else { return }
     let bookId = readerPage.bookId
-    let direction = readingDirection
+    let presentation = PanelPagePresentation(
+      direction: readingDirection,
+      rotation: rotation,
+      borderCropMode: divinaPageBorderCropMode
+    )
     // Same-book neighbors for lazy lookahead; a cross-book turn already incurs a book load
     // that masks detection latency.
     var adjacentPages: [BookPage] = []
@@ -230,7 +236,7 @@ struct DivinaReaderView: View {
     }
     Task {
       await panelModeController.updateCurrentPage(
-        bookId: bookId, page: bookPage, direction: direction, adjacentPages: adjacentPages)
+        bookId: bookId, page: bookPage, presentation: presentation, adjacentPages: adjacentPages)
     }
   }
 
@@ -775,6 +781,11 @@ struct DivinaReaderView: View {
     }
     .onChange(of: rotation) { _, newValue in
       viewModel.updateRotation(newValue)
+      // Panel rects are mapped into the displayed page, so a rotation change remaps them.
+      refreshPanelModeCurrentPage()
+    }
+    .onChange(of: divinaPageBorderCropMode) {
+      refreshPanelModeCurrentPage()
     }
     .onChange(of: divinaPreloadProfile) { _, newValue in
       viewModel.updatePreloadWindow(newValue.window)

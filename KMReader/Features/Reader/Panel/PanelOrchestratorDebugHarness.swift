@@ -47,8 +47,12 @@
       let pageB = page(2)
 
       // Start A, then immediately move to B — handlePageChange cancels A.
-      orchestrator.prewarm(bookId: book, page: pageA, direction: .ltr)
-      orchestrator.handlePageChange(bookId: book, currentPage: pageB, adjacentPages: [], direction: .ltr)
+      orchestrator.prewarm(
+        bookId: book, page: pageA,
+        presentation: PanelPagePresentation(direction: .ltr, rotation: .none, borderCropMode: .disabled))
+      orchestrator.handlePageChange(
+        bookId: book, currentPage: pageB, adjacentPages: [],
+        presentation: PanelPagePresentation(direction: .ltr, rotation: .none, borderCropMode: .disabled))
 
       // Let the cancelled A task fully resolve.
       try? await Task.sleep(for: .milliseconds(600))
@@ -69,7 +73,9 @@
       let orchestrator = PanelSequenceOrchestrator(provider: provider, cache: cache, loader: loader)
 
       let pageC = page(5)
-      let seq = await orchestrator.sequence(bookId: book, page: pageC, direction: .ltr)
+      let seq = await orchestrator.sequence(
+        bookId: book, page: pageC,
+        presentation: PanelPagePresentation(direction: .ltr, rotation: .none, borderCropMode: .disabled))
       let cachedC = await cache.sequence(for: key(for: pageC, provider: provider).fingerprint)
 
       let seqEmpty = seq == .empty
@@ -89,8 +95,12 @@
       let loader = FakeLoader(image: makeImage(), delay: .milliseconds(50))
       let orchestrator = PanelSequenceOrchestrator(provider: provider, cache: cache, loader: loader)
 
-      orchestrator.prewarm(bookId: book, page: page(1), direction: .ltr)
-      orchestrator.prewarm(bookId: book, page: page(2), direction: .ltr)
+      orchestrator.prewarm(
+        bookId: book, page: page(1),
+        presentation: PanelPagePresentation(direction: .ltr, rotation: .none, borderCropMode: .disabled))
+      orchestrator.prewarm(
+        bookId: book, page: page(2),
+        presentation: PanelPagePresentation(direction: .ltr, rotation: .none, borderCropMode: .disabled))
       orchestrator.cancelAll()
 
       if orchestrator.inFlightCount == 0 {
@@ -123,7 +133,7 @@
         bookId: book,
         page: page,
         detectorVersion: provider.version,
-        direction: .ltr
+        presentation: PanelPagePresentation(direction: .ltr, rotation: .none, borderCropMode: .disabled)
       )
     }
 

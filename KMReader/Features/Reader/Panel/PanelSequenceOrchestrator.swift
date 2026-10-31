@@ -55,15 +55,15 @@ final class PanelSequenceOrchestrator {
   var inFlightCount: Int { inFlight.count }
 
   /// Cache hit, else eager compute (awaited). The precondition for engage.
-  func sequence(bookId: String, page: BookPage, direction: ReadingDirection) async -> PanelSequence {
-    let key = makeKey(bookId: bookId, page: page, direction: direction)
+  func sequence(bookId: String, page: BookPage, presentation: PanelPagePresentation) async -> PanelSequence {
+    let key = makeKey(bookId: bookId, page: page, presentation: presentation)
     if let cached = await cache.sequence(for: key.fingerprint) { return cached }
-    return await task(for: bookId, page: page, direction: direction, priority: .userInitiated).value
+    return await task(for: bookId, page: page, presentation: presentation, priority: .userInitiated).value
   }
 
   /// Kick off detection without awaiting (lazy lookahead / pre-warm).
-  func prewarm(bookId: String, page: BookPage, direction: ReadingDirection, priority: TaskPriority = .utility) {
-    _ = task(for: bookId, page: page, direction: direction, priority: priority)
+  func prewarm(bookId: String, page: BookPage, presentation: PanelPagePresentation, priority: TaskPriority = .utility) {
+    _ = task(for: bookId, page: page, presentation: presentation, priority: priority)
   }
 
   /// Eager-warm the current page and lazy-warm its neighbors; cancel anything that
@@ -72,7 +72,7 @@ final class PanelSequenceOrchestrator {
     bookId: String,
     currentPage: BookPage,
     adjacentPages: [BookPage],
-    direction: ReadingDirection
+    presentation: PanelPagePresentation
   ) {
     let window = Set([currentPage.number] + adjacentPages.map(\.number))
     for (token, entry) in inFlight where token.bookId != bookId || !window.contains(token.pageNumber) {
@@ -80,9 +80,9 @@ final class PanelSequenceOrchestrator {
       inFlight[token] = nil
     }
 
-    prewarm(bookId: bookId, page: currentPage, direction: direction, priority: .userInitiated)
+    prewarm(bookId: bookId, page: currentPage, presentation: presentation, priority: .userInitiated)
     for page in adjacentPages {
-      prewarm(bookId: bookId, page: page, direction: direction, priority: .utility)
+      prewarm(bookId: bookId, page: page, presentation: presentation, priority: .utility)
     }
   }
 
@@ -98,7 +98,7 @@ final class PanelSequenceOrchestrator {
   private func task(
     for bookId: String,
     page: BookPage,
-    direction: ReadingDirection,
+    presentation: PanelPagePresentation,
     priority: TaskPriority
   ) -> Task<PanelSequence, Never> {
     let token = PageToken(bookId: bookId, pageNumber: page.number)
@@ -108,7 +108,7 @@ final class PanelSequenceOrchestrator {
     let id = nextRequestId
     let work = Task(priority: priority) { [weak self] () -> PanelSequence in
       guard let self else { return .empty }
-      let result = await self.compute(bookId: bookId, page: page, direction: direction)
+      let result = await self.compute(bookId: bookId, page: page, presentation: presentation)
       self.clearSlot(token: token, id: id)
       return result
     }
@@ -121,8 +121,8 @@ final class PanelSequenceOrchestrator {
     if inFlight[token]?.id == id { inFlight[token] = nil }
   }
 
-  private func compute(bookId: String, page: BookPage, direction: ReadingDirection) async -> PanelSequence {
-    let key = makeKey(bookId: bookId, page: page, direction: direction)
+  private func compute(bookId: String, page: BookPage, presentation: PanelPagePresentation) async -> PanelSequence {
+    let key = makeKey(bookId: bookId, page: page, presentation: presentation)
     if let cached = await cache.sequence(for: key.fingerprint) { return cached }
 
     guard let image = await loader.pageImage(bookId: bookId, page: page) else {
@@ -179,9 +179,16 @@ final class PanelSequenceOrchestrator {
     let raster = filtered.panels.count >= 2 ? await PanelPageRaster.make(from: image) : nil
     guard !Task.isCancelled else { return .empty }
 
-    let sequence = PanelComposition.compose(
-      filtered, direction: direction, ocrLines: ocrLines,
+    let composed = PanelComposition.compose(
+      filtered, direction: presentation.direction, ocrLines: ocrLines,
       pageIsSpread: pageIsSpread, pageIsFullBleed: pageIsFullBleed, raster: raster)
+    // Reading order is decided on the original page; only the rects move into the displayed page
+    // (rotation, border crop). The crop measurement scans pixels, so it runs off the main actor.
+    let sequence =
+      presentation.transformsPage
+      ? await Task.detached(priority: .utility) { presentation.displayed(composed, in: image) }.value
+      : composed
+    guard !Task.isCancelled else { return .empty }
     // DEBUG: ordering diagnostics — direction + each beat's x-center, so the device walk order is
     // visible (RTL → first beat on the right). Strip before fold.
     if case .panels(let beats) = sequence {
@@ -190,19 +197,20 @@ final class PanelSequenceOrchestrator {
         // DEBUG: append the body-class-combine breakdown (orphan vs spanning figures + overlaps) to the
         // same line, so one `PanelOrder` filter shows the walk AND why a contact pair did/didn't merge.
         // Strip before fold.
-        let bc = " :: " + PanelComposition.debugFigureBeats(filtered, direction: direction)
+        let bc = " :: " + PanelComposition.debugFigureBeats(filtered, direction: presentation.direction)
       #else
         let bc = ""
       #endif
-      logger.debug("[PanelOrder] dir=\(direction.rawValue) page=\(page.number) beats=\(beats.count) cx=[\(xs)]\(bc)")
+      logger.debug(
+        "[PanelOrder] dir=\(presentation.direction.rawValue) page=\(page.number) beats=\(beats.count) cx=[\(xs)]\(bc)")
     } else {
-      logger.debug("[PanelOrder] dir=\(direction.rawValue) page=\(page.number) seq=non-panels")
+      logger.debug("[PanelOrder] dir=\(presentation.direction.rawValue) page=\(page.number) seq=non-panels")
     }
     await cache.store(sequence, for: key.fingerprint)
     return sequence
   }
 
-  private func makeKey(bookId: String, page: BookPage, direction: ReadingDirection) -> PanelCacheKey {
+  private func makeKey(bookId: String, page: BookPage, presentation: PanelPagePresentation) -> PanelCacheKey {
     PanelCacheKey(
       instanceId: CacheNamespace.identifier(),
       bookId: bookId,
@@ -210,7 +218,7 @@ final class PanelSequenceOrchestrator {
       // Fold the Vision version into the detector version so toggling or changing the Vision
       // pass invalidates cached sequences that depended on it.
       detectorVersion: provider.version + (visionText.map { "+" + $0.version } ?? ""),
-      direction: direction
+      presentation: presentation
     )
   }
 }
