@@ -70,14 +70,14 @@ nonisolated enum MangaInferenceUtilities {
     cropRect: CGRect?,
     displaySize: CGSize
   ) -> MangaTextRegion? {
-    let box = MangaPreparedGeometry.normalizedRect(
+    let box = PreparedReaderPageGeometry.normalizedRect(
       for: sourceBox,
       in: image,
       splitMode: splitMode,
       rotation: rotation,
       cropRect: cropRect
     )
-    guard MangaPreparedGeometry.isVisible(box) else { return nil }
+    guard PreparedReaderPageGeometry.isVisible(box) else { return nil }
     let orientation =
       descriptor.orientation.flatMap { MangaTextOrientation(rawValue: $0) }
       ?? .infer(from: box, displaySize: displaySize)

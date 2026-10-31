@@ -12,7 +12,7 @@ nonisolated struct RTDetrDetector: MangaTextDetecting {
     rotation: ReaderRotation,
     borderCropMode: ReaderPageBorderCropMode
   ) throws -> [MangaTextRegion] {
-    let cropRect = MangaPreparedGeometry.cropRect(
+    let cropRect = PreparedReaderPageGeometry.cropRect(
       for: image,
       rotation: rotation,
       borderCropMode: borderCropMode
