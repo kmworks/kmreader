@@ -256,9 +256,10 @@ struct DivinaReaderView: View {
       borderCropMode: divinaPageBorderCropMode
     )
     // Same-book neighbors for lazy lookahead; a cross-book turn already incurs a book load
-    // that masks detection latency.
+    // that masks detection latency. Two pages ahead, so a page read at a glance (a splash shown
+    // whole) does not leave the page after it cold when the reader taps straight on.
     var adjacentPages: [BookPage] = []
-    for offset in [-1, 1] {
+    for offset in [-1, 1, 2] {
       if let item = viewModel.adjacentViewItem(offset: offset),
         item.pageID.bookId == bookId,
         let page = viewModel.page(for: item.pageID)

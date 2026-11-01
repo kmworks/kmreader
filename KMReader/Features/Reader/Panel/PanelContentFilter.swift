@@ -45,7 +45,7 @@ nonisolated enum PanelContentFilter {
       isCandidate($0, texts: detection.texts, bodies: detection.bodies)
     }
     guard hasCandidate else { return detection }
-    return await Task.detached(priority: .utility) {
+    return await Task.detached(priority: Task.currentPriority) {
       apply(detection, pageImage: pageImage)
     }.value
   }
@@ -198,7 +198,7 @@ nonisolated enum PanelContentFilter {
   /// True when the page is full-bleed art, so a splash beat is dropped in favour of the whole page
   /// Runs the pixel scan off the main actor; only worth calling for splash-eligible pages.
   static func isFullBleed(_ image: CGImage) async -> Bool {
-    await Task.detached(priority: .utility) {
+    await Task.detached(priority: Task.currentPriority) {
       guard let gray = grayBuffer(image, maxEdge: fullBleedBufferEdge) else { return false }
       return ringEdgeDensity(gray) > fullBleedDensity
     }.value

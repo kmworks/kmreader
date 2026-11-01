@@ -25,7 +25,7 @@ nonisolated struct PanelPageRaster: Sendable {
 
   /// Build the mask from the page image, off the main actor.
   static func make(from image: CGImage) async -> PanelPageRaster? {
-    await Task.detached(priority: .utility) { build(from: image) }.value
+    await Task.detached(priority: Task.currentPriority) { build(from: image) }.value
   }
 
   private static func build(from image: CGImage) -> PanelPageRaster? {

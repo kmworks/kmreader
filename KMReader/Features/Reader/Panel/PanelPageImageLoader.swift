@@ -54,7 +54,7 @@ actor PanelPageImageLoader {
 
   // Runs detached so the CGImageSource decode never blocks the main thread or the actor.
   private static func decodeCGImage(at fileURL: URL) async -> CGImage? {
-    await Task.detached(priority: .userInitiated) {
+    await Task.detached(priority: Task.currentPriority) {
       guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, nil) else { return nil }
       return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }.value

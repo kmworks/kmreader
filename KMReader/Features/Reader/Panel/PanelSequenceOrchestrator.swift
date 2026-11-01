@@ -182,7 +182,7 @@ final class PanelSequenceOrchestrator {
     // (rotation, border crop). The crop measurement scans pixels, so it runs off the main actor.
     let sequence =
       presentation.transformsPage
-      ? await Task.detached(priority: .utility) { presentation.displayed(composed, in: image) }.value
+      ? await Task.detached(priority: Task.currentPriority) { presentation.displayed(composed, in: image) }.value
       : composed
     guard !Task.isCancelled else { return .empty }
     await cache.store(sequence, for: key.fingerprint)
