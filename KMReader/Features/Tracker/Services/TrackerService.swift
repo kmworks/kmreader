@@ -87,6 +87,7 @@ nonisolated enum TrackerService {
       queryItems: [
         URLQueryItem(name: "name", value: name),
         URLQueryItem(name: "nsfw", value: includeNsfw ? "true" : "false"),
+        URLQueryItem(name: "titleLanguage", value: LanguageCodeHelper.appTitleLanguage),
       ]
     )
   }
