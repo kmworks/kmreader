@@ -23,7 +23,7 @@ struct OfflineView: View {
   @State private var activeSearchText: String = ""
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
-  @State private var scope: LibraryBrowseScope = .pinned
+  @AppStorage("offlineBrowseScope") private var scope: LibraryBrowseScope = .pinned
   @State private var shortcutsWidth: CGFloat = PlatformHelper.isPad ? .infinity : 0
   @State private var downloadStats: (count: Int, sizeBytes: Int64)?
   @State private var downloadedSeriesCount = 0
