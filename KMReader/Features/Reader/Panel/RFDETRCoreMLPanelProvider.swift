@@ -19,12 +19,15 @@ import Foundation
 /// Pre-process (squish to a 576x576 RGB pixel buffer) → CoreML predict → decode the 300 object
 /// queries per class (sigmoid > 0.5, no NMS) → panels get the shared whole-page-aware suppression,
 /// text/body get IoU dedup. Reading order and beat composition happen later in `PanelComposition`.
-/// Any failure resolves to an empty detection (whole-page fallback).
+/// Any failure, or no installed model, resolves to an empty detection (whole-page fallback).
 struct RFDETRCoreMLPanelProvider: PanelDetectionProvider {
-  var version: String { "rfdetr-med-coreml-fp16-576" }
+  let model: PanelModelLocation?
+
+  var version: String { "rfdetr-med-coreml-576-" + (model?.version ?? "none") }
 
   nonisolated func detect(image: CGImage) async -> PageDetection {
-    let raw = await RFDETRCoreMLDetector.shared.rawDetections(for: image)
+    guard let model else { return .empty }
+    let raw = await RFDETRCoreMLDetector.shared.rawDetections(for: image, model: model)
     return PageDetection(
       panels: PanelDetectionNormalizer.normalize(raw.panels),
       texts: PanelDetectionNormalizer.dedupe(raw.texts),
@@ -33,7 +36,7 @@ struct RFDETRCoreMLPanelProvider: PanelDetectionProvider {
   }
 }
 
-/// Loads the bundled RF-DETR CoreML model once and runs preprocess + inference + decode off the
+/// Loads the RF-DETR CoreML model once per location and runs preprocess + inference + decode off the
 /// main actor, via the model's single image input (`image`, 576x576 RGB) and two outputs (boxes
 /// `[1,300,4]` cxcywh-normalized, labels `[1,300,C]` class logits — auto-named by the converter,
 /// so they are matched by trailing dimension).
@@ -49,6 +52,9 @@ actor RFDETRCoreMLDetector {
 
   private let logger = AppLogger(.reader)
   private var model: MLModel?
+  /// The location the cached model (or the failed load attempt) belongs to. A different location
+  /// drops the cached model and loads again.
+  private var location: PanelModelLocation?
   private var loadAttempted = false
   /// Compute units the cached model actually loaded with + the compiled model location, kept so
   /// a fallback load can later retry the preferred `.all` configuration.
@@ -74,8 +80,6 @@ actor RFDETRCoreMLDetector {
     #endif
   }()
 
-  /// Bundled model basename (Resources/Models/<name>.mlpackage → compiled .mlmodelc).
-  private static let modelResource = "rfdetr_panel_detection_med"
   private static let imageInputName = "image"
 
   /// Fixed square model input edge (RF-DETR-med). Page is squished to this — no letterbox.
@@ -96,8 +100,8 @@ actor RFDETRCoreMLDetector {
   private let auxScoreThreshold: Double = 0.5
 
   /// Decode the page to raw boxes per class, normalized to `[0,1]`. Empty on any failure.
-  func rawDetections(for image: CGImage) async -> RawDetections {
-    guard let model = await loadedModel() else { return RawDetections() }
+  func rawDetections(for image: CGImage, model location: PanelModelLocation) async -> RawDetections {
+    guard let model = await loadedModel(at: location) else { return RawDetections() }
     upgradeIfDue()
     guard let pixelBuffer = makePixelBuffer(image) else { return RawDetections() }
 
@@ -225,17 +229,18 @@ actor RFDETRCoreMLDetector {
 
   // MARK: - Model
 
-  private func loadedModel() async -> MLModel? {
+  private func loadedModel(at requested: PanelModelLocation) async -> MLModel? {
+    if requested != location { reset(for: requested) }
     if let model { return model }
     if loadAttempted { return nil }
     loadAttempted = true
 
-    guard let resolved = Self.modelURL() else {
-      logger.error("[PanelRFCoreML] model not bundled (\(Self.modelResource).mlmodelc/.mlpackage)")
-      return nil
-    }
     do {
-      let compiledURL = resolved.compiled ? resolved.url : try await MLModel.compileModel(at: resolved.url)
+      let compiledURL =
+        requested.url.pathExtension == "mlmodelc"
+        ? requested.url : try await MLModel.compileModel(at: requested.url)
+      // A newer location may have arrived while compiling; leave the load to it.
+      guard requested == location else { return nil }
       // Pick the best compute units the device can actually build an execution plan for. Newer
       // chips run the model on the Neural Engine / GPU via `.all`; some models' ops (deformable
       // attention) cannot compile to an older ANE or GPU and fail with CoreML error -5, so fall
@@ -288,11 +293,13 @@ actor RFDETRCoreMLDetector {
       let config = MLModelConfiguration()
       config.computeUnits = Self.computeUnitLadder[0]
       let upgraded = try? MLModel(contentsOf: url, configuration: config)
-      await completeUpgrade(with: upgraded)
+      await completeUpgrade(with: upgraded, from: url)
     }
   }
 
-  private func completeUpgrade(with upgraded: MLModel?) {
+  private func completeUpgrade(with upgraded: MLModel?, from url: URL) {
+    // The location changed while the retry ran; its model is no longer wanted.
+    guard url == compiledModelURL else { return }
     upgradeTask = nil
     if let upgraded {
       model = upgraded
@@ -323,16 +330,15 @@ actor RFDETRCoreMLDetector {
     }
   }
 
-  private static func modelURL() -> (url: URL, compiled: Bool)? {
-    if let compiled = Bundle.main.url(forResource: modelResource, withExtension: "mlmodelc") {
-      return (compiled, true)
-    }
-    if let pkg = Bundle.main.url(
-      forResource: modelResource, withExtension: "mlpackage", subdirectory: "Resources/Models")
-      ?? Bundle.main.url(forResource: modelResource, withExtension: "mlpackage")
-    {
-      return (pkg, false)
-    }
-    return nil
+  /// Forget the cached model and any pending upgrade so the next load uses `newLocation`.
+  private func reset(for newLocation: PanelModelLocation) {
+    location = newLocation
+    model = nil
+    loadAttempted = false
+    loadedUnits = nil
+    compiledModelURL = nil
+    upgradeAttemptsRemaining = 0
+    upgradeTask?.cancel()
+    upgradeTask = nil
   }
 }

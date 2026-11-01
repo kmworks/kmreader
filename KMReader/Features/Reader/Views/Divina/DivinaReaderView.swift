@@ -86,7 +86,8 @@ struct DivinaReaderView: View {
   @State private var preserveReaderOptions = false
   @State private var usesDualPagePresentation = false
   @State private var webtoonScrollController = WebtoonScrollController()
-  @State private var panelModeController = PanelModeController(provider: RFDETRCoreMLPanelProvider())
+  @State private var panelModeController = PanelModeController(
+    provider: RFDETRCoreMLPanelProvider(model: .installed))
   @State private var savedPageLayoutBeforePanelMode: PageLayout?
   @State private var savedSplitWideBeforePanelMode: SplitWidePageMode?
   @State private var readerSafeAreaTop: CGFloat = 0
