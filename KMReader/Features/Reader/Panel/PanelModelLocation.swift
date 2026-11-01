@@ -8,7 +8,8 @@ import Foundation
 /// Where the panel detection model lives on disk, plus a version that tags its cached results so
 /// a model update re-detects pages instead of serving the previous model's panels.
 nonisolated struct PanelModelLocation: Hashable, Sendable {
-  /// A compiled `.mlmodelc` or a `.mlpackage` (compiled on first load).
+  /// A compiled `.mlmodelc` at a stable path. A `.mlpackage` also loads, but is recompiled on
+  /// every launch and cannot be prepared ahead of time.
   let url: URL
   let version: String
 

@@ -207,6 +207,22 @@ actor RFDETRCoreMLDetector {
 
   // MARK: - Model
 
+  /// Loads the model once and releases it, so Core ML builds and caches its device-specific
+  /// version ahead of time. That build takes up to a minute on first load; running it right after
+  /// the model is installed keeps it off the reader's first panel walk. Core ML keys the cache by
+  /// model location, so `location` should be the compiled `.mlmodelc` the reader will load later.
+  /// Returns whether any compute-unit configuration loaded.
+  static func prepare(_ location: PanelModelLocation) async -> Bool {
+    await Task.detached(priority: .utility) {
+      for units in computeUnitLadder {
+        let config = MLModelConfiguration()
+        config.computeUnits = units
+        if (try? MLModel(contentsOf: location.url, configuration: config)) != nil { return true }
+      }
+      return false
+    }.value
+  }
+
   private func loadedModel(at requested: PanelModelLocation) async -> MLModel? {
     if requested != location { reset(for: requested) }
     if let model { return model }
