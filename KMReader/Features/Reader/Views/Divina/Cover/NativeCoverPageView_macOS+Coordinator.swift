@@ -4,9 +4,7 @@
 
   extension NativeCoverPageView {
     @MainActor
-    final class Coordinator: NSObject, NSGestureRecognizerDelegate, NativePagedPagePresentationHost,
-      PanelZoomCommandHandling
-    {
+    final class Coordinator: NSObject, NSGestureRecognizerDelegate, NativePagedPagePresentationHost {
       private enum TransitionAnimationKind {
         case gesture
         case tapNavigation
@@ -73,7 +71,6 @@
       }
 
       func teardown() {
-        parent.panelZoomController.clearTarget(self)
         // Invalidate any in-flight transition so a pending animation completion
         // cannot commit into the shared view model after the rebuild.
         transitionToken += 1
@@ -120,23 +117,6 @@
         }
         updateSlotLayout()
         pagePresentationCoordinator.flushIfPossible()
-      }
-
-      // MARK: - Panel mode zoom (driven by PanelZoomController on the front slot)
-
-      func zoomToPanelRect(_ rect: PanelRect, animated: Bool) {
-        frontSlotView?.zoomToPanelRect(rect, animated: animated)
-      }
-
-      func resetPanelZoomToFit(animated: Bool) {
-        frontSlotView?.resetPanelZoomToFit(animated: animated)
-      }
-
-      private var frontSlotView: NativeCoverSlotView? {
-        guard let containerView else { return nil }
-        let slots = containerView.slotViews
-        guard slots.indices.contains(deckState.frontSlotIndex) else { return nil }
-        return slots[deckState.frontSlotIndex]
       }
 
       func hasVisiblePagePresentationContent() -> Bool {
@@ -889,16 +869,12 @@
       @objc private func handleDoubleClick(_ recognizer: NSClickGestureRecognizer) {
         singleClickWorkItem?.cancel()
         singleClickWorkItem = nil
-        guard parent.renderConfig.panelMode, let containerView else { return }
-        let location = recognizer.location(in: containerView)
-        parent.onPanelDoubleTap(frontSlotView?.normalizedImagePoint(forContainerPoint: location))
       }
 
       @objc private func handleLongPress(_: NSPressGestureRecognizer) {}
 
       private var isTapZoneSuppressed: Bool {
-        // Engaged panel mode is zoomed by definition; that must not suppress stepping.
-        (parent.viewModel.isZoomed && !parent.panelModeEngaged)
+        parent.viewModel.isZoomed
           || isUserPanning
           || isAnimatingTransition
       }

@@ -198,7 +198,7 @@ struct ReaderSettingsSheet: View {
           #endif
         }
 
-        #if os(iOS) || os(macOS)
+        #if os(iOS)
           if panelModeEnabled {
             Section(header: Text("Panel Mode")) {
               VStack(alignment: .leading, spacing: 8) {

@@ -44,9 +44,6 @@
     let readListContext: ReaderReadListContext?
     let onDismiss: () -> Void
     let onTapZoneTap: ReaderTapZoneTapHandler
-    let panelZoomController: PanelZoomController
-    let panelModeEngaged: Bool
-    let onPanelDoubleTap: (CGPoint?) -> Void
 
     func makeCoordinator() -> Coordinator {
       Coordinator(self)
@@ -59,14 +56,12 @@
       }
       context.coordinator.attach(to: containerView)
       context.coordinator.update(from: self)
-      panelZoomController.target = context.coordinator
       return containerView
     }
 
     func updateNSView(_ nsView: NativeCoverContainerView, context: Context) {
       context.coordinator.attach(to: nsView)
       context.coordinator.update(from: self)
-      panelZoomController.target = context.coordinator
     }
 
     static func dismantleNSView(_ nsView: NativeCoverContainerView, coordinator: Coordinator) {

@@ -179,8 +179,13 @@ struct DivinaReaderView: View {
 
   /// Panel mode is offered only for LTR/RTL paged content. When on, the engine's
   /// double-tap-to-zoom is disabled so the double-tap is free for engage/disengage.
+  /// Panel mode runs on iPhone and iPad only; other platforms keep the regular reader.
   private var panelModeActive: Bool {
-    panelModeEnabled && (readingDirection == .ltr || readingDirection == .rtl)
+    #if os(iOS)
+      panelModeEnabled && (readingDirection == .ltr || readingDirection == .rtl)
+    #else
+      false
+    #endif
   }
 
   /// Shown the first time panel mode is used after install, while the on-device detector does its
@@ -1038,20 +1043,34 @@ struct DivinaReaderView: View {
         case .scroll:
           standardScrollPageView(useDualPage: useDualPage, screenSize: screenSize)
         case .cover:
-          NativeCoverPageView(
-            mode: PageViewMode(direction: readingDirection, useDualPage: useDualPage),
-            readingDirection: readingDirection,
-            splitWidePageMode: splitWidePageMode,
-            tapNavigationAnimationDuration: pageTurnAnimationDuration,
-            renderConfig: renderConfig,
-            viewModel: viewModel,
-            readListContext: readListContext,
-            onDismiss: { closeReader() },
-            onTapZoneTap: handleTapZoneTap,
-            panelZoomController: panelModeController.zoomController,
-            panelModeEngaged: panelModeController.engaged,
-            onPanelDoubleTap: handlePanelDoubleTap
-          )
+          #if os(macOS)
+            NativeCoverPageView(
+              mode: PageViewMode(direction: readingDirection, useDualPage: useDualPage),
+              readingDirection: readingDirection,
+              splitWidePageMode: splitWidePageMode,
+              tapNavigationAnimationDuration: pageTurnAnimationDuration,
+              renderConfig: renderConfig,
+              viewModel: viewModel,
+              readListContext: readListContext,
+              onDismiss: { closeReader() },
+              onTapZoneTap: handleTapZoneTap
+            )
+          #else
+            NativeCoverPageView(
+              mode: PageViewMode(direction: readingDirection, useDualPage: useDualPage),
+              readingDirection: readingDirection,
+              splitWidePageMode: splitWidePageMode,
+              tapNavigationAnimationDuration: pageTurnAnimationDuration,
+              renderConfig: renderConfig,
+              viewModel: viewModel,
+              readListContext: readListContext,
+              onDismiss: { closeReader() },
+              onTapZoneTap: handleTapZoneTap,
+              panelZoomController: panelModeController.zoomController,
+              panelModeEngaged: panelModeController.engaged,
+              onPanelDoubleTap: handlePanelDoubleTap
+            )
+          #endif
         }
       }
     }
