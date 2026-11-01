@@ -13,6 +13,19 @@ nonisolated struct LanguageCodeHelper {
     "hr", "sk", "sl", "et", "lv", "lt", "mt", "ga", "cy", "is",
   ]
 
+  static var appTitleLanguage: String {
+    let identifier = (Bundle.main.preferredLocalizations.first ?? "en")
+      .replacingOccurrences(of: "_", with: "-")
+    let components = identifier.split(separator: "-")
+    let language = components.first.map(String.init) ?? "en"
+    if components.count > 1, components[1].count == 4,
+      components[1].allSatisfy({ $0.isLetter })
+    {
+      return "\(language)-\(components[1])"
+    }
+    return language
+  }
+
   static func displayName(for languageCode: String) -> String {
     if languageCode.isEmpty {
       return "None"
