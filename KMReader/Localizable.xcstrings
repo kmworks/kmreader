@@ -23374,6 +23374,134 @@
         }
       }
     },
+    "Double-tap a panel to zoom in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doppeltippe auf ein Panel zum Hineinzoomen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double-tap a panel to zoom in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca dos veces una viñeta para ampliarla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez deux fois une case pour zoomer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocca due volte una vignetta per ingrandirla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマをダブルタップで拡大"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷을 두 번 탭하면 확대됩니다"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дважды коснитесь кадра, чтобы приблизить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击分格以放大"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點兩下分格以放大"
+          }
+        }
+      }
+    },
+    "Double-tap a panel to zoom in. Your page-turn taps move between panels. Double-tap again to stop and see the full page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doppeltippe auf ein Panel, um hineinzuzoomen. Deine Tipps zum Umblättern wechseln zwischen den Panels. Doppeltippe erneut, um anzuhalten und die ganze Seite zu sehen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double-tap a panel to zoom in. Your page-turn taps move between panels. Double-tap again to stop and see the full page."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca dos veces una viñeta para ampliarla. Tus toques para pasar página se mueven entre viñetas. Toca dos veces de nuevo para detenerte y ver la página completa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez deux fois une case pour zoomer. Vos touchers pour tourner les pages passent d'une case à l'autre. Touchez à nouveau deux fois pour arrêter et voir la page entière."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocca due volte una vignetta per ingrandirla. I tocchi per girare pagina passano da una vignetta all'altra. Tocca di nuovo due volte per fermarti e vedere la pagina intera."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマをダブルタップで拡大します。ページめくりのタップでコマを移動します。もう一度ダブルタップするとコマ送りを止めてページ全体を表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷을 두 번 탭하면 확대됩니다. 페이지 넘김 탭으로 컷 사이를 이동합니다. 다시 두 번 탭하면 멈추고 전체 페이지를 봅니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дважды коснитесь кадра, чтобы приблизить. Касания для перелистывания переходят между кадрами. Снова дважды коснитесь, чтобы остановиться и увидеть всю страницу."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击分格即可放大。翻页的点按会在分格之间移动。再次双击即可停止并查看整页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "點兩下分格即可放大。翻頁的點按會在分格之間移動。再次點兩下即可停止並查看整頁。"
+          }
+        }
+      }
+    },
     "Double Tap Zoom Scale" : {
       "localizations" : {
         "de" : {
@@ -61468,70 +61596,6 @@
         }
       }
     },
-    "One-time setup for your device" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einmalige Einrichtung für dein Gerät"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "One-time setup for your device"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configuración única para tu dispositivo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configuration unique pour votre appareil"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Configurazione una tantum per il tuo dispositivo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このデバイスでの初回のみの準備です"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기기당 한 번만 필요한 준비입니다"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Однократная настройка для вашего устройства"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅需在此设备上设置一次"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "僅需在此裝置上設定一次"
-          }
-        }
-      }
-    },
     "offline.coverSync.action" : {
       "localizations" : {
         "de" : {
@@ -93345,6 +93409,70 @@
         }
       }
     },
+    "Tap for the next panel · Double-tap for the full page" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippen für das nächste Panel · Doppeltippen für die ganze Seite"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap for the next panel · Double-tap for the full page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca para la siguiente viñeta · Toca dos veces para ver la página completa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez pour la case suivante · Touchez deux fois pour la page entière"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocca per la vignetta successiva · Tocca due volte per la pagina intera"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップで次のコマ · ダブルタップでページ全体"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭하면 다음 컷 · 두 번 탭하면 전체 페이지"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коснитесь для следующего кадра · Дважды — для всей страницы"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻点查看下一格 · 双击查看整页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輕點查看下一格 · 點兩下查看整頁"
+          }
+        }
+      }
+    },
     "Target Language" : {
       "localizations" : {
         "de" : {
@@ -95134,6 +95262,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本週"
+          }
+        }
+      }
+    },
+    "This can take up to a minute the first time" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim ersten Mal kann das bis zu einer Minute dauern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This can take up to a minute the first time"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La primera vez puede tardar hasta un minuto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La première fois, cela peut prendre jusqu'à une minute"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La prima volta può richiedere fino a un minuto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "初回は最大1分ほどかかる場合があります"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "처음에는 최대 1분 정도 걸릴 수 있습니다"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В первый раз это может занять до минуты"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次可能需要最多一分钟"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首次可能需要最多一分鐘"
           }
         }
       }

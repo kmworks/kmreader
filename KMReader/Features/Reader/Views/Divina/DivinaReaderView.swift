@@ -46,6 +46,9 @@ struct DivinaReaderView: View {
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
   @State private var panelModeEnabled: Bool = false
+  @AppStorage("panelModeWalkCount") private var panelModeWalkCount: Int = 0
+  /// Set by the first step of a walk, which retires that walk's gesture hint.
+  @State private var panelHintStepTaken = false
   @AppStorage("divinaPageBorderCropMode") private var divinaPageBorderCropMode: ReaderPageBorderCropMode =
     AppConfig.divinaPageBorderCropMode
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
@@ -188,9 +191,9 @@ struct DivinaReaderView: View {
     #endif
   }
 
-  /// Shown the first time panel mode is used after install, while the on-device detector does its
-  /// one-time model compile (which can take up to a minute). Driven by
-  /// `PanelModeController.isInitializing` (a slow-first-detection signal).
+  /// Shown while the first detection runs long, in practice while Core ML builds the model for
+  /// this device (up to a minute the first time, and again if the system drops that build).
+  /// Driven by `PanelModeController.isInitializing` (a slow-first-detection signal).
   @ViewBuilder
   private var panelInitializingOverlay: some View {
     if panelModeActive && panelModeController.isInitializing {
@@ -198,7 +201,7 @@ struct DivinaReaderView: View {
         ProgressView()
         Text("Preparing Panel Mode…")
           .font(.headline)
-        Text("One-time setup for your device")
+        Text("This can take up to a minute the first time")
           .font(.caption)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
@@ -207,6 +210,28 @@ struct DivinaReaderView: View {
       .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
       .shadow(radius: 8)
       .transition(.opacity)
+    }
+  }
+
+  /// Which gesture hint to show: nil for none, false before a walk starts, true during a walk
+  /// until its first step. Hidden with the controls and once the reader has walked a few times.
+  private var panelHintIsWalking: Bool? {
+    guard panelModeActive, showTapZoneHints, !showingControls, !panelModeController.isInitializing
+    else { return nil }
+    if panelModeController.engaged {
+      return panelModeWalkCount <= PanelModeHintView.retireAfterWalks && !panelHintStepTaken ? true : nil
+    }
+    return panelModeWalkCount < PanelModeHintView.retireAfterWalks
+      && panelModeController.isCurrentPageEngageable ? false : nil
+  }
+
+  @ViewBuilder
+  private var panelModeHintOverlay: some View {
+    if let isWalking = panelHintIsWalking {
+      PanelModeHintView(isWalking: isWalking)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 32)
+        .transition(.opacity)
     }
   }
 
@@ -889,6 +914,17 @@ struct DivinaReaderView: View {
     .overlay(alignment: .center) {
       panelInitializingOverlay
         .animation(.appCurve(), value: panelModeController.isInitializing)
+    }
+    .overlay(alignment: .bottom) {
+      panelModeHintOverlay
+        .animation(.appCurve(), value: panelHintIsWalking)
+    }
+    .onChange(of: panelModeController.engaged) { _, engaged in
+      guard engaged else { return }
+      panelHintStepTaken = false
+      if panelModeWalkCount <= PanelModeHintView.retireAfterWalks {
+        panelModeWalkCount += 1
+      }
     }
     #if os(tvOS)
       .onChange(of: shouldEnableUIKitRemoteCapture) { oldValue, newValue in
@@ -1919,6 +1955,7 @@ struct DivinaReaderView: View {
       case .next: forward = true
       case .previous: forward = false
       }
+      panelHintStepTaken = true
       if case .turnPage(let turnForward) = panelModeController.step(forward: forward) {
         goToPagedReaderPosition(turnForward ? .next : .previous) {
           panelModeController.pageTurnDidNotHappen()

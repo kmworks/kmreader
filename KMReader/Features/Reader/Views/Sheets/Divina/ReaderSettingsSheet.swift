@@ -200,7 +200,7 @@ struct ReaderSettingsSheet: View {
 
         #if os(iOS)
           if panelModeEnabled {
-            Section(header: Text("Panel Mode")) {
+            Section {
               VStack(alignment: .leading, spacing: 8) {
                 HStack {
                   Text("Panel Zoom Fill")
@@ -214,6 +214,12 @@ struct ReaderSettingsSheet: View {
                   step: 0.05
                 )
               }
+            } header: {
+              Text("Panel Mode")
+            } footer: {
+              Text(
+                "Double-tap a panel to zoom in. Your page-turn taps move between panels. Double-tap again to stop and see the full page."
+              )
             }
           }
         #endif
