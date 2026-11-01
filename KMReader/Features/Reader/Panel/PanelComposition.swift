@@ -243,32 +243,6 @@ nonisolated enum PanelComposition {
     return .panels(beats)
   }
 
-  #if DEBUG
-    /// DEBUG (body-class combine): the figure-beat breakdown for a multi-panel page — are the stray
-    /// figures ORPHAN (out-of-panel) or SPANNING (drawn across panels), and what is each figure pair's
-    /// overlap-of-smaller? Reveals why a grapple/contact pair did or did not merge. Strip before fold.
-    static func debugFigureBeats(_ detection: PageDetection, direction: ReadingDirection) -> String {
-      let strict = PanelReadingOrder.ordered(detection.panels, direction: direction)
-      guard strict.count >= 2 else { return "n/a (panels=\(strict.count))" }
-      let spans = spanningBodies(strict: strict, bodies: detection.bodies)
-      let spanningRects = spans.values.flatMap { $0.map { $0.body } }
-      let orphans = orphanBodies(detection.bodies, panels: strict, spanning: spanningRects)
-      let merged = mergeContactingBodies(orphans)
-      func cx(_ r: PanelRect) -> String { String(format: "%.2f", r.x + r.width / 2) }
-      func list(_ rs: [PanelRect]) -> String { rs.map(cx).joined(separator: ",") }
-      let figures = orphans + spanningRects
-      var pairs: [String] = []
-      for a in figures.indices {
-        for b in (a + 1)..<figures.count {
-          let ov = panelOverlapFraction(figures[a], figures[b])
-          if ov > 0.001 { pairs.append("\(cx(figures[a]))~\(cx(figures[b]))=\(String(format: "%.2f", ov))") }
-        }
-      }
-      return
-        "panels=\(strict.count) orphans=[\(list(orphans))]->merged=[\(list(merged))] spanning=[\(list(spanningRects))] overlaps=[\(pairs.joined(separator: " "))]"
-    }
-  #endif
-
   // MARK: - Dialogue framing
 
   /// Each panel's zoom rect grown to include the text boxes assigned to it. Panels keep their input

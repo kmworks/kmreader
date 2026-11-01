@@ -32,7 +32,6 @@ final class PanelSequenceOrchestrator {
   /// Per-book OCR-route memory: once a book is known vertical/CJK, OCR is skipped (it is blind there).
   private let scriptCache: PanelTextScriptCache
   private let loader: any PanelImageLoading
-  private let logger = AppLogger(.reader)  // DEBUG: ordering diagnostics; strip before fold
 
   private var inFlight: [PageToken: InFlight] = [:]
   private var nextRequestId = 0
@@ -50,9 +49,6 @@ final class PanelSequenceOrchestrator {
     self.scriptCache = scriptCache
     self.loader = loader
   }
-
-  /// In-flight detection count — diagnostics / debug harness only.
-  var inFlightCount: Int { inFlight.count }
 
   /// Cache hit, else eager compute (awaited). The precondition for engage.
   func sequence(bookId: String, page: BookPage, presentation: PanelPagePresentation) async -> PanelSequence {
@@ -189,23 +185,6 @@ final class PanelSequenceOrchestrator {
       ? await Task.detached(priority: .utility) { presentation.displayed(composed, in: image) }.value
       : composed
     guard !Task.isCancelled else { return .empty }
-    // DEBUG: ordering diagnostics — direction + each beat's x-center, so the device walk order is
-    // visible (RTL → first beat on the right). Strip before fold.
-    if case .panels(let beats) = sequence {
-      let xs = beats.map { String(format: "%.2f", $0.x + $0.width / 2) }.joined(separator: " ")
-      #if DEBUG
-        // DEBUG: append the body-class-combine breakdown (orphan vs spanning figures + overlaps) to the
-        // same line, so one `PanelOrder` filter shows the walk AND why a contact pair did/didn't merge.
-        // Strip before fold.
-        let bc = " :: " + PanelComposition.debugFigureBeats(filtered, direction: presentation.direction)
-      #else
-        let bc = ""
-      #endif
-      logger.debug(
-        "[PanelOrder] dir=\(presentation.direction.rawValue) page=\(page.number) beats=\(beats.count) cx=[\(xs)]\(bc)")
-    } else {
-      logger.debug("[PanelOrder] dir=\(presentation.direction.rawValue) page=\(page.number) seq=non-panels")
-    }
     await cache.store(sequence, for: key.fingerprint)
     return sequence
   }

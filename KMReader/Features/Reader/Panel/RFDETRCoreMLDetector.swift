@@ -237,15 +237,7 @@ actor RFDETRCoreMLDetector {
             upgradeAttemptsRemaining = Self.upgradeRetryDelays.count
             upgradeNotBefore = Date().addingTimeInterval(Self.upgradeRetryDelays[0])
           }
-          // Plain-language ANE confirmation: only `.all` lets CoreML place ops on the Neural
-          // Engine; `.cpuAndGPU`/`.cpuOnly` mean the ANE is definitely NOT in use (the A12
-          // fallback). On A14+ `.all` should load first => ANE in play (verify per-op in the
-          // Xcode CoreML performance report).
-          let aneInUse = units == .all
-          logger.debug(
-            "[PanelRFCoreML] model loaded — computeUnits=\(Self.label(units)) — "
-              + "ANE \(aneInUse ? "IN USE (Neural Engine eligible; confirm in Xcode CoreML report)" : "NOT USED (CPU/GPU only — A12-class fallback)")"
-          )
+          logger.debug("[PanelRFCoreML] model loaded with computeUnits=\(Self.label(units))")
           return loaded
         }
       }
@@ -283,17 +275,14 @@ actor RFDETRCoreMLDetector {
       model = upgraded
       loadedUnits = Self.computeUnitLadder[0]
       upgradeAttemptsRemaining = 0
-      logger.debug(
-        "[PanelRFCoreML] model upgraded — computeUnits=.all — ANE IN USE "
-          + "(recovered from a fallback load)")
+      logger.debug("[PanelRFCoreML] model upgraded to computeUnits=\(Self.label(Self.computeUnitLadder[0]))")
     } else if upgradeAttemptsRemaining > 0 {
       let index = Self.upgradeRetryDelays.count - upgradeAttemptsRemaining
       upgradeNotBefore = Date().addingTimeInterval(
         Self.upgradeRetryDelays[min(index, Self.upgradeRetryDelays.count - 1)])
     } else {
       logger.debug(
-        "[PanelRFCoreML] compute-units upgrade retries exhausted — staying on "
-          + Self.label(loadedUnits ?? .cpuOnly))
+        "[PanelRFCoreML] upgrade retries exhausted, staying on computeUnits=\(Self.label(loadedUnits ?? .cpuOnly))")
     }
   }
 
