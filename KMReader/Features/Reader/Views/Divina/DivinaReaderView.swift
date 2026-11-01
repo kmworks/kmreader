@@ -280,7 +280,9 @@ struct DivinaReaderView: View {
   /// mode's duration, on enable rather than on engage, so engaging is pure zoom with no
   /// view-tree rebuild. Effective-value overrides via `@State`; never written to `AppConfig`.
   private func handlePanelModeEnabledChange() {
-    AppConfig.setPanelMode(panelModeEnabled, for: currentBookId)
+    // Saved for the book being read, which differs from `currentBookId` once a continuous
+    // session has crossed into the next book.
+    AppConfig.setPanelMode(panelModeEnabled, for: currentSegmentBookId)
     if panelModeActive {
       applyPanelModeSinglePageForcing()
       refreshPanelModeCurrentPage()
