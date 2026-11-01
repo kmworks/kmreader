@@ -20,7 +20,7 @@ struct PanelCacheKey {
 
   /// Bumped when preprocessing / splitting / ordering changes in a way that invalidates
   /// cached sequences.
-  static let preprocessingVersion = "split-4"
+  static let preprocessingVersion = "1"
 
   let instanceId: String
   let bookId: String
