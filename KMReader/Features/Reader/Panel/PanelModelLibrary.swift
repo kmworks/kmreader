@@ -1,11 +1,14 @@
 import Foundation
 
 nonisolated enum PanelModelLibrary {
-  static let modelID = "manga-panel-rfdetr-2026"
-
   static var installedVersion: String? {
     get { AppConfig.installedPanelModelVersion }
     set { AppConfig.installedPanelModelVersion = newValue }
+  }
+
+  static var activeVersion: String? {
+    get { AppConfig.activePanelModelVersion }
+    set { AppConfig.activePanelModelVersion = newValue }
   }
 
   static func downloadedArchives() -> [ModelArchive] {
@@ -15,10 +18,12 @@ nonisolated enum PanelModelLibrary {
   }
 
   static func installedArchive() -> ModelArchive? {
-    downloadedArchives().first { archive in
+    guard let activeVersion else { return nil }
+    return downloadedArchives().first { archive in
       guard let storage = try? ModelStorage.shared else { return false }
       let status = MangaModelManager.status(storage: storage.storage(for: archive), archive: archive)
       return status.packageExists && status.compiledExists
+        && activeVersion == "\(archive.version)-\(archive.sha256.prefix(12))"
     }
   }
 
@@ -26,7 +31,6 @@ nonisolated enum PanelModelLibrary {
     for archive in downloadedArchives() {
       let status = MangaModelManager.status(storage: storage.storage(for: archive), archive: archive)
       if !status.packageExists || !status.compiledExists {
-        installedVersion = nil
         remove(archive)
       }
     }
@@ -39,6 +43,7 @@ nonisolated enum PanelModelLibrary {
     configuration.downloadedArchives.append(archive)
     AppConfig.modelLibrary = configuration
     installedVersion = "\(archive.version)-\(archive.sha256.prefix(12))"
+    activeVersion = installedVersion
   }
 
   static func remove(_ archive: ModelArchive) {
@@ -46,6 +51,9 @@ nonisolated enum PanelModelLibrary {
     configuration.downloadedArchives.removeAll { $0.storageKey == archive.storageKey }
     AppConfig.modelLibrary = configuration
     installedVersion = nil
+    if activeVersion == "\(archive.version)-\(archive.sha256.prefix(12))" {
+      activeVersion = nil
+    }
   }
 
   static func catalogArchive(in catalog: ModelCatalog) -> ModelArchive? {

@@ -20,7 +20,7 @@ nonisolated struct PanelModelLocation: Hashable, Sendable {
     guard let archive = PanelModelLibrary.installedArchive() else { return nil }
     return PanelModelLocation(
       url: storage.storage(for: archive).compiledDirectory.appendingPathComponent("detector-model.mlmodelc"),
-      version: PanelModelLibrary.installedVersion ?? "\(archive.version)-\(archive.sha256.prefix(12))"
+      version: PanelModelLibrary.activeVersion ?? "\(archive.version)-\(archive.sha256.prefix(12))"
     )
   }
 }

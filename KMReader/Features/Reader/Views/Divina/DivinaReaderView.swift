@@ -46,7 +46,7 @@ struct DivinaReaderView: View {
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
   @State private var panelModeEnabled: Bool = false
-  @AppStorage("installedPanelModelVersion") private var installedPanelModelVersion: String?
+  @AppStorage("activePanelModelVersion") private var activePanelModelVersion: String?
   @AppStorage("panelModeWalkCount") private var panelModeWalkCount: Int = 0
   /// Set by the first step of a walk, which retires that walk's gesture hint.
   @State private var panelHintStepTaken = false
@@ -107,6 +107,7 @@ struct DivinaReaderView: View {
   @State private var showingReaderSettingsSheet = false
   @State private var showingDetailSheet = false
   @State private var showingMangaTranslationSettings = false
+  @State private var showingPanelModelSettings = false
   @State private var requestedNextSegmentPreloads: Set<String> = []
   @State private var requestedPreviousSegmentPreloads: Set<String> = []
   @State private var inFlightNextSegmentPreloads: [String: Task<Void, Never>] = [:]
@@ -204,12 +205,23 @@ struct DivinaReaderView: View {
     if panelModeActive && (isPreparingPanelModel || panelModeController.isInitializing) {
       VStack(spacing: 12) {
         ProgressView()
-        Text("Preparing Panel Mode…")
+        Text(panelModelLocation == nil ? "Panel Mode Model Required" : "Preparing Panel Mode…")
           .font(.headline)
-        Text("This can take a minute or two the first time")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
+        if panelModelLocation == nil {
+          Text("Download the model to read panel by panel.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+          Button(String(localized: "Manage Model")) {
+            showingPanelModelSettings = true
+          }
+          .buttonStyle(.borderedProminent)
+        } else {
+          Text("This can take a minute or two the first time")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+        }
       }
       .padding(24)
       .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -288,28 +300,19 @@ struct DivinaReaderView: View {
     guard panelModeActive else { return }
     panelModeController.deactivate()
     if let installed = PanelModelLocation.installed {
+      isPreparingPanelModel = false
       if panelModelLocation != installed {
         panelModelLocation = installed
         panelModeController = PanelModeController(provider: RFDETRCoreMLPanelProvider(model: installed))
       }
       refreshPanelModeCurrentPage()
-      return
-    }
-    guard panelModelPreparationTask == nil else { return }
-    isPreparingPanelModel = true
-    panelModelPreparationTask = Task { @MainActor in
-      defer {
-        panelModelPreparationTask = nil
-        isPreparingPanelModel = false
-      }
-      do {
-        _ = try await PanelModelService.shared.prepareLatest()
-        guard panelModeActive, !Task.isCancelled else { return }
-        refreshPanelModeCurrentPage()
-      } catch is CancellationError {
-      } catch {
-        guard panelModeActive else { return }
-        ErrorManager.shared.alert(error: error)
+    } else {
+      isPreparingPanelModel = true
+      panelModelPreparationTask?.cancel()
+      panelModelPreparationTask = Task { @MainActor in
+        try? await Task.sleep(for: .seconds(2))
+        guard !Task.isCancelled, panelModeActive, PanelModelLocation.installed == nil else { return }
+        showingPanelModelSettings = true
       }
     }
   }
@@ -322,6 +325,14 @@ struct DivinaReaderView: View {
       applyPanelModeSinglePageForcing()
       preparePanelModelIfNeeded()
     } else {
+      panelModelPreparationTask?.cancel()
+      panelModelPreparationTask = nil
+      isPreparingPanelModel = false
+      panelModeController.deactivate()
+      panelModelPreparationTask?.cancel()
+      panelModelPreparationTask = nil
+      isPreparingPanelModel = false
+      panelModeController.deactivate()
       panelModelPreparationTask?.cancel()
       panelModelPreparationTask = nil
       isPreparingPanelModel = false
@@ -825,9 +836,19 @@ struct DivinaReaderView: View {
         }
       )
     }
+    .onChange(of: panelModeActive) {
+      handlePanelModeEnabledChange()
+    }
     .onChange(of: panelModeEnabled) {
       handlePanelModeEnabledChange()
     }
+    #if os(iOS)
+      .sheet(isPresented: $showingPanelModelSettings) {
+        SheetView(title: String(localized: "Panel Mode Model"), size: .large, applyFormStyle: true) {
+          PanelModelManagementView()
+        }
+      }
+    #endif
     .sheet(isPresented: $showingReaderSettingsSheet) {
       ReaderSettingsSheet(readingDirection: readingDirection, panelModeEnabled: panelModeEnabled)
     }
@@ -971,8 +992,12 @@ struct DivinaReaderView: View {
     .task {
       _ = await PanelModelService.shared.installedModel()
     }
-    .onChange(of: installedPanelModelVersion) {
-      preparePanelModelIfNeeded()
+    .onChange(of: activePanelModelVersion) {
+      let installed = PanelModelLocation.installed
+      panelModelLocation = installed
+      panelModeController = PanelModeController(provider: RFDETRCoreMLPanelProvider(model: installed))
+      isPreparingPanelModel = installed == nil && panelModeActive
+      refreshPanelModeCurrentPage()
     }
     #if os(tvOS)
       .onChange(of: shouldEnableUIKitRemoteCapture) { oldValue, newValue in

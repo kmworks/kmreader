@@ -46,19 +46,6 @@ actor PanelModelService {
     }
   }
 
-  func prepareLatest(
-    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
-  ) async throws -> PanelModelLocation {
-    let catalog = try await ModelCatalogService.fetch()
-    guard let archive = PanelModelLibrary.catalogArchive(in: catalog) else {
-      throw MangaTranslationFailure.unsupportedModel
-    }
-    if let installed = await installedModel(), installed.version == "\(archive.version)-\(archive.sha256.prefix(12))" {
-      return installed
-    }
-    return try await prepare(archive: archive, onProgress: onProgress)
-  }
-
   func location(for archive: ModelArchive, storage: ModelStorage) -> PanelModelLocation? {
     guard PanelModelLibrary.isSupported(archive) else { return nil }
     let paths = storage.storage(for: archive)

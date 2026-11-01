@@ -30,7 +30,7 @@ struct PanelModelManagementView: View {
     Form {
       Section(
         header: Text("Installed Model"),
-        footer: Text("Panel Mode downloads and prepares the model automatically when first enabled.")
+        footer: Text("Download and prepare the model before enabling Panel Mode.")
       ) {
         if let installedArchive {
           HStack(spacing: 12) {
@@ -68,6 +68,11 @@ struct PanelModelManagementView: View {
               Text(detailText(for: availableArchive))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+              if let comment = availableArchive.comment, !comment.isEmpty {
+                Text(comment)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
               if preparingStorageKey == availableArchive.storageKey {
                 ProgressView(value: downloadProgress ?? 0)
               }
