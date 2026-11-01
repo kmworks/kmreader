@@ -46,6 +46,7 @@ struct DivinaReaderView: View {
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
   @State private var panelModeEnabled: Bool = false
+  @AppStorage("installedPanelModelVersion") private var installedPanelModelVersion: String?
   @AppStorage("panelModeWalkCount") private var panelModeWalkCount: Int = 0
   /// Set by the first step of a walk, which retires that walk's gesture hint.
   @State private var panelHintStepTaken = false
@@ -91,6 +92,9 @@ struct DivinaReaderView: View {
   @State private var webtoonScrollController = WebtoonScrollController()
   @State private var panelModeController = PanelModeController(
     provider: RFDETRCoreMLPanelProvider(model: .installed))
+  @State private var panelModelLocation: PanelModelLocation? = .installed
+  @State private var isPreparingPanelModel = false
+  @State private var panelModelPreparationTask: Task<Void, Never>?
   @State private var savedPageLayoutBeforePanelMode: PageLayout?
   @State private var savedSplitWideBeforePanelMode: SplitWidePageMode?
   @State private var readerSafeAreaTop: CGFloat = 0
@@ -197,7 +201,7 @@ struct DivinaReaderView: View {
   /// Driven by `PanelModeController.isInitializing` (a slow-first-detection signal).
   @ViewBuilder
   private var panelInitializingOverlay: some View {
-    if panelModeActive && panelModeController.isInitializing {
+    if panelModeActive && (isPreparingPanelModel || panelModeController.isInitializing) {
       VStack(spacing: 12) {
         ProgressView()
         Text("Preparing Panel Mode…")
@@ -217,7 +221,8 @@ struct DivinaReaderView: View {
   /// Which gesture hint to show: nil for none, false before a walk starts, true during a walk
   /// until its first step. Hidden with the controls and once the reader has walked a few times.
   private var panelHintIsWalking: Bool? {
-    guard panelModeActive, showTapZoneHints, !showingControls, !panelModeController.isInitializing
+    guard panelModeActive, showTapZoneHints, !showingControls, !panelModeController.isInitializing,
+      !isPreparingPanelModel
     else { return nil }
     if panelModeController.engaged {
       return panelModeWalkCount <= PanelModeHintView.retireAfterWalks && !panelHintStepTaken ? true : nil
@@ -279,14 +284,47 @@ struct DivinaReaderView: View {
   /// Force single-page presentation (one coordinate space for the panel rects) for the
   /// mode's duration, on enable rather than on engage, so engaging is pure zoom with no
   /// view-tree rebuild. Effective-value overrides via `@State`; never written to `AppConfig`.
+  private func preparePanelModelIfNeeded() {
+    guard panelModeActive else { return }
+    panelModeController.deactivate()
+    if let installed = PanelModelLocation.installed {
+      if panelModelLocation != installed {
+        panelModelLocation = installed
+        panelModeController = PanelModeController(provider: RFDETRCoreMLPanelProvider(model: installed))
+      }
+      refreshPanelModeCurrentPage()
+      return
+    }
+    guard panelModelPreparationTask == nil else { return }
+    isPreparingPanelModel = true
+    panelModelPreparationTask = Task { @MainActor in
+      defer {
+        panelModelPreparationTask = nil
+        isPreparingPanelModel = false
+      }
+      do {
+        _ = try await PanelModelService.shared.prepareLatest()
+        guard panelModeActive, !Task.isCancelled else { return }
+        refreshPanelModeCurrentPage()
+      } catch is CancellationError {
+      } catch {
+        guard panelModeActive else { return }
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
   private func handlePanelModeEnabledChange() {
     // Saved for the book being read, which differs from `currentBookId` once a continuous
     // session has crossed into the next book.
     AppConfig.setPanelMode(panelModeEnabled, for: currentSegmentBookId)
     if panelModeActive {
       applyPanelModeSinglePageForcing()
-      refreshPanelModeCurrentPage()
+      preparePanelModelIfNeeded()
     } else {
+      panelModelPreparationTask?.cancel()
+      panelModelPreparationTask = nil
+      isPreparingPanelModel = false
       panelModeController.deactivate()
       if let saved = savedPageLayoutBeforePanelMode, pageLayout != saved { pageLayout = saved }
       if let saved = savedSplitWideBeforePanelMode, splitWidePageMode != saved {
@@ -853,7 +891,7 @@ struct DivinaReaderView: View {
       }
       await loadBook(bookId: currentBookId, preserveReaderOptions: preserveReaderOptions)
       preserveReaderOptions = false
-      refreshPanelModeCurrentPage()
+      preparePanelModelIfNeeded()
       // Reopening a book already in panel mode does not fire `onChange(of: panelModeEnabled)`
       // (the value is initialized, not transitioned), so force single-page here too.
       if panelModeActive { applyPanelModeSinglePageForcing() }
@@ -929,6 +967,12 @@ struct DivinaReaderView: View {
       if panelModeWalkCount <= PanelModeHintView.retireAfterWalks {
         panelModeWalkCount += 1
       }
+    }
+    .task {
+      _ = await PanelModelService.shared.installedModel()
+    }
+    .onChange(of: installedPanelModelVersion) {
+      preparePanelModelIfNeeded()
     }
     #if os(tvOS)
       .onChange(of: shouldEnableUIKitRemoteCapture) { oldValue, newValue in

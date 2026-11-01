@@ -778,6 +778,11 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var installedPanelModelVersion: String? {
+    get { UserDefaults.standard.string(forKey: "installedPanelModelVersion") }
+    set { UserDefaults.standard.set(newValue, forKey: "installedPanelModelVersion") }
+  }
+
   private static nonisolated var panelModeByBook: [String: Bool] {
     get {
       guard

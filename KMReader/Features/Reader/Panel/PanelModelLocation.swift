@@ -13,10 +13,14 @@ nonisolated struct PanelModelLocation: Hashable, Sendable {
   let url: URL
   let version: String
 
-  /// The installed panel model, read when a reader opens. The model is delivered through the
-  /// model catalog rather than bundled with the app; until one is installed this is nil and
-  /// panel mode shows every page whole.
+  /// The installed panel model, read when a reader opens.
   static var installed: PanelModelLocation? {
-    nil
+    guard let storage = try? ModelStorage.shared else { return nil }
+    PanelModelLibrary.reconcile(storage: storage)
+    guard let archive = PanelModelLibrary.installedArchive() else { return nil }
+    return PanelModelLocation(
+      url: storage.storage(for: archive).compiledDirectory.appendingPathComponent("detector-model.mlmodelc"),
+      version: PanelModelLibrary.installedVersion ?? "\(archive.version)-\(archive.sha256.prefix(12))"
+    )
   }
 }

@@ -18,6 +18,14 @@ nonisolated struct MangaModelManager {
     onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
   ) async throws -> MangaModelPaths {
     try validateSupport(archive: archive)
+    return try await prepareSupportedPaths(archive: archive, storage: storage, onProgress: onProgress)
+  }
+
+  static func prepareSupportedPaths(
+    archive: ModelArchive,
+    storage: ModelStorage,
+    onProgress: @escaping @Sendable (Int64, Int64?) -> Void = { _, _ in }
+  ) async throws -> MangaModelPaths {
     let fileManager = FileManager.default
     try fileManager.createDirectory(at: storage.rootDirectory, withIntermediateDirectories: true)
 
@@ -224,7 +232,6 @@ nonisolated struct MangaModelManager {
     else {
       throw MangaTranslationFailure.modelPreparation
     }
-    try validateSupport(archive: archive)
     for component in manifest.components.values {
       for relativePath in component.files.values {
         guard FileManager.default.fileExists(atPath: directory.appendingPathComponent(relativePath).path) else {
