@@ -192,7 +192,8 @@ struct DivinaReaderView: View {
   }
 
   /// Shown while the first detection runs long, in practice while Core ML builds the model for
-  /// this device (up to a minute the first time, and again if the system drops that build).
+  /// this device (a minute or two the first time on some chips, and again if the system drops that
+  /// build).
   /// Driven by `PanelModeController.isInitializing` (a slow-first-detection signal).
   @ViewBuilder
   private var panelInitializingOverlay: some View {
@@ -201,7 +202,7 @@ struct DivinaReaderView: View {
         ProgressView()
         Text("Preparing Panel Mode…")
           .font(.headline)
-        Text("This can take up to a minute the first time")
+        Text("This can take a minute or two the first time")
           .font(.caption)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)

@@ -208,7 +208,7 @@ actor RFDETRCoreMLDetector {
   // MARK: - Model
 
   /// Loads the model once and releases it, so Core ML builds and caches its device-specific
-  /// version ahead of time. That build takes up to a minute on first load; running it right after
+  /// version ahead of time. That build can take a minute or two on first load; running it right after
   /// the model is installed keeps it off the reader's first panel walk. Core ML keys the cache by
   /// model location, so `location` should be the compiled `.mlmodelc` the reader will load later.
   /// Returns whether any compute-unit configuration loaded.
