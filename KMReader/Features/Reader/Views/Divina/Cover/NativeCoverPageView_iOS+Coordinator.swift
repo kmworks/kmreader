@@ -4,7 +4,9 @@
 
   extension NativeCoverPageView {
     @MainActor
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate, NativePagedPagePresentationHost {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate, NativePagedPagePresentationHost,
+      PanelZoomCommandHandling
+    {
       private enum TransitionAnimationKind {
         case gesture
         case tapNavigation
@@ -70,6 +72,7 @@
       }
 
       func teardown() {
+        parent.panelZoomController.clearTarget(self)
         // Invalidate any in-flight transition so a pending animation completion
         // cannot commit into the shared view model after the rebuild.
         transitionToken += 1
@@ -114,6 +117,23 @@
         }
         updateSlotLayout()
         pagePresentationCoordinator.flushIfPossible()
+      }
+
+      // MARK: - Panel mode zoom (driven by PanelZoomController on the front slot)
+
+      func zoomToPanelRect(_ rect: PanelRect, animated: Bool) {
+        frontSlotView?.zoomToPanelRect(rect, animated: animated)
+      }
+
+      func resetPanelZoomToFit(animated: Bool) {
+        frontSlotView?.resetPanelZoomToFit(animated: animated)
+      }
+
+      private var frontSlotView: NativeCoverSlotView? {
+        guard let containerView else { return nil }
+        let slots = containerView.slotViews
+        guard slots.indices.contains(deckState.frontSlotIndex) else { return nil }
+        return slots[deckState.frontSlotIndex]
       }
 
       func hasVisiblePagePresentationContent() -> Bool {
@@ -237,7 +257,9 @@
       }
 
       private func applyDoubleTapRecognizerState() {
-        doubleTapRecognizer?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
+        // Panel mode owns the double-tap (engage / disengage) even while double-tap zoom is off.
+        doubleTapRecognizer?.isEnabled =
+          parent.renderConfig.doubleTapZoomMode.isEnabled || parent.renderConfig.panelMode
       }
 
       private var currentItem: ReaderViewItem? {
@@ -884,12 +906,17 @@
         dispatchTapZoneTap(at: location, in: containerView)
       }
 
-      @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
+      @objc private func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+        guard parent.renderConfig.panelMode, let containerView else { return }
+        let location = recognizer.location(in: containerView)
+        parent.onPanelDoubleTap(frontSlotView?.normalizedImagePoint(forContainerPoint: location))
+      }
 
       @objc private func handleLongPress(_: UILongPressGestureRecognizer) {}
 
       private var isTapZoneSuppressed: Bool {
-        parent.viewModel.isZoomed
+        // Engaged panel mode is zoomed by definition; that must not suppress stepping.
+        (parent.viewModel.isZoomed && !parent.panelModeEngaged)
           || isUserPanning
           || isAnimatingTransition
       }

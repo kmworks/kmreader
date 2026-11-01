@@ -24,4 +24,5 @@ nonisolated struct ModelPurpose: RawRepresentable, Hashable, Codable, Sendable {
   }
 
   static let mangaOCR = ModelPurpose(rawValue: "manga_ocr")
+  static let panelDetection = ModelPurpose(rawValue: "panel_detection")
 }

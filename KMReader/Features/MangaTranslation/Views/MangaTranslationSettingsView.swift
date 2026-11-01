@@ -5,6 +5,7 @@ struct MangaTranslationSettingsView: View {
 
   @State private var modelSheetRole: MangaModelRole?
   @State private var showsProviderManagement = false
+  @State private var showsPanelModelManagement = false
   @State private var provider: MangaProviderConfig?
   @State private var detectorArchive: ModelArchive?
   @State private var recognizerArchive: ModelArchive?
@@ -104,6 +105,31 @@ struct MangaTranslationSettingsView: View {
         .buttonStyle(.plain)
         modelRow(.detector, icon: "text.viewfinder")
         modelRow(.recognizer, icon: "character.textbox")
+        #if os(iOS)
+          Button {
+            showsPanelModelManagement = true
+          } label: {
+            HStack {
+              Label {
+                VStack(alignment: .leading, spacing: 2) {
+                  Text("Panel Mode Model")
+                  Text(PanelModelLibrary.installedArchive()?.name ?? String(localized: "Not Downloaded"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              } icon: {
+                Image(systemName: "rectangle.split.2x2")
+              }
+              Spacer()
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+        #endif
         Toggle(isOn: $preferences.includeMetadata) {
           VStack(alignment: .leading, spacing: 4) {
             Text(String(localized: "Include Comic Metadata"))
@@ -130,6 +156,13 @@ struct MangaTranslationSettingsView: View {
         MangaProviderManagementView()
       }
     }
+    #if os(iOS)
+      .sheet(isPresented: $showsPanelModelManagement) {
+        SheetView(title: String(localized: "Panel Mode Model"), size: .large, applyFormStyle: true) {
+          PanelModelManagementView()
+        }
+      }
+    #endif
     .sheet(item: $modelSheetRole, onDismiss: reloadConfiguration) { role in
       SheetView(title: role.title, size: .large, applyFormStyle: true) {
         MangaModelManagementView(role: role)
