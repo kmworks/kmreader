@@ -7,13 +7,12 @@ import SwiftUI
 
 /// iPhone Library tab root: content-first browsing (Apple Books style). The
 /// root scope switches in place between All Libraries, the pinned set
-/// (default, shared with Home), and a single library. Library management
-/// stays in Settings.
+/// (default), and a single library. Library management stays in Settings.
 struct LibraryBrowseView: View {
   let authViewModel: AuthViewModel
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
-  @State private var scope: LibraryBrowseScope = .pinned
+  @AppStorage("libraryBrowseScope") private var scope: LibraryBrowseScope = .pinned
 
   var body: some View {
     BrowseView(

@@ -5,14 +5,38 @@
 
 import Foundation
 
-/// Library scope of a browse surface (Dashboard, iPhone Library tab):
-/// `.pinned` renders the pinned aggregate (`dashboard.libraryIds`, empty =
-/// all libraries), `.all` ignores the pins, `.library(id)` scopes to a single
-/// library. Session-only view state — it never persists.
-enum LibraryBrowseScope: Hashable {
+/// Library scope of a browse surface: `.pinned` renders the pinned aggregate
+/// (`dashboard.libraryIds`, empty = all libraries), `.all` ignores the pins,
+/// `.library(id)` scopes to a single library.
+enum LibraryBrowseScope: Hashable, RawRepresentable {
   case pinned
   case all
   case library(String)
+
+  var rawValue: String {
+    switch self {
+    case .pinned:
+      return "pinned"
+    case .all:
+      return "all"
+    case .library(let id):
+      return "library:\(id)"
+    }
+  }
+
+  init?(rawValue: String) {
+    switch rawValue {
+    case "pinned":
+      self = .pinned
+    case "all":
+      self = .all
+    default:
+      guard rawValue.hasPrefix("library:") else { return nil }
+      let id = String(rawValue.dropFirst("library:".count))
+      guard !id.isEmpty else { return nil }
+      self = .library(id)
+    }
+  }
 
   var libraryId: String? {
     if case .library(let id) = self { return id }
