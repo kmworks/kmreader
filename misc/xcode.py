@@ -655,7 +655,6 @@ class BuildRunner:
             str(export_path),
             "-exportOptionsPlist",
             str(export_options_path),
-            "-quiet",
         ]
         cmd.extend(auth_args)
 
