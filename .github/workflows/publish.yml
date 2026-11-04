@@ -193,6 +193,13 @@ jobs:
           p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
           p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
 
+      - name: Import macOS installer certificate
+        if: matrix.platform == 'macos'
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          p12-file-base64: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_FILE_BASE64 }}
+          p12-password: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_PASSWORD }}
+
       - name: Import provisioning profiles
         run: misc/import_profiles.sh
         env:
