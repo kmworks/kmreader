@@ -236,7 +236,9 @@ jobs:
           echo "xcodebuild will automatically select the appropriate certificate and provisioning profile"
 
       - name: Build and upload to App Store Connect
+        timeout-minutes: 45
         env:
+          PYTHONUNBUFFERED: "1"
           APP_STORE_CONNECT_API_KEY_PATH: ${{ steps.prepare.outputs.APP_STORE_CONNECT_API_KEY_PATH }}
           APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
