@@ -206,7 +206,7 @@ jobs:
           printf '%s' "$MACOS_INSTALLER_CERTIFICATE_FILE_BASE64" | base64 --decode > "$RUNNER_TEMP/installer.p12"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" signing_temp.keychain
           security import "$RUNNER_TEMP/installer.p12" -k signing_temp.keychain -f pkcs12 \
-            -T /usr/bin/codesign -T /usr/bin/productsign -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD"
+            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD"
           rm "$RUNNER_TEMP/installer.p12"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" signing_temp.keychain
 
