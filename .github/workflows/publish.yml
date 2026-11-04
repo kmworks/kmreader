@@ -197,6 +197,7 @@ jobs:
         if: matrix.platform == 'macos'
         uses: apple-actions/import-codesign-certs@v7
         with:
+          create-keychain: false
           p12-file-base64: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_FILE_BASE64 }}
           p12-password: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_PASSWORD }}
 
