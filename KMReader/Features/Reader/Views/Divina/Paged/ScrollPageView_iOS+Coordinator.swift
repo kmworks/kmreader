@@ -34,6 +34,7 @@
       private var applicationWillResignActiveObserver: NSObjectProtocol?
       weak var singleTapGesture: UITapGestureRecognizer?
       weak var doubleTapGesture: UITapGestureRecognizer?
+      weak var longPressGesture: UILongPressGestureRecognizer?
 
       init(_ parent: ScrollPageView) {
         self.parent = parent
@@ -72,6 +73,7 @@
         self.parent = parent
         self.collectionView = collectionView
         applyDoubleTapGestureState()
+        longPressGesture?.isEnabled = parent.renderConfig.longPressAction == .panelMode
         installApplicationObserverIfNeeded()
         pagePresentationCoordinator.update(viewModel: parent.viewModel)
 
@@ -957,7 +959,18 @@
 
       @objc func handleDoubleTap(_: UITapGestureRecognizer) {}
 
-      @objc func handleLongPress(_: UILongPressGestureRecognizer) {}
+      @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began, !parent.viewModel.isZoomed, let collectionView else { return }
+        let location = recognizer.location(in: collectionView)
+        HapticFeedback.prepare()
+        guard let indexPath = collectionView.indexPathForItem(at: location),
+          let cell = collectionView.cellForItem(at: indexPath) as? NativePagedPageCell
+        else {
+          parent.onPanelLongPress(nil)
+          return
+        }
+        parent.onPanelLongPress(cell.panelEngagementPoint(at: recognizer.location(in: cell)))
+      }
 
       private func isScrollInteractionActive(in collectionView: UICollectionView) -> Bool {
         collectionView.isDragging || collectionView.isDecelerating || collectionView.isTracking

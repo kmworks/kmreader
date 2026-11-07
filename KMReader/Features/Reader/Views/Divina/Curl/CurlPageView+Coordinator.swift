@@ -88,6 +88,7 @@
         defer { hasCompletedInitialUpdate = true }
 
         applyDoubleTapRecognizerState()
+        longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
         PageCurlControllerPlanner.configure(
           pageViewController: pageViewController,
           semanticContentAttribute: parent.mode.isRTL ? .forceRightToLeft : .forceLeftToRight
@@ -190,6 +191,7 @@
         singleTap.require(toFail: longPress)
         view.addGestureRecognizer(longPress)
         longPressRecognizer = longPress
+        longPress.isEnabled = parent.renderConfig.longPressAction == .panelMode
         applyDoubleTapRecognizerState()
       }
 
@@ -832,7 +834,13 @@
 
       @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
 
-      @objc private func handleLongPress(_: UILongPressGestureRecognizer) {}
+      @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began, !parent.viewModel.isZoomed,
+          let controller = pageViewController?.viewControllers?.first as? NativeImagePageViewController
+        else { return }
+        HapticFeedback.prepare()
+        parent.onPanelLongPress(controller.panelEngagementPoint(at: recognizer.location(in: controller.view)))
+      }
 
       private var isTapZoneSuppressed: Bool {
         isTransitioning

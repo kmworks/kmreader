@@ -3,7 +3,6 @@
 //
 
 #if os(iOS)
-  import Foundation
   import SwiftUI
   import UIKit
 
@@ -17,6 +16,7 @@
     let readListContext: ReaderReadListContext?
     let onDismiss: () -> Void
     let onTapZoneTap: ReaderTapZoneTapHandler
+    let onPanelLongPress: (PanelEngagementPoint?) -> Void
 
     func makeCoordinator() -> Coordinator {
       Coordinator(self)

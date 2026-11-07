@@ -5517,6 +5517,135 @@
         }
       }
     },
+    "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für alle DIVINA-Bücher. Der Panel-Modus ersetzt das Bild-Kontextmenü beim Gedrückthalten und pausiert Live Text, solange er aktiv ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplica a todos los libros DIVINA. El modo Panel sustituye al menú contextual de la imagen al mantener pulsado y pausa Texto en vivo mientras está activo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S’applique à tous les livres DIVINA. Le mode Panneaux remplace le menu contextuel de l’image lors d’un appui long et suspend Texte en direct tant qu’il est actif."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si applica a tutti i libri DIVINA. La modalità Vignette sostituisce il menu contestuale dell’immagine con la pressione prolungata e sospende Testo live mentre è attiva."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのDIVINA書籍に適用されます。パネルモードを選択すると、長押しで画像コンテキストメニューの代わりにパネルモードを切り替え、有効な間はライブテキストを一時停止します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 DIVINA 책에 적용됩니다. 패널 모드를 선택하면 길게 누르기가 이미지 컨텍스트 메뉴 대신 패널 모드로 사용되며, 활성화된 동안에는 라이브 텍스트가 일시 중지됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действует для всех книг DIVINA. Режим кадров заменяет контекстное меню изображения при долгом нажатии и приостанавливает Live Text, пока он активен."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适用于所有 DIVINA 书籍。选择分镜模式后，长按将用于分镜模式而非图片菜单；分镜模式启用时会暂停实况文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "適用於所有 DIVINA 書籍。選擇分鏡模式後，長按將用於分鏡模式而非圖片選單；分鏡模式啟用時會暫停原況文字。"
+          }
+        }
+      }
+    },
+    "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press. Live Text keeps the gesture while enabled." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für alle DIVINA-Bücher. Der Panel-Modus ersetzt das Bild-Kontextmenü beim Gedrückthalten. Live Text behält die Geste, solange er aktiviert ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press. Live Text keeps the gesture while enabled."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplica a todos los libros DIVINA. El modo Panel sustituye al menú contextual de la imagen al mantener pulsado. Texto en vivo conserva el gesto mientras está activado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S’applique à tous les livres DIVINA. Le mode Panneaux remplace le menu contextuel de l’image lors d’un appui long. Texte en direct conserve ce geste lorsqu’il est activé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si applica a tutti i libri DIVINA. La modalità Vignette sostituisce il menu contestuale dell’immagine con la pressione prolungata. Testo live mantiene il gesto quando è attivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのDIVINA書籍に適用されます。パネルモードを選択すると、長押しで画像コンテキストメニューの代わりにパネルモードを切り替えます。ライブテキストを有効にしている間は、長押しがライブテキストに使用されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 DIVINA 책에 적용됩니다. 패널 모드를 선택하면 길게 누르기가 이미지 컨텍스트 메뉴 대신 패널 모드로 사용됩니다. 라이브 텍스트가 켜져 있는 동안에는 길게 누르기가 라이브 텍스트에 사용됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действует для всех книг DIVINA. Режим кадров заменяет контекстное меню изображения при долгом нажатии. Пока включён Live Text, этот жест используется для него."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适用于所有 DIVINA 书籍。选择分镜模式后，长按将用于分镜模式而非图片菜单。启用实况文本时，长按仍用于实况文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "適用於所有 DIVINA 書籍。選擇分鏡模式後，長按將用於分鏡模式而非圖片選單。啟用原況文字時，長按仍用於原況文字。"
+          }
+        }
+      }
+    },
     "Apply Filter" : {
       "localizations" : {
         "de" : {
@@ -13070,6 +13199,70 @@
         }
       }
     },
+    "Choose how much of the screen a focused panel fills; the remainder keeps neighboring panels visible." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legen Sie fest, wie viel Bildschirm ein fokussiertes Panel ausfüllt; der Rest zeigt benachbarte Panels."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how much of the screen a focused panel fills; the remainder keeps neighboring panels visible."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige cuánto espacio ocupa una viñeta enfocada; el resto mantiene visibles las viñetas vecinas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez la part de l’écran occupée par une case active ; le reste laisse visibles les cases voisines."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli quanto spazio occupa una vignetta selezionata; il resto mantiene visibili le vignette vicine."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択したコマが画面を占める割合を設定します。残りの領域には隣接するコマが表示されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 컷이 화면을 채우는 정도를 설정합니다. 나머지 공간에는 주변 컷이 표시됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, какую часть экрана занимает выбранный кадр; в остальной области видны соседние кадры."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设置当前分格占屏幕的比例，剩余区域会保留相邻分格作为上下文。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "設定目前分格佔螢幕的比例，剩餘區域會保留相鄰分格作為上下文。"
+          }
+        }
+      }
+    },
     "Choose how tap zones are laid out" : {
       "localizations" : {
         "de" : {
@@ -13130,6 +13323,71 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "選擇點擊區域佈局"
+          }
+        }
+      }
+    },
+    "Choose Panel Mode as the long-press action to enter or exit with a long press. Page-turn taps move between panels." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wählen Sie Panelmodus als Aktion für langes Drücken, um den Modus per langem Drücken zu starten oder zu beenden. Seitenwechsel-Taps wechseln zwischen Panels."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Panel Mode as the long-press action to enter or exit with a long press. Page-turn taps move between panels."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige el modo viñetas como acción de pulsación larga para entrar o salir. Los toques para pasar de página cambian de viñeta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez Mode cases comme action de l’appui long pour entrer ou sortir. Les touches de changement de page passent d’une case à l’autre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli Modalità vignette come azione della pressione prolungata per entrare o uscire. I tocchi per cambiare pagina passano tra le vignette."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長押しの動作にコマ送りモードを選ぶと、長押しで開始・終了できます。ページ送りのタップでコマを移動します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "길게 누르기 동작을 컷 모드로 설정하면 길게 눌러 시작하거나 종료할 수 있습니다. 페이지 넘기기 탭으로 컷 사이를 이동합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите покадровый режим для долгого нажатия, чтобы входить в него и выходить долгим нажатием. Касания перелистывания переключают кадры."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将长按操作设为分格模式后，即可长按进入或退出。轻点翻页区域可切换分格。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "將長按操作設為分格模式後，即可長按進入或退出。輕點翻頁區域可切換分格。"
           }
         }
       }
@@ -22862,7 +23120,72 @@
         }
       }
     },
+    "Double Tap Action" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktion bei Doppeltippen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double Tap Action"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acción de doble toque"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Action du double toucher"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azione doppio tocco"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダブルタップの動作"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이중 탭 동작"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действие двойного касания"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双击操作"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "雙擊操作"
+          }
+        }
+      }
+    },
     "Double Tap to Zoom" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22991,6 +23314,7 @@
       }
     },
     "Double-tap a panel to zoom in" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -23055,6 +23379,7 @@
       }
     },
     "Double-tap a panel to zoom in. Your page-turn taps move between panels. Double-tap again to stop and see the full page." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25552,6 +25877,7 @@
       }
     },
     "Enable Image Context Menu" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33168,6 +33494,71 @@
         }
       }
     },
+    "Exit Panel Mode" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panelmodus beenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exit Panel Mode"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir del modo viñetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter le mode cases"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esci dalla modalità vignette"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマ送りモードを終了"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷 모드 종료"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выйти из покадрового режима"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出分格模式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出分格模式"
+          }
+        }
+      }
+    },
     "Expiration" : {
       "localizations" : {
         "de" : {
@@ -34896,6 +35287,71 @@
         }
       }
     },
+    "Finding Panels…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panels werden erkannt…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finding Panels…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando viñetas…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Détection des cases…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricerca vignette…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマを検出中…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷 찾는 중…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск кадров…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在识别分格…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在識別分格…"
+          }
+        }
+      }
+    },
     "Finish Date (YYYY-MM-DD)" : {
       "localizations" : {
         "de" : {
@@ -35600,6 +36056,71 @@
         }
       }
     },
+    "Full Page" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganze Seite"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full Page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página completa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page entière"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pagina intera"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ページ全体"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "전체 페이지"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вся страница"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整頁"
+          }
+        }
+      }
+    },
     "GB" : {
       "localizations" : {
         "de" : {
@@ -35852,6 +36373,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "類型分布"
+          }
+        }
+      }
+    },
+    "Gestures" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestures"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ジェスチャー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제스처"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жесты"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手势"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手勢"
           }
         }
       }
@@ -38040,6 +38625,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "圖像"
+          }
+        }
+      }
+    },
+    "Image Context Menu" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bild-Kontextmenü"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image Context Menu"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menú contextual de imagen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menu contextuel de l’image"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menu contestuale immagine"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像コンテキストメニュー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미지 컨텍스트 메뉴"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Контекстное меню изображения"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图片上下文菜单"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "圖片上下文選單"
           }
         }
       }
@@ -47772,6 +48421,198 @@
         }
       }
     },
+    "Long Press Action" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktion bei langem Drücken"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long Press Action"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acción de pulsación larga"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Action de l’appui long"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azione pressione prolungata"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長押しの動作"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "길게 누르기 동작"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действие долгого нажатия"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按操作"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長按操作"
+          }
+        }
+      }
+    },
+    "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedrückt halten, um bei diesem Panel zu beginnen. Tipps zum Blättern bewegen zwischen den Panels. Erneut gedrückt halten, um zur ganzen Seite zurückzukehren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsada una viñeta para empezar ahí. Los toques para pasar de página avanzan entre viñetas. Vuelve a mantener pulsado para regresar a la página completa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez une case pour commencer à cet endroit. Les touches de changement de page permettent de passer d’une case à l’autre. Maintenez à nouveau pour revenir à la page entière."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tieni premuta una vignetta per iniziare da lì. I tocchi per cambiare pagina si spostano tra le vignette. Tieni premuto di nuovo per tornare alla pagina intera."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パネルを長押しすると、そのパネルから開始します。ページ送りタップでパネル間を移動します。再度長押しするとページ全体に戻ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "패널을 길게 눌러 해당 패널부터 시작합니다. 페이지 넘기기 탭으로 패널 사이를 이동합니다. 다시 길게 누륌면 전체 페이지로 돌아갑니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте кадр, чтобы начать с него. Касания для перелистывания перемещают между кадрами. Удерживайте снова, чтобы вернуться ко всей странице."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按某个分镜从该处开始。翻页轻点会在分镜间移动。再次长按返回整页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長按某個分鏡從該處開始。翻頁輕點會在分鏡間移動。再次長按返回整頁。"
+          }
+        }
+      }
+    },
+    "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedrückt halten, um bei diesem Panel zu beginnen. Deine Tipps zum Blättern bewegen zwischen den Panels. Erneut gedrückt halten, um zur ganzen Seite zurückzukehren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsada una viñeta para empezar ahí. Tus toques para pasar de página avanzan entre viñetas. Vuelve a mantener pulsado para regresar a la página completa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez une case pour commencer à cet endroit. Vos touches de changement de page permettent de passer d’une case à l’autre. Maintenez à nouveau pour revenir à la page entière."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tieni premuta una vignetta per iniziare da lì. I tuoi tocchi per cambiare pagina si spostano tra le vignette. Tieni premuto di nuovo per tornare alla pagina intera."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パネルを長押しすると、そのパネルから開始します。ページ送りタップでパネル間を移動します。再度長押しするとページ全体に戻ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "패널을 길게 눌러 해당 패널부터 시작합니다. 페이지 넘기기 탭으로 패널 사이를 이동합니다. 다시 길게 누륌면 전체 페이지로 돌아갑니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте кадр, чтобы начать с него. Ваши касания для перелистывания перемещают между кадрами. Удерживайте снова, чтобы вернуться ко всей странице."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按某个分镜从该处开始。你的翻页轻点会在分镜间移动。再次长按返回整页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長按某個分鏡從該處開始。你的翻頁輕點會在分鏡間移動。再次長按返回整頁。"
+          }
+        }
+      }
+    },
     "Longest Streak" : {
       "localizations" : {
         "de" : {
@@ -54424,6 +55265,71 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "沒有可用頁面。"
+          }
+        }
+      }
+    },
+    "No Panels Found" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Panels gefunden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Panels Found"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontraron viñetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune case détectée"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna vignetta trovata"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマが見つかりません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷을 찾을 수 없음"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кадры не найдены"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未识别到分格"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未識別到分格"
           }
         }
       }
@@ -63197,6 +64103,7 @@
       }
     },
     "On" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -63256,6 +64163,71 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "開啟"
+          }
+        }
+      }
+    },
+    "On iOS, Live Text keeps the long-press gesture while it is enabled." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf iOS behält Livetext bei aktivierter Funktion die Geste für langes Drücken."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On iOS, Live Text keeps the long-press gesture while it is enabled."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En iOS, Texto en vivo conserva la pulsación larga mientras está activado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur iOS, Texte en direct conserve l’appui long lorsqu’il est activé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Su iOS, Testo live mantiene la pressione prolungata quando è attivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOSでは、テキスト認識表示が有効な間、長押しジェスチャーはテキスト認識表示に使用されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS에서 라이브 텍스트가 켜져 있는 동안에는 길게 누르기 제스처를 라이브 텍스트가 사용합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На iOS при включенном Live Text долгое нажатие используется этой функцией."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 iOS 上，启用实况文本后，长按手势仍由实况文本使用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 iOS 上，啟用原況文字後，長按手勢仍由原況文字使用。"
           }
         }
       }
@@ -65502,6 +66474,71 @@
         }
       }
     },
+    "Panel %lld of %lld" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel %1$lld von %2$lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel %1$lld of %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viñeta %1$lld de %2$lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Case %1$lld sur %2$lld"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vignetta %1$lld di %2$lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマ %1$lld / %2$lld"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷 %1$lld / %2$lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кадр %1$lld из %2$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %1$lld 格，共 %2$lld 格"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %1$lld 格，共 %2$lld 格"
+          }
+        }
+      }
+    },
     "Panel Mode" : {
       "localizations" : {
         "de" : {
@@ -65755,6 +66792,134 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要分鏡模式模型"
+          }
+        }
+      }
+    },
+    "Panel Mode Off" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panelmodus deaktiviert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel Mode Off"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo viñetas desactivado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode cases désactivé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modalità vignette disattivata"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマ送りモードをオフにしました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷 모드 꺼짐"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покадровый режим выключен"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已退出分格模式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已退出分格模式"
+          }
+        }
+      }
+    },
+    "Panel Mode On" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panelmodus aktiviert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel Mode On"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo viñetas activado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode cases activé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modalità vignette attivata"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマ送りモードをオンにしました"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷 모드 켜짐"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покадровый режим включен"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已开启分格模式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已開啟分格模式"
           }
         }
       }
@@ -87521,6 +88686,7 @@
       }
     },
     "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -94051,6 +95217,7 @@
       }
     },
     "Tap for the next panel · Double-tap for the full page" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -94110,6 +95277,71 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "輕點查看下一格 · 點兩下查看整頁"
+          }
+        }
+      }
+    },
+    "Tap to move between panels" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippen, um zwischen Panels zu wechseln"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to move between panels"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca para cambiar de viñeta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez pour passer d’une case à l’autre"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocca per passare tra le vignette"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップしてコマを移動"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "탭하여 컷 사이 이동"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коснитесь для перехода между кадрами"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻点以切换分格"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "輕點以切換分格"
           }
         }
       }
@@ -98979,6 +100211,71 @@
         }
       }
     },
+    "Try another page" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Seite versuchen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try another page"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba otra página"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essayez une autre page"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prova un’altra pagina"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のページをお試しください"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 페이지를 시도해 보세요"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попробуйте другую страницу"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请尝试其他页面"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "請嘗試其他頁面"
+          }
+        }
+      }
+    },
     "Try selecting a different library." : {
       "localizations" : {
         "de" : {
@@ -103651,6 +104948,70 @@
         }
       }
     },
+    "Zoom" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ズーム"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "확대/축소"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Масштаб"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩放"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "縮放"
+          }
+        }
+      }
+    },
     "Zoom level when double-tapping on a page" : {
       "localizations" : {
         "de" : {
@@ -103716,6 +105077,7 @@
       }
     },
     "Zooming" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

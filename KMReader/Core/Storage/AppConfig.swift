@@ -115,6 +115,19 @@ enum AppConfig {
     set { UserDefaults.standard.set(newValue, forKey: "enableDivinaImageContextMenu") }
   }
 
+  static nonisolated var readerLongPressAction: ReaderLongPressAction {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "readerLongPressAction"),
+        let action = ReaderLongPressAction(rawValue: stored)
+      {
+        return action
+      }
+      if panelModeByBook.values.contains(true) { return .panelMode }
+      return enableDivinaImageContextMenu ? .contextMenu : .disabled
+    }
+    set { UserDefaults.standard.set(newValue.rawValue, forKey: "readerLongPressAction") }
+  }
+
   static nonisolated var divinaPreloadProfile: ReaderPreloadProfile {
     get {
       if let stored = UserDefaults.standard.string(forKey: "divinaPreloadProfile"),
@@ -1012,7 +1025,9 @@ enum AppConfig {
 
   static nonisolated var doubleTapZoomMode: DoubleTapZoomMode {
     get {
-      if let stored = UserDefaults.standard.string(forKey: "doubleTapZoomMode"),
+      let stored = UserDefaults.standard.string(forKey: "doubleTapZoomMode")
+      if stored == "panels" { return .enabled }
+      if let stored,
         let mode = DoubleTapZoomMode(rawValue: stored)
       {
         return mode

@@ -3,6 +3,7 @@
 //
 
 #if os(iOS)
+  import AVFoundation
   import SwiftUI
   import UIKit
 
@@ -154,6 +155,24 @@
       pageItem.displayedImageSize(for: pageID)
     }
 
+    func panelEngagementPoint(at point: CGPoint) -> PanelEngagementPoint? {
+      guard splitMode == .none, showsCommittedPage,
+        scrollView.zoomScale <= scrollView.minimumZoomScale + 0.01,
+        let imageSize = pageItem.displayedImageSize(for: pageID),
+        imageSize.width > 0, imageSize.height > 0
+      else { return nil }
+      let fittedRect = AVMakeRect(aspectRatio: imageSize, insideRect: view.bounds)
+      guard fittedRect.width > 0, fittedRect.height > 0, fittedRect.contains(point) else { return nil }
+      return PanelEngagementPoint(
+        bookId: pageID.bookId,
+        pageNumber: pageID.pageNumber,
+        normalizedPoint: CGPoint(
+          x: (point.x - fittedRect.minX) / fittedRect.width,
+          y: (point.y - fittedRect.minY) / fittedRect.height
+        )
+      )
+    }
+
     private func setupGestures() {
       let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
       doubleTap.numberOfTapsRequired = 2
@@ -300,7 +319,7 @@
     }
 
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-      guard renderConfig.doubleTapZoomMode != .disabled else { return }
+      guard renderConfig.doubleTapZoomMode.isEnabled else { return }
 
       if scrollView.zoomScale > scrollView.minimumZoomScale + 0.01 {
         scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
