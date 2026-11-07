@@ -16,9 +16,9 @@
   @MainActor
   @Observable
   class EpubReaderViewModel {
-    var isLoading = false
+    var isLoading = true
     var errorMessage: String?
-    var loadingStage: LoadingStage = .idle
+    var loadingStage: LoadingStage = .fetchingMetadata
     var downloadProgress: Double = 0.0
     var downloadBytesReceived: Int64 = 0
     var downloadBytesExpected: Int64?
