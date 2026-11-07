@@ -219,6 +219,10 @@ struct ReaderSettingsSheet: View {
               }
             } header: {
               Text("Panel Mode")
+            } footer: {
+              Text(
+                "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page."
+              )
             }
           }
         #endif
@@ -303,14 +307,25 @@ struct ReaderSettingsSheet: View {
           }
         #endif
 
-        Section(header: Text("Gestures")) {
-          Picker("Long Press Action", selection: $readerLongPressAction) {
-            ForEach(availableLongPressActions) { action in
-              Text(action.displayName).tag(action)
+        #if os(iOS)
+          Section(header: Text("Gestures")) {
+            Picker("Long Press Action", selection: $readerLongPressAction) {
+              ForEach(availableLongPressActions) { action in
+                Text(action.displayName).tag(action)
+              }
             }
+            .pickerStyle(.menu)
           }
-          .pickerStyle(.menu)
-        }
+        #else
+          Section(header: Text("Context Menu")) {
+            Picker("Long Press Action", selection: $readerLongPressAction) {
+              ForEach(availableLongPressActions) { action in
+                Text(action.displayName).tag(action)
+              }
+            }
+            .pickerStyle(.menu)
+          }
+        #endif
       }
     }
     .presentationDragIndicator(.visible)

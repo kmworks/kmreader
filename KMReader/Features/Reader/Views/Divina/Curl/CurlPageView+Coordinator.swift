@@ -835,8 +835,11 @@
       @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
 
       @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began else { return }
-        parent.onPanelLongPress()
+        guard recognizer.state == .began, !parent.viewModel.isZoomed,
+          let controller = pageViewController?.viewControllers?.first as? NativeImagePageViewController
+        else { return }
+        HapticFeedback.prepare()
+        parent.onPanelLongPress(controller.panelEngagementPoint(at: recognizer.location(in: controller.view)))
       }
 
       private var isTapZoneSuppressed: Bool {

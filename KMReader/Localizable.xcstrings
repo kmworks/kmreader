@@ -5517,6 +5517,134 @@
         }
       }
     },
+    "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für alle DIVINA-Bücher. Der Panel-Modus ersetzt das Bild-Kontextmenü beim Gedrückthalten und pausiert Live Text, solange er aktiv ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplica a todos los libros DIVINA. El modo Panel sustituye al menú contextual de la imagen al mantener pulsado y pausa Texto en vivo mientras está activo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S’applique à tous les livres DIVINA. Le mode Panneaux remplace le menu contextuel de l’image lors d’un appui long et suspend Texte en direct tant qu’il est actif."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si applica a tutti i libri DIVINA. La modalità Vignette sostituisce il menu contestuale dell’immagine con la pressione prolungata e sospende Testo live mentre è attiva."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのDIVINA書籍に適用されます。パネルモードを選択すると、長押しで画像コンテキストメニューの代わりにパネルモードを切り替え、有効な間はライブテキストを一時停止します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 DIVINA 책에 적용됩니다. 패널 모드를 선택하면 길게 누르기가 이미지 컨텍스트 메뉴 대신 패널 모드로 사용되며, 활성화된 동안에는 라이브 텍스트가 일시 중지됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действует для всех книг DIVINA. Режим кадров заменяет контекстное меню изображения при долгом нажатии и приостанавливает Live Text, пока он активен."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适用于所有 DIVINA 书籍。选择分镜模式后，长按将用于分镜模式而非图片菜单；分镜模式启用时会暂停实况文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "適用於所有 DIVINA 書籍。選擇分鏡模式後，長按將用於分鏡模式而非圖片選單；分鏡模式啟用時會暫停原況文字。"
+          }
+        }
+      }
+    },
+    "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press. Live Text keeps the gesture while enabled." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für alle DIVINA-Bücher. Der Panel-Modus ersetzt das Bild-Kontextmenü beim Gedrückthalten. Live Text behält die Geste, solange er aktiviert ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press. Live Text keeps the gesture while enabled."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se aplica a todos los libros DIVINA. El modo Panel sustituye al menú contextual de la imagen al mantener pulsado. Texto en vivo conserva el gesto mientras está activado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S’applique à tous les livres DIVINA. Le mode Panneaux remplace le menu contextuel de l’image lors d’un appui long. Texte en direct conserve ce geste lorsqu’il est activé."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si applica a tutti i libri DIVINA. La modalità Vignette sostituisce il menu contestuale dell’immagine con la pressione prolungata. Testo live mantiene il gesto quando è attivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのDIVINA書籍に適用されます。パネルモードを選択すると、長押しで画像コンテキストメニューの代わりにパネルモードを切り替えます。ライブテキストを有効にしている間は、長押しがライブテキストに使用されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 DIVINA 책에 적용됩니다. 패널 모드를 선택하면 길게 누르기가 이미지 컨텍스트 메뉴 대신 패널 모드로 사용됩니다. 라이브 텍스트가 켜져 있는 동안에는 길게 누르기가 라이브 텍스트에 사용됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действует для всех книг DIVINA. Режим кадров заменяет контекстное меню изображения при долгом нажатии. Пока включён Live Text, этот жест используется для него."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适用于所有 DIVINA 书籍。选择分镜模式后，长按将用于分镜模式而非图片菜单。启用实况文本时，长按仍用于实况文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "適用於所有 DIVINA 書籍。選擇分鏡模式後，長按將用於分鏡模式而非圖片選單。啟用原況文字時，長按仍用於原況文字。"
+          }
+        }
+      }
+    },
     "Apply Filter" : {
       "localizations" : {
         "de" : {
@@ -13199,6 +13327,7 @@
       }
     },
     "Choose Panel Mode as the long-press action to enter or exit with a long press. Page-turn taps move between panels." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16207,7 +16336,6 @@
       }
     },
     "Context Menu" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33366,6 +33494,7 @@
       }
     },
     "Exit Panel Mode" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -35158,6 +35287,7 @@
       }
     },
     "Finding Panels…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -35926,6 +36056,7 @@
       }
     },
     "Full Page" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -48353,6 +48484,134 @@
         }
       }
     },
+    "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedrückt halten, um bei diesem Panel zu beginnen. Tipps zum Blättern bewegen zwischen den Panels. Erneut gedrückt halten, um zur ganzen Seite zurückzukehren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsada una viñeta para empezar ahí. Los toques para pasar de página avanzan entre viñetas. Vuelve a mantener pulsado para regresar a la página completa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez une case pour commencer à cet endroit. Les touches de changement de page permettent de passer d’une case à l’autre. Maintenez à nouveau pour revenir à la page entière."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tieni premuta una vignetta per iniziare da lì. I tocchi per cambiare pagina si spostano tra le vignette. Tieni premuto di nuovo per tornare alla pagina intera."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パネルを長押しすると、そのパネルから開始します。ページ送りタップでパネル間を移動します。再度長押しするとページ全体に戻ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "패널을 길게 눌러 해당 패널부터 시작합니다. 페이지 넘기기 탭으로 패널 사이를 이동합니다. 다시 길게 누륌면 전체 페이지로 돌아갑니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте кадр, чтобы начать с него. Касания для перелистывания перемещают между кадрами. Удерживайте снова, чтобы вернуться ко всей странице."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按某个分镜从该处开始。翻页轻点会在分镜间移动。再次长按返回整页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長按某個分鏡從該處開始。翻頁輕點會在分鏡間移動。再次長按返回整頁。"
+          }
+        }
+      }
+    },
+    "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedrückt halten, um bei diesem Panel zu beginnen. Deine Tipps zum Blättern bewegen zwischen den Panels. Erneut gedrückt halten, um zur ganzen Seite zurückzukehren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsada una viñeta para empezar ahí. Tus toques para pasar de página avanzan entre viñetas. Vuelve a mantener pulsado para regresar a la página completa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenez une case pour commencer à cet endroit. Vos touches de changement de page permettent de passer d’une case à l’autre. Maintenez à nouveau pour revenir à la page entière."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tieni premuta una vignetta per iniziare da lì. I tuoi tocchi per cambiare pagina si spostano tra le vignette. Tieni premuto di nuovo per tornare alla pagina intera."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パネルを長押しすると、そのパネルから開始します。ページ送りタップでパネル間を移動します。再度長押しするとページ全体に戻ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "패널을 길게 눌러 해당 패널부터 시작합니다. 페이지 넘기기 탭으로 패널 사이를 이동합니다. 다시 길게 누륌면 전체 페이지로 돌아갑니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте кадр, чтобы начать с него. Ваши касания для перелистывания перемещают между кадрами. Удерживайте снова, чтобы вернуться ко всей странице."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长按某个分镜从该处开始。你的翻页轻点会在分镜间移动。再次长按返回整页。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "長按某個分鏡從該處開始。你的翻頁輕點會在分鏡間移動。再次長按返回整頁。"
+          }
+        }
+      }
+    },
     "Longest Streak" : {
       "localizations" : {
         "de" : {
@@ -55010,6 +55269,7 @@
       }
     },
     "No Panels Found" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -63907,6 +64167,7 @@
       }
     },
     "On iOS, Live Text keeps the long-press gesture while it is enabled." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -66213,6 +66474,7 @@
       }
     },
     "Panel %lld of %lld" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -95019,6 +95281,7 @@
       }
     },
     "Tap to move between panels" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -99948,6 +100211,7 @@
       }
     },
     "Try another page" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

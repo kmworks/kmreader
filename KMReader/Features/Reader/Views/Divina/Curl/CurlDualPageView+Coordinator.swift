@@ -992,8 +992,19 @@
       @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
 
       @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began else { return }
-        parent.onPanelLongPress()
+        guard recognizer.state == .began, !parent.viewModel.isZoomed,
+          let controllers = pageViewController?.viewControllers
+        else { return }
+        HapticFeedback.prepare()
+        let point = recognizer.location(in: recognizer.view)
+        for controller in controllers {
+          guard let controller = controller as? NativeImagePageViewController,
+            controller.view.frame.contains(point)
+          else { continue }
+          parent.onPanelLongPress(controller.panelEngagementPoint(at: recognizer.location(in: controller.view)))
+          return
+        }
+        parent.onPanelLongPress(nil)
       }
 
       @objc func handlePagePanGesture(_ pan: UIPanGestureRecognizer) {

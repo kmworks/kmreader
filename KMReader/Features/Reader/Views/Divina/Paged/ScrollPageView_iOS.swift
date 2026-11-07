@@ -13,7 +13,7 @@
     let readListContext: ReaderReadListContext?
     let onDismiss: () -> Void
     let onTapZoneTap: ReaderTapZoneTapHandler
-    let onPanelLongPress: () -> Void
+    let onPanelLongPress: (PanelEngagementPoint?) -> Void
 
     init(
       mode: PageViewMode,
@@ -26,7 +26,7 @@
       readListContext: ReaderReadListContext?,
       onDismiss: @escaping () -> Void,
       onTapZoneTap: @escaping ReaderTapZoneTapHandler,
-      onPanelLongPress: @escaping () -> Void = {}
+      onPanelLongPress: @escaping (PanelEngagementPoint?) -> Void = { _ in }
     ) {
       self.mode = mode
       self.viewportSize = viewportSize

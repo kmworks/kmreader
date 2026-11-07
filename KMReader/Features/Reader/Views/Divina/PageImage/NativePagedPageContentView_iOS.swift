@@ -125,6 +125,37 @@
       isPlaybackActive
     }
 
+    func panelEngagementPoint(at point: CGPoint) -> PanelEngagementPoint? {
+      let location = convert(point, to: contentStack)
+      let contentBounds = contentStack.bounds
+      guard contentBounds.width > 0, contentBounds.height > 0,
+        scrollView.zoomScale <= scrollView.minimumZoomScale + 0.01
+      else { return nil }
+
+      for (index, pageView) in pageViews.enumerated() where currentPageData.indices.contains(index) {
+        let data = currentPageData[index]
+        guard data.splitMode == .none, showsCommittedPage,
+          let imageSize = displayedImageSize(for: data.pageID),
+          imageSize.width > 0, imageSize.height > 0
+        else { continue }
+        let imageRect = pageView.convert(pageView.bounds, to: contentStack)
+        guard imageRect.width > 0, imageRect.height > 0, imageRect.contains(location) else { continue }
+        let fittedRect = AVMakeRect(aspectRatio: imageSize, insideRect: imageRect)
+        guard fittedRect.width > 0, fittedRect.height > 0 else { continue }
+        let normalizedPoint = CGPoint(
+          x: (location.x - fittedRect.minX) / fittedRect.width,
+          y: (location.y - fittedRect.minY) / fittedRect.height
+        )
+        guard (0...1).contains(normalizedPoint.x), (0...1).contains(normalizedPoint.y) else { continue }
+        return PanelEngagementPoint(
+          bookId: data.pageID.bookId,
+          pageNumber: data.pageID.pageNumber,
+          normalizedPoint: normalizedPoint
+        )
+      }
+      return nil
+    }
+
     func displayedImageSize(for pageID: ReaderPageID) -> CGSize? {
       pageViews.first?.displayedImageSize(for: pageID)
     }

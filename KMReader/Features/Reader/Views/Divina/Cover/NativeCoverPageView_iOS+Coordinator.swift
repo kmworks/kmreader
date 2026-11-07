@@ -911,7 +911,13 @@
 
       @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
         guard recognizer.state == .began else { return }
-        parent.onPanelLongPress()
+        guard !parent.viewModel.isZoomed || parent.panelModeEngaged else { return }
+        HapticFeedback.prepare()
+        guard let containerView else { return }
+        let point = frontSlotView?.panelEngagementPoint(
+          forContainerPoint: recognizer.location(in: containerView)
+        )
+        parent.onPanelLongPress(point)
       }
 
       private var isTapZoneSuppressed: Bool {

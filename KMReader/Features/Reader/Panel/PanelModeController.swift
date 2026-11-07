@@ -37,6 +37,7 @@ final class PanelModeController {
   private var currentPresentation: PanelPagePresentation?
   private var pageGeneration = 0
   private var engagementTask: Task<Void, Never>?
+  private var engagementPoint: PanelEngagementPoint?
   private var sequence: PanelSequence = .empty
   private var cursor = 0
   private var pendingTurnForward: Bool?
@@ -151,10 +152,11 @@ final class PanelModeController {
     }
   }
 
-  /// Engage at the first panel; if the sequence is not ready yet, waits briefly.
-  func engage() {
+  /// Engage at the pressed panel; if the sequence is not ready yet, waits briefly.
+  func engage(at point: PanelEngagementPoint? = nil) {
     engagementTask?.cancel()
     engagementTask = nil
+    engagementPoint = point
     if isCurrentPageEngageable {
       performEngage()
       return
@@ -182,6 +184,7 @@ final class PanelModeController {
     engagementTask?.cancel()
     engagementTask = nil
     engaged = false
+    engagementPoint = nil
     pendingTurnForward = nil
     awaitingPageTurn = false
     queuedStepForward = nil
@@ -264,7 +267,12 @@ final class PanelModeController {
   }
 
   private func performEngage() {
-    cursor = 1
+    let point = engagementPoint.flatMap { point in
+      point.bookId == currentBookId && point.pageNumber == currentPage?.number
+        ? point.normalizedPoint : nil
+    }
+    engagementPoint = nil
+    cursor = point.flatMap(panelArrayIndex(at:)) ?? 1
     engaged = true
     pendingTurnForward = nil
     zoomToCurrentCursor(animated: true)
@@ -278,4 +286,19 @@ final class PanelModeController {
     }
   }
 
+  private func panelArrayIndex(at point: CGPoint) -> Int? {
+    func contains(_ rect: PanelRect) -> Bool {
+      point.x >= rect.x && point.x <= rect.x + rect.width
+        && point.y >= rect.y && point.y <= rect.y + rect.height
+    }
+    switch sequence {
+    case .panels(let rects):
+      for (index, rect) in rects.enumerated() where contains(rect) { return index + 1 }
+      return nil
+    case .splash(let rect):
+      return contains(rect) ? 1 : nil
+    case .empty:
+      return nil
+    }
+  }
 }

@@ -95,6 +95,7 @@ struct DivinaReaderView: View {
   @State private var panelModelLocation: PanelModelLocation? = .installed
   @State private var isPreparingPanelModel = false
   @State private var panelModelPreparationTask: Task<Void, Never>?
+  @State private var pendingPanelEngagementPoint: PanelEngagementPoint?
   @State private var savedPageLayoutBeforePanelMode: PageLayout?
   @State private var savedSplitWideBeforePanelMode: SplitWidePageMode?
   @State private var readerSafeAreaTop: CGFloat = 0
@@ -174,7 +175,7 @@ struct DivinaReaderView: View {
       showPageNumber: showPageNumber,
       showPageShadow: showPageShadow,
       readerBackground: readerBackground,
-      enableLiveText: enableLiveText,
+      enableLiveText: enableLiveText && !panelModeActive,
       enableImageContextMenu: readerLongPressAction == .contextMenu,
       supportsPageSoloActions: readingDirection != .webtoon
         && readingDirection != .vertical
@@ -280,6 +281,7 @@ struct DivinaReaderView: View {
       if panelModelLocation != installed {
         panelModelLocation = installed
         panelModeController = PanelModeController(provider: RFDETRCoreMLPanelProvider(model: installed))
+        pendingPanelEngagementPoint = nil
       }
       refreshPanelModeCurrentPage()
     } else {
@@ -318,7 +320,8 @@ struct DivinaReaderView: View {
     applyPanelModeSinglePageForcing()
     preparePanelModelIfNeeded()
     if panelModelLocation != nil {
-      panelModeController.engage()
+      panelModeController.engage(at: pendingPanelEngagementPoint)
+      pendingPanelEngagementPoint = nil
     }
   }
 
@@ -332,8 +335,14 @@ struct DivinaReaderView: View {
     if splitWidePageMode != .none { splitWidePageMode = .none }
   }
 
-  private func handlePanelLongPress() {
-    panelModeEnabled = !panelModeActive
+  private func handlePanelLongPress(at point: PanelEngagementPoint?) {
+    if panelModeActive {
+      panelModeEnabled = false
+    } else {
+      pendingPanelEngagementPoint = point
+      panelModeEnabled = true
+    }
+    HapticFeedback.light()
   }
 
   private var currentSegmentContext:
@@ -844,11 +853,13 @@ struct DivinaReaderView: View {
     .onChange(of: readerLongPressAction) { _, action in
       if action != .panelMode, panelModeActive {
         panelModeEnabled = false
+        pendingPanelEngagementPoint = nil
       }
     }
     .onAppear {
       if readerLongPressAction != .panelMode {
         panelModeEnabled = false
+        pendingPanelEngagementPoint = nil
       }
     }
     #if os(iOS)

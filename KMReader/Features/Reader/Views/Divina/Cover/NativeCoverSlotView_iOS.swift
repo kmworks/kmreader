@@ -71,6 +71,10 @@
       pageContentView.resetPanelZoomToFit(animated: animated)
     }
 
+    func panelEngagementPoint(forContainerPoint point: CGPoint) -> PanelEngagementPoint? {
+      pageContentView.panelEngagementPoint(at: convert(point, to: pageContentView))
+    }
+
     override init(frame: CGRect) {
       super.init(frame: frame)
       setupUI()

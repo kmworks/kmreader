@@ -388,15 +388,17 @@ struct DivinaPreferencesView: View {
             }
           }
           .pickerStyle(.menu)
-          Text("On iOS, Live Text keeps the long-press gesture while it is enabled.")
-            .font(.caption)
-            .foregroundColor(.secondary)
+          Text(
+            "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active."
+          )
+          .font(.caption)
+          .foregroundColor(.secondary)
         }
 
         Section(
           header: Text("Panel Mode"),
           footer: Text(
-            "Choose Panel Mode as the long-press action to enter or exit with a long press. Page-turn taps move between panels."
+            "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page."
           )
         ) {
           Button {
