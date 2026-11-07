@@ -20,6 +20,9 @@
     private var forceDefaultReadingDirection: Bool = false
     @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
     @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
+    #if os(iOS)
+      @AppStorage("volumeButtonPageTurnEnabled") private var volumeButtonPageTurnEnabled: Bool = false
+    #endif
     @AppStorage("showPdfControlsGradientBackground")
     private var showControlsGradientBackground: Bool =
       AppConfig.showPdfControlsGradientBackground
@@ -86,6 +89,15 @@
     private var isKeyboardCaptureEnabled: Bool {
       !isPresentingModalSheet
     }
+
+    #if os(iOS)
+      private var isVolumeButtonCaptureEnabled: Bool {
+        volumeButtonPageTurnEnabled
+          && isKeyboardCaptureEnabled
+          && scenePhase == .active
+          && viewModel.pageCount > 0
+      }
+    #endif
 
     var body: some View {
       ZStack {
@@ -221,6 +233,19 @@
           onKeyPress: handleKeyboardEvent
         )
       )
+      #if os(iOS)
+        .background(
+          ReaderVolumeButtonHandler(
+            isEnabled: isVolumeButtonCaptureEnabled,
+            onVolumeUp: {
+              handleVolumeButton(isVolumeUp: true)
+            },
+            onVolumeDown: {
+              handleVolumeButton(isVolumeUp: false)
+            }
+          )
+        )
+      #endif
       .onChange(of: viewModel.pageCount) { oldCount, newCount in
         if oldCount == 0 && newCount > 0 {
           triggerKeyboardHelp(timeout: 1.5)
@@ -868,6 +893,26 @@
         }
       }
     }
+
+    #if os(iOS)
+      private func handleVolumeButton(isVolumeUp: Bool) {
+        guard isVolumeButtonCaptureEnabled else { return }
+        switch readingDirection {
+        case .ltr, .vertical, .webtoon:
+          if isVolumeUp {
+            goToNextPage()
+          } else {
+            goToPreviousPage()
+          }
+        case .rtl:
+          if isVolumeUp {
+            goToPreviousPage()
+          } else {
+            goToNextPage()
+          }
+        }
+      }
+    #endif
 
     private func goToNextPage() {
       requestPageNavigation(to: viewModel.currentPageNumber + 1)

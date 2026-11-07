@@ -34,6 +34,9 @@ struct DivinaReaderView: View {
   @AppStorage("showPageShadow") private var showPageShadow: Bool = AppConfig.showPageShadow
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
+  #if os(iOS)
+    @AppStorage("volumeButtonPageTurnEnabled") private var volumeButtonPageTurnEnabled: Bool = false
+  #endif
   @AppStorage("enableLiveText") private var enableLiveText: Bool = false
   @AppStorage("enableDivinaImageContextMenu")
   private var enableDivinaImageContextMenu: Bool = AppConfig.enableDivinaImageContextMenu
@@ -435,6 +438,18 @@ struct DivinaReaderView: View {
     !isPresentingModalSheet
   }
 
+  #if os(iOS)
+    private var isVolumeButtonCaptureEnabled: Bool {
+      volumeButtonPageTurnEnabled
+        && isKeyboardCaptureEnabled
+        && !showingMangaTranslationSettings
+        && !showingPanelModelSettings
+        && scenePhase == .active
+        && viewModel.hasPages
+        && !viewModel.isPageContextMenuPresented
+    }
+  #endif
+
   private func shouldUseDualPage(screenSize: CGSize) -> Bool {
     guard screenSize.width > screenSize.height else { return false }  // Only in landscape
     guard pageLayout != .single else { return false }
@@ -811,6 +826,19 @@ struct DivinaReaderView: View {
       .background(
         keyboardCaptureView
       )
+      #if os(iOS)
+        .background(
+          ReaderVolumeButtonHandler(
+            isEnabled: isVolumeButtonCaptureEnabled,
+            onVolumeUp: {
+              handleVolumeButton(isVolumeUp: true)
+            },
+            onVolumeDown: {
+              handleVolumeButton(isVolumeUp: false)
+            }
+          )
+        )
+      #endif
     }
     .iPadIgnoresSafeArea()
     #if os(iOS)
@@ -1505,6 +1533,18 @@ struct DivinaReaderView: View {
       }
     }
   }
+
+  #if os(iOS)
+    private func handleVolumeButton(isVolumeUp: Bool) {
+      guard isVolumeButtonCaptureEnabled else { return }
+      switch readingDirection {
+      case .ltr, .vertical, .webtoon:
+        goToReaderPosition(isVolumeUp ? .next : .previous)
+      case .rtl:
+        goToReaderPosition(isVolumeUp ? .previous : .next)
+      }
+    }
+  #endif
 
   private func sendWebtoonScrollCommand(for step: ReaderNavigationStep) {
     let direction: WebtoonScrollDirection =
