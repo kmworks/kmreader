@@ -117,17 +117,28 @@
           syncSlotContent()
         }
         updateSlotLayout()
+        parent.panelZoomController.targetDidLayout()
         pagePresentationCoordinator.flushIfPossible()
       }
 
       // MARK: - Panel mode zoom (driven by PanelZoomController on the front slot)
 
-      func zoomToPanelRect(_ rect: PanelRect, animated: Bool) {
-        frontSlotView?.zoomToPanelRect(rect, animated: animated)
+      var canReceivePanelZoomCommands: Bool {
+        frontSlotView?.canReceivePanelZoomCommands == true
       }
 
-      func resetPanelZoomToFit(animated: Bool) {
+      @discardableResult
+      func zoomToPanelRect(_ rect: PanelRect, animated: Bool) -> Bool {
+        guard canReceivePanelZoomCommands else { return false }
+        frontSlotView?.zoomToPanelRect(rect, animated: animated)
+        return true
+      }
+
+      @discardableResult
+      func resetPanelZoomToFit(animated: Bool) -> Bool {
+        guard canReceivePanelZoomCommands else { return false }
         frontSlotView?.resetPanelZoomToFit(animated: animated)
+        return true
       }
 
       private var frontSlotView: NativeCoverSlotView? {

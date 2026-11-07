@@ -71,6 +71,10 @@
       pageContentView.resetPanelZoomToFit(animated: animated)
     }
 
+    var canReceivePanelZoomCommands: Bool {
+      !pageContentView.isHidden && bounds.width > 0 && bounds.height > 0 && representedItem?.isEnd == false
+    }
+
     func panelEngagementPoint(forContainerPoint point: CGPoint) -> PanelEngagementPoint? {
       pageContentView.panelEngagementPoint(at: convert(point, to: pageContentView))
     }

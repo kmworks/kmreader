@@ -3,24 +3,49 @@
 //
 //
 
-/// Weak-target command relay that drives panel zoom on the cover engine. Mirrors
-/// `WebtoonScrollController`: a plain `@MainActor final class` injected from
-/// `DivinaReaderView`, whose `target` is bound once to the cover coordinator. It is
-/// NOT `@Observable` and is NOT drained in `updateUIView`.
+/// Weak-target relay that retains only the latest zoom intent until Cover can lay it out.
 @MainActor
 final class PanelZoomController {
-  weak var target: PanelZoomCommandHandling?
+  private enum Command {
+    case zoom(PanelRect, animated: Bool)
+    case fit(animated: Bool)
+  }
+
+  private var pendingCommand: Command?
+
+  var target: PanelZoomCommandHandling? {
+    didSet { deliverPendingCommandIfPossible() }
+  }
 
   func zoomToRect(_ rect: PanelRect, animated: Bool) {
-    target?.zoomToPanelRect(rect, animated: animated)
+    pendingCommand = .zoom(rect, animated: animated)
+    deliverPendingCommandIfPossible()
   }
 
   func resetToFit(animated: Bool) {
-    target?.resetPanelZoomToFit(animated: animated)
+    pendingCommand = .fit(animated: animated)
+    deliverPendingCommandIfPossible()
   }
 
   func clearTarget(_ target: PanelZoomCommandHandling) {
     guard self.target === target else { return }
     self.target = nil
+    pendingCommand = nil
+  }
+
+  func targetDidLayout() {
+    deliverPendingCommandIfPossible()
+  }
+
+  private func deliverPendingCommandIfPossible() {
+    guard let pendingCommand, let target, target.canReceivePanelZoomCommands else { return }
+    let delivered: Bool
+    switch pendingCommand {
+    case .zoom(let rect, let animated):
+      delivered = target.zoomToPanelRect(rect, animated: animated)
+    case .fit(let animated):
+      delivered = target.resetPanelZoomToFit(animated: animated)
+    }
+    if delivered { self.pendingCommand = nil }
   }
 }
