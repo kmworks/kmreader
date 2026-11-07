@@ -23,6 +23,8 @@ struct DivinaPreferencesView: View {
   @AppStorage("pageTransitionStyle") private var pageTransitionStyle: PageTransitionStyle = .cover
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
+  @AppStorage("panelZoomFillFactor") private var panelZoomFillFactor: Double = 0.9
+  @AppStorage("activePanelModelVersion") private var activePanelModelVersion: String?
   @AppStorage("imageUpscalingMode") private var imageUpscalingMode: ReaderImageUpscalingMode =
     AppConfig.imageUpscalingMode
   @AppStorage("imageUpscaleAutoTriggerScale") private var imageUpscaleAutoTriggerScale: Double =
@@ -30,8 +32,8 @@ struct DivinaPreferencesView: View {
   @AppStorage("divinaPageBorderCropMode") private var divinaPageBorderCropMode: ReaderPageBorderCropMode =
     AppConfig.divinaPageBorderCropMode
   @AppStorage("enableLiveText") private var enableLiveText: Bool = false
-  @AppStorage("enableDivinaImageContextMenu")
-  private var enableDivinaImageContextMenu: Bool = AppConfig.enableDivinaImageContextMenu
+  @AppStorage("readerLongPressAction")
+  private var readerLongPressAction: ReaderLongPressAction = AppConfig.readerLongPressAction
   @AppStorage("showDivinaControlsGradientBackground")
   private var showControlsGradientBackground: Bool =
     AppConfig.showDivinaControlsGradientBackground
@@ -39,6 +41,7 @@ struct DivinaPreferencesView: View {
   private var showProgressBarWhileReading: Bool =
     AppConfig.showDivinaProgressBarWhileReading
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
+  @State private var showsPanelModelManagement = false
 
   private var forcedReadingDirection: ReadingDirection? {
     forceDefaultReadingDirection ? readDirection : nil
@@ -62,15 +65,18 @@ struct DivinaPreferencesView: View {
     !tapZoneMode.isDisabled && shouldShowWebtoonSpecificSettings
   }
 
-  private var doubleTapZoomEnabled: Binding<Bool> {
-    Binding(
-      get: { doubleTapZoomMode.isEnabled },
-      set: { newValue in
-        withAnimation(.appCurve()) {
-          doubleTapZoomMode = newValue ? .enabled : .disabled
-        }
-      }
-    )
+  private var supportsLongPressPanelMode: Bool {
+    #if os(iOS)
+      return readDirection == .ltr || readDirection == .rtl
+    #else
+      return false
+    #endif
+  }
+
+  private var longPressActions: [ReaderLongPressAction] {
+    ReaderLongPressAction.allCases.filter {
+      $0 != .panelMode || supportsLongPressPanelMode
+    }
   }
 
   private var liveTextEnabled: Binding<Bool> {
@@ -350,10 +356,14 @@ struct DivinaPreferencesView: View {
       }
 
       #if os(iOS)
-        Section(header: Text("Zooming")) {
-          Toggle(isOn: doubleTapZoomEnabled) {
-            Text("Double Tap to Zoom")
+        Section(header: Text("Gestures")) {
+          Picker("Double Tap Action", selection: $doubleTapZoomMode) {
+            ForEach(DoubleTapZoomMode.allCases) { mode in
+              Label(mode.displayName, systemImage: mode.icon)
+                .tag(mode)
+            }
           }
+          .pickerStyle(.menu)
           if doubleTapZoomMode.isEnabled {
             VStack(alignment: .leading, spacing: 8) {
               HStack {
@@ -371,6 +381,63 @@ struct DivinaPreferencesView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
+          }
+          Picker("Long Press Action", selection: $readerLongPressAction) {
+            ForEach(longPressActions) { action in
+              Text(action.displayName).tag(action)
+            }
+          }
+          .pickerStyle(.menu)
+          Text("On iOS, Live Text keeps the long-press gesture while it is enabled.")
+            .font(.caption)
+            .foregroundColor(.secondary)
+        }
+
+        Section(
+          header: Text("Panel Mode"),
+          footer: Text(
+            "Choose Panel Mode as the long-press action to enter or exit with a long press. Page-turn taps move between panels."
+          )
+        ) {
+          Button {
+            showsPanelModelManagement = true
+          } label: {
+            HStack {
+              Label {
+                VStack(alignment: .leading, spacing: 2) {
+                  Text("Panel Mode Model")
+                  Text(
+                    activePanelModelVersion == nil
+                      ? String(localized: "Not Downloaded")
+                      : PanelModelLibrary.installedArchive()?.name ?? String(localized: "Not Downloaded")
+                  )
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+                  .lineLimit(1)
+                }
+              } icon: {
+                Image(systemName: "rectangle.split.2x2")
+              }
+              Spacer()
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+
+          VStack(alignment: .leading, spacing: 8) {
+            HStack {
+              Text("Panel Zoom Fill")
+              Spacer()
+              Text(String(format: "%.0f%%", panelZoomFillFactor * 100))
+                .foregroundColor(.secondary)
+            }
+            Slider(value: $panelZoomFillFactor, in: 0.75...1.0, step: 0.05)
+            Text("Choose how much of the screen a focused panel fills; the remainder keeps neighboring panels visible.")
+              .font(.caption)
+              .foregroundColor(.secondary)
           }
         }
       #endif
@@ -450,24 +517,27 @@ struct DivinaPreferencesView: View {
         }
       #endif
 
-      #if os(iOS) || os(macOS)
-        Section(header: Text("Context Menu")) {
-          Toggle(isOn: $enableDivinaImageContextMenu) {
-            VStack(alignment: .leading, spacing: 4) {
-              Text("Enable Image Context Menu")
-              Text(
-                "Show a context menu on page images for quick actions like sharing or showing a page solo. On iOS, Live Text keeps the long-press gesture while it is enabled."
-              )
-              .font(.caption)
-              .foregroundColor(.secondary)
+      #if os(macOS)
+        Section(header: Text("Gestures")) {
+          Picker("Long Press Action", selection: $readerLongPressAction) {
+            ForEach([ReaderLongPressAction.contextMenu, .disabled]) { action in
+              Text(action.displayName).tag(action)
             }
           }
+          .pickerStyle(.menu)
         }
       #endif
 
     }
     .formStyle(.grouped)
     .platformNavigationTitle(SettingsSection.divinaReader.title)
+    #if os(iOS)
+      .sheet(isPresented: $showsPanelModelManagement) {
+        SheetView(title: String(localized: "Panel Mode Model"), size: .large, applyFormStyle: true) {
+          PanelModelManagementView()
+        }
+      }
+    #endif
   }
 
 }

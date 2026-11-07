@@ -35,6 +35,8 @@ final class PanelModeController {
   private var currentBookId: String?
   private var currentPage: BookPage?
   private var currentPresentation: PanelPagePresentation?
+  private var pageGeneration = 0
+  private var engagementTask: Task<Void, Never>?
   private var sequence: PanelSequence = .empty
   private var cursor = 0
   private var pendingTurnForward: Bool?
@@ -57,7 +59,7 @@ final class PanelModeController {
     self.orchestrator = PanelSequenceOrchestrator(provider: provider, visionText: visionText)
   }
 
-  /// Whether the current page can be engaged (double-tap walked). ANY non-empty sequence qualifies —
+  /// Whether the current page can be engaged. ANY non-empty sequence qualifies —
   /// not just panels: a `.splash` (a single panel, or a borderless body/near-splash crop) and a
   /// `.panels` walk built from orphan body beats or a text bubble-walk are all engageable. Only the
   /// `.empty` sequence (nothing to walk → whole page) stays armed. Named for engageability, not panels,
@@ -76,6 +78,10 @@ final class PanelModeController {
   func beginPage(bookId: String, page: BookPage, presentation: PanelPagePresentation) {
     let pageChanged = currentBookId != bookId || currentPage?.number != page.number
     let presentationChanged = currentPresentation != nil && currentPresentation != presentation
+    if pageChanged || presentationChanged {
+      engagementTask?.cancel()
+      engagementTask = nil
+    }
     // A rotation or border-crop change moves every panel on screen; leave the walk rather than
     // zoom to rects measured for the previous presentation.
     if engaged, presentationChanged {
@@ -85,6 +91,7 @@ final class PanelModeController {
     currentPage = page
     currentPresentation = presentation
     if pageChanged || presentationChanged {
+      pageGeneration += 1
       // Keep a step queued during this controller's own page turn: it belongs to the arriving page.
       if !awaitingPageTurn { queuedStepForward = nil }
       awaitingPageTurn = false
@@ -105,6 +112,7 @@ final class PanelModeController {
     adjacentPages: [BookPage] = []
   ) async {
     beginPage(bookId: bookId, page: page, presentation: presentation)
+    let generation = pageGeneration
 
     // Eager-warm this page (`.userInitiated`) + lazy-warm neighbors (`.utility`), and
     // cancel detection that fell outside the new window. The `sequence` await below
@@ -115,7 +123,9 @@ final class PanelModeController {
     let resolved = await firstAwareSequence(bookId: bookId, page: page, presentation: presentation)
 
     // Drop a late result if the page changed again while awaiting.
-    guard currentBookId == bookId, currentPage?.number == page.number else { return }
+    guard pageGeneration == generation,
+      currentBookId == bookId, currentPage?.number == page.number
+    else { return }
     sequence = resolved
     isResolving = false
 
@@ -141,35 +151,42 @@ final class PanelModeController {
     }
   }
 
-  /// Double-tap engage at a normalized [0,1] page-space point (gutter → panel 0).
-  /// No-ops only on a non-engageable (empty) page; if the sequence is not ready yet, waits briefly.
-  func engage(atNormalizedPoint point: CGPoint?) {
+  /// Engage at the first panel; if the sequence is not ready yet, waits briefly.
+  func engage() {
+    engagementTask?.cancel()
+    engagementTask = nil
     if isCurrentPageEngageable {
-      performEngage(at: point)
+      performEngage()
       return
     }
     guard let bookId = currentBookId, let page = currentPage, let presentation = currentPresentation else {
       return
     }
-    Task { [weak self] in
+    let generation = pageGeneration
+    engagementTask = Task { [weak self] in
       guard let self else { return }
       let resolved = await self.firstAwareSequence(
         bookId: bookId, page: page, presentation: presentation)
-      guard self.currentBookId == bookId, self.currentPage?.number == page.number else { return }
+      guard !Task.isCancelled else { return }
+      guard self.pageGeneration == generation,
+        self.currentBookId == bookId, self.currentPage?.number == page.number
+      else { return }
       self.sequence = resolved
       self.isResolving = false
-      guard self.isCurrentPageEngageable else { return }  // genuinely empty → stay armed
-      self.performEngage(at: point)
+      guard self.isCurrentPageEngageable else { return }
+      self.performEngage()
     }
   }
 
   func disengage() {
-    guard engaged else { return }
+    engagementTask?.cancel()
+    engagementTask = nil
     engaged = false
     pendingTurnForward = nil
     awaitingPageTurn = false
     queuedStepForward = nil
     cursor = 0
+    pageGeneration += 1
     zoomController.resetToFit(animated: true)
   }
 
@@ -180,15 +197,6 @@ final class PanelModeController {
     orchestrator.cancelAll()
     initWatchdog?.cancel()
     isInitializing = false
-  }
-
-  /// Toggle engage/disengage at a point (the double-tap gesture).
-  func toggleEngagement(atNormalizedPoint point: CGPoint?) {
-    if engaged {
-      disengage()
-    } else {
-      engage(atNormalizedPoint: point)
-    }
   }
 
   @discardableResult
@@ -255,8 +263,8 @@ final class PanelModeController {
     return sequence
   }
 
-  private func performEngage(at point: CGPoint?) {
-    cursor = point.flatMap(panelArrayIndex(at:)) ?? 1
+  private func performEngage() {
+    cursor = 1
     engaged = true
     pendingTurnForward = nil
     zoomToCurrentCursor(animated: true)
@@ -270,20 +278,4 @@ final class PanelModeController {
     }
   }
 
-  /// Walk-array index (1…N) of the panel containing `point`, or nil for a gutter / whole-page.
-  private func panelArrayIndex(at point: CGPoint) -> Int? {
-    func contains(_ rect: PanelRect) -> Bool {
-      point.x >= rect.x && point.x <= rect.x + rect.width
-        && point.y >= rect.y && point.y <= rect.y + rect.height
-    }
-    switch sequence {
-    case .panels(let rects):
-      for (index, rect) in rects.enumerated() where contains(rect) { return index + 1 }
-      return nil
-    case .splash(let rect):
-      return contains(rect) ? 1 : nil
-    case .empty:
-      return nil
-    }
-  }
 }

@@ -13,6 +13,7 @@
     let readListContext: ReaderReadListContext?
     let onDismiss: () -> Void
     let onTapZoneTap: ReaderTapZoneTapHandler
+    let onPanelLongPress: () -> Void
 
     init(
       mode: PageViewMode,
@@ -24,7 +25,8 @@
       viewModel: ReaderViewModel,
       readListContext: ReaderReadListContext?,
       onDismiss: @escaping () -> Void,
-      onTapZoneTap: @escaping ReaderTapZoneTapHandler
+      onTapZoneTap: @escaping ReaderTapZoneTapHandler,
+      onPanelLongPress: @escaping () -> Void = {}
     ) {
       self.mode = mode
       self.viewportSize = viewportSize
@@ -36,6 +38,7 @@
       self.readListContext = readListContext
       self.onDismiss = onDismiss
       self.onTapZoneTap = onTapZoneTap
+      self.onPanelLongPress = onPanelLongPress
     }
 
     private var shouldDisableScrollInteraction: Bool {
@@ -112,8 +115,10 @@
       )
       longPressGesture.cancelsTouchesInView = false
       longPressGesture.delegate = context.coordinator
+      longPressGesture.isEnabled = renderConfig.longPressAction == .panelMode
       singleTapGesture.require(toFail: longPressGesture)
       collectionView.addGestureRecognizer(longPressGesture)
+      context.coordinator.longPressGesture = longPressGesture
 
       context.coordinator.collectionView = collectionView
       context.coordinator.applyDoubleTapGestureState()

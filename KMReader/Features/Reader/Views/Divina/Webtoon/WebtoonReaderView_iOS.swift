@@ -983,7 +983,7 @@
       @objc func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         guard let collectionView = collectionView else { return }
         if collectionView.isDragging || collectionView.isDecelerating { return }
-        if doubleTapZoomMode == .disabled { return }
+        if !doubleTapZoomMode.isEnabled { return }
 
         let location = gesture.location(in: collectionView)
         requestZoom(at: location)

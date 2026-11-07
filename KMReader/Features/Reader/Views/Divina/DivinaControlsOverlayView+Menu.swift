@@ -61,24 +61,6 @@ extension DivinaControlsOverlayView {
         .pickerStyle(.menu)
       }
 
-      #if os(iOS)
-        if readingDirection == .ltr || readingDirection == .rtl {
-          // A submenu picker rather than a Toggle, whose leading checkmark column would shift
-          // the whole menu sideways when on.
-          Picker(selection: $panelModeEnabled) {
-            Label(String(localized: "On"), systemImage: "rectangle.split.2x2")
-              .symbolVariant(.fill)
-              .tag(true)
-            Label(String(localized: "Off"), systemImage: "rectangle.split.2x2")
-              .tag(false)
-          } label: {
-            Label(String(localized: "Panel Mode"), systemImage: "rectangle.split.2x2")
-              .symbolVariant(panelModeEnabled ? .fill : .none)
-          }
-          .pickerStyle(.menu)
-        }
-      #endif
-
       if readingDirection != .webtoon {
         Picker(selection: $splitWidePageMode) {
           ForEach(SplitWidePageMode.allCases, id: \.self) { mode in

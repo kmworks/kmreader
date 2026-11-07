@@ -47,6 +47,7 @@
         containerView?.backgroundColor = UIColor(parent.renderConfig.readerBackground.color)
         applyPanRecognizerState()
         applyDoubleTapRecognizerState()
+        longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
 
         if deckState.currentItem == nil {
           syncCurrentItemFromViewModel(force: true)
@@ -233,7 +234,6 @@
         let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
         longPressRecognizer.cancelsTouchesInView = false
         longPressRecognizer.delegate = self
-        singleTapRecognizer.require(toFail: longPressRecognizer)
         containerView.addGestureRecognizer(longPressRecognizer)
 
         self.singleTapRecognizer = singleTapRecognizer
@@ -257,9 +257,8 @@
       }
 
       private func applyDoubleTapRecognizerState() {
-        // Panel mode owns the double-tap (engage / disengage) even while double-tap zoom is off.
         doubleTapRecognizer?.isEnabled =
-          parent.renderConfig.doubleTapZoomMode.isEnabled || parent.renderConfig.panelMode
+          !parent.renderConfig.panelMode && parent.renderConfig.doubleTapZoomMode.isEnabled
       }
 
       private var currentItem: ReaderViewItem? {
@@ -906,13 +905,14 @@
         dispatchTapZoneTap(at: location, in: containerView)
       }
 
-      @objc private func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
-        guard parent.renderConfig.panelMode, let containerView else { return }
-        let location = recognizer.location(in: containerView)
-        parent.onPanelDoubleTap(frontSlotView?.normalizedImagePoint(forContainerPoint: location))
+      @objc private func handleDoubleTap(_: UITapGestureRecognizer) {
+        // Page-image zoom recognizers own double-tap; this recognizer only arbitrates tap zones.
       }
 
-      @objc private func handleLongPress(_: UILongPressGestureRecognizer) {}
+      @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began else { return }
+        parent.onPanelLongPress()
+      }
 
       private var isTapZoneSuppressed: Bool {
         // Engaged panel mode is zoomed by definition; that must not suppress stepping.
@@ -973,6 +973,9 @@
       ) -> Bool {
         // A tap that catches a gliding page only stops it.
         if gestureRecognizer === singleTapRecognizer {
+          if otherGestureRecognizer === longPressRecognizer {
+            return !parent.renderConfig.panelMode
+          }
           return SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
         }
         guard gestureRecognizer === panRecognizer else { return false }

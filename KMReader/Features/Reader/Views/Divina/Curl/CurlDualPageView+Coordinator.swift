@@ -19,6 +19,7 @@
       var hasCompletedInitialUpdate = false
       private var isActive = true
       private weak var doubleTapRecognizer: UITapGestureRecognizer?
+      private weak var longPressRecognizer: UILongPressGestureRecognizer?
       private var installedTapRecognizers: [UIGestureRecognizer] = []
       private var transitionTargetItem: ReaderViewItem?
       private var viewItemsSnapshot: PageCurlViewItemsSnapshot
@@ -64,14 +65,17 @@
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
         longPress.cancelsTouchesInView = false
         longPress.delegate = self
+        longPress.isEnabled = parent.renderConfig.longPressAction == .panelMode
         singleTap.require(toFail: longPress)
         view.addGestureRecognizer(longPress)
+        longPressRecognizer = longPress
         installedTapRecognizers = [singleTap, doubleTap, longPress]
         applyDoubleTapRecognizerState()
       }
 
       func applyDoubleTapRecognizerState() {
         doubleTapRecognizer?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
+        longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
       }
 
       private var totalSpreads: Int {
@@ -987,7 +991,10 @@
 
       @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
 
-      @objc private func handleLongPress(_: UILongPressGestureRecognizer) {}
+      @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
+        guard recognizer.state == .began else { return }
+        parent.onPanelLongPress()
+      }
 
       @objc func handlePagePanGesture(_ pan: UIPanGestureRecognizer) {
         guard pan.state == .ended || pan.state == .cancelled || pan.state == .failed else { return }

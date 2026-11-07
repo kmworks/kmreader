@@ -8,7 +8,6 @@ import SwiftUI
 struct DivinaControlsOverlayView: View {
   @Binding var readingDirection: ReadingDirection
   @Binding var pageLayout: PageLayout
-  @Binding var panelModeEnabled: Bool
   @Binding var soloCoverPage: Bool
   @Binding var splitWidePageMode: SplitWidePageMode
   @Binding var rotation: ReaderRotation

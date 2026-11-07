@@ -34,6 +34,20 @@ enum DoubleTapZoomMode: CaseIterable, Identifiable, RawRepresentable, Sendable {
   nonisolated var id: String { rawValue }
 
   nonisolated var isEnabled: Bool {
-    self == .enabled
+    self != .disabled
+  }
+
+  nonisolated var displayName: String {
+    switch self {
+    case .enabled: return String(localized: "Zoom")
+    case .disabled: return String(localized: "Off")
+    }
+  }
+
+  nonisolated var icon: String {
+    switch self {
+    case .enabled: return "magnifyingglass"
+    case .disabled: return "hand.tap"
+    }
   }
 }

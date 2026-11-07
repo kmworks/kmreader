@@ -17,6 +17,7 @@
     let readListContext: ReaderReadListContext?
     let onDismiss: () -> Void
     let onTapZoneTap: ReaderTapZoneTapHandler
+    let onPanelLongPress: () -> Void
 
     enum SpreadSlot: Int {
       case first = 0

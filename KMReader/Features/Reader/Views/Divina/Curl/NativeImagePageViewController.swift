@@ -300,7 +300,7 @@
     }
 
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-      guard renderConfig.doubleTapZoomMode != .disabled else { return }
+      guard renderConfig.doubleTapZoomMode.isEnabled else { return }
 
       if scrollView.zoomScale > scrollView.minimumZoomScale + 0.01 {
         scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)

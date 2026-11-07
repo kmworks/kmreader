@@ -30,8 +30,8 @@ struct ReaderSettingsSheet: View {
     AppConfig.imageUpscaleAutoTriggerScale
   @AppStorage("divinaPageBorderCropMode") private var divinaPageBorderCropMode: ReaderPageBorderCropMode =
     AppConfig.divinaPageBorderCropMode
-  @AppStorage("enableDivinaImageContextMenu")
-  private var enableDivinaImageContextMenu: Bool = AppConfig.enableDivinaImageContextMenu
+  @AppStorage("readerLongPressAction")
+  private var readerLongPressAction: ReaderLongPressAction = AppConfig.readerLongPressAction
   @AppStorage("showDivinaControlsGradientBackground")
   private var showControlsGradientBackground: Bool =
     AppConfig.showDivinaControlsGradientBackground
@@ -52,15 +52,18 @@ struct ReaderSettingsSheet: View {
     isWebtoonDirection || shouldShowPagedTurnSettings
   }
 
-  private var doubleTapZoomEnabled: Binding<Bool> {
-    Binding(
-      get: { doubleTapZoomMode.isEnabled },
-      set: { newValue in
-        withAnimation(.appCurve()) {
-          doubleTapZoomMode = newValue ? .enabled : .disabled
-        }
-      }
-    )
+  private var supportsPanelMode: Bool {
+    #if os(iOS)
+      return readingDirection == .ltr || readingDirection == .rtl
+    #else
+      return false
+    #endif
+  }
+
+  private var availableLongPressActions: [ReaderLongPressAction] {
+    ReaderLongPressAction.allCases.filter {
+      $0 != .panelMode || supportsPanelMode
+    }
   }
 
   private var liveTextEnabled: Binding<Bool> {
@@ -216,10 +219,6 @@ struct ReaderSettingsSheet: View {
               }
             } header: {
               Text("Panel Mode")
-            } footer: {
-              Text(
-                "Double-tap a panel to zoom in. Your page-turn taps move between panels. Double-tap again to stop and see the full page."
-              )
             }
           }
         #endif
@@ -234,10 +233,14 @@ struct ReaderSettingsSheet: View {
         }
 
         #if os(iOS)
-          Section(header: Text("Zooming")) {
-            Toggle(isOn: doubleTapZoomEnabled) {
-              Text("Double Tap to Zoom")
+          Section(header: Text("Gestures")) {
+            Picker("Double Tap Action", selection: $doubleTapZoomMode) {
+              ForEach(DoubleTapZoomMode.allCases) { mode in
+                Label(mode.displayName, systemImage: mode.icon)
+                  .tag(mode)
+              }
             }
+            .pickerStyle(.menu)
             if doubleTapZoomMode.isEnabled {
               VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -300,13 +303,14 @@ struct ReaderSettingsSheet: View {
           }
         #endif
 
-        #if os(iOS) || os(macOS)
-          Section(header: Text("Context Menu")) {
-            Toggle(isOn: $enableDivinaImageContextMenu) {
-              Text("Enable Image Context Menu")
+        Section(header: Text("Gestures")) {
+          Picker("Long Press Action", selection: $readerLongPressAction) {
+            ForEach(availableLongPressActions) { action in
+              Text(action.displayName).tag(action)
             }
           }
-        #endif
+          .pickerStyle(.menu)
+        }
       }
     }
     .presentationDragIndicator(.visible)

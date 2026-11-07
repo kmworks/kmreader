@@ -16,5 +16,6 @@ struct ReaderRenderConfig: Equatable {
   let supportsPageSoloActions: Bool
   let doubleTapZoomScale: Double
   let doubleTapZoomMode: DoubleTapZoomMode
+  var longPressAction: ReaderLongPressAction = .disabled
   var panelMode: Bool = false
 }

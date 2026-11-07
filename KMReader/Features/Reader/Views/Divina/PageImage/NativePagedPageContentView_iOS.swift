@@ -30,6 +30,7 @@
     private var tracksGlobalZoomState = true
     private var isUpdatingZoomState = false
     private var lastLayoutBoundsSize: CGSize = .zero
+    private var doubleTapRecognizer: UITapGestureRecognizer?
 
     private var scrollView: SpreadPanningScrollView {
       scrollController.scrollView
@@ -79,6 +80,7 @@
       self.readingDirection = readingDirection
       self.isPlaybackActive = isPlaybackActive
       self.tracksGlobalZoomState = tracksGlobalZoomState
+      doubleTapRecognizer?.isEnabled = !renderConfig.panelMode && renderConfig.doubleTapZoomMode.isEnabled
       scrollController.configure(viewModel: viewModel, wholeSpread: wholeSpread, itemChanged: itemChanged)
       self.currentPageData = renderedPageData(isPlaybackActive: isPlaybackActive)
 
@@ -152,6 +154,7 @@
         scrollView.backgroundColor = backgroundColor
       }
       pageViews.forEach { $0.prepareForDismantle() }
+      doubleTapRecognizer = nil
       resetZoomState()
     }
 
@@ -181,6 +184,7 @@
         doubleTap.numberOfTapsRequired = 2
         doubleTap.delegate = self
         scrollView.addGestureRecognizer(doubleTap)
+        doubleTapRecognizer = doubleTap
       #endif
     }
 
@@ -385,19 +389,6 @@
       }
     }
 
-    /// Convert a point in this view's coordinate space to normalized [0,1] image-space
-    /// (through the aspect-fit frame). Points in the letterbox fall outside [0,1].
-    func normalizedImagePoint(forContainerPoint point: CGPoint) -> CGPoint? {
-      let container = CGRect(origin: .zero, size: scrollView.bounds.size)
-      guard container.width > 0, container.height > 0 else { return nil }
-      let fitted = fittedImageRect(in: container)
-      guard fitted.width > 0, fitted.height > 0 else { return nil }
-      return CGPoint(
-        x: (point.x - fitted.minX) / fitted.width,
-        y: (point.y - fitted.minY) / fitted.height
-      )
-    }
-
     private func fittedImageRect(in container: CGRect) -> CGRect {
       guard let imageSize = currentDisplayedImageSize(),
         imageSize.width > 0, imageSize.height > 0
@@ -429,7 +420,7 @@
 
     #if os(iOS) || os(macOS)
       @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
-        guard renderConfig.doubleTapZoomMode != .disabled else { return }
+        guard renderConfig.doubleTapZoomMode.isEnabled else { return }
 
         if scrollView.zoomScale > (scrollView.minimumZoomScale + 0.01) {
           scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
