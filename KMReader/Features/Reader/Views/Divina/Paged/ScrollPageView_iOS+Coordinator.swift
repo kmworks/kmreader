@@ -35,6 +35,9 @@
       weak var singleTapGesture: UITapGestureRecognizer?
       weak var doubleTapGesture: UITapGestureRecognizer?
       weak var longPressGesture: UILongPressGestureRecognizer?
+      #if os(iOS)
+        private var warmupObserver: PanelLongPressWarmupObserver?
+      #endif
 
       init(_ parent: ScrollPageView) {
         self.parent = parent
@@ -43,6 +46,10 @@
       }
 
       func teardown() {
+        #if os(iOS)
+          warmupObserver?.detach()
+          warmupObserver = nil
+        #endif
         deferredViewModelCommitTask?.cancel()
         deferredViewModelCommitTask = nil
         visiblePreloadTask?.cancel()
@@ -74,6 +81,9 @@
         self.collectionView = collectionView
         applyDoubleTapGestureState()
         longPressGesture?.isEnabled = parent.renderConfig.longPressAction == .panelMode
+        #if os(iOS)
+          updateWarmupObserver()
+        #endif
         installApplicationObserverIfNeeded()
         pagePresentationCoordinator.update(viewModel: parent.viewModel)
 
@@ -126,6 +136,24 @@
       func applyDoubleTapGestureState() {
         doubleTapGesture?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
       }
+
+      #if os(iOS)
+        private func updateWarmupObserver() {
+          if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
+            warmupObserver == nil, let longPressGesture
+          {
+            let observer = PanelLongPressWarmupObserver(
+              onTouchDown: { [weak self] in self?.parent.onPanelWarmup() },
+              onCancel: { [weak self] in self?.parent.onPanelWarmupCancel() }
+            )
+            observer.attach(to: longPressGesture)
+            warmupObserver = observer
+          } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
+            warmupObserver?.detach()
+            warmupObserver = nil
+          }
+        }
+      #endif
 
       private func updateRenderInputsIfNeeded() -> Bool {
         let renderInputs = RenderInputs(
@@ -966,10 +994,15 @@
         guard let indexPath = collectionView.indexPathForItem(at: location),
           let cell = collectionView.cellForItem(at: indexPath) as? NativePagedPageCell
         else {
+          parent.onPanelTouchDown(nil)
+          parent.onPanelLongPressBegan(nil)
           parent.onPanelLongPress(nil)
           return
         }
-        parent.onPanelLongPress(cell.panelEngagementPoint(at: recognizer.location(in: cell)))
+        let point = cell.panelEngagementPoint(at: recognizer.location(in: cell))
+        parent.onPanelTouchDown(point)
+        parent.onPanelLongPressBegan(point)
+        parent.onPanelLongPress(point)
       }
 
       private func isScrollInteractionActive(in collectionView: UICollectionView) -> Bool {

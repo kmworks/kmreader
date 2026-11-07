@@ -8,7 +8,7 @@
 final class PanelZoomController {
   private enum Command {
     case zoom(PanelRect, animated: Bool)
-    case fit(animated: Bool)
+    case fit(animated: Bool, completion: (() -> Void)? = nil)
   }
 
   private var pendingCommand: Command?
@@ -27,9 +27,21 @@ final class PanelZoomController {
     deliverPendingCommandIfPossible()
   }
 
+  func resetToFitAndWait(animated: Bool) async {
+    await withCheckedContinuation { continuation in
+      pendingCommand = .fit(animated: animated) {
+        continuation.resume()
+      }
+      deliverPendingCommandIfPossible()
+    }
+  }
+
   func clearTarget(_ target: PanelZoomCommandHandling) {
     guard self.target === target else { return }
     self.target = nil
+    if case .fit(_, let completion) = pendingCommand {
+      completion?()
+    }
     pendingCommand = nil
   }
 
@@ -43,8 +55,8 @@ final class PanelZoomController {
     switch pendingCommand {
     case .zoom(let rect, let animated):
       delivered = target.zoomToPanelRect(rect, animated: animated)
-    case .fit(let animated):
-      delivered = target.resetPanelZoomToFit(animated: animated)
+    case .fit(let animated, let completion):
+      delivered = target.resetPanelZoomToFit(animated: animated, completion: completion)
     }
     if delivered { self.pendingCommand = nil }
   }

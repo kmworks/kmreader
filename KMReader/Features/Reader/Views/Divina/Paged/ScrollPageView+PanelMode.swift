@@ -2,7 +2,13 @@
   import SwiftUI
 
   extension ScrollPageView {
-    func panelModeLongPress(action: @escaping (PanelEngagementPoint?) -> Void) -> ScrollPageView {
+    func panelModeLongPress(
+      action: @escaping (PanelEngagementPoint?) -> Void,
+      onTouchDown: @escaping (PanelEngagementPoint?) -> Void,
+      onLongPressBegan: @escaping (PanelEngagementPoint?) -> Void,
+      onWarmup: @escaping () -> Void,
+      onWarmupCancel: @escaping () -> Void
+    ) -> ScrollPageView {
       ScrollPageView(
         mode: mode,
         viewportSize: viewportSize,
@@ -14,7 +20,11 @@
         readListContext: readListContext,
         onDismiss: onDismiss,
         onTapZoneTap: onTapZoneTap,
-        onPanelLongPress: action
+        onPanelLongPress: action,
+        onPanelTouchDown: onTouchDown,
+        onPanelLongPressBegan: onLongPressBegan,
+        onPanelWarmup: onWarmup,
+        onPanelWarmupCancel: onWarmupCancel
       )
     }
   }
