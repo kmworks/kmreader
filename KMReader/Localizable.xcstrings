@@ -16206,6 +16206,70 @@
         }
       }
     },
+    "Controls" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steuerung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controls"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controles"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commandes"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controlli"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컨트롤"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управление"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制"
+          }
+        }
+      }
+    },
     "Controls Gradient Background" : {
       "localizations" : {
         "de" : {
@@ -98979,6 +99043,70 @@
         }
       }
     },
+    "Turn Pages with Volume Buttons" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seiten mit Lautstärketasten blättern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn Pages with Volume Buttons"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasar páginas con los botones de volumen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tourner les pages avec les boutons de volume"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira le pagine con i tasti del volume"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量ボタンでページをめくる"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음량 버튼으로 페이지 넘기기"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Листать страницы кнопками громкости"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用音量键翻页"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用音量鍵翻頁"
+          }
+        }
+      }
+    },
     "Type" : {
       "localizations" : {
         "de" : {
@@ -100703,6 +100831,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用預設預載入範圍，在記憶體使用量與流暢翻頁之間取得平衡。"
+          }
+        }
+      }
+    },
+    "Use volume up for the next page and volume down for the previous page. System volume is kept within 1% to 99% while reading." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lauter blättert zur nächsten und Leiser zur vorherigen Seite. Während des Lesens bleibt die Systemlautstärke zwischen 1 % und 99 %."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use volume up for the next page and volume down for the previous page. System volume is kept within 1% to 99% while reading."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sube el volumen para ir a la página siguiente y bájalo para ir a la anterior. El volumen del sistema se mantiene entre el 1 % y el 99 % mientras lees."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Augmentez le volume pour passer à la page suivante et baissez-le pour revenir à la précédente. Le volume du système reste entre 1 % et 99 % pendant la lecture."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alza il volume per la pagina successiva e abbassalo per quella precedente. Durante la lettura, il volume di sistema resta tra l’1% e il 99%."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量を上げると次のページ、下げると前のページに移動します。読書中はシステム音量が1%〜99%の範囲に保たれます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음량 높이기는 다음 페이지, 음량 낮추기는 이전 페이지로 이동합니다. 읽는 동안 시스템 음량은 1%에서 99% 사이로 유지됩니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увеличение громкости открывает следующую страницу, уменьшение — предыдущую. Во время чтения громкость системы поддерживается в пределах от 1% до 99%."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量加键翻到下一页，音量减键返回上一页。阅读时系统音量会保持在 1% 至 99% 之间。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量加鍵翻到下一頁，音量減鍵返回上一頁。閱讀時系統音量會保持在 1% 至 99% 之間。"
           }
         }
       }

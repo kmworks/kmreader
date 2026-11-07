@@ -31,6 +31,9 @@
       .epubOverlayPreferences
     @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
     @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
+    #if os(iOS)
+      @AppStorage("volumeButtonPageTurnEnabled") private var volumeButtonPageTurnEnabled: Bool = false
+    #endif
 
     @State private var viewModel: EpubReaderViewModel
     @State private var activeThemePreferences: EpubThemePreferences
@@ -175,6 +178,15 @@
     private var isKeyboardCaptureEnabled: Bool {
       !isPresentingModalSheet
     }
+
+    #if os(iOS)
+      private var isVolumeButtonCaptureEnabled: Bool {
+        volumeButtonPageTurnEnabled
+          && isKeyboardCaptureEnabled
+          && scenePhase == .active
+          && viewModel.hasContent
+      }
+    #endif
 
     private var handoffBookId: String {
       currentBook?.id ?? book.id
@@ -359,6 +371,19 @@
             onKeyPress: handleKeyboardEvent
           )
         )
+        #if os(iOS)
+          .background(
+            ReaderVolumeButtonHandler(
+              isEnabled: isVolumeButtonCaptureEnabled,
+              onVolumeUp: {
+                handleVolumeButton(isVolumeUp: true)
+              },
+              onVolumeDown: {
+                handleVolumeButton(isVolumeUp: false)
+              }
+            )
+          )
+        #endif
     }
 
     private func loadBook() async {
@@ -1244,6 +1269,26 @@
       keyboardHelpTimer = nil
       showKeyboardHelp.toggle()
     }
+
+    #if os(iOS)
+      private func handleVolumeButton(isVolumeUp: Bool) {
+        guard isVolumeButtonCaptureEnabled else { return }
+        switch dismissGestureReadingDirection {
+        case .ltr, .vertical, .webtoon:
+          if isVolumeUp {
+            goToNextEpubPage()
+          } else {
+            viewModel.goToPreviousPage()
+          }
+        case .rtl:
+          if isVolumeUp {
+            viewModel.goToPreviousPage()
+          } else {
+            goToNextEpubPage()
+          }
+        }
+      }
+    #endif
 
     private func triggerKeyboardHelp(timeout: TimeInterval) {
       keyboardHelpTimer?.invalidate()

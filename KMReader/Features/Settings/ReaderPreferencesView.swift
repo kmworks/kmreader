@@ -17,6 +17,7 @@ struct ReaderPreferencesView: View {
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   #if os(iOS)
     @AppStorage("enableReaderLiveActivity") private var enableReaderLiveActivity: Bool = true
+    @AppStorage("volumeButtonPageTurnEnabled") private var volumeButtonPageTurnEnabled: Bool = false
   #endif
   #if os(iOS) || os(tvOS)
     @AppStorage("keepScreenAwakeWhileReading") private var keepScreenAwakeWhileReading: Bool = false
@@ -121,6 +122,21 @@ struct ReaderPreferencesView: View {
         }
         .pickerStyle(.menu)
       }
+
+      #if os(iOS)
+        Section(header: Text("Controls")) {
+          Toggle(isOn: $volumeButtonPageTurnEnabled) {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Turn Pages with Volume Buttons")
+              Text(
+                "Use volume up for the next page and volume down for the previous page. System volume is kept within 1% to 99% while reading."
+              )
+              .font(.caption)
+              .foregroundStyle(.secondary)
+            }
+          }
+        }
+      #endif
 
       Section(header: Text(String(localized: "Screen"))) {
         #if os(macOS)
