@@ -288,8 +288,20 @@
             warmupObserver == nil, let longPressRecognizer
           {
             let observer = PanelLongPressWarmupObserver(
-              onTouchDown: { [weak self] in self?.parent.onPanelWarmup() },
-              onCancel: { [weak self] in self?.parent.onPanelWarmupCancel() }
+              controller: parent.panelModeController,
+              currentPage: { [self] in
+                guard let page = parent.viewModel.currentPage,
+                  let readerPage = parent.viewModel.currentReaderPage
+                else { return nil }
+                return (
+                  readerPage.bookId, page,
+                  PanelPagePresentation(
+                    direction: parent.readingDirection,
+                    rotation: parent.viewModel.rotation,
+                    borderCropMode: AppConfig.divinaPageBorderCropMode
+                  )
+                )
+              }
             )
             observer.attach(to: longPressRecognizer)
             warmupObserver = observer
@@ -956,8 +968,7 @@
         let point = frontSlotView?.panelEngagementPoint(
           forContainerPoint: recognizer.location(in: containerView)
         )
-        parent.onPanelTouchDown(point)
-        parent.onPanelLongPressBegan(point)
+        parent.panelModeController.longPressDidBegin(at: point)
         parent.onPanelLongPress(point)
       }
 

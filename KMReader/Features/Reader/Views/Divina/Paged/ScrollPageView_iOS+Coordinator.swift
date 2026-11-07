@@ -143,8 +143,20 @@
             warmupObserver == nil, let longPressGesture
           {
             let observer = PanelLongPressWarmupObserver(
-              onTouchDown: { [weak self] in self?.parent.onPanelWarmup() },
-              onCancel: { [weak self] in self?.parent.onPanelWarmupCancel() }
+              controller: parent.panelModeController,
+              currentPage: { [self] in
+                guard let page = parent.viewModel.currentPage,
+                  let readerPage = parent.viewModel.currentReaderPage
+                else { return nil }
+                return (
+                  readerPage.bookId, page,
+                  PanelPagePresentation(
+                    direction: parent.readingDirection,
+                    rotation: parent.viewModel.rotation,
+                    borderCropMode: AppConfig.divinaPageBorderCropMode
+                  )
+                )
+              }
             )
             observer.attach(to: longPressGesture)
             warmupObserver = observer
@@ -994,14 +1006,12 @@
         guard let indexPath = collectionView.indexPathForItem(at: location),
           let cell = collectionView.cellForItem(at: indexPath) as? NativePagedPageCell
         else {
-          parent.onPanelTouchDown(nil)
-          parent.onPanelLongPressBegan(nil)
+          parent.panelModeController.longPressDidBegin(at: nil)
           parent.onPanelLongPress(nil)
           return
         }
         let point = cell.panelEngagementPoint(at: recognizer.location(in: cell))
-        parent.onPanelTouchDown(point)
-        parent.onPanelLongPressBegan(point)
+        parent.panelModeController.longPressDidBegin(at: point)
         parent.onPanelLongPress(point)
       }
 

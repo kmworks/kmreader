@@ -181,12 +181,15 @@ final class PanelModeController {
     }
   }
 
-  func prepareForPossibleEngagement(at point: PanelEngagementPoint?) {
+  func prepareForPossibleEngagement(
+    bookId: String,
+    page: BookPage,
+    presentation: PanelPagePresentation
+  ) {
     guard !engaged, !isPreparingEngagement else { return }
     isPreparingEngagement = true
-    engagementPoint = point
+    beginPage(bookId: bookId, page: page, presentation: presentation)
     if isCurrentPageEngageable { return }
-    guard let bookId = currentBookId, let page = currentPage, let presentation = currentPresentation else { return }
     orchestrator.prewarm(bookId: bookId, page: page, presentation: presentation, priority: .userInitiated)
   }
 
