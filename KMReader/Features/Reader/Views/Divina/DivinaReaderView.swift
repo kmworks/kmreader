@@ -272,32 +272,6 @@ struct DivinaReaderView: View {
     }
   }
 
-  private func preparePanelModeCurrentPageForLongPress(at point: PanelEngagementPoint?) {
-    guard readerLongPressAction == .panelMode, !panelModeActive, !isExitingPanelMode else { return }
-    guard let readerPage = viewModel.currentReaderPage,
-      let bookPage = viewModel.page(for: readerPage.id)
-    else { return }
-    let presentation = PanelPagePresentation(
-      direction: readingDirection,
-      rotation: rotation,
-      borderCropMode: divinaPageBorderCropMode
-    )
-    panelModeController.beginPage(bookId: readerPage.bookId, page: bookPage, presentation: presentation)
-    panelModeController.prepareForPossibleEngagement(at: point)
-  }
-
-  private func cancelPanelModePreparation() {
-    panelModeController.cancelEngagementPreparation()
-  }
-
-  private func handlePanelLongPressBegan(at point: PanelEngagementPoint?) {
-    panelModeController.longPressDidBegin(at: point)
-  }
-
-  private func warmPanelModeLongPress() {
-    preparePanelModeCurrentPageForLongPress(at: nil)
-  }
-
   /// Force single-page presentation (one coordinate space for the panel rects) for the
   /// mode's duration, on enable rather than on engage, so engaging is pure zoom with no
   /// view-tree rebuild. Effective-value overrides via `@State`; never written to `AppConfig`.
@@ -1201,10 +1175,7 @@ struct DivinaReaderView: View {
                 onDismiss: { closeReader() },
                 onTapZoneTap: handleTapZoneTap,
                 onPanelLongPress: handlePanelLongPress,
-                onPanelTouchDown: preparePanelModeCurrentPageForLongPress,
-                onPanelLongPressBegan: handlePanelLongPressBegan,
-                onPanelWarmup: warmPanelModeLongPress,
-                onPanelWarmupCancel: cancelPanelModePreparation
+                panelModeController: panelModeController
               )
             } else {
               CurlPageView(
@@ -1218,10 +1189,7 @@ struct DivinaReaderView: View {
                 onDismiss: { closeReader() },
                 onTapZoneTap: handleTapZoneTap,
                 onPanelLongPress: handlePanelLongPress,
-                onPanelTouchDown: preparePanelModeCurrentPageForLongPress,
-                onPanelLongPressBegan: handlePanelLongPressBegan,
-                onPanelWarmup: warmPanelModeLongPress,
-                onPanelWarmupCancel: cancelPanelModePreparation
+                panelModeController: panelModeController
               )
             }
           #else
@@ -1256,11 +1224,7 @@ struct DivinaReaderView: View {
               panelZoomController: panelModeController.zoomController,
               panelModeEngaged: panelModeController.engaged,
               onPanelLongPress: handlePanelLongPress,
-              panelModeController: panelModeController,
-              onPanelTouchDown: preparePanelModeCurrentPageForLongPress,
-              onPanelLongPressBegan: handlePanelLongPressBegan,
-              onPanelWarmup: warmPanelModeLongPress,
-              onPanelWarmupCancel: cancelPanelModePreparation
+              panelModeController: panelModeController
             )
           #endif
         }
@@ -1317,10 +1281,7 @@ struct DivinaReaderView: View {
     #if os(iOS)
       .panelModeLongPress(
         action: handlePanelLongPress,
-        onTouchDown: preparePanelModeCurrentPageForLongPress,
-        onLongPressBegan: handlePanelLongPressBegan,
-        onWarmup: warmPanelModeLongPress,
-        onWarmupCancel: cancelPanelModePreparation
+        controller: panelModeController
       )
     #endif
   }

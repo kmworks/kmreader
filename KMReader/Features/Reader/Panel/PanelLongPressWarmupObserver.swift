@@ -4,16 +4,19 @@
   /// Observes the existing long press without replacing its delegate or changing arbitration.
   @MainActor
   final class PanelLongPressWarmupObserver: NSObject {
-    let onTouchDown: () -> Void
-    let onCancel: () -> Void
+    private let controller: PanelModeController
+    private let currentPage: () -> (bookId: String, page: BookPage, presentation: PanelPagePresentation)?
 
     private weak var recognizer: UILongPressGestureRecognizer?
     private var startPoint: CGPoint?
     private var cancelled = false
 
-    init(onTouchDown: @escaping () -> Void, onCancel: @escaping () -> Void) {
-      self.onTouchDown = onTouchDown
-      self.onCancel = onCancel
+    init(
+      controller: PanelModeController,
+      currentPage: @escaping () -> (bookId: String, page: BookPage, presentation: PanelPagePresentation)?
+    ) {
+      self.controller = controller
+      self.currentPage = currentPage
       super.init()
     }
 
@@ -27,7 +30,7 @@
       recognizer = nil
       startPoint = nil
       cancelled = false
-      onCancel()
+      controller.cancelEngagementPreparation()
     }
 
     @objc private func longPressChanged(_ recognizer: UILongPressGestureRecognizer) {
@@ -36,7 +39,13 @@
         guard !cancelled, recognizer.numberOfTouches == 1 else { return }
         if startPoint == nil {
           startPoint = recognizer.location(in: recognizer.view)
-          onTouchDown()
+          if let currentPage = currentPage() {
+            controller.prepareForPossibleEngagement(
+              bookId: currentPage.bookId,
+              page: currentPage.page,
+              presentation: currentPage.presentation
+            )
+          }
         } else if let startPoint,
           hypot(
             recognizer.location(in: recognizer.view).x - startPoint.x,
@@ -44,14 +53,14 @@
           ) > 10
         {
           cancelled = true
-          onCancel()
+          controller.cancelEngagementPreparation()
         }
       case .began:
         cancelled = true
       case .ended, .cancelled, .failed:
         startPoint = nil
         cancelled = false
-        onCancel()
+        controller.cancelEngagementPreparation()
       default:
         break
       }

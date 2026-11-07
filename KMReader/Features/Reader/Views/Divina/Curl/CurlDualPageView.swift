@@ -18,10 +18,7 @@
     let onDismiss: () -> Void
     let onTapZoneTap: ReaderTapZoneTapHandler
     let onPanelLongPress: (PanelEngagementPoint?) -> Void
-    let onPanelTouchDown: (PanelEngagementPoint?) -> Void
-    let onPanelLongPressBegan: (PanelEngagementPoint?) -> Void
-    let onPanelWarmup: () -> Void
-    let onPanelWarmupCancel: () -> Void
+    let panelModeController: PanelModeController
 
     enum SpreadSlot: Int {
       case first = 0
