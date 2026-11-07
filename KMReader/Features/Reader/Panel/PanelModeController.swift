@@ -38,6 +38,7 @@ final class PanelModeController {
   private var pageGeneration = 0
   private var engagementTask: Task<Void, Never>?
   private var engagementPoint: PanelEngagementPoint?
+  private var isPreparingEngagement = false
   private var sequence: PanelSequence = .empty
   private var cursor = 0
   private var pendingTurnForward: Bool?
@@ -180,7 +181,30 @@ final class PanelModeController {
     }
   }
 
+  func prepareForPossibleEngagement(at point: PanelEngagementPoint?) {
+    guard !engaged, !isPreparingEngagement else { return }
+    isPreparingEngagement = true
+    engagementPoint = point
+    if isCurrentPageEngageable { return }
+    guard let bookId = currentBookId, let page = currentPage, let presentation = currentPresentation else { return }
+    orchestrator.prewarm(bookId: bookId, page: page, presentation: presentation, priority: .userInitiated)
+  }
+
+  func cancelEngagementPreparation() {
+    guard isPreparingEngagement else { return }
+    isPreparingEngagement = false
+    guard !engaged, engagementTask == nil else { return }
+    engagementPoint = nil
+    orchestrator.cancelAll()
+  }
+
+  func longPressDidBegin(at point: PanelEngagementPoint?) {
+    isPreparingEngagement = false
+    if let point { engagementPoint = point }
+  }
+
   func disengage() {
+    cancelEngagementPreparation()
     engagementTask?.cancel()
     engagementTask = nil
     engaged = false
@@ -191,6 +215,21 @@ final class PanelModeController {
     cursor = 0
     pageGeneration += 1
     zoomController.resetToFit(animated: true)
+  }
+
+  func disengageAndWaitForZoomOut() async {
+    cancelEngagementPreparation()
+    engagementTask?.cancel()
+    engagementTask = nil
+    engaged = false
+    engagementPoint = nil
+    pendingTurnForward = nil
+    awaitingPageTurn = false
+    queuedStepForward = nil
+    cursor = 0
+    pageGeneration += 1
+    orchestrator.cancelAll()
+    await zoomController.resetToFitAndWait(animated: true)
   }
 
   /// Panel mode fully turned off (not merely disengaged): exit engaged and cancel all

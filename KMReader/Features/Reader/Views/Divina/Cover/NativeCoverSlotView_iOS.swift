@@ -67,8 +67,8 @@
       pageContentView.zoomToPanelRect(rect, animated: animated)
     }
 
-    func resetPanelZoomToFit(animated: Bool) {
-      pageContentView.resetPanelZoomToFit(animated: animated)
+    func resetPanelZoomToFit(animated: Bool, completion: (() -> Void)? = nil) {
+      pageContentView.resetPanelZoomToFit(animated: animated, completion: completion)
     }
 
     var canReceivePanelZoomCommands: Bool {

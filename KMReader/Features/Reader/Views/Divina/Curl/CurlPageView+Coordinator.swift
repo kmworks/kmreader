@@ -31,6 +31,7 @@
       private weak var singleTapRecognizer: UITapGestureRecognizer?
       private weak var doubleTapRecognizer: UITapGestureRecognizer?
       private weak var longPressRecognizer: UILongPressGestureRecognizer?
+      private var warmupObserver: PanelLongPressWarmupObserver?
       private weak var observedViewModel: ReaderViewModel?
       private var pagePresentationObserverToken: UUID?
 
@@ -89,6 +90,7 @@
 
         applyDoubleTapRecognizerState()
         longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
+        updateWarmupObserver()
         PageCurlControllerPlanner.configure(
           pageViewController: pageViewController,
           semanticContentAttribute: parent.mode.isRTL ? .forceRightToLeft : .forceLeftToRight
@@ -156,6 +158,8 @@
         singleTapRecognizer = nil
         doubleTapRecognizer = nil
         longPressRecognizer = nil
+        warmupObserver?.detach()
+        warmupObserver = nil
 
         controllerIdentities.removeAllObjects()
         renderedSnapshot = PageCurlViewItemsSnapshot(items: [])
@@ -197,6 +201,22 @@
 
       private func applyDoubleTapRecognizerState() {
         doubleTapRecognizer?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
+      }
+
+      private func updateWarmupObserver() {
+        if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
+          warmupObserver == nil, let longPressRecognizer
+        {
+          let observer = PanelLongPressWarmupObserver(
+            onTouchDown: { [weak self] in self?.parent.onPanelWarmup() },
+            onCancel: { [weak self] in self?.parent.onPanelWarmupCancel() }
+          )
+          observer.attach(to: longPressRecognizer)
+          warmupObserver = observer
+        } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
+          warmupObserver?.detach()
+          warmupObserver = nil
+        }
       }
 
       private func isCurrentAttachment(_ pageViewController: UIPageViewController) -> Bool {
@@ -839,7 +859,10 @@
           let controller = pageViewController?.viewControllers?.first as? NativeImagePageViewController
         else { return }
         HapticFeedback.prepare()
-        parent.onPanelLongPress(controller.panelEngagementPoint(at: recognizer.location(in: controller.view)))
+        let point = controller.panelEngagementPoint(at: recognizer.location(in: controller.view))
+        parent.onPanelTouchDown(point)
+        parent.onPanelLongPressBegan(point)
+        parent.onPanelLongPress(point)
       }
 
       private var isTapZoneSuppressed: Bool {

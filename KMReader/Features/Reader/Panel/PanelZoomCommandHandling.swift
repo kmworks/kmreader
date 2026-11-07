@@ -8,5 +8,5 @@
 protocol PanelZoomCommandHandling: AnyObject {
   var canReceivePanelZoomCommands: Bool { get }
   @discardableResult func zoomToPanelRect(_ rect: PanelRect, animated: Bool) -> Bool
-  @discardableResult func resetPanelZoomToFit(animated: Bool) -> Bool
+  @discardableResult func resetPanelZoomToFit(animated: Bool, completion: (() -> Void)?) -> Bool
 }

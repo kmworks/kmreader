@@ -396,12 +396,15 @@
     /// Reset back to the whole, fitted page. Clears the panel-walk zoom AND the centering
     /// inset/offset — a full-width panel sits at min zoom but is still inset-shifted, so a
     /// plain zoomScale check would miss it.
-    func resetPanelZoomToFit(animated: Bool) {
+    func resetPanelZoomToFit(animated: Bool, completion: (() -> Void)? = nil) {
       let atRest =
         scrollView.zoomScale == scrollView.minimumZoomScale
         && scrollView.contentInset == .zero
         && scrollView.contentOffset == .zero
-      guard !atRest else { return }
+      guard !atRest else {
+        completion?()
+        return
+      }
       if animated {
         UIView.animate(
           withDuration: PanelZoomTuning.stepDuration,
@@ -411,9 +414,15 @@
           self.scrollView.contentInset = .zero
           self.scrollView.setZoomScale(self.scrollView.minimumZoomScale, animated: false)
           self.scrollView.contentOffset = .zero
+        } completion: { _ in
+          if self.tracksGlobalZoomState, let viewModel = self.viewModel {
+            viewModel.isZoomed = false
+          }
+          completion?()
         }
       } else {
         forceResetZoom()
+        completion?()
         if tracksGlobalZoomState, let viewModel, viewModel.isZoomed {
           viewModel.isZoomed = false
         }

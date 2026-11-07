@@ -20,6 +20,7 @@
       private var isActive = true
       private weak var doubleTapRecognizer: UITapGestureRecognizer?
       private weak var longPressRecognizer: UILongPressGestureRecognizer?
+      private var warmupObserver: PanelLongPressWarmupObserver?
       private var installedTapRecognizers: [UIGestureRecognizer] = []
       private var transitionTargetItem: ReaderViewItem?
       private var viewItemsSnapshot: PageCurlViewItemsSnapshot
@@ -76,6 +77,23 @@
       func applyDoubleTapRecognizerState() {
         doubleTapRecognizer?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
         longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
+        updateWarmupObserver()
+      }
+
+      private func updateWarmupObserver() {
+        if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
+          warmupObserver == nil, let longPressRecognizer
+        {
+          let observer = PanelLongPressWarmupObserver(
+            onTouchDown: { [weak self] in self?.parent.onPanelWarmup() },
+            onCancel: { [weak self] in self?.parent.onPanelWarmupCancel() }
+          )
+          observer.attach(to: longPressRecognizer)
+          warmupObserver = observer
+        } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
+          warmupObserver?.detach()
+          warmupObserver = nil
+        }
       }
 
       private var totalSpreads: Int {
@@ -443,6 +461,8 @@
       }
 
       func teardown(pageViewController: UIPageViewController) {
+        warmupObserver?.detach()
+        warmupObserver = nil
         guard isActive else { return }
         isActive = false
         unregisterViewModelObservation()
@@ -1001,9 +1021,14 @@
           guard let controller = controller as? NativeImagePageViewController,
             controller.view.frame.contains(point)
           else { continue }
-          parent.onPanelLongPress(controller.panelEngagementPoint(at: recognizer.location(in: controller.view)))
+          let point = controller.panelEngagementPoint(at: recognizer.location(in: controller.view))
+          parent.onPanelTouchDown(point)
+          parent.onPanelLongPressBegan(point)
+          parent.onPanelLongPress(point)
           return
         }
+        parent.onPanelTouchDown(nil)
+        parent.onPanelLongPressBegan(nil)
         parent.onPanelLongPress(nil)
       }
 

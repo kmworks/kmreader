@@ -27,6 +27,9 @@
       private var singleTapRecognizer: UITapGestureRecognizer?
       private var doubleTapRecognizer: UITapGestureRecognizer?
       private var longPressRecognizer: UILongPressGestureRecognizer?
+      #if os(iOS)
+        private var warmupObserver: PanelLongPressWarmupObserver?
+      #endif
 
       init(_ parent: NativeCoverPageView) {
         self.parent = parent
@@ -48,6 +51,9 @@
         applyPanRecognizerState()
         applyDoubleTapRecognizerState()
         longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
+        #if os(iOS)
+          updateWarmupObserver()
+        #endif
 
         if deckState.currentItem == nil {
           syncCurrentItemFromViewModel(force: true)
@@ -97,6 +103,10 @@
         singleTapRecognizer = nil
         doubleTapRecognizer = nil
         longPressRecognizer = nil
+        #if os(iOS)
+          warmupObserver?.detach()
+          warmupObserver = nil
+        #endif
         pagePresentationCoordinator.teardown()
         containerView = nil
       }
@@ -135,9 +145,9 @@
       }
 
       @discardableResult
-      func resetPanelZoomToFit(animated: Bool) -> Bool {
+      func resetPanelZoomToFit(animated: Bool, completion: (() -> Void)?) -> Bool {
         guard canReceivePanelZoomCommands else { return false }
-        frontSlotView?.resetPanelZoomToFit(animated: animated)
+        frontSlotView?.resetPanelZoomToFit(animated: animated, completion: completion)
         return true
       }
 
@@ -271,6 +281,24 @@
         doubleTapRecognizer?.isEnabled =
           !parent.renderConfig.panelMode && parent.renderConfig.doubleTapZoomMode.isEnabled
       }
+
+      #if os(iOS)
+        private func updateWarmupObserver() {
+          if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
+            warmupObserver == nil, let longPressRecognizer
+          {
+            let observer = PanelLongPressWarmupObserver(
+              onTouchDown: { [weak self] in self?.parent.onPanelWarmup() },
+              onCancel: { [weak self] in self?.parent.onPanelWarmupCancel() }
+            )
+            observer.attach(to: longPressRecognizer)
+            warmupObserver = observer
+          } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
+            warmupObserver?.detach()
+            warmupObserver = nil
+          }
+        }
+      #endif
 
       private var currentItem: ReaderViewItem? {
         deckState.currentItem
@@ -928,6 +956,8 @@
         let point = frontSlotView?.panelEngagementPoint(
           forContainerPoint: recognizer.location(in: containerView)
         )
+        parent.onPanelTouchDown(point)
+        parent.onPanelLongPressBegan(point)
         parent.onPanelLongPress(point)
       }
 
@@ -981,7 +1011,13 @@
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
       ) -> Bool {
-        gestureRecognizer === longPressRecognizer || otherGestureRecognizer === longPressRecognizer
+        if gestureRecognizer === singleTapRecognizer, otherGestureRecognizer === longPressRecognizer {
+          return otherGestureRecognizer.state != .began && otherGestureRecognizer.state != .changed
+        }
+        if gestureRecognizer === longPressRecognizer, otherGestureRecognizer === singleTapRecognizer {
+          return gestureRecognizer.state != .began && gestureRecognizer.state != .changed
+        }
+        return false
       }
 
       func gestureRecognizer(

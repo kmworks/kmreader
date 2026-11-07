@@ -48,6 +48,11 @@
     let panelZoomController: PanelZoomController
     let panelModeEngaged: Bool
     let onPanelLongPress: (PanelEngagementPoint?) -> Void
+    let panelModeController: PanelModeController
+    let onPanelTouchDown: (PanelEngagementPoint?) -> Void
+    let onPanelLongPressBegan: (PanelEngagementPoint?) -> Void
+    let onPanelWarmup: () -> Void
+    let onPanelWarmupCancel: () -> Void
 
     func makeCoordinator() -> Coordinator {
       Coordinator(self)
