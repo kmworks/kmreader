@@ -5582,6 +5582,7 @@
       }
     },
     "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press. Live Text keeps the gesture while enabled." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
