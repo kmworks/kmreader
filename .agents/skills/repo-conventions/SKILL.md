@@ -92,8 +92,9 @@ Subsystem conventions and invariants for KMReader. `AGENTS.md` holds repo-wide r
 
 ### Next Book Suggestions
 
-- The next book is whatever the server's `/next` endpoint returns; the client sends no parameter and keeps no preference for it. Servers that skip read books do so by their own setting (kmrs's "skip read books on next"), so every client of that server agrees. The previous book always stays plain order.
-- Offline, and for the local continue-reading target, the local projection supplies the plain next book in series order (or the read list's order in a read-list context). An appended next segment records the book it follows as its previous book, so a book the server skipped never lands between two segments.
+- Online, the next book is whatever the server's `/next` endpoint returns; the client sends no parameter and keeps no preference of its own. kmrs can skip read books by a server setting, so every client of that server agrees. The previous book always stays plain order.
+- `ServerSettingsService` copies that setting (`skipReadOnNext` on `/api/v1/settings`, readable by every kmrs user) per instance into `AppConfig.serverSkipReadOnNext` after login, switch, and each successful user load; a failed request keeps the last value, and servers that never send it (Komga) count as off.
+- Offline, and for the local continue-reading target, the local projection applies the same rule: with the setting on, the first later book in series order (or the read list's order in a read-list context) that isn't read, else the plain next book (`Collection.nextToRead(after:isRead:)`); with it off, the plain next book. An appended next segment records the book it follows as its previous book, so a skipped book never lands between two segments.
 
 ### Read List Continuation
 

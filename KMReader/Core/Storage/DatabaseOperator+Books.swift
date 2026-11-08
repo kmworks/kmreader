@@ -272,10 +272,13 @@ extension DatabaseOperator {
 
   /// `downloadedOnly` restricts the candidates to downloaded books (offline
   /// mode); otherwise the whole local projection of the series takes part.
+  /// With `skipRead` (the server's skip-read setting), the book after the
+  /// last one read skips books already read, like the server's next book.
   func fetchContinueReadingBook(
     seriesId: String,
     instanceId: String,
-    downloadedOnly: Bool
+    downloadedOnly: Bool,
+    skipRead: Bool
   ) -> Book? {
     guard !seriesId.isEmpty, !instanceId.isEmpty else { return nil }
     return try? read { db in
@@ -301,7 +304,9 @@ extension DatabaseOperator {
         downloadedOnly: downloadedOnly
       ),
         let lastReadIndex = orderedBooks.firstIndex(where: { $0.id == lastRead.id }),
-        let nextBook = orderedBooks.dropFirst(lastReadIndex + 1).first
+        let nextBook = skipRead
+          ? orderedBooks.nextToRead(after: lastReadIndex, isRead: { $0.progressCompleted == true })
+          : orderedBooks.dropFirst(lastReadIndex + 1).first
       {
         return nextBook.toBook()
       }
@@ -569,8 +574,9 @@ extension DatabaseOperator {
     }
   }
 
-  /// The book after `bookId` in its series, or in `readListId`'s order.
-  func getNextBook(instanceId: String, bookId: String, readListId: String?) async -> Book? {
+  /// The book after `bookId` in its series, or in `readListId`'s order. With
+  /// `skipRead`, the first later book that isn't read, else the plain next book.
+  func getNextBook(instanceId: String, bookId: String, readListId: String?, skipRead: Bool) async -> Book? {
     try? read { db in
       guard
         let siblings = try fetchSiblingBooks(
@@ -578,7 +584,10 @@ extension DatabaseOperator {
       else {
         return nil
       }
-      return siblings.books.dropFirst(siblings.index + 1).first
+      guard skipRead else {
+        return siblings.books.dropFirst(siblings.index + 1).first
+      }
+      return siblings.books.nextToRead(after: siblings.index, isRead: { $0.isCompleted })
     }
   }
 

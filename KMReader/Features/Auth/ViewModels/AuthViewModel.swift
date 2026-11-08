@@ -171,6 +171,8 @@ class AuthViewModel {
       current.updateMetadata(from: user)
       AppConfig.current = current
       bootstrapState = .ready
+      let instanceId = current.instanceId
+      Task { await ServerSettingsService.refreshSkipReadOnNext(instanceId: instanceId) }
       return true
     } catch {
       if let apiError = error as? APIError {
@@ -393,6 +395,7 @@ class AuthViewModel {
 
     // Load libraries
     await LibraryManager.shared.loadLibraries()
+    await ServerSettingsService.refreshSkipReadOnNext(instanceId: finalInstanceId)
 
     // Update user and credentials version
     var current = AppConfig.current

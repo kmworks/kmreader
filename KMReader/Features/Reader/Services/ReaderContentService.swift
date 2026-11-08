@@ -313,7 +313,8 @@ struct ReaderContentService {
       return await database?.getNextBook(
         instanceId: instanceId,
         bookId: bookId,
-        readListId: readListId
+        readListId: readListId,
+        skipRead: AppConfig.serverSkipReadOnNext.skipsRead(instanceId: instanceId)
       )
     }
   }

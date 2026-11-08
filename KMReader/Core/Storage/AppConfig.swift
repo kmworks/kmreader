@@ -1253,6 +1253,20 @@ enum AppConfig {
     }
   }
 
+  static nonisolated var serverSkipReadOnNext: ServerSkipReadOnNext {
+    get {
+      if let stored = UserDefaults.standard.string(forKey: "serverSkipReadOnNext"),
+        let value = ServerSkipReadOnNext(rawValue: stored)
+      {
+        return value
+      }
+      return ServerSkipReadOnNext()
+    }
+    set {
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverSkipReadOnNext")
+    }
+  }
+
   static nonisolated var serverSmartListCapability: ServerSmartListCapability {
     get {
       if let stored = UserDefaults.standard.string(forKey: "serverSmartListCapability"),
