@@ -271,10 +271,9 @@ struct ReaderContentService {
           readListId: readListId
         )
       case .next:
-        resolvedBook = try await NextBookToReadResolver.resolve(
-          after: bookId,
-          readListId: readListId,
-          instanceId: instanceId
+        resolvedBook = try await BookService.getNextBook(
+          bookId: bookId,
+          readListId: readListId
         )
       }
 
@@ -311,12 +310,10 @@ struct ReaderContentService {
         readListId: readListId
       )
     case .next:
-      guard let database else { return nil }
-      return await NextBookToReadResolver.resolveLocally(
-        after: bookId,
-        readListId: readListId,
+      return await database?.getNextBook(
         instanceId: instanceId,
-        database: database
+        bookId: bookId,
+        readListId: readListId
       )
     }
   }

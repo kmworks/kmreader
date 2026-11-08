@@ -7,15 +7,13 @@ import Foundation
 
 nonisolated enum SeriesContinueReadingOnlineResolver {
   @concurrent
-  static func resolve(seriesId: String, instanceId: String) async -> Book? {
+  static func resolve(seriesId: String) async -> Book? {
     if let inProgress = await fetchLatestBook(seriesId: seriesId, status: .inProgress) {
       return inProgress
     }
 
     if let lastRead = await fetchLatestBook(seriesId: seriesId, status: .read) {
-      if let next = try? await NextBookToReadResolver.resolve(
-        after: lastRead.id, readListId: nil, instanceId: instanceId)
-      {
+      if let next = try? await BookService.getNextBook(bookId: lastRead.id) {
         return next
       }
       if let unread = await fetchFirstUnreadBook(seriesId: seriesId) {

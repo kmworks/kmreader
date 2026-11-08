@@ -12,7 +12,6 @@ struct ReaderPreferencesView: View {
   @AppStorage("offlineAutoDeleteRead") private var autoDeleteRead: Bool = false
   @AppStorage("progressRecordingThreshold") private var progressRecordingThreshold: Int =
     AppConfig.progressRecordingThreshold
-  @AppStorage("suggestNextUnreadBook") private var suggestNextUnreadBook: Bool = true
   @AppStorage("spaceKeyAction") private var spaceKeyAction: SpaceKeyAction = .toggleControls
   @AppStorage("showKeyboardHelpOverlay") private var showKeyboardHelpOverlay: Bool = true
   #if os(iOS)
@@ -80,17 +79,6 @@ struct ReaderPreferencesView: View {
           )
           .font(.caption)
           .foregroundColor(.secondary)
-        }
-      }
-
-      Section(header: Text(String(localized: "settings.reader.nextBook"))) {
-        Toggle(isOn: $suggestNextUnreadBook) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(String(localized: "settings.reader.suggestNextUnreadBook.title"))
-            Text(String(localized: "settings.reader.suggestNextUnreadBook.caption"))
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
         }
       }
 

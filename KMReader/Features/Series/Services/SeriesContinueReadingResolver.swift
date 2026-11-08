@@ -15,7 +15,7 @@ enum SeriesContinueReadingResolver {
     if isOffline {
       return await resolveOffline(seriesId: seriesId, instanceId: instanceId)
     }
-    return await SeriesContinueReadingOnlineResolver.resolve(seriesId: seriesId, instanceId: instanceId)
+    return await SeriesContinueReadingOnlineResolver.resolve(seriesId: seriesId)
   }
 
   /// Resolves from the local projection (all local books, not just downloaded
@@ -26,14 +26,12 @@ enum SeriesContinueReadingResolver {
   ) async -> Book? {
     guard let database = try? await DatabaseOperator.database() else { return nil }
     return await database.fetchContinueReadingBook(
-      seriesId: seriesId, instanceId: instanceId, downloadedOnly: false,
-      skipRead: AppConfig.suggestNextUnreadBook)
+      seriesId: seriesId, instanceId: instanceId, downloadedOnly: false)
   }
 
   private static func resolveOffline(seriesId: String, instanceId: String) async -> Book? {
     guard let database = try? await DatabaseOperator.database() else { return nil }
     return await database.fetchContinueReadingBook(
-      seriesId: seriesId, instanceId: instanceId, downloadedOnly: true,
-      skipRead: AppConfig.suggestNextUnreadBook)
+      seriesId: seriesId, instanceId: instanceId, downloadedOnly: true)
   }
 }
