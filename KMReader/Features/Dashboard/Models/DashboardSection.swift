@@ -195,13 +195,16 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
     switch self {
     case .keepReading:
       // Keep Reading has no endpoint of its own, so kmrs's recent reading window
-      // rides on the search as a readDate condition; On Deck arrives filtered.
+      // rides on the search as a readDate condition where the server supports
+      // it; On Deck arrives filtered.
       var filters = BookSearchFilters(
         libraryIds: libraryIds,
         includeReadStatuses: [ReadStatus.inProgress]
       )
-      filters.readDateAfter = ServerProfileService.recentReadingCutoff(
-        instanceId: AppConfig.current.instanceId)
+      let instanceId = AppConfig.current.instanceId
+      if ServerProfileService.supports(.readDateSearch, instanceId: instanceId) {
+        filters.readDateAfter = ServerProfileService.recentReadingCutoff(instanceId: instanceId)
+      }
       let search = BookSearch(condition: BookSearch.buildCondition(filters: filters))
       return try await SyncService.syncBooksList(
         search: search,

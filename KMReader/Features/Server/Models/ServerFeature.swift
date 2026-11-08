@@ -12,6 +12,8 @@ nonisolated enum ServerFeature: String, Codable, CaseIterable, Sendable {
   case readingStats
   case smartLists
   case sessions
+  /// The `readDate` condition on the book search.
+  case readDateSearch
   case komf
   case trackers
   case updateCheck
