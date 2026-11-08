@@ -26,12 +26,9 @@ import SwiftUI
           }
 
           Section {
-            SettingsSectionRow(section: .mangaTranslation)
-          }
-
-          Section {
             SettingsSectionRow(section: .reading)
             SettingsSectionRow(section: .divinaReader)
+            SettingsSectionRow(section: .mangaTools)
             SettingsSectionRow(section: .pdfReader)
             SettingsSectionRow(section: .epubTheme)
             SettingsSectionRow(section: .epubSettings)
@@ -87,8 +84,8 @@ import SwiftUI
         SettingsCacheView()
       case .divinaReader:
         DivinaPreferencesView()
-      case .mangaTranslation:
-        MangaTranslationSettingsView()
+      case .mangaTools:
+        MangaToolsSettingsView()
       case .reading:
         ReaderPreferencesView()
       case .pdfReader:

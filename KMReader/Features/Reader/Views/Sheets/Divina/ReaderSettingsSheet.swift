@@ -7,7 +7,6 @@ import SwiftUI
 
 struct ReaderSettingsSheet: View {
   let readingDirection: ReadingDirection
-  let panelModeEnabled: Bool
 
   // Persisted settings (via @AppStorage)
   @AppStorage("readerBackground") private var readerBackground: ReaderBackground = .system
@@ -58,12 +57,6 @@ struct ReaderSettingsSheet: View {
     #else
       return false
     #endif
-  }
-
-  private var availableLongPressActions: [ReaderLongPressAction] {
-    ReaderLongPressAction.allCases.filter {
-      $0 != .panelMode || supportsPanelMode
-    }
   }
 
   private var liveTextEnabled: Binding<Bool> {
@@ -202,41 +195,6 @@ struct ReaderSettingsSheet: View {
         }
 
         #if os(iOS)
-          if panelModeEnabled {
-            Section {
-              VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                  Text("Panel Zoom Fill")
-                  Spacer()
-                  Text(String(format: "%.0f%%", panelZoomFillFactor * 100))
-                    .foregroundColor(.secondary)
-                }
-                Slider(
-                  value: $panelZoomFillFactor,
-                  in: 0.75...1.0,
-                  step: 0.05
-                )
-              }
-            } header: {
-              Text("Panel Mode")
-            } footer: {
-              Text(
-                "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page."
-              )
-            }
-          }
-        #endif
-
-        Section(header: Text("Performance")) {
-          Picker("Image Preloading", selection: $divinaPreloadProfile) {
-            ForEach(ReaderPreloadProfile.allCases) { profile in
-              Text(profile.displayName).tag(profile)
-            }
-          }
-          .pickerStyle(.menu)
-        }
-
-        #if os(iOS)
           Section(header: Text("Gestures")) {
             Picker("Double Tap Action", selection: $doubleTapZoomMode) {
               ForEach(DoubleTapZoomMode.allCases) { mode in
@@ -260,8 +218,45 @@ struct ReaderSettingsSheet: View {
                 )
               }
             }
+
+            Picker("Long Press Action", selection: $readerLongPressAction) {
+              ForEach(ReaderLongPressAction.allCases) { action in
+                Label(action.displayName, systemImage: action.icon).tag(action)
+              }
+            }
+            .pickerStyle(.menu)
+          }
+
+          if supportsPanelMode {
+            Section(
+              header: Text("Panel Mode"),
+              footer: Text("Use the Panel Mode button in the reader controls. Page-turn taps move between panels.")
+            ) {
+              VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                  Text("Panel Zoom Fill")
+                  Spacer()
+                  Text(String(format: "%.0f%%", panelZoomFillFactor * 100))
+                    .foregroundColor(.secondary)
+                }
+                Slider(
+                  value: $panelZoomFillFactor,
+                  in: 0.75...1.0,
+                  step: 0.05
+                )
+              }
+            }
           }
         #endif
+
+        Section(header: Text("Performance")) {
+          Picker("Image Preloading", selection: $divinaPreloadProfile) {
+            ForEach(ReaderPreloadProfile.allCases) { profile in
+              Text(profile.displayName).tag(profile)
+            }
+          }
+          .pickerStyle(.menu)
+        }
 
         #if os(iOS) || os(macOS)
           Section(header: Text("Image Processing")) {
@@ -307,26 +302,18 @@ struct ReaderSettingsSheet: View {
           }
         #endif
 
-        #if os(iOS)
-          Section(header: Text("Gestures")) {
-            Picker("Long Press Action", selection: $readerLongPressAction) {
-              ForEach(availableLongPressActions) { action in
-                Text(action.displayName).tag(action)
-              }
-            }
-            .pickerStyle(.menu)
-          }
-        #else
+        #if os(macOS)
           Section(header: Text("Context Menu")) {
             Picker("Long Press Action", selection: $readerLongPressAction) {
-              ForEach(availableLongPressActions) { action in
-                Text(action.displayName).tag(action)
+              ForEach(ReaderLongPressAction.allCases) { action in
+                Label(action.displayName, systemImage: action.icon).tag(action)
               }
             }
             .pickerStyle(.menu)
           }
         #endif
       }
+      .animation(.appCurve(), value: doubleTapZoomMode)
     }
     .presentationDragIndicator(.visible)
   }

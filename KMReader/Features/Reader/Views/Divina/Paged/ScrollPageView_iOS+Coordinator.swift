@@ -34,10 +34,6 @@
       private var applicationWillResignActiveObserver: NSObjectProtocol?
       weak var singleTapGesture: UITapGestureRecognizer?
       weak var doubleTapGesture: UITapGestureRecognizer?
-      weak var longPressGesture: UILongPressGestureRecognizer?
-      #if os(iOS)
-        private var warmupObserver: PanelLongPressWarmupObserver?
-      #endif
 
       init(_ parent: ScrollPageView) {
         self.parent = parent
@@ -46,10 +42,6 @@
       }
 
       func teardown() {
-        #if os(iOS)
-          warmupObserver?.detach()
-          warmupObserver = nil
-        #endif
         deferredViewModelCommitTask?.cancel()
         deferredViewModelCommitTask = nil
         visiblePreloadTask?.cancel()
@@ -80,10 +72,6 @@
         self.parent = parent
         self.collectionView = collectionView
         applyDoubleTapGestureState()
-        longPressGesture?.isEnabled = parent.renderConfig.longPressAction == .panelMode
-        #if os(iOS)
-          updateWarmupObserver()
-        #endif
         installApplicationObserverIfNeeded()
         pagePresentationCoordinator.update(viewModel: parent.viewModel)
 
@@ -136,36 +124,6 @@
       func applyDoubleTapGestureState() {
         doubleTapGesture?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
       }
-
-      #if os(iOS)
-        private func updateWarmupObserver() {
-          if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
-            warmupObserver == nil, let longPressGesture
-          {
-            let observer = PanelLongPressWarmupObserver(
-              controller: parent.panelModeController,
-              currentPage: { [self] in
-                guard let page = parent.viewModel.currentPage,
-                  let readerPage = parent.viewModel.currentReaderPage
-                else { return nil }
-                return (
-                  readerPage.bookId, page,
-                  PanelPagePresentation(
-                    direction: parent.readingDirection,
-                    rotation: parent.viewModel.rotation,
-                    borderCropMode: AppConfig.divinaPageBorderCropMode
-                  )
-                )
-              }
-            )
-            observer.attach(to: longPressGesture)
-            warmupObserver = observer
-          } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
-            warmupObserver?.detach()
-            warmupObserver = nil
-          }
-        }
-      #endif
 
       private func updateRenderInputsIfNeeded() -> Bool {
         let renderInputs = RenderInputs(
@@ -998,22 +956,6 @@
       }
 
       @objc func handleDoubleTap(_: UITapGestureRecognizer) {}
-
-      @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began, !parent.viewModel.isZoomed, let collectionView else { return }
-        let location = recognizer.location(in: collectionView)
-        HapticFeedback.prepare()
-        guard let indexPath = collectionView.indexPathForItem(at: location),
-          let cell = collectionView.cellForItem(at: indexPath) as? NativePagedPageCell
-        else {
-          parent.panelModeController.longPressDidBegin(at: nil)
-          parent.onPanelLongPress(nil)
-          return
-        }
-        let point = cell.panelEngagementPoint(at: recognizer.location(in: cell))
-        parent.panelModeController.longPressDidBegin(at: point)
-        parent.onPanelLongPress(point)
-      }
 
       private func isScrollInteractionActive(in collectionView: UICollectionView) -> Bool {
         collectionView.isDragging || collectionView.isDecelerating || collectionView.isTracking

@@ -57,10 +57,6 @@
       pagedContentView.canPanWholeSpread(forHorizontalDrag: translationX)
     }
 
-    func panelEngagementPoint(at point: CGPoint) -> PanelEngagementPoint? {
-      pagedContentView.panelEngagementPoint(at: convert(point, to: pagedContentView))
-    }
-
     func resetContent(backgroundColor: UIColor) {
       self.backgroundColor = backgroundColor
       contentView.backgroundColor = backgroundColor

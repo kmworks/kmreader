@@ -67,14 +67,6 @@ struct SettingsView: View {
         }
       }
 
-      #if os(iOS) || os(macOS)
-        Section {
-          NavigationLink(value: NavDestination.settingsMangaTranslation) {
-            SettingsSectionRow(section: .mangaTranslation)
-          }
-        }
-      #endif
-
       Section {
         NavigationLink(value: NavDestination.settingsReading) {
           SettingsSectionRow(section: .reading)
@@ -83,6 +75,9 @@ struct SettingsView: View {
           SettingsSectionRow(section: .divinaReader)
         }
         #if os(iOS) || os(macOS)
+          NavigationLink(value: NavDestination.settingsMangaTools) {
+            SettingsSectionRow(section: .mangaTools)
+          }
           NavigationLink(value: NavDestination.settingsPdfReader) {
             SettingsSectionRow(section: .pdfReader)
           }

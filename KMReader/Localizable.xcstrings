@@ -173,17 +173,6 @@
       },
       "shouldTranslate" : false
     },
-    "%@ #%@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ #%2$@"
-          }
-        }
-      },
-      "shouldTranslate" : false
-    },
     "%@ left" : {
       "localizations" : {
         "de" : {
@@ -5518,6 +5507,7 @@
       }
     },
     "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9231,6 +9221,7 @@
       }
     },
     "Book Navigation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13252,13 +13243,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "设置当前分格占屏幕的比例，剩余区域会保留相邻分格作为上下文。"
+            "value" : "设置当前分镜占屏幕的比例，剩余区域会保留相邻分镜作为上下文。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定目前分格佔螢幕的比例，剩餘區域會保留相鄰分格作為上下文。"
+            "value" : "設定目前分鏡佔螢幕的比例，剩餘區域會保留相鄰分鏡作為上下文。"
           }
         }
       }
@@ -13381,13 +13372,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将长按操作设为分格模式后，即可长按进入或退出。轻点翻页区域可切换分格。"
+            "value" : "将长按操作设为分镜模式后，即可长按进入或退出。轻点翻页区域可切换分镜。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將長按操作設為分格模式後，即可長按進入或退出。輕點翻頁區域可切換分格。"
+            "value" : "將長按操作設為分鏡模式後，即可長按進入或退出。輕點翻頁區域可切換分鏡。"
           }
         }
       }
@@ -23367,13 +23358,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "双击分格以放大"
+            "value" : "双击分镜以放大"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "點兩下分格以放大"
+            "value" : "點兩下分鏡以放大"
           }
         }
       }
@@ -23432,13 +23423,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "双击分格即可放大。翻页的点按会在分格之间移动。再次双击即可停止并查看整页。"
+            "value" : "双击分镜即可放大。翻页的点按会在分镜之间移动。再次双击即可停止并查看整页。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "點兩下分格即可放大。翻頁的點按會在分格之間移動。再次點兩下即可停止並查看整頁。"
+            "value" : "點兩下分鏡即可放大。翻頁的點按會在分鏡之間移動。再次點兩下即可停止並查看整頁。"
           }
         }
       }
@@ -33548,13 +33539,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退出分格模式"
+            "value" : "退出分镜模式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "退出分格模式"
+            "value" : "退出分鏡模式"
           }
         }
       }
@@ -35341,13 +35332,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在识别分格…"
+            "value" : "正在识别分镜…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在識別分格…"
+            "value" : "正在識別分鏡…"
           }
         }
       }
@@ -48486,6 +48477,7 @@
       }
     },
     "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -48550,6 +48542,7 @@
       }
     },
     "Long-press a panel to start there. Your page-turn taps move between panels. Long-press again to return to the full page." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -49313,6 +49306,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "漫畫系列"
+          }
+        }
+      }
+    },
+    "Manga Tools" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manga-Werkzeuge"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manga Tools"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herramientas de manga"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outils manga"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strumenti manga"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "漫画ツール"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "만화 도구"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Инструменты манги"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "漫画工具"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "漫畫工具"
           }
         }
       }
@@ -55323,13 +55380,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未识别到分格"
+            "value" : "未识别到分镜"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未識別到分格"
+            "value" : "未識別到分鏡"
           }
         }
       }
@@ -62374,6 +62431,70 @@
         }
       }
     },
+    "OCR Models" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR-Modelle"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR Models"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelos de OCR"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modèles OCR"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelli OCR"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCRモデル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR 모델"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Модели OCR"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR 模型"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR 模型"
+          }
+        }
+      }
+    },
     "OCR text and comic metadata are sent to the provider; page images are never uploaded." : {
       "localizations" : {
         "de" : {
@@ -66592,13 +66713,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "分格模式"
+            "value" : "分镜模式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "分格模式"
+            "value" : "分鏡模式"
           }
         }
       }
@@ -66849,13 +66970,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已退出分格模式"
+            "value" : "已退出分镜模式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已退出分格模式"
+            "value" : "已退出分鏡模式"
           }
         }
       }
@@ -66913,13 +67034,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已开启分格模式"
+            "value" : "已开启分镜模式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已開啟分格模式"
+            "value" : "已開啟分鏡模式"
           }
         }
       }
@@ -66977,13 +67098,77 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "分格填充比例"
+            "value" : "分镜填充比例"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "分格填充比例"
+            "value" : "分鏡填充比例"
+          }
+        }
+      }
+    },
+    "Panels" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panels"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panels"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viñetas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cases"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vignette"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コマ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "컷"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кадры"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分镜"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分鏡"
           }
         }
       }
@@ -68641,13 +68826,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在准备分格模式…"
+            "value" : "正在准备分镜模式…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在準備分格模式…"
+            "value" : "正在準備分鏡模式…"
           }
         }
       }
@@ -95335,13 +95520,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "轻点以切换分格"
+            "value" : "轻点以切换分镜"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "輕點以切換分格"
+            "value" : "輕點以切換分鏡"
           }
         }
       }
@@ -99827,7 +100012,72 @@
         }
       }
     },
+    "Translate" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übersetzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Translate"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traducir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traduire"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traduci"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번역"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перевести"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻譯"
+          }
+        }
+      }
+    },
     "Translation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -99887,6 +100137,135 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "翻譯"
+          }
+        }
+      }
+    },
+    "Translation Languages" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übersetzungssprachen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Translation Languages"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Idiomas de traducción"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langues de traduction"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lingue di traduzione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳言語"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번역 언어"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Языки перевода"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译语言"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻譯語言"
+          }
+        }
+      }
+    },
+    "Translation Provider" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übersetzungsanbieter"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Translation Provider"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proveedor de traducción"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fournisseur de traduction"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider di traduzione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻訳プロバイダー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "번역 제공업체"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Провайдер перевода"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译提供商"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻譯提供商"
           }
         }
       }
@@ -102128,6 +102507,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用預設預載入範圍，在記憶體使用量與流暢翻頁之間取得平衡。"
+          }
+        }
+      }
+    },
+    "Use the Panel Mode button in the reader controls. Page-turn taps move between panels." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivieren Sie den Panelmodus über die Steuerelemente des Readers. Seitenwechsel-Taps wechseln zwischen Panels."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the Panel Mode button in the reader controls. Page-turn taps move between panels."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activa el modo viñetas desde los controles del lector. Los toques para pasar de página cambian de viñeta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activez Mode cases depuis les commandes du lecteur. Les touches de changement de page passent d’une case à l’autre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attiva Modalità vignette dai controlli del lettore. I tocchi per cambiare pagina passano tra le vignette."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読書コントロールのコマ送りモードボタンを使用します。ページ送りのタップでコマを移動します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "독서 컨트롤에서 컷 모드 버튼을 사용하세요. 페이지 넘기기 탭으로 컷 사이를 이동합니다."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включайте покадровый режим кнопкой в элементах управления чтением. Касания перелистывания переключают кадры."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用阅读器控制栏中的分镜模式按钮。轻点翻页区域可在分镜之间移动。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用閱讀器控制列中的分鏡模式按鈕。輕點翻頁區域可在分鏡之間移動。"
           }
         }
       }
