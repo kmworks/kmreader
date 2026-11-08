@@ -26,10 +26,6 @@
       private var panRecognizer: UIPanGestureRecognizer?
       private var singleTapRecognizer: UITapGestureRecognizer?
       private var doubleTapRecognizer: UITapGestureRecognizer?
-      private var longPressRecognizer: UILongPressGestureRecognizer?
-      #if os(iOS)
-        private var warmupObserver: PanelLongPressWarmupObserver?
-      #endif
 
       init(_ parent: NativeCoverPageView) {
         self.parent = parent
@@ -50,10 +46,6 @@
         containerView?.backgroundColor = UIColor(parent.renderConfig.readerBackground.color)
         applyPanRecognizerState()
         applyDoubleTapRecognizerState()
-        longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
-        #if os(iOS)
-          updateWarmupObserver()
-        #endif
 
         if deckState.currentItem == nil {
           syncCurrentItemFromViewModel(force: true)
@@ -96,17 +88,9 @@
         if let doubleTapRecognizer {
           doubleTapRecognizer.view?.removeGestureRecognizer(doubleTapRecognizer)
         }
-        if let longPressRecognizer {
-          longPressRecognizer.view?.removeGestureRecognizer(longPressRecognizer)
-        }
         panRecognizer = nil
         singleTapRecognizer = nil
         doubleTapRecognizer = nil
-        longPressRecognizer = nil
-        #if os(iOS)
-          warmupObserver?.detach()
-          warmupObserver = nil
-        #endif
         pagePresentationCoordinator.teardown()
         containerView = nil
       }
@@ -220,8 +204,7 @@
 
       private func attachTapRecognizersIfNeeded(to containerView: NativeCoverContainerView) {
         if singleTapRecognizer?.view === containerView,
-          doubleTapRecognizer?.view === containerView,
-          longPressRecognizer?.view === containerView
+          doubleTapRecognizer?.view === containerView
         {
           return
         }
@@ -232,10 +215,6 @@
         if let doubleTapRecognizer {
           doubleTapRecognizer.view?.removeGestureRecognizer(doubleTapRecognizer)
         }
-        if let longPressRecognizer {
-          longPressRecognizer.view?.removeGestureRecognizer(longPressRecognizer)
-        }
-
         let singleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap(_:)))
         singleTapRecognizer.numberOfTapsRequired = 1
         singleTapRecognizer.cancelsTouchesInView = false
@@ -252,14 +231,8 @@
         }
         containerView.addGestureRecognizer(doubleTapRecognizer)
 
-        let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-        longPressRecognizer.cancelsTouchesInView = false
-        longPressRecognizer.delegate = self
-        containerView.addGestureRecognizer(longPressRecognizer)
-
         self.singleTapRecognizer = singleTapRecognizer
         self.doubleTapRecognizer = doubleTapRecognizer
-        self.longPressRecognizer = longPressRecognizer
         applyDoubleTapRecognizerState()
       }
 
@@ -281,36 +254,6 @@
         doubleTapRecognizer?.isEnabled =
           !parent.renderConfig.panelMode && parent.renderConfig.doubleTapZoomMode.isEnabled
       }
-
-      #if os(iOS)
-        private func updateWarmupObserver() {
-          if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
-            warmupObserver == nil, let longPressRecognizer
-          {
-            let observer = PanelLongPressWarmupObserver(
-              controller: parent.panelModeController,
-              currentPage: { [self] in
-                guard let page = parent.viewModel.currentPage,
-                  let readerPage = parent.viewModel.currentReaderPage
-                else { return nil }
-                return (
-                  readerPage.bookId, page,
-                  PanelPagePresentation(
-                    direction: parent.readingDirection,
-                    rotation: parent.viewModel.rotation,
-                    borderCropMode: AppConfig.divinaPageBorderCropMode
-                  )
-                )
-              }
-            )
-            observer.attach(to: longPressRecognizer)
-            warmupObserver = observer
-          } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
-            warmupObserver?.detach()
-            warmupObserver = nil
-          }
-        }
-      #endif
 
       private var currentItem: ReaderViewItem? {
         deckState.currentItem
@@ -960,18 +903,6 @@
         // Page-image zoom recognizers own double-tap; this recognizer only arbitrates tap zones.
       }
 
-      @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began else { return }
-        guard !parent.viewModel.isZoomed || parent.panelModeEngaged else { return }
-        HapticFeedback.prepare()
-        guard let containerView else { return }
-        let point = frontSlotView?.panelEngagementPoint(
-          forContainerPoint: recognizer.location(in: containerView)
-        )
-        parent.panelModeController.longPressDidBegin(at: point)
-        parent.onPanelLongPress(point)
-      }
-
       private var isTapZoneSuppressed: Bool {
         // Engaged panel mode is zoomed by definition; that must not suppress stepping.
         (parent.viewModel.isZoomed && !parent.panelModeEngaged)
@@ -1022,13 +953,7 @@
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
       ) -> Bool {
-        if gestureRecognizer === singleTapRecognizer, otherGestureRecognizer === longPressRecognizer {
-          return otherGestureRecognizer.state != .began && otherGestureRecognizer.state != .changed
-        }
-        if gestureRecognizer === longPressRecognizer, otherGestureRecognizer === singleTapRecognizer {
-          return gestureRecognizer.state != .began && gestureRecognizer.state != .changed
-        }
-        return false
+        false
       }
 
       func gestureRecognizer(
@@ -1037,9 +962,6 @@
       ) -> Bool {
         // A tap that catches a gliding page only stops it.
         if gestureRecognizer === singleTapRecognizer {
-          if otherGestureRecognizer === longPressRecognizer {
-            return !parent.renderConfig.panelMode
-          }
           return SpreadPanningScrollView.isPagePan(otherGestureRecognizer)
         }
         guard gestureRecognizer === panRecognizer else { return false }

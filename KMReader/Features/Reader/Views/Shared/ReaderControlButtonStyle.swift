@@ -16,18 +16,18 @@ extension View {
   }
 
   @ViewBuilder
-  func readerControlButtonStyle() -> some View {
+  func readerControlButtonStyle(isActive: Bool = false) -> some View {
     #if os(iOS)
       if #available(iOS 26.0, *) {
-        self.adaptiveButtonStyle(.bordered)
+        self.adaptiveButtonStyle(isActive ? .borderedProminent : .bordered)
       } else {
         self
           .buttonStyle(.borderedProminent)
-          .tint(.readerTint)
-          .foregroundStyle(.white)
+          .tint(isActive ? .prominentButtonTint : .readerTint)
+          .foregroundStyle(isActive ? .prominentButtonForeground : .white)
       }
     #else
-      self.adaptiveButtonStyle(.bordered)
+      self.adaptiveButtonStyle(isActive ? .borderedProminent : .bordered)
     #endif
   }
 }

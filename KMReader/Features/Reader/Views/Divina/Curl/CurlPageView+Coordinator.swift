@@ -30,8 +30,6 @@
         NSMapTable<UIViewController, PageCurlControllerIdentity>.weakToStrongObjects()
       private weak var singleTapRecognizer: UITapGestureRecognizer?
       private weak var doubleTapRecognizer: UITapGestureRecognizer?
-      private weak var longPressRecognizer: UILongPressGestureRecognizer?
-      private var warmupObserver: PanelLongPressWarmupObserver?
       private weak var observedViewModel: ReaderViewModel?
       private var pagePresentationObserverToken: UUID?
 
@@ -89,8 +87,6 @@
         defer { hasCompletedInitialUpdate = true }
 
         applyDoubleTapRecognizerState()
-        longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
-        updateWarmupObserver()
         PageCurlControllerPlanner.configure(
           pageViewController: pageViewController,
           semanticContentAttribute: parent.mode.isRTL ? .forceRightToLeft : .forceLeftToRight
@@ -150,16 +146,12 @@
         let ownedRecognizers: [UIGestureRecognizer?] = [
           singleTapRecognizer,
           doubleTapRecognizer,
-          longPressRecognizer,
         ]
         for recognizer in ownedRecognizers.compactMap({ $0 }) {
           recognizer.view?.removeGestureRecognizer(recognizer)
         }
         singleTapRecognizer = nil
         doubleTapRecognizer = nil
-        longPressRecognizer = nil
-        warmupObserver?.detach()
-        warmupObserver = nil
 
         controllerIdentities.removeAllObjects()
         renderedSnapshot = PageCurlViewItemsSnapshot(items: [])
@@ -189,46 +181,11 @@
         view.addGestureRecognizer(doubleTap)
         doubleTapRecognizer = doubleTap
 
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-        longPress.cancelsTouchesInView = false
-        longPress.delegate = self
-        singleTap.require(toFail: longPress)
-        view.addGestureRecognizer(longPress)
-        longPressRecognizer = longPress
-        longPress.isEnabled = parent.renderConfig.longPressAction == .panelMode
         applyDoubleTapRecognizerState()
       }
 
       private func applyDoubleTapRecognizerState() {
         doubleTapRecognizer?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
-      }
-
-      private func updateWarmupObserver() {
-        if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
-          warmupObserver == nil, let longPressRecognizer
-        {
-          let observer = PanelLongPressWarmupObserver(
-            controller: parent.panelModeController,
-            currentPage: { [self] in
-              guard let page = parent.viewModel.currentPage,
-                let readerPage = parent.viewModel.currentReaderPage
-              else { return nil }
-              return (
-                readerPage.bookId, page,
-                PanelPagePresentation(
-                  direction: parent.readingDirection,
-                  rotation: parent.viewModel.rotation,
-                  borderCropMode: AppConfig.divinaPageBorderCropMode
-                )
-              )
-            }
-          )
-          observer.attach(to: longPressRecognizer)
-          warmupObserver = observer
-        } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
-          warmupObserver?.detach()
-          warmupObserver = nil
-        }
       }
 
       private func isCurrentAttachment(_ pageViewController: UIPageViewController) -> Bool {
@@ -865,16 +822,6 @@
       }
 
       @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
-
-      @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began, !parent.viewModel.isZoomed,
-          let controller = pageViewController?.viewControllers?.first as? NativeImagePageViewController
-        else { return }
-        HapticFeedback.prepare()
-        let point = controller.panelEngagementPoint(at: recognizer.location(in: controller.view))
-        parent.panelModeController.longPressDidBegin(at: point)
-        parent.onPanelLongPress(point)
-      }
 
       private var isTapZoneSuppressed: Bool {
         isTransitioning

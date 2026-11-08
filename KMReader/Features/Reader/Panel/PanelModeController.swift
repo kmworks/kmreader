@@ -37,8 +37,6 @@ final class PanelModeController {
   private var currentPresentation: PanelPagePresentation?
   private var pageGeneration = 0
   private var engagementTask: Task<Void, Never>?
-  private var engagementPoint: PanelEngagementPoint?
-  private var isPreparingEngagement = false
   private var sequence: PanelSequence = .empty
   private var cursor = 0
   private var pendingTurnForward: Bool?
@@ -153,11 +151,10 @@ final class PanelModeController {
     }
   }
 
-  /// Engage at the pressed panel; if the sequence is not ready yet, waits briefly.
-  func engage(at point: PanelEngagementPoint? = nil) {
+  /// Engage at the first panel; if the sequence is not ready yet, waits briefly.
+  func engage() {
     engagementTask?.cancel()
     engagementTask = nil
-    engagementPoint = point
     if isCurrentPageEngageable {
       performEngage()
       return
@@ -181,37 +178,10 @@ final class PanelModeController {
     }
   }
 
-  func prepareForPossibleEngagement(
-    bookId: String,
-    page: BookPage,
-    presentation: PanelPagePresentation
-  ) {
-    guard !engaged, !isPreparingEngagement else { return }
-    isPreparingEngagement = true
-    beginPage(bookId: bookId, page: page, presentation: presentation)
-    if isCurrentPageEngageable { return }
-    orchestrator.prewarm(bookId: bookId, page: page, presentation: presentation, priority: .userInitiated)
-  }
-
-  func cancelEngagementPreparation() {
-    guard isPreparingEngagement else { return }
-    isPreparingEngagement = false
-    guard !engaged, engagementTask == nil else { return }
-    engagementPoint = nil
-    orchestrator.cancelAll()
-  }
-
-  func longPressDidBegin(at point: PanelEngagementPoint?) {
-    isPreparingEngagement = false
-    if let point { engagementPoint = point }
-  }
-
   func disengage() {
-    cancelEngagementPreparation()
     engagementTask?.cancel()
     engagementTask = nil
     engaged = false
-    engagementPoint = nil
     pendingTurnForward = nil
     awaitingPageTurn = false
     queuedStepForward = nil
@@ -221,11 +191,9 @@ final class PanelModeController {
   }
 
   func disengageAndWaitForZoomOut() async {
-    cancelEngagementPreparation()
     engagementTask?.cancel()
     engagementTask = nil
     engaged = false
-    engagementPoint = nil
     pendingTurnForward = nil
     awaitingPageTurn = false
     queuedStepForward = nil
@@ -309,12 +277,7 @@ final class PanelModeController {
   }
 
   private func performEngage() {
-    let point = engagementPoint.flatMap { point in
-      point.bookId == currentBookId && point.pageNumber == currentPage?.number
-        ? point.normalizedPoint : nil
-    }
-    engagementPoint = nil
-    cursor = point.flatMap(panelArrayIndex(at:)) ?? 1
+    cursor = 1
     engaged = true
     pendingTurnForward = nil
     zoomToCurrentCursor(animated: true)
@@ -325,22 +288,6 @@ final class PanelModeController {
       zoomController.zoomToRect(rect, animated: animated)
     } else {
       zoomController.resetToFit(animated: animated)
-    }
-  }
-
-  private func panelArrayIndex(at point: CGPoint) -> Int? {
-    func contains(_ rect: PanelRect) -> Bool {
-      point.x >= rect.x && point.x <= rect.x + rect.width
-        && point.y >= rect.y && point.y <= rect.y + rect.height
-    }
-    switch sequence {
-    case .panels(let rects):
-      for (index, rect) in rects.enumerated() where contains(rect) { return index + 1 }
-      return nil
-    case .splash(let rect):
-      return contains(rect) ? 1 : nil
-    case .empty:
-      return nil
     }
   }
 }

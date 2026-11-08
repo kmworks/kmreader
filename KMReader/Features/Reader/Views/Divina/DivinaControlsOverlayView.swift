@@ -23,10 +23,8 @@ struct DivinaControlsOverlayView: View {
   let dualPage: Bool
   let incognito: Bool
   let onDismiss: () -> Void
-  let previousBook: Book?
-  let nextBook: Book?
-  let onPreviousBook: ((String) -> Void)?
-  let onNextBook: ((String) -> Void)?
+  let panelModeActive: Bool
+  let onTogglePanelMode: () -> Void
   let controlsVisible: Bool
   let showingControls: Bool
   let showGradientBackground: Bool
@@ -421,8 +419,14 @@ struct DivinaControlsOverlayView: View {
 
           Spacer(minLength: 0)
         }
-        .optimizedControlSize()
         .allowsHitTesting(true)
+        .overlay(alignment: .leading) {
+          panelModeControlButton
+        }
+        .overlay(alignment: .trailing) {
+          mangaTranslationControlButton
+        }
+        .optimizedControlSize()
       }
 
       progressBar
@@ -430,6 +434,41 @@ struct DivinaControlsOverlayView: View {
         .animation(animation, value: progress)
         .animation(animation, value: progressHorizontalPadding)
     }
+  }
+
+  @ViewBuilder
+  private var panelModeControlButton: some View {
+    #if os(iOS)
+      if readingDirection == .ltr || readingDirection == .rtl {
+        Button {
+          onTogglePanelMode()
+        } label: {
+          Label(String(localized: "Panels"), systemImage: "rectangle.split.2x2")
+            .contentShape(Capsule())
+        }
+        .accessibilityLabel(Text("Panel Mode"))
+        .buttonBorderShape(.capsule)
+        .readerControlButtonStyle(isActive: panelModeActive)
+        .disabled(!viewModel.hasPages)
+      }
+    #endif
+  }
+
+  @ViewBuilder
+  private var mangaTranslationControlButton: some View {
+    #if os(iOS) || os(macOS)
+      if viewModel.mangaTranslationSupported {
+        Button {
+          viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
+        } label: {
+          Label(String(localized: "Translate"), systemImage: AppIcon.mangaTranslation)
+            .contentShape(Capsule())
+        }
+        .accessibilityLabel(Text("Manga Translation"))
+        .buttonBorderShape(.capsule)
+        .readerControlButtonStyle(isActive: viewModel.mangaTranslationEnabled)
+      }
+    #endif
   }
 
   @ViewBuilder

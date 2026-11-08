@@ -47,8 +47,6 @@
     let onTapZoneTap: ReaderTapZoneTapHandler
     let panelZoomController: PanelZoomController
     let panelModeEngaged: Bool
-    let onPanelLongPress: (PanelEngagementPoint?) -> Void
-    let panelModeController: PanelModeController
 
     func makeCoordinator() -> Coordinator {
       Coordinator(self)

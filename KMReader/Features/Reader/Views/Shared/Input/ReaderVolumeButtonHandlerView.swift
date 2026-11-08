@@ -18,6 +18,7 @@
     private let volumeSlider: UISlider?
     private var volumeObservation: NSKeyValueObservation?
     private var lastVolume: Float?
+    private var audioSessionTask: Task<Void, Never>?
     private var didActivateAudioSession = false
 
     override init(frame: CGRect) {
@@ -63,7 +64,8 @@
     }
 
     deinit {
-      stopObservingVolume()
+      volumeObservation?.invalidate()
+      audioSessionTask?.cancel()
       NotificationCenter.default.removeObserver(self)
     }
 
@@ -83,43 +85,95 @@
     }
 
     private func startObservingVolume() {
-      guard volumeObservation == nil else { return }
+      guard volumeObservation == nil, audioSessionTask == nil else { return }
       guard volumeSlider != nil else {
         logger.error("Volume button capture unavailable: MPVolumeView has no slider")
         return
       }
       let audioSession = AVAudioSession.sharedInstance()
       let baselineVolume = min(max(audioSession.outputVolume, 0.01), 0.99)
-      do {
-        try audioSession.setCategory(.playback, options: [.mixWithOthers])
-        try audioSession.setActive(true)
-        didActivateAudioSession = true
-      } catch {
-        logger.error("Volume button capture failed to activate audio session: \(error)")
-        return
+      audioSessionTask = Task { @MainActor [weak self] in
+        guard let logger = self?.logger else { return }
+        do {
+          try audioSession.setCategory(.playback, options: [.mixWithOthers])
+          let activated: Bool
+          if #available(iOS 27.0, *) {
+            activated = try await Self.activateAudioSession(audioSession)
+          } else {
+            try audioSession.setActive(true)
+            activated = true
+          }
+          guard activated else {
+            logger.error("Volume button capture could not activate audio session")
+            self?.audioSessionTask = nil
+            return
+          }
+          guard let view = self else {
+            Self.deactivateAudioSession(audioSession, logger: logger)
+            return
+          }
+          view.didActivateAudioSession = true
+          guard !Task.isCancelled, view.isCaptureEnabled,
+            view.window?.windowScene?.activationState == .foregroundActive
+          else {
+            view.stopObservingVolume()
+            return
+          }
+          view.lastVolume = baselineVolume
+          view.restoreVolume(baselineVolume)
+          view.volumeObservation = audioSession.observe(\.outputVolume, options: [.new]) {
+            [weak view] _, change in
+            guard let newVolume = change.newValue else { return }
+            DispatchQueue.main.async {
+              view?.handleVolumeChange(newVolume)
+            }
+          }
+          view.audioSessionTask = nil
+        } catch {
+          logger.error("Volume button capture failed to activate audio session: \(error)")
+          self?.audioSessionTask = nil
+        }
       }
-      lastVolume = baselineVolume
-      restoreVolume(baselineVolume)
-      volumeObservation = audioSession.observe(\.outputVolume, options: [.new]) {
-        [weak self] _, change in
-        guard let newVolume = change.newValue else { return }
-        DispatchQueue.main.async {
-          self?.handleVolumeChange(newVolume)
+    }
+
+    @available(iOS 27.0, *)
+    private static func activateAudioSession(_ audioSession: AVAudioSession) async throws -> Bool {
+      try await withCheckedThrowingContinuation { continuation in
+        audioSession.activate(options: []) { activated, error in
+          if let error {
+            continuation.resume(throwing: error)
+          } else {
+            continuation.resume(returning: activated)
+          }
         }
       }
     }
 
     private func stopObservingVolume() {
+      audioSessionTask?.cancel()
+      audioSessionTask = nil
       volumeObservation?.invalidate()
       volumeObservation = nil
       lastVolume = nil
       if didActivateAudioSession {
+        Self.deactivateAudioSession(AVAudioSession.sharedInstance(), logger: logger)
+        didActivateAudioSession = false
+      }
+    }
+
+    private static func deactivateAudioSession(_ audioSession: AVAudioSession, logger: AppLogger) {
+      if #available(iOS 27.0, *) {
+        audioSession.deactivate(options: .notifyOthersOnDeactivation) { _, error in
+          if let error {
+            logger.error("Volume button capture failed to deactivate audio session: \(error)")
+          }
+        }
+      } else {
         do {
-          try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+          try audioSession.setActive(false, options: [.notifyOthersOnDeactivation])
         } catch {
           logger.error("Volume button capture failed to deactivate audio session: \(error)")
         }
-        didActivateAudioSession = false
       }
     }
 

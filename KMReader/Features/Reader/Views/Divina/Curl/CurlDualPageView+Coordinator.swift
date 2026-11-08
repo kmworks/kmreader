@@ -19,8 +19,6 @@
       var hasCompletedInitialUpdate = false
       private var isActive = true
       private weak var doubleTapRecognizer: UITapGestureRecognizer?
-      private weak var longPressRecognizer: UILongPressGestureRecognizer?
-      private var warmupObserver: PanelLongPressWarmupObserver?
       private var installedTapRecognizers: [UIGestureRecognizer] = []
       private var transitionTargetItem: ReaderViewItem?
       private var viewItemsSnapshot: PageCurlViewItemsSnapshot
@@ -63,49 +61,12 @@
         view.addGestureRecognizer(doubleTap)
         doubleTapRecognizer = doubleTap
 
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-        longPress.cancelsTouchesInView = false
-        longPress.delegate = self
-        longPress.isEnabled = parent.renderConfig.longPressAction == .panelMode
-        singleTap.require(toFail: longPress)
-        view.addGestureRecognizer(longPress)
-        longPressRecognizer = longPress
-        installedTapRecognizers = [singleTap, doubleTap, longPress]
+        installedTapRecognizers = [singleTap, doubleTap]
         applyDoubleTapRecognizerState()
       }
 
       func applyDoubleTapRecognizerState() {
         doubleTapRecognizer?.isEnabled = parent.renderConfig.doubleTapZoomMode.isEnabled
-        longPressRecognizer?.isEnabled = parent.renderConfig.longPressAction == .panelMode
-        updateWarmupObserver()
-      }
-
-      private func updateWarmupObserver() {
-        if parent.renderConfig.longPressAction == .panelMode, !parent.renderConfig.panelMode,
-          warmupObserver == nil, let longPressRecognizer
-        {
-          let observer = PanelLongPressWarmupObserver(
-            controller: parent.panelModeController,
-            currentPage: { [self] in
-              guard let page = parent.viewModel.currentPage,
-                let readerPage = parent.viewModel.currentReaderPage
-              else { return nil }
-              return (
-                readerPage.bookId, page,
-                PanelPagePresentation(
-                  direction: parent.readingDirection,
-                  rotation: parent.viewModel.rotation,
-                  borderCropMode: AppConfig.divinaPageBorderCropMode
-                )
-              )
-            }
-          )
-          observer.attach(to: longPressRecognizer)
-          warmupObserver = observer
-        } else if parent.renderConfig.longPressAction != .panelMode || parent.renderConfig.panelMode {
-          warmupObserver?.detach()
-          warmupObserver = nil
-        }
       }
 
       private var totalSpreads: Int {
@@ -473,8 +434,6 @@
       }
 
       func teardown(pageViewController: UIPageViewController) {
-        warmupObserver?.detach()
-        warmupObserver = nil
         guard isActive else { return }
         isActive = false
         unregisterViewModelObservation()
@@ -1022,25 +981,6 @@
       }
 
       @objc private func handleDoubleTap(_: UITapGestureRecognizer) {}
-
-      @objc private func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
-        guard recognizer.state == .began, !parent.viewModel.isZoomed,
-          let controllers = pageViewController?.viewControllers
-        else { return }
-        HapticFeedback.prepare()
-        let point = recognizer.location(in: recognizer.view)
-        for controller in controllers {
-          guard let controller = controller as? NativeImagePageViewController,
-            controller.view.frame.contains(point)
-          else { continue }
-          let point = controller.panelEngagementPoint(at: recognizer.location(in: controller.view))
-          parent.panelModeController.longPressDidBegin(at: point)
-          parent.onPanelLongPress(point)
-          return
-        }
-        parent.panelModeController.longPressDidBegin(at: nil)
-        parent.onPanelLongPress(nil)
-      }
 
       @objc func handlePagePanGesture(_ pan: UIPanGestureRecognizer) {
         guard pan.state == .ended || pan.state == .cancelled || pan.state == .failed else { return }

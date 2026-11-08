@@ -92,25 +92,13 @@ extension DivinaControlsOverlayView {
       }
 
       #if os(iOS) || os(macOS)
-        if viewModel.mangaTranslationSupported {
+        if viewModel.mangaTranslationEnabled {
           Divider()
 
           Button {
-            viewModel.setMangaTranslationEnabled(!viewModel.mangaTranslationEnabled)
+            showingMangaTranslationSettings = true
           } label: {
-            Label(
-              String(localized: "Manga Translation"),
-              systemImage: viewModel.mangaTranslationEnabled
-                ? AppIcon.confirm : AppIcon.mangaTranslation
-            )
-          }
-
-          if viewModel.mangaTranslationEnabled {
-            Button {
-              showingMangaTranslationSettings = true
-            } label: {
-              Label(String(localized: "Translation Settings"), systemImage: "slider.horizontal.3")
-            }
+            Label(String(localized: "Translation Settings"), systemImage: "slider.horizontal.3")
           }
         }
       #endif
@@ -146,12 +134,6 @@ extension DivinaControlsOverlayView {
     } header: {
       Text(String(localized: "Page Navigation"))
     }
-
-    Section {
-      bookNavigation()
-    } header: {
-      Text(String(localized: "Book Navigation"))
-    }
   }
 
   @ViewBuilder
@@ -170,39 +152,6 @@ extension DivinaControlsOverlayView {
       Label(String(localized: "Jump to Page"), systemImage: AppIcon.pageJump)
     }
     .disabled(!viewModel.hasPages)
-  }
-
-  @ViewBuilder
-  private func bookNavigation() -> some View {
-    if let previousBook, let onPreviousBook {
-      let previousNumber =
-        previousBook.metadata.number.isEmpty
-        ? nil
-        : previousBook.metadata.number
-      Button {
-        onPreviousBook(previousBook.id)
-      } label: {
-        Label(
-          "\(String(localized: "reader.previousBook")) #\(previousNumber ?? "-")",
-          systemImage: "chevron.left"
-        )
-      }
-    }
-
-    if let nextBook, let onNextBook {
-      let nextNumber =
-        nextBook.metadata.number.isEmpty
-        ? nil
-        : nextBook.metadata.number
-      Button {
-        onNextBook(nextBook.id)
-      } label: {
-        Label(
-          "\(String(localized: "reader.nextBook")) #\(nextNumber ?? "-")",
-          systemImage: "chevron.right"
-        )
-      }
-    }
   }
 
   #if os(iOS) || os(macOS)

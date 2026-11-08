@@ -23,8 +23,6 @@ struct DivinaPreferencesView: View {
   @AppStorage("pageTransitionStyle") private var pageTransitionStyle: PageTransitionStyle = .cover
   @AppStorage("doubleTapZoomScale") private var doubleTapZoomScale: Double = 3.0
   @AppStorage("doubleTapZoomMode") private var doubleTapZoomMode: DoubleTapZoomMode = .enabled
-  @AppStorage("panelZoomFillFactor") private var panelZoomFillFactor: Double = 0.9
-  @AppStorage("activePanelModelVersion") private var activePanelModelVersion: String?
   @AppStorage("imageUpscalingMode") private var imageUpscalingMode: ReaderImageUpscalingMode =
     AppConfig.imageUpscalingMode
   @AppStorage("imageUpscaleAutoTriggerScale") private var imageUpscaleAutoTriggerScale: Double =
@@ -41,7 +39,6 @@ struct DivinaPreferencesView: View {
   private var showProgressBarWhileReading: Bool =
     AppConfig.showDivinaProgressBarWhileReading
   @AppStorage("divinaPreloadProfile") private var divinaPreloadProfile: ReaderPreloadProfile = .balanced
-  @State private var showsPanelModelManagement = false
 
   private var forcedReadingDirection: ReadingDirection? {
     forceDefaultReadingDirection ? readDirection : nil
@@ -63,20 +60,6 @@ struct DivinaPreferencesView: View {
 
   private var shouldShowWebtoonTapNavigationSettings: Bool {
     !tapZoneMode.isDisabled && shouldShowWebtoonSpecificSettings
-  }
-
-  private var supportsLongPressPanelMode: Bool {
-    #if os(iOS)
-      return readDirection == .ltr || readDirection == .rtl
-    #else
-      return false
-    #endif
-  }
-
-  private var longPressActions: [ReaderLongPressAction] {
-    ReaderLongPressAction.allCases.filter {
-      $0 != .panelMode || supportsLongPressPanelMode
-    }
   }
 
   private var liveTextEnabled: Binding<Bool> {
@@ -383,64 +366,11 @@ struct DivinaPreferencesView: View {
             }
           }
           Picker("Long Press Action", selection: $readerLongPressAction) {
-            ForEach(longPressActions) { action in
-              Text(action.displayName).tag(action)
+            ForEach(ReaderLongPressAction.allCases) { action in
+              Label(action.displayName, systemImage: action.icon).tag(action)
             }
           }
           .pickerStyle(.menu)
-          Text(
-            "Applies to all DIVINA books. Panel Mode replaces the image context menu on long press and pauses Live Text while active."
-          )
-          .font(.caption)
-          .foregroundColor(.secondary)
-        }
-
-        Section(
-          header: Text("Panel Mode"),
-          footer: Text(
-            "Long-press a panel to start there. Page-turn taps move between panels. Long-press again to return to the full page."
-          )
-        ) {
-          Button {
-            showsPanelModelManagement = true
-          } label: {
-            HStack {
-              Label {
-                VStack(alignment: .leading, spacing: 2) {
-                  Text("Panel Mode Model")
-                  Text(
-                    activePanelModelVersion == nil
-                      ? String(localized: "Not Downloaded")
-                      : PanelModelLibrary.installedArchive()?.name ?? String(localized: "Not Downloaded")
-                  )
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-                  .lineLimit(1)
-                }
-              } icon: {
-                Image(systemName: "rectangle.split.2x2")
-              }
-              Spacer()
-              Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-
-          VStack(alignment: .leading, spacing: 8) {
-            HStack {
-              Text("Panel Zoom Fill")
-              Spacer()
-              Text(String(format: "%.0f%%", panelZoomFillFactor * 100))
-                .foregroundColor(.secondary)
-            }
-            Slider(value: $panelZoomFillFactor, in: 0.75...1.0, step: 0.05)
-            Text("Choose how much of the screen a focused panel fills; the remainder keeps neighboring panels visible.")
-              .font(.caption)
-              .foregroundColor(.secondary)
-          }
         }
       #endif
 
@@ -523,7 +453,7 @@ struct DivinaPreferencesView: View {
         Section(header: Text("Gestures")) {
           Picker("Long Press Action", selection: $readerLongPressAction) {
             ForEach([ReaderLongPressAction.contextMenu, .disabled]) { action in
-              Text(action.displayName).tag(action)
+              Label(action.displayName, systemImage: action.icon).tag(action)
             }
           }
           .pickerStyle(.menu)
@@ -532,14 +462,8 @@ struct DivinaPreferencesView: View {
 
     }
     .formStyle(.grouped)
+    .animation(.appCurve(), value: doubleTapZoomMode)
     .platformNavigationTitle(SettingsSection.divinaReader.title)
-    #if os(iOS)
-      .sheet(isPresented: $showsPanelModelManagement) {
-        SheetView(title: String(localized: "Panel Mode Model"), size: .large, applyFormStyle: true) {
-          PanelModelManagementView()
-        }
-      }
-    #endif
   }
 
 }

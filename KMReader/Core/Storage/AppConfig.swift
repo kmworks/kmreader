@@ -122,7 +122,6 @@ enum AppConfig {
       {
         return action
       }
-      if panelModeByBook.values.contains(true) { return .panelMode }
       return enableDivinaImageContextMenu ? .contextMenu : .disabled
     }
     set { UserDefaults.standard.set(newValue.rawValue, forKey: "readerLongPressAction") }
