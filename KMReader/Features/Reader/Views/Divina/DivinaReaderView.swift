@@ -215,7 +215,7 @@ struct DivinaReaderView: View {
           Button(String(localized: "Manage Model")) {
             showingPanelModelSettings = true
           }
-          .buttonStyle(.borderedProminent)
+          .adaptiveButtonStyle(.borderedProminent)
         } else {
           Text("This can take a minute or two the first time")
             .font(.caption)
