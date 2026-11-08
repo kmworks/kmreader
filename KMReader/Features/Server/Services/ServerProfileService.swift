@@ -6,8 +6,8 @@
 import Foundation
 
 /// Reads what the server offers beyond Komga (`/api/v1/server/info` features
-/// and the skip-read setting) after login, server switch and each user load,
-/// so kmrs-private requests are made only where they can succeed.
+/// and the kmrs settings every user can read) after login, server switch and
+/// each user load, so kmrs-private requests are made only where they can succeed.
 nonisolated enum ServerProfileService {
   private static let apiClient = APIClient.shared
   private static let logger = AppLogger(.api)
@@ -29,9 +29,13 @@ nonisolated enum ServerProfileService {
     profile(instanceId: instanceId)?.skipReadOnNext == true
   }
 
+  static func recentReadingCutoff(instanceId: String) -> Date? {
+    profile(instanceId: instanceId)?.recentReadingCutoff()
+  }
+
   /// Runs with the user load, so like it bypasses the offline check: it decides
   /// whether the app goes back online. A failed request keeps the last known
-  /// profile, which offline reading still needs for the skip-read setting.
+  /// profile, which offline reading still needs for the kmrs settings.
   @concurrent
   static func refresh(instanceId: String) async {
     guard !instanceId.isEmpty else { return }
@@ -45,11 +49,21 @@ nonisolated enum ServerProfileService {
 
     let profile: ServerProfile
     if let info {
-      let skipReadOnNext = await fetchSkipReadOnNext() ?? skipsReadOnNext(instanceId: instanceId)
+      let previous = Self.profile(instanceId: instanceId)
+      let skipReadOnNext: Bool
+      let recentReadingDays: Int
+      if let settings = await fetchSettings() {
+        skipReadOnNext = settings.skipReadOnNext ?? false
+        recentReadingDays = max(0, settings.recentReadingDays ?? 0)
+      } else {
+        skipReadOnNext = previous?.skipReadOnNext ?? false
+        recentReadingDays = previous?.recentReadingDays ?? 0
+      }
       profile = ServerProfile(
         isKmrs: true,
         features: Set((info.features ?? []).compactMap(ServerFeature.init(rawValue:))),
-        skipReadOnNext: skipReadOnNext
+        skipReadOnNext: skipReadOnNext,
+        recentReadingDays: recentReadingDays
       )
     } else {
       profile = .komga
@@ -75,14 +89,15 @@ nonisolated enum ServerProfileService {
     }
   }
 
-  private static func fetchSkipReadOnNext() async -> Bool? {
+  /// Nil when the request failed, so the last known values stay.
+  private static func fetchSettings() async -> ServerSettingsResponse? {
     do {
       let settings: ServerSettingsResponse = try await apiClient.request(
         path: "/api/v1/settings",
         bypassOfflineCheck: true,
         timeout: AppConfig.authTimeout
       )
-      return settings.skipReadOnNext ?? false
+      return settings
     } catch {
       logger.debug("Server settings unavailable: \(error.localizedDescription)")
       return nil

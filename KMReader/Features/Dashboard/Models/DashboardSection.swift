@@ -201,12 +201,15 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
         )
       )
       let search = BookSearch(condition: condition)
+      // Keep Reading has no endpoint the server can filter, so the client applies
+      // kmrs's recent reading window; On Deck arrives already filtered.
+      let cutoff = ServerProfileService.recentReadingCutoff(instanceId: AppConfig.current.instanceId)
       return try await SyncService.syncBooksList(
         search: search,
         page: page,
         size: size,
         sort: "readProgress.readDate,desc"
-      )
+      ).readSince(cutoff)
 
     case .onDeck:
       return try await SyncService.syncBooksOnDeck(
