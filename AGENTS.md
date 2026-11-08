@@ -52,6 +52,7 @@ After changing code: `make format`, then `make build`. Simulator interaction goe
 23. Plain-style buttons and links (`.buttonStyle(.plain)`, text-or-label-only) must declare `.contentShape(Rectangle())` (or an equivalent hit shape) **on the content inside the button's label** so the whole frame is tappable; without it only the glyphs respond. `.contentShape` applied outside on the button itself has no effect on hit-testing, regardless of button style.
 24. Hardcoded `.frame` sizes are a last resort: never pin pixel dimensions to paper over a sizing difference (e.g. normalizing buttons whose glyphs have different bounding boxes). Fix the cause instead — pick glyphs from one visual family, use control sizes, or change the layout.
 25. **Banned**: `fatalError`/`preconditionFailure` in app logic — a reachable one crashes the app. Model impossible cases away instead (narrower enums, exhaustive switches). Exception: `required init?(coder:)` stubs.
+26. **Button styles**: style buttons with `.adaptiveButtonStyle(_:)`, never `.buttonStyle(...)` directly. The adaptive style picks the glass styles on OS 26 and pairs the prominent tint with a readable foreground; a raw `.borderedProminent` renders white on white with the white accent in dark mode. Use a raw style only where no adaptive case fits (e.g. `.borderless` for an action inside a `Form` row, which must not take the whole row's tap), and say why in a comment.
 
 Additional patterns:
 
