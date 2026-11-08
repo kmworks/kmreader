@@ -194,22 +194,21 @@ enum DashboardSection: String, CaseIterable, Identifiable, Codable, Sendable {
   func fetchBooks(libraryIds: [String], page: Int, size: Int) async throws -> Page<Book>? {
     switch self {
     case .keepReading:
-      let condition = BookSearch.buildCondition(
-        filters: BookSearchFilters(
-          libraryIds: libraryIds,
-          includeReadStatuses: [ReadStatus.inProgress]
-        )
+      // Keep Reading has no endpoint of its own, so kmrs's recent reading window
+      // rides on the search as a readDate condition; On Deck arrives filtered.
+      var filters = BookSearchFilters(
+        libraryIds: libraryIds,
+        includeReadStatuses: [ReadStatus.inProgress]
       )
-      let search = BookSearch(condition: condition)
-      // Keep Reading has no endpoint the server can filter, so the client applies
-      // kmrs's recent reading window; On Deck arrives already filtered.
-      let cutoff = ServerProfileService.recentReadingCutoff(instanceId: AppConfig.current.instanceId)
+      filters.readDateAfter = ServerProfileService.recentReadingCutoff(
+        instanceId: AppConfig.current.instanceId)
+      let search = BookSearch(condition: BookSearch.buildCondition(filters: filters))
       return try await SyncService.syncBooksList(
         search: search,
         page: page,
         size: size,
         sort: "readProgress.readDate,desc"
-      ).readSince(cutoff)
+      )
 
     case .onDeck:
       return try await SyncService.syncBooksOnDeck(

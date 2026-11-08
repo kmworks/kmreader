@@ -47,6 +47,8 @@ nonisolated struct BookSearchFilters {
   var seriesId: String? = nil
   var readListId: String? = nil
   var releaseDateAfter: Date? = nil
+  /// kmrs only: the requesting user's read date, compared to the instant
+  var readDateAfter: Date? = nil
 
   // Metadata filters
   var authors: [String]? = nil
@@ -109,6 +111,15 @@ extension BookSearch {
         "releaseDate": [
           "operator": "after",
           "dateTime": iso8601UTCString(from: releaseDateAfter),
+        ]
+      ])
+    }
+
+    if let readDateAfter = filters.readDateAfter {
+      conditions.append([
+        "readDate": [
+          "operator": "after",
+          "dateTime": iso8601UTCString(from: readDateAfter),
         ]
       ])
     }
