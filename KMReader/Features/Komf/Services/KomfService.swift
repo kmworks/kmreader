@@ -9,10 +9,6 @@ import Foundation
 nonisolated enum KomfService {
   private static let apiClient = APIClient.shared
 
-  static func getIntegration() async throws -> KomfIntegration {
-    try await apiClient.request(path: "/api/v1/komf/integration")
-  }
-
   static func search(name: String, libraryId: String, seriesId: String) async throws
     -> [KomfSearchResult]
   {

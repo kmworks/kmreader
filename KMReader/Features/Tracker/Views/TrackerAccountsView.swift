@@ -155,7 +155,7 @@ struct TrackerAccountsView: View {
         instanceId: current.instanceId
       ).filter { $0.id != KomgaLibrary.allLibrariesId }
       try await loadAccounts()
-      TrackerCapabilityStore.shared.refreshCompleted(supported: true)
+      TrackerCapabilityStore.shared.refreshCompleted()
     } catch {
       ErrorManager.shared.alert(error: error)
     }

@@ -8,6 +8,8 @@ nonisolated struct NativeServerInfo: Decodable, Sendable {
   let version: String
   let gitBranch: String
   let gitCommitId: String
+  /// Raw names, so a feature this client does not know yet is ignored.
+  let features: [String]?
 
   var actuatorInfo: ActuatorInfoResponse {
     ActuatorInfoResponse(

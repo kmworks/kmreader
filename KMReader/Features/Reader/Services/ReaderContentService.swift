@@ -314,7 +314,7 @@ struct ReaderContentService {
         instanceId: instanceId,
         bookId: bookId,
         readListId: readListId,
-        skipRead: AppConfig.serverSkipReadOnNext.skipsRead(instanceId: instanceId)
+        skipRead: ServerProfileService.skipsReadOnNext(instanceId: instanceId)
       )
     }
   }

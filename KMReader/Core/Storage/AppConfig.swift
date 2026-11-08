@@ -297,6 +297,18 @@ enum AppConfig {
   /// (`dashboardHorizontalBookCards`, on by default): off meant the regular
   /// book card, so it maps to a Keep Reading `large` override. Remove once
   /// upgrades from 6.4 are no longer expected.
+  /// Per-feature 404 probe records and the client-side skip-read preference,
+  /// replaced by `serverProfiles`. Drop this once installs have migrated.
+  static nonisolated func removeLegacyServerCapabilityRecords() {
+    for key in [
+      "serverReadingStatsCapability", "serverKomfCapability", "serverStatsCapability",
+      "serverManagementCapability", "serverSessionsCapability", "serverTrackerCapability",
+      "serverSmartListCapability", "suggestNextUnreadBook",
+    ] {
+      UserDefaults.standard.removeObject(forKey: key)
+    }
+  }
+
   static nonisolated func migrateLegacyHorizontalBookCards() {
     let legacyKey = "dashboardHorizontalBookCards"
     guard UserDefaults.standard.object(forKey: legacyKey) != nil else { return }
@@ -1169,115 +1181,17 @@ enum AppConfig {
     }
   }
 
-  static nonisolated var serverReadingStatsCapability: ServerReadingStatsCapability {
+  static nonisolated var serverProfiles: ServerProfiles {
     get {
-      if let stored = UserDefaults.standard.string(forKey: "serverReadingStatsCapability"),
-        let capability = ServerReadingStatsCapability(rawValue: stored)
+      if let stored = UserDefaults.standard.string(forKey: "serverProfiles"),
+        let profiles = ServerProfiles(rawValue: stored)
       {
-        return capability
+        return profiles
       }
-      return ServerReadingStatsCapability()
+      return ServerProfiles()
     }
     set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverReadingStatsCapability")
-    }
-  }
-
-  static nonisolated var serverKomfCapability: ServerKomfCapability {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverKomfCapability"),
-        let capability = ServerKomfCapability(rawValue: stored)
-      {
-        return capability
-      }
-      return ServerKomfCapability()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverKomfCapability")
-    }
-  }
-
-  static nonisolated var serverStatsCapability: ServerStatsCapability {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverStatsCapability"),
-        let capability = ServerStatsCapability(rawValue: stored)
-      {
-        return capability
-      }
-      return ServerStatsCapability()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverStatsCapability")
-    }
-  }
-
-  static nonisolated var serverManagementCapability: ServerCapability {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverManagementCapability"),
-        let capability = ServerCapability(rawValue: stored)
-      {
-        return capability
-      }
-      return ServerCapability()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverManagementCapability")
-    }
-  }
-
-  static nonisolated var serverSessionsCapability: ServerCapability {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverSessionsCapability"),
-        let capability = ServerCapability(rawValue: stored)
-      {
-        return capability
-      }
-      return ServerCapability()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverSessionsCapability")
-    }
-  }
-
-  static nonisolated var serverTrackerCapability: ServerCapability {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverTrackerCapability"),
-        let capability = ServerCapability(rawValue: stored)
-      {
-        return capability
-      }
-      return ServerCapability()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverTrackerCapability")
-    }
-  }
-
-  static nonisolated var serverSkipReadOnNext: ServerSkipReadOnNext {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverSkipReadOnNext"),
-        let value = ServerSkipReadOnNext(rawValue: stored)
-      {
-        return value
-      }
-      return ServerSkipReadOnNext()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverSkipReadOnNext")
-    }
-  }
-
-  static nonisolated var serverSmartListCapability: ServerSmartListCapability {
-    get {
-      if let stored = UserDefaults.standard.string(forKey: "serverSmartListCapability"),
-        let capability = ServerSmartListCapability(rawValue: stored)
-      {
-        return capability
-      }
-      return ServerSmartListCapability()
-    }
-    set {
-      UserDefaults.standard.set(newValue.rawValue, forKey: "serverSmartListCapability")
+      UserDefaults.standard.set(newValue.rawValue, forKey: "serverProfiles")
     }
   }
 

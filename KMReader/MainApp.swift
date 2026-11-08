@@ -72,6 +72,7 @@ struct MainApp: App {
     AppConfig.migrateOfflineProvenanceIfNeeded()
     AppConfig.removeLegacyThemeColor()
     AppConfig.migrateLegacyHorizontalBookCards()
+    AppConfig.removeLegacyServerCapabilityRecords()
     #if os(iOS) || os(tvOS)
       _ = MangaModelMemoryWarningObserver.shared
     #endif

@@ -7,10 +7,6 @@ import Foundation
 
 nonisolated enum ReadingStatsService {
   private static let apiClient = APIClient.shared
-  private static let logger = AppLogger(.api)
-
-  // An unsupported verdict expires after this interval so a server upgrade is picked up.
-  private static let capabilityRecheckInterval: TimeInterval = 24 * 60 * 60
 
   @concurrent
   static func fetchReadingStats(libraryId: String?) async throws -> (
@@ -22,38 +18,11 @@ nonisolated enum ReadingStatsService {
       return (.empty, .local)
     }
 
-    if shouldQueryServer(instanceId: instanceId) {
-      do {
-        let payload = try await fetchServerPayload(libraryId: normalizedLibraryId)
-        recordServerCapability(instanceId: instanceId, supported: true)
-        return (payload, .server)
-      } catch let error as APIError {
-        guard case .notFound = error else { throw error }
-        // The server lost the endpoints (e.g. downgrade): remember and fall back to local.
-        recordServerCapability(instanceId: instanceId, supported: false)
-        logger.info("Server reading stats unavailable, falling back to local stats")
-      }
+    if !AppConfig.isOffline, ServerProfileService.supports(.readingStats, instanceId: instanceId) {
+      return (try await fetchServerPayload(libraryId: normalizedLibraryId), .server)
     }
 
     return (await fetchLocalPayload(instanceId: instanceId, libraryId: normalizedLibraryId), .local)
-  }
-
-  private static func shouldQueryServer(instanceId: String) -> Bool {
-    guard !AppConfig.isOffline else { return false }
-    guard let record = AppConfig.serverReadingStatsCapability.record(instanceId: instanceId) else {
-      return true
-    }
-    if record.supported { return true }
-    return Date().timeIntervalSince(record.checkedAt) >= capabilityRecheckInterval
-  }
-
-  private static func recordServerCapability(instanceId: String, supported: Bool) {
-    var capability = AppConfig.serverReadingStatsCapability
-    // A repeated supported verdict is not worth a UserDefaults round-trip; an
-    // unsupported verdict must always refresh checkedAt, it throttles re-probes.
-    guard !(supported && capability.record(instanceId: instanceId)?.supported == true) else { return }
-    capability.upsert(instanceId: instanceId, supported: supported, checkedAt: Date())
-    AppConfig.serverReadingStatsCapability = capability
   }
 
   // MARK: - Server Stats

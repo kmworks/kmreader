@@ -24,26 +24,18 @@ final class TrackerCapabilityStore {
     guard checkedInstanceId != instanceId else { return }
     preferences = nil
     isSupported = false
-    guard AppConfig.serverTrackerCapability.shouldQuery(instanceId: instanceId) else {
-      isSupported = false
+    guard ServerProfileService.supports(.trackers, instanceId: instanceId) else {
       checkedInstanceId = instanceId
       return
     }
 
     do {
       preferences = try await TrackerService.getPreferences()
-      record(supported: true)
       isSupported = true
       checkedInstanceId = instanceId
     } catch {
-      isSupported = false
-      if case APIError.notFound = error {
-        record(supported: false)
-        checkedInstanceId = instanceId
-      } else {
-        checkedInstanceId = nil
-        preferences = nil
-      }
+      checkedInstanceId = nil
+      preferences = nil
     }
   }
 
@@ -56,9 +48,9 @@ final class TrackerCapabilityStore {
     self.preferences = preferences
   }
 
-  func refreshCompleted(supported: Bool) {
-    record(supported: supported)
-    isSupported = supported
+  /// A tracker screen loaded its data, so the endpoints answer.
+  func refreshCompleted() {
+    isSupported = true
     checkedInstanceId = AppConfig.current.instanceId
   }
 
@@ -71,11 +63,5 @@ final class TrackerCapabilityStore {
     checkedInstanceId = nil
     isSupported = false
     preferences = nil
-  }
-
-  private func record(supported: Bool) {
-    var capability = AppConfig.serverTrackerCapability
-    capability.record(instanceId: AppConfig.current.instanceId, supported: supported)
-    AppConfig.serverTrackerCapability = capability
   }
 }

@@ -27,13 +27,13 @@ enum SeriesContinueReadingResolver {
     guard let database = try? await DatabaseOperator.database() else { return nil }
     return await database.fetchContinueReadingBook(
       seriesId: seriesId, instanceId: instanceId, downloadedOnly: false,
-      skipRead: AppConfig.serverSkipReadOnNext.skipsRead(instanceId: instanceId))
+      skipRead: ServerProfileService.skipsReadOnNext(instanceId: instanceId))
   }
 
   private static func resolveOffline(seriesId: String, instanceId: String) async -> Book? {
     guard let database = try? await DatabaseOperator.database() else { return nil }
     return await database.fetchContinueReadingBook(
       seriesId: seriesId, instanceId: instanceId, downloadedOnly: true,
-      skipRead: AppConfig.serverSkipReadOnNext.skipsRead(instanceId: instanceId))
+      skipRead: ServerProfileService.skipsReadOnNext(instanceId: instanceId))
   }
 }

@@ -5,14 +5,10 @@
 
 import Foundation
 
-/// The kmrs-private smart-list endpoints (`/api/v1/smart-lists`). Komga
-/// servers 404; the first failure is recorded per instance so later loads
-/// skip the doomed request.
+/// The kmrs-private smart-list endpoints (`/api/v1/smart-lists`), present
+/// where the server profile lists `smartLists`.
 nonisolated enum SmartListService {
   private static let apiClient = APIClient.shared
-
-  // An unsupported verdict expires after this interval so a server upgrade is picked up.
-  private static let capabilityRecheckInterval: TimeInterval = 24 * 60 * 60
 
   static func getSmartLists(
     page: Int = 0,
@@ -167,19 +163,7 @@ nonisolated enum SmartListService {
       smartListId: smartListId, refreshDelay: 0)
   }
 
-  static func isMarkedUnsupported(instanceId: String) -> Bool {
-    guard let record = AppConfig.serverSmartListCapability.record(instanceId: instanceId),
-      !record.supported
-    else { return false }
-    return Date().timeIntervalSince(record.checkedAt) < capabilityRecheckInterval
-  }
-
-  static func recordCapability(instanceId: String, supported: Bool) {
-    var capability = AppConfig.serverSmartListCapability
-    // A repeated supported verdict is not worth a UserDefaults round-trip; an
-    // unsupported verdict must always refresh checkedAt, it throttles re-probes.
-    guard !(supported && capability.record(instanceId: instanceId)?.supported == true) else { return }
-    capability.upsert(instanceId: instanceId, supported: supported, checkedAt: Date())
-    AppConfig.serverSmartListCapability = capability
+  static func isSupported(instanceId: String) -> Bool {
+    ServerProfileService.supports(.smartLists, instanceId: instanceId)
   }
 }

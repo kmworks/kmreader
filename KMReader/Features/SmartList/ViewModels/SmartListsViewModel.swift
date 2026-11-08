@@ -23,7 +23,7 @@ final class SmartListsViewModel {
     let instanceId = AppConfig.current.instanceId
     guard !instanceId.isEmpty else { return }
 
-    if SmartListService.isMarkedUnsupported(instanceId: instanceId) {
+    guard SmartListService.isSupported(instanceId: instanceId) else {
       isSupported = false
       smartLists = []
       return
@@ -43,16 +43,9 @@ final class SmartListsViewModel {
       guard currentLoadID == loadID else { return }
       smartLists = page.content
       isSupported = true
-      SmartListService.recordCapability(instanceId: instanceId, supported: true)
     } catch {
-      guard currentLoadID == loadID else { return }
-      if case APIError.notFound = error {
-        isSupported = false
-        smartLists = []
-        SmartListService.recordCapability(instanceId: instanceId, supported: false)
-      } else if refresh {
-        ErrorManager.shared.alert(error: error)
-      }
+      guard currentLoadID == loadID, refresh else { return }
+      ErrorManager.shared.alert(error: error)
     }
   }
 
