@@ -171,7 +171,7 @@ struct TrackerSeriesSheet: View {
       for provider in TrackerProvider.allCases {
         accounts[provider] = try await TrackerService.getAccount(provider: provider)
       }
-      TrackerCapabilityStore.shared.refreshCompleted(supported: true)
+      TrackerCapabilityStore.shared.refreshCompleted()
     } catch {
       ErrorManager.shared.alert(error: error)
     }

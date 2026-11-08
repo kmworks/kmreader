@@ -6,9 +6,9 @@
 import Foundation
 
 /// Loads library metrics from the kmrs stats endpoints, falling back to the
-/// actuator metrics (library size/series/books only) on servers without them
-/// (Komga, older kmrs). Numbers are cleared only when both sources are dead,
-/// since nothing can refresh them there.
+/// actuator metrics (library size/series/books only) on servers without them.
+/// Numbers are cleared only when both sources are dead, since nothing can
+/// refresh them there.
 struct LibraryMetricsLoader {
   static let shared = LibraryMetricsLoader()
 
@@ -17,17 +17,13 @@ struct LibraryMetricsLoader {
   func refreshMetrics(instanceId: String) async -> [String: LibraryMetricValues] {
     guard !instanceId.isEmpty, !AppConfig.isOffline else { return [:] }
 
-    if ServerStatsService.shouldQueryServer(instanceId: instanceId) {
+    if ServerStatsService.isSupported(instanceId: instanceId) {
       do {
         let stats = try await ServerStatsService.getLibrariesStats()
-        ServerStatsService.recordServerCapability(instanceId: instanceId, supported: true)
         await storeAllLibrariesEntry(instanceId: instanceId, total: stats.total)
         return perLibraryMetrics(from: stats)
-      } catch let error as APIError {
-        // A transient failure keeps the previously stored numbers.
-        guard case .notFound = error else { return [:] }
-        ServerStatsService.recordServerCapability(instanceId: instanceId, supported: false)
       } catch {
+        // A transient failure keeps the previously stored numbers.
         return [:]
       }
     }

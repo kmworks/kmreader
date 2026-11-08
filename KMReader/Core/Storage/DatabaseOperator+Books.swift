@@ -272,8 +272,8 @@ extension DatabaseOperator {
 
   /// `downloadedOnly` restricts the candidates to downloaded books (offline
   /// mode); otherwise the whole local projection of the series takes part.
-  /// With `skipRead`, the book after the last one read skips books already
-  /// read, like the reader's next book.
+  /// With `skipRead` (the server's skip-read setting), the book after the
+  /// last one read skips books already read, like the server's next book.
   func fetchContinueReadingBook(
     seriesId: String,
     instanceId: String,
@@ -588,28 +588,6 @@ extension DatabaseOperator {
         return siblings.books.dropFirst(siblings.index + 1).first
       }
       return siblings.books.nextToRead(after: siblings.index, isRead: { $0.isCompleted })
-    }
-  }
-
-  /// The first book after `bookId`, in its series or in `readListId`'s order,
-  /// that isn't read, also skipping `readBookId`, which the server reported
-  /// read whatever the local copy says. Nil when there is none.
-  func getNextUnreadBook(
-    instanceId: String,
-    bookId: String,
-    readListId: String?,
-    readBookId: String
-  ) async -> Book? {
-    try? read { db in
-      guard
-        let siblings = try fetchSiblingBooks(
-          db: db, bookId: bookId, readListId: readListId, instanceId: instanceId)
-      else {
-        return nil
-      }
-      return siblings.books.dropFirst(siblings.index + 1).first {
-        $0.id != readBookId && !$0.isCompleted
-      }
     }
   }
 

@@ -164,12 +164,16 @@ class AuthViewModel {
     isLoading = true
     bootstrapState = .validating
     defer { isLoading = false }
+    // Alongside the user request, so kmrs-private features are known before
+    // the first screen asks for them.
+    async let profileRefresh: Void = ServerProfileService.refresh(instanceId: AppConfig.current.instanceId)
     do {
       let effectiveTimeout = timeout ?? AppConfig.authTimeout
       let user = try await AuthService.getCurrentUser(timeout: effectiveTimeout)
       var current = AppConfig.current
       current.updateMetadata(from: user)
       AppConfig.current = current
+      await profileRefresh
       bootstrapState = .ready
       return true
     } catch {
@@ -390,6 +394,8 @@ class AuthViewModel {
     }
 
     await DashboardLibrarySelectionStore.loadSelection(for: finalInstanceId)
+
+    await ServerProfileService.refresh(instanceId: finalInstanceId)
 
     // Load libraries
     await LibraryManager.shared.loadLibraries()
