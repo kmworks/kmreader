@@ -18,8 +18,7 @@
     private let volumeSlider: UISlider?
     private var volumeObservation: NSKeyValueObservation?
     private var lastVolume: Float?
-    private var isRestoringVolume = false
-    private var volumeResetTask: Task<Void, Never>?
+    private var didActivateAudioSession = false
 
     override init(frame: CGRect) {
       volumeView.showsVolumeSlider = true
@@ -64,8 +63,7 @@
     }
 
     deinit {
-      volumeObservation?.invalidate()
-      volumeResetTask?.cancel()
+      stopObservingVolume()
       NotificationCenter.default.removeObserver(self)
     }
 
@@ -92,14 +90,21 @@
       }
       let audioSession = AVAudioSession.sharedInstance()
       let baselineVolume = min(max(audioSession.outputVolume, 0.01), 0.99)
-      lastVolume = baselineVolume
-      if baselineVolume != audioSession.outputVolume {
-        restoreVolume(baselineVolume)
+      do {
+        try audioSession.setCategory(.playback, options: [.mixWithOthers])
+        try audioSession.setActive(true)
+        didActivateAudioSession = true
+      } catch {
+        logger.error("Volume button capture failed to activate audio session: \(error)")
+        return
       }
+      lastVolume = baselineVolume
+      restoreVolume(baselineVolume)
       volumeObservation = audioSession.observe(\.outputVolume, options: [.new]) {
-        [weak self] session, _ in
+        [weak self] _, change in
+        guard let newVolume = change.newValue else { return }
         DispatchQueue.main.async {
-          self?.handleVolumeChange(session.outputVolume)
+          self?.handleVolumeChange(newVolume)
         }
       }
     }
@@ -108,18 +113,20 @@
       volumeObservation?.invalidate()
       volumeObservation = nil
       lastVolume = nil
-      isRestoringVolume = false
-      volumeResetTask?.cancel()
-      volumeResetTask = nil
+      if didActivateAudioSession {
+        do {
+          try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        } catch {
+          logger.error("Volume button capture failed to deactivate audio session: \(error)")
+        }
+        didActivateAudioSession = false
+      }
     }
 
     private func handleVolumeChange(_ newVolume: Float) {
       guard isCaptureEnabled, let previousVolume = lastVolume else { return }
       let delta = newVolume - previousVolume
       guard abs(delta) > 0.001 else { return }
-      if isRestoringVolume && abs(newVolume - previousVolume) <= 0.001 {
-        return
-      }
       if delta > 0 {
         onVolumeUp?()
       } else {
@@ -129,18 +136,7 @@
     }
 
     private func restoreVolume(_ volume: Float) {
-      isRestoringVolume = true
       volumeSlider?.setValue(volume, animated: false)
-
-      // Slider-to-session propagation can be asynchronous. Ignore its echo
-      // rather than emitting a second, opposite page-turn command.
-      volumeResetTask?.cancel()
-      volumeResetTask = Task { [weak self] in
-        try? await Task.sleep(for: .milliseconds(50))
-        guard !Task.isCancelled else { return }
-        self?.isRestoringVolume = false
-        self?.volumeResetTask = nil
-      }
     }
   }
 #endif
