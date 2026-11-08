@@ -178,6 +178,10 @@ extension DatabaseOperator {
         switch section {
         case .keepReading:
           sql += "\nAND progress_read_date IS NOT NULL AND progress_completed = 0"
+          if let cutoff = ServerProfileService.recentReadingCutoff(instanceId: instanceId) {
+            sql += "\nAND progress_read_date >= ?"
+            arguments += StatementArguments([cutoff])
+          }
           sql += "\nORDER BY progress_read_date DESC, id ASC"
         case .recentlyReadBooks:
           sql += "\nAND progress_read_date IS NOT NULL AND progress_completed = 1"
@@ -224,6 +228,13 @@ extension DatabaseOperator {
         HAVING
           SUM(CASE WHEN progress_completed = 1 THEN 1 ELSE 0 END) > 0
           AND SUM(CASE WHEN progress_completed = 0 THEN 1 ELSE 0 END) = 0
+      """
+    if let cutoff = ServerProfileService.recentReadingCutoff(instanceId: instanceId) {
+      sql += "\n    AND MAX(progress_read_date) >= ?"
+      arguments += StatementArguments([cutoff])
+    }
+    sql += """
+
       ),
       candidate_books AS (
         SELECT

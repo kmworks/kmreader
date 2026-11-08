@@ -5,8 +5,9 @@
 
 import Foundation
 
-/// The part of `GET /api/v1/settings` the client reads. `skipReadOnNext` is a
-/// kmrs addition that every user can read; Komga never sends it.
+/// The part of `GET /api/v1/settings` the client reads: kmrs additions that
+/// every user can read. Komga never sends them.
 nonisolated struct ServerSettingsResponse: Decodable, Sendable {
   let skipReadOnNext: Bool?
+  let recentReadingDays: Int?
 }

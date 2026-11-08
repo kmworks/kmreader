@@ -871,6 +871,10 @@ extension DatabaseOperator {
         """
       var arguments: StatementArguments = [instanceId]
       Self.appendSQLInFilter(column: "library_id", values: libraryIds, sql: &sql, arguments: &arguments)
+      if let cutoff = ServerProfileService.recentReadingCutoff(instanceId: instanceId) {
+        sql += "\nAND progress_read_date >= ?"
+        arguments += StatementArguments([cutoff])
+      }
       sql += "\nORDER BY progress_read_date DESC, id ASC"
       sql += "\nLIMIT ?"
       arguments += StatementArguments([limit])
