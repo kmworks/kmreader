@@ -1,11 +1,14 @@
 import SwiftUI
 
 struct MangaTranslationSettingsView: View {
+  @State private var model = MangaToolsSettingsModel()
+
   var body: some View {
     Form {
-      MangaTranslationSettingsContent()
+      MangaTranslationSettingsContent(model: model)
     }
     .formStyle(.grouped)
+    .mangaToolsSheets(model: model)
     .toolbar {
       ToolbarItem(placement: .automatic) {
         Button(role: .destructive) {

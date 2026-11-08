@@ -1,25 +1,22 @@
 import SwiftUI
 
+/// The manga translation sections. The owning Form applies
+/// `.mangaToolsSheets(model:)` with the same model.
 struct MangaTranslationSettingsContent: View {
+  let model: MangaToolsSettingsModel
+
   @AppStorage("mangaTranslation") private var preferences = MangaTranslationPreferences()
 
-  @State private var modelSheetRole: MangaModelRole?
-  @State private var showsProviderManagement = false
-  @State private var provider: MangaProviderConfig?
-  @State private var detectorArchive: ModelArchive?
-  @State private var recognizerArchive: ModelArchive?
-
   private var usesConfiguredProvider: Bool {
-    provider?.isConfigured == true
+    model.provider?.isConfigured == true
   }
 
   private func selectedName(for role: MangaModelRole) -> String {
-    let archive = role == .detector ? detectorArchive : recognizerArchive
-    return archive?.name ?? String(localized: "Not Selected")
+    model.archive(for: role)?.name ?? String(localized: "Not Selected")
   }
 
   private var selectedProviderName: String {
-    if let provider, provider.isConfigured {
+    if let provider = model.provider, provider.isConfigured {
       return provider.resolvedDisplayName
     }
     return SystemTranslationProvider.isAvailable
@@ -85,7 +82,7 @@ struct MangaTranslationSettingsContent: View {
         footer: Text(privacyDescription)
       ) {
         Button {
-          showsProviderManagement = true
+          model.sheet = .providers
         } label: {
           HStack {
             Label {
@@ -114,22 +111,11 @@ struct MangaTranslationSettingsContent: View {
         modelRow(.recognizer, icon: "character.textbox")
       }
     }
-    .onAppear(perform: reloadConfiguration)
-    .sheet(isPresented: $showsProviderManagement, onDismiss: reloadConfiguration) {
-      SheetView(title: String(localized: "Translation Providers"), size: .large, applyFormStyle: true) {
-        MangaProviderManagementView()
-      }
-    }
-    .sheet(item: $modelSheetRole, onDismiss: reloadConfiguration) { role in
-      SheetView(title: role.title, size: .large, applyFormStyle: true) {
-        MangaModelManagementView(role: role)
-      }
-    }
   }
 
   private func modelRow(_ role: MangaModelRole, icon: String) -> some View {
     Button {
-      modelSheetRole = role
+      model.sheet = .model(role)
     } label: {
       HStack {
         Label {
@@ -151,19 +137,5 @@ struct MangaTranslationSettingsContent: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-  }
-
-  private func reloadConfiguration() {
-    detectorArchive = MangaModelLibrary.selectedArchive(for: .detector)
-    recognizerArchive = MangaModelLibrary.selectedArchive(for: .recognizer)
-    Task {
-      do {
-        provider = try await MangaProviderLibrary.current(
-          database: await DatabaseOperator.databaseIfConfigured()
-        )
-      } catch {
-        ErrorManager.shared.alert(error: error)
-      }
-    }
   }
 }

@@ -1,10 +1,12 @@
 import SwiftUI
 
 #if os(iOS)
+  /// The owning Form applies `.mangaToolsSheets(model:)` with the same model.
   struct PanelModeSettingsSection: View {
+    let model: MangaToolsSettingsModel
+
     @AppStorage("panelZoomFillFactor") private var panelZoomFillFactor: Double = 0.9
     @AppStorage("activePanelModelVersion") private var activePanelModelVersion: String?
-    @State private var showsPanelModelManagement = false
 
     var body: some View {
       Section(
@@ -12,7 +14,7 @@ import SwiftUI
         footer: Text("Use the Panel Mode button in the reader controls. Page-turn taps move between panels.")
       ) {
         Button {
-          showsPanelModelManagement = true
+          model.sheet = .panelModel
         } label: {
           HStack {
             Label {
@@ -52,11 +54,6 @@ import SwiftUI
           )
           .font(.caption)
           .foregroundColor(.secondary)
-        }
-      }
-      .sheet(isPresented: $showsPanelModelManagement) {
-        SheetView(title: String(localized: "Panel Mode Model"), size: .large, applyFormStyle: true) {
-          PanelModelManagementView()
         }
       }
     }

@@ -2,14 +2,17 @@ import SwiftUI
 
 #if os(iOS) || os(macOS)
   struct MangaToolsSettingsView: View {
+    @State private var model = MangaToolsSettingsModel()
+
     var body: some View {
       Form {
-        MangaTranslationSettingsContent()
+        MangaTranslationSettingsContent(model: model)
         #if os(iOS)
-          PanelModeSettingsSection()
+          PanelModeSettingsSection(model: model)
         #endif
       }
       .formStyle(.grouped)
+      .mangaToolsSheets(model: model)
       .platformNavigationTitle(SettingsSection.mangaTools.title)
       .toolbar {
         ToolbarItem(placement: .automatic) {
