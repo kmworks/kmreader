@@ -657,13 +657,14 @@ extension DatabaseOperator {
 
   /// Raw download status by book ID for books in any active download state. Books
   /// absent from the map have no download intent, so their on-disk data is orphaned.
-  func fetchDownloadStatusesByBookId(instanceId: String) -> [String: String] {
-    (try? read { db in
+  /// Read failures must propagate because callers use absence to authorize deletion.
+  func fetchDownloadStatusesByBookId(instanceId: String) throws -> [String: String] {
+    try read { db in
       try KomgaBook
         .filter(KomgaBook.Columns.instanceId == instanceId && KomgaBook.Columns.downloadStatusRaw != "notDownloaded")
         .fetchAll(db)
         .reduce(into: [String: String]()) { $0[$1.bookId] = $1.downloadStatusRaw }
-    }) ?? [:]
+    }
   }
 
   func fetchOfflineDownloadedBooksSnapshot(instanceId: String) throws -> OfflineDownloadedBooksSnapshot {

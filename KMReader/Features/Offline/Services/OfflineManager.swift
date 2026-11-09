@@ -736,7 +736,7 @@ actor OfflineManager {
 
   /// Cleanup orphaned offline files that no longer have corresponding local database entries.
   /// Returns the number of orphaned directories deleted and total bytes freed.
-  func cleanupOrphanedFiles() async -> (deletedCount: Int, bytesFreed: Int64) {
+  func cleanupOrphanedFiles() async throws -> (deletedCount: Int, bytesFreed: Int64) {
     let fm = FileManager.default
     let baseDir = Self.baseDirectory()
     guard let instanceDirNames = try? fm.contentsOfDirectory(atPath: baseDir.path) else {
@@ -756,7 +756,7 @@ actor OfflineManager {
 
       // `offlineDirectory` maps an empty instance id to "default".
       let instanceId = instanceDirName == "default" ? "" : instanceDirName
-      let result = await cleanupOrphanedBookDirectories(
+      let result = try await cleanupOrphanedBookDirectories(
         instanceId: instanceId,
         instanceDir: instanceDir,
         skipInFlight: instanceId == currentInstanceId
@@ -781,16 +781,15 @@ actor OfflineManager {
     instanceId: String,
     instanceDir: URL,
     skipInFlight: Bool
-  ) async -> (deletedCount: Int, bytesFreed: Int64) {
+  ) async throws -> (deletedCount: Int, bytesFreed: Int64) {
     let fm = FileManager.default
     guard let contents = try? fm.contentsOfDirectory(atPath: instanceDir.path) else {
       return (0, 0)
     }
 
     // Books with an active download state; anything else on disk is orphaned.
-    let statusesByBookId =
-      (try? await DatabaseOperator.database().fetchDownloadStatusesByBookId(instanceId: instanceId))
-      ?? [:]
+    let statusesByBookId = try await DatabaseOperator.database()
+      .fetchDownloadStatusesByBookId(instanceId: instanceId)
 
     var inFlightBookIds = Set<String>()
     if skipInFlight {

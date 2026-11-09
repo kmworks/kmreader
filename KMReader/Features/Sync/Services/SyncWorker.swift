@@ -663,11 +663,15 @@ actor SyncWorker {
         instanceId: instanceId
       )
       if deletedCount > 0 {
-        let cleanupResult = await OfflineManager.shared.cleanupOrphanedFiles()
-        if cleanupResult.deletedCount > 0 {
-          logger.info(
-            "🧹 Cleaned \(cleanupResult.deletedCount) orphaned offline directories after stale book removal"
-          )
+        do {
+          let cleanupResult = try await OfflineManager.shared.cleanupOrphanedFiles()
+          if cleanupResult.deletedCount > 0 {
+            logger.info(
+              "🧹 Cleaned \(cleanupResult.deletedCount) orphaned offline directories after stale book removal"
+            )
+          }
+        } catch {
+          logger.error("❌ Failed to clean offline directories after stale book removal: \(error)")
         }
         logger.info("🧹 Removed \(deletedCount) stale books")
       }
