@@ -182,20 +182,24 @@ struct OfflineBooksView: View {
   private func cleanupOrphanedFiles() {
     Task {
       isScanning = true
-      let result = await OfflineManager.shared.cleanupOrphanedFiles()
-      isScanning = false
-      if result.deletedCount > 0 {
-        ErrorManager.shared.notify(
-          message: String(
-            localized:
-              "settings.offline_books.cleanup_orphaned.result \(result.deletedCount) \(formatter.string(fromByteCount: result.bytesFreed))"
+      do {
+        let result = try await OfflineManager.shared.cleanupOrphanedFiles()
+        if result.deletedCount > 0 {
+          ErrorManager.shared.notify(
+            message: String(
+              localized:
+                "settings.offline_books.cleanup_orphaned.result \(result.deletedCount) \(formatter.string(fromByteCount: result.bytesFreed))"
+            )
           )
-        )
-      } else {
-        ErrorManager.shared.notify(
-          message: String(localized: "settings.offline_books.cleanup_orphaned.no_orphaned")
-        )
+        } else {
+          ErrorManager.shared.notify(
+            message: String(localized: "settings.offline_books.cleanup_orphaned.no_orphaned")
+          )
+        }
+      } catch {
+        ErrorManager.shared.alert(error: error)
       }
+      isScanning = false
       await loadSnapshot()
     }
   }

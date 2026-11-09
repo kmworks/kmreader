@@ -98,7 +98,11 @@ struct MainApp: App {
       _ = OfflineManager.shared
       databaseQueue = queue
       Task.detached(priority: .utility) {
-        _ = await OfflineManager.shared.cleanupOrphanedFiles()
+        do {
+          _ = try await OfflineManager.shared.cleanupOrphanedFiles()
+        } catch {
+          AppLogger(.offline).error("Failed to clean orphaned offline files at launch: \(error)")
+        }
       }
       #if os(iOS)
         QuickActionService.handlePendingShortcutIfNeeded()
