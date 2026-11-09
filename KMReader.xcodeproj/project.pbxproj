@@ -700,10 +700,10 @@
 		};
 		19CC0A012F20000000CC0A01 /* XCRemoteSwiftPackageReference "YueduCoreText" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/kmworks/YueduCoreText";
+			repositoryURL = "https://github.com/CHANG-JUI-LIN/YueduCoreText";
 			requirement = {
-				kind = branch;
-				branch = kmreader;
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.18.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
