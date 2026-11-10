@@ -21,7 +21,7 @@ enum LogCategory: String, CaseIterable, Sendable {
   case notification = "Notification"
 }
 
-enum LogLevel: String, CaseIterable, Sendable {
+nonisolated enum LogLevel: String, CaseIterable, Sendable {
   case debug = "DEBUG"
   case info = "INFO"
   case warning = "WARNING"
