@@ -380,7 +380,7 @@ extension DatabaseOperator {
         if var existing = try KomgaReadList.fetchOne(db, key: compositeId) {
           applyReadList(dto: dto, to: &existing)
           try replaceReadListBookMemberships(db: db, readList: existing)
-          syncReadListDownloadStatus(db: db, readList: &existing)
+          try syncReadListDownloadStatus(db: db, readList: &existing)
           try save(existing, db: db)
         } else {
           var readList = KomgaReadList(
@@ -396,7 +396,7 @@ extension DatabaseOperator {
             bookIds: dto.bookIds
           )
           try replaceReadListBookMemberships(db: db, readList: readList)
-          syncReadListDownloadStatus(db: db, readList: &readList)
+          try syncReadListDownloadStatus(db: db, readList: &readList)
           try save(readList, db: db)
         }
       }
@@ -419,7 +419,7 @@ extension DatabaseOperator {
       }
       readList.bookIds = bookIds
       try replaceReadListBookMemberships(db: db, readList: readList)
-      syncReadListDownloadStatus(db: db, readList: &readList)
+      try syncReadListDownloadStatus(db: db, readList: &readList)
       try save(readList, db: db)
     }
   }
@@ -458,7 +458,7 @@ extension DatabaseOperator {
             )
           applyReadList(dto: readList, to: &record)
           try replaceReadListBookMemberships(db: db, readList: record)
-          syncReadListDownloadStatus(db: db, readList: &record)
+          try syncReadListDownloadStatus(db: db, readList: &record)
           if record.offlinePolicy != .manual {
             automaticPolicyReadListIds.insert(record.readListId)
           }

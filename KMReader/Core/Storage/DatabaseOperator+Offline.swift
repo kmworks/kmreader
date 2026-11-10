@@ -188,72 +188,73 @@ extension DatabaseOperator {
     downloadAt: Date? = nil,
     downloadedSize: Int64? = nil,
     syncSeriesStatus: Bool = true
-  ) {
-    do {
-      try write { db in
-        guard var book = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId) else { return }
-        let oldStatusRaw = book.downloadStatusRaw
-        let oldDownloadedSize = book.downloadedSize
-        let oldDownloadAt = book.downloadAt
-        book.downloadStatus = status
-        if let downloadAt {
-          book.downloadAt = downloadAt
-        }
-        if let downloadedSize {
-          book.downloadedSize = downloadedSize
-        } else if case .notDownloaded = status {
-          book.downloadedSize = 0
-        }
-
-        if case .notDownloaded = status {
-          book.pagesRaw = nil
-          book.tocRaw = nil
-          book.webPubManifestRaw = nil
-        }
-
-        try save(book, db: db)
-
-        guard syncSeriesStatus else { return }
-        if var series = try fetchSeriesRecord(db: db, id: book.seriesId, instanceId: instanceId) {
-          if series.offlinePolicy == .manual {
-            applySeriesDownloadDelta(
-              db: db,
-              series: &series,
-              oldStatusRaw: oldStatusRaw,
-              newStatusRaw: book.downloadStatusRaw,
-              oldDownloadedSize: oldDownloadedSize,
-              newDownloadedSize: book.downloadedSize,
-              oldDownloadAt: oldDownloadAt,
-              newDownloadAt: book.downloadAt
-            )
-          } else {
-            syncSeriesDownloadStatus(db: db, series: &series)
-          }
-          try save(series, db: db)
-        }
-
-        let readListIds = try fetchReadListIdsContainingBooks(db: db, instanceId: instanceId, bookIds: [book.bookId])
-        var readLists = try fetchReadListsByIds(db: db, ids: readListIds, instanceId: instanceId)
-        for index in readLists.indices {
-          if readLists[index].offlinePolicy == .manual {
-            applyReadListDownloadDelta(
-              db: db,
-              readList: &readLists[index],
-              oldStatusRaw: oldStatusRaw,
-              newStatusRaw: book.downloadStatusRaw,
-              oldDownloadedSize: oldDownloadedSize,
-              newDownloadedSize: book.downloadedSize,
-              oldDownloadAt: oldDownloadAt,
-              newDownloadAt: book.downloadAt
-            )
-          } else {
-            syncReadListDownloadStatus(db: db, readList: &readLists[index])
-          }
-          try save(readLists[index], db: db)
-        }
+  ) throws {
+    try write { db in
+      guard var book = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId) else { return }
+      let oldStatusRaw = book.downloadStatusRaw
+      let oldDownloadedSize = book.downloadedSize
+      let oldDownloadAt = book.downloadAt
+      book.downloadStatus = status
+      if let downloadAt {
+        book.downloadAt = downloadAt
       }
-    } catch {
-      logger.error("Failed to update book download status: \(error)")
+      if let downloadedSize {
+        book.downloadedSize = downloadedSize
+      } else if case .notDownloaded = status {
+        book.downloadedSize = 0
+      }
+
+      if case .notDownloaded = status {
+        book.pagesRaw = nil
+        book.tocRaw = nil
+        book.webPubManifestRaw = nil
+      }
+
+      try save(book, db: db)
+
+      // Offline policies only queue books that are not downloaded, so a book
+      // settling as downloaded gives them nothing to act on and the rollups
+      // can move by delta instead of reloading every member book.
+      let skipsPolicyRecount = book.downloadStatusRaw == "downloaded"
+
+      guard syncSeriesStatus else { return }
+      if var series = try fetchSeriesRecord(db: db, id: book.seriesId, instanceId: instanceId) {
+        if series.offlinePolicy == .manual || skipsPolicyRecount {
+          try applySeriesDownloadDelta(
+            db: db,
+            series: &series,
+            oldStatusRaw: oldStatusRaw,
+            newStatusRaw: book.downloadStatusRaw,
+            oldDownloadedSize: oldDownloadedSize,
+            newDownloadedSize: book.downloadedSize,
+            oldDownloadAt: oldDownloadAt,
+            newDownloadAt: book.downloadAt
+          )
+        } else {
+          try syncSeriesDownloadStatus(db: db, series: &series)
+        }
+        try save(series, db: db)
+      }
+
+      let readListIds = try fetchReadListIdsContainingBooks(db: db, instanceId: instanceId, bookIds: [book.bookId])
+      var readLists = try fetchReadListsByIds(db: db, ids: readListIds, instanceId: instanceId)
+      for index in readLists.indices {
+        if readLists[index].offlinePolicy == .manual || skipsPolicyRecount {
+          try applyReadListDownloadDelta(
+            db: db,
+            readList: &readLists[index],
+            oldStatusRaw: oldStatusRaw,
+            newStatusRaw: book.downloadStatusRaw,
+            oldDownloadedSize: oldDownloadedSize,
+            newDownloadedSize: book.downloadedSize,
+            oldDownloadAt: oldDownloadAt,
+            newDownloadAt: book.downloadAt
+          )
+        } else {
+          try syncReadListDownloadStatus(db: db, readList: &readLists[index])
+        }
+        try save(readLists[index], db: db)
+      }
     }
   }
 
@@ -262,9 +263,9 @@ extension DatabaseOperator {
       try write { db in
         guard let book = try fetchBookRecord(db: db, id: bookId, instanceId: instanceId) else { return }
         let seriesId = book.seriesId
-        removeBookFromCachedReadLists(db: db, bookId: bookId, instanceId: instanceId)
+        try removeBookFromCachedReadLists(db: db, bookId: bookId, instanceId: instanceId)
         try KomgaBook.deleteOne(db, key: book.id)
-        syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+        try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
       }
     } catch {
       logger.error("Failed to delete local book after not found: \(error)")
@@ -343,16 +344,24 @@ extension DatabaseOperator {
 
 extension DatabaseOperator {
   func syncSeriesDownloadStatus(series: KomgaSeries) {
-    try? write { db in
-      var series = series
-      syncSeriesDownloadStatus(db: db, series: &series)
-      try save(series, db: db)
+    do {
+      try write { db in
+        var series = series
+        try syncSeriesDownloadStatus(db: db, series: &series)
+        try save(series, db: db)
+      }
+    } catch {
+      logger.error("Failed to sync offline download status: \(error)")
     }
   }
 
   func syncSeriesDownloadStatus(seriesId: String, instanceId: String) {
-    try? write { db in
-      syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+    do {
+      try write { db in
+        try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+      }
+    } catch {
+      logger.error("Failed to sync offline download status: \(error)")
     }
   }
 
@@ -405,7 +414,7 @@ extension DatabaseOperator {
           series.offlinePolicyLimit = max(0, limit)
         }
         if syncSeriesStatus {
-          syncSeriesDownloadStatus(db: db, series: &series)
+          try syncSeriesDownloadStatus(db: db, series: &series)
         }
         try save(series, db: db)
       }
@@ -415,27 +424,39 @@ extension DatabaseOperator {
   }
 
   func syncReadListDownloadStatus(readList: KomgaReadList) {
-    try? write { db in
-      var readList = readList
-      syncReadListDownloadStatus(db: db, readList: &readList)
-      try save(readList, db: db)
+    do {
+      try write { db in
+        var readList = readList
+        try syncReadListDownloadStatus(db: db, readList: &readList)
+        try save(readList, db: db)
+      }
+    } catch {
+      logger.error("Failed to sync offline download status: \(error)")
     }
   }
 
   func syncReadListDownloadStatus(readListId: String, instanceId: String) {
-    try? write { db in
-      guard var readList = try fetchReadListRecord(db: db, id: readListId, instanceId: instanceId) else {
-        return
+    do {
+      try write { db in
+        guard var readList = try fetchReadListRecord(db: db, id: readListId, instanceId: instanceId) else {
+          return
+        }
+        try syncReadListDownloadStatus(db: db, readList: &readList)
+        try save(readList, db: db)
       }
-      syncReadListDownloadStatus(db: db, readList: &readList)
-      try save(readList, db: db)
+    } catch {
+      logger.error("Failed to sync offline download status: \(error)")
     }
   }
 
   func syncReadListsContainingBooks(bookIds: [String], instanceId: String) {
     guard !bookIds.isEmpty else { return }
-    try? write { db in
-      syncReadListsContainingBooksInTransaction(db: db, bookIds: bookIds, instanceId: instanceId)
+    do {
+      try write { db in
+        try syncReadListsContainingBooksInTransaction(db: db, bookIds: bookIds, instanceId: instanceId)
+      }
+    } catch {
+      logger.error("Failed to sync offline download status: \(error)")
     }
   }
 
@@ -476,7 +497,7 @@ extension DatabaseOperator {
           readList.offlinePolicyLimit = max(0, limit)
         }
         if syncReadListStatus {
-          syncReadListDownloadStatus(db: db, readList: &readList)
+          try syncReadListDownloadStatus(db: db, readList: &readList)
         }
         try save(readList, db: db)
       }
@@ -569,14 +590,16 @@ extension DatabaseOperator {
     case unread(limit: Int)
   }
 
-  func syncSeriesDownloadStatus(db: Database, seriesId: String, instanceId: String) {
-    guard var series = try? fetchSeriesRecord(db: db, id: seriesId, instanceId: instanceId) else { return }
-    syncSeriesDownloadStatus(db: db, series: &series)
-    try? save(series, db: db)
+  func syncSeriesDownloadStatus(db: Database, seriesId: String, instanceId: String) throws {
+    guard var series = try fetchSeriesRecord(db: db, id: seriesId, instanceId: instanceId) else { return }
+    try syncSeriesDownloadStatus(db: db, series: &series)
+    try save(series, db: db)
   }
 
-  func syncSeriesDownloadStatus(db: Database, series: inout KomgaSeries) {
-    let books = (try? fetchBooks(db: db, instanceId: series.instanceId, seriesId: series.seriesId)) ?? []
+  /// Rollups are written back by the caller, so a failed member read must abort
+  /// the transaction rather than count as an empty series.
+  func syncSeriesDownloadStatus(db: Database, series: inout KomgaSeries) throws {
+    let books = try fetchBooks(db: db, instanceId: series.instanceId, seriesId: series.seriesId)
     let totalCount = series.booksCount
     let downloadedCount = books.filter { $0.downloadStatusRaw == "downloaded" }.count
     let pendingCount = books.filter { $0.downloadStatusRaw == "pending" }.count
@@ -597,10 +620,10 @@ extension DatabaseOperator {
       series.downloadStatusRaw = "notDownloaded"
     }
 
-    handlePolicyActions(db: db, series: series, books: books)
+    try handlePolicyActions(db: db, series: series, books: books)
   }
 
-  func handlePolicyActions(db: Database, series: KomgaSeries, books: [KomgaBook]) {
+  func handlePolicyActions(db: Database, series: KomgaSeries, books: [KomgaBook]) throws {
     let policy = series.offlinePolicy
     guard policy != .manual else { return }
 
@@ -619,8 +642,13 @@ extension DatabaseOperator {
     }
     let now = Date.now
 
+    let indexById = Dictionary(
+      books.enumerated().map { ($0.element.id, $0.offset) },
+      uniquingKeysWith: { first, _ in first }
+    )
+
     for (sortedIndex, sourceBook) in sortedBooks.enumerated() {
-      guard let index = books.firstIndex(where: { $0.id == sourceBook.id }) else { continue }
+      guard let index = indexById[sourceBook.id] else { continue }
       let isRead = books[index].progressCompleted ?? false
       let isDownloaded = books[index].downloadStatusRaw == "downloaded"
       let isPending = books[index].downloadStatusRaw == "pending"
@@ -646,13 +674,13 @@ extension DatabaseOperator {
         if !isDownloaded && !isPending && !isFailed {
           books[index].downloadStatusRaw = "pending"
           books[index].downloadAt = now.addingTimeInterval(Double(sortedIndex) * 0.001)
-          try? save(books[index], db: db)
+          try save(books[index], db: db)
           needsSyncQueue = true
           queuedBookIds.append(books[index].bookId)
         }
       }
     }
-    syncReadListsContainingBooksInTransaction(db: db, bookIds: queuedBookIds, instanceId: series.instanceId)
+    try syncReadListsContainingBooksInTransaction(db: db, bookIds: queuedBookIds, instanceId: series.instanceId)
 
     if needsSyncQueue {
       OfflineManager.shared.triggerSync(instanceId: series.instanceId)
@@ -660,7 +688,7 @@ extension DatabaseOperator {
   }
 
   @discardableResult
-  func handlePolicyActions(db: Database, readList: KomgaReadList, books: [KomgaBook]) -> Bool {
+  func handlePolicyActions(db: Database, readList: KomgaReadList, books: [KomgaBook]) throws -> Bool {
     let policy = readList.offlinePolicy
     guard policy != .manual else { return false }
 
@@ -677,8 +705,13 @@ extension DatabaseOperator {
     }
     let now = Date.now
 
+    let indexById = Dictionary(
+      books.enumerated().map { ($0.element.id, $0.offset) },
+      uniquingKeysWith: { first, _ in first }
+    )
+
     for (sortedIndex, sourceBook) in sortedBooks.enumerated() {
-      guard let index = books.firstIndex(where: { $0.id == sourceBook.id }) else { continue }
+      guard let index = indexById[sourceBook.id] else { continue }
       let isRead = books[index].progressCompleted ?? false
       let isDownloaded = books[index].downloadStatusRaw == "downloaded"
       let isPending = books[index].downloadStatusRaw == "pending"
@@ -704,7 +737,7 @@ extension DatabaseOperator {
         if !isDownloaded && !isPending && !isFailed {
           books[index].downloadStatusRaw = "pending"
           books[index].downloadAt = now.addingTimeInterval(Double(sortedIndex) * 0.001)
-          try? save(books[index], db: db)
+          try save(books[index], db: db)
           needsSyncQueue = true
           seriesIdsToSync.insert(books[index].seriesId)
           queuedBookIds.append(books[index].bookId)
@@ -713,9 +746,9 @@ extension DatabaseOperator {
     }
 
     for seriesId in seriesIdsToSync {
-      syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: readList.instanceId)
+      try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: readList.instanceId)
     }
-    syncReadListsContainingBooksInTransaction(
+    try syncReadListsContainingBooksInTransaction(
       db: db,
       bookIds: queuedBookIds,
       instanceId: readList.instanceId,
@@ -738,13 +771,13 @@ extension DatabaseOperator {
     newDownloadedSize: Int64,
     oldDownloadAt: Date?,
     newDownloadAt: Date?
-  ) {
+  ) throws {
     // The delta tracks only downloaded/pending counts; a failure anywhere
     // needs a full recount.
     if oldStatusRaw == "failed" || newStatusRaw == "failed"
       || series.downloadStatusRaw == "failed"
     {
-      syncSeriesDownloadStatus(db: db, series: &series)
+      try syncSeriesDownloadStatus(db: db, series: &series)
       return
     }
 
@@ -777,7 +810,7 @@ extension DatabaseOperator {
       || downloadedCount > series.booksCount
       || pendingCount > series.booksCount
     {
-      syncSeriesDownloadStatus(db: db, series: &series)
+      try syncSeriesDownloadStatus(db: db, series: &series)
       return
     }
 
@@ -788,7 +821,7 @@ extension DatabaseOperator {
     if let newDownloadAt, series.downloadAt == nil || newDownloadAt > series.downloadAt! {
       series.downloadAt = newDownloadAt
     } else if let oldDownloadAt, oldDownloadAt == series.downloadAt, newDownloadAt == nil {
-      syncSeriesDownloadStatus(db: db, series: &series)
+      try syncSeriesDownloadStatus(db: db, series: &series)
       return
     }
 
@@ -801,7 +834,7 @@ extension DatabaseOperator {
     }
   }
 
-  func syncReadListDownloadStatus(db: Database, readList: inout KomgaReadList) {
+  func syncReadListDownloadStatus(db: Database, readList: inout KomgaReadList) throws {
     let bookIds = readList.bookIds
     guard !bookIds.isEmpty else {
       readList.downloadedBooks = 0
@@ -812,14 +845,14 @@ extension DatabaseOperator {
       return
     }
 
-    let books = (try? fetchBooksByIds(db: db, ids: bookIds, instanceId: readList.instanceId)) ?? []
+    let books = try fetchBooksByIds(db: db, ids: bookIds, instanceId: readList.instanceId)
     applyReadListDownloadSummary(readList: &readList, books: books, totalCount: bookIds.count)
 
-    guard handlePolicyActions(db: db, readList: readList, books: books) else {
+    guard try handlePolicyActions(db: db, readList: readList, books: books) else {
       return
     }
 
-    let updatedBooks = (try? fetchBooksByIds(db: db, ids: bookIds, instanceId: readList.instanceId)) ?? []
+    let updatedBooks = try fetchBooksByIds(db: db, ids: bookIds, instanceId: readList.instanceId)
     applyReadListDownloadSummary(readList: &readList, books: updatedBooks, totalCount: bookIds.count)
   }
 
@@ -855,13 +888,13 @@ extension DatabaseOperator {
     newDownloadedSize: Int64,
     oldDownloadAt: Date?,
     newDownloadAt: Date?
-  ) {
+  ) throws {
     // The delta tracks only downloaded/pending counts; a failure anywhere
     // needs a full recount.
     if oldStatusRaw == "failed" || newStatusRaw == "failed"
       || readList.downloadStatusRaw == "failed"
     {
-      syncReadListDownloadStatus(db: db, readList: &readList)
+      try syncReadListDownloadStatus(db: db, readList: &readList)
       return
     }
 
@@ -894,7 +927,7 @@ extension DatabaseOperator {
       || downloadedCount > readList.bookIds.count
       || pendingCount > readList.bookIds.count
     {
-      syncReadListDownloadStatus(db: db, readList: &readList)
+      try syncReadListDownloadStatus(db: db, readList: &readList)
       return
     }
 
@@ -909,7 +942,7 @@ extension DatabaseOperator {
     } else if downloadedCount == 0 {
       readList.downloadAt = nil
     } else if let oldDownloadAt, oldDownloadAt == readList.downloadAt {
-      syncReadListDownloadStatus(db: db, readList: &readList)
+      try syncReadListDownloadStatus(db: db, readList: &readList)
       return
     }
 
@@ -925,13 +958,13 @@ extension DatabaseOperator {
     }
   }
 
-  func removeBookFromCachedReadLists(db: Database, bookId: String, instanceId: String) {
-    guard var readLists = try? fetchReadLists(db: db, instanceId: instanceId) else { return }
+  func removeBookFromCachedReadLists(db: Database, bookId: String, instanceId: String) throws {
+    var readLists = try fetchReadLists(db: db, instanceId: instanceId)
     for index in readLists.indices where readLists[index].bookIds.contains(bookId) {
       readLists[index].bookIds = readLists[index].bookIds.filter { $0 != bookId }
-      try? replaceReadListBookMemberships(db: db, readList: readLists[index])
-      syncReadListDownloadStatus(db: db, readList: &readLists[index])
-      try? save(readLists[index], db: db)
+      try replaceReadListBookMemberships(db: db, readList: readLists[index])
+      try syncReadListDownloadStatus(db: db, readList: &readLists[index])
+      try save(readLists[index], db: db)
     }
   }
 
@@ -982,8 +1015,8 @@ extension DatabaseOperator {
             affectedBookIds.append(books[index].bookId)
           }
         }
-        syncSeriesDownloadStatus(db: db, series: &series)
-        syncReadListsContainingBooksInTransaction(db: db, bookIds: affectedBookIds, instanceId: instanceId)
+        try syncSeriesDownloadStatus(db: db, series: &series)
+        try syncReadListsContainingBooksInTransaction(db: db, bookIds: affectedBookIds, instanceId: instanceId)
         try save(series, db: db)
       }
       if shouldTriggerSync {
@@ -1073,8 +1106,8 @@ extension DatabaseOperator {
           bookIdsToRemove.append(books[index].bookId)
           affectedBookIds.append(books[index].bookId)
         }
-        syncSeriesDownloadStatus(db: db, series: &series)
-        syncReadListsContainingBooksInTransaction(db: db, bookIds: affectedBookIds, instanceId: instanceId)
+        try syncSeriesDownloadStatus(db: db, series: &series)
+        try syncReadListsContainingBooksInTransaction(db: db, bookIds: affectedBookIds, instanceId: instanceId)
         try save(series, db: db)
       }
       Task {
@@ -1128,15 +1161,15 @@ extension DatabaseOperator {
           }
         }
         for seriesId in seriesIdsToSync {
-          syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+          try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
         }
-        syncReadListsContainingBooksInTransaction(
+        try syncReadListsContainingBooksInTransaction(
           db: db,
           bookIds: affectedBookIds,
           instanceId: instanceId,
           excludingReadListId: readList.readListId
         )
-        syncReadListDownloadStatus(db: db, readList: &readList)
+        try syncReadListDownloadStatus(db: db, readList: &readList)
         try save(readList, db: db)
       }
       if shouldTriggerSync {
@@ -1204,15 +1237,15 @@ extension DatabaseOperator {
           affectedBookIds.append(books[index].bookId)
         }
         for seriesId in seriesIdsToSync {
-          syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+          try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
         }
-        syncReadListsContainingBooksInTransaction(
+        try syncReadListsContainingBooksInTransaction(
           db: db,
           bookIds: affectedBookIds,
           instanceId: instanceId,
           excludingReadListId: readList.readListId
         )
-        syncReadListDownloadStatus(db: db, readList: &readList)
+        try syncReadListDownloadStatus(db: db, readList: &readList)
         try save(readList, db: db)
       }
       Task {
