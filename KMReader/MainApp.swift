@@ -68,6 +68,7 @@ struct MainApp: App {
   private let deepLinkRouter = DeepLinkRouter.shared
 
   init() {
+    SQLiteErrorLog.install()
     PlatformHelper.setup()
     AppConfig.migrateOfflineProvenanceIfNeeded()
     AppConfig.removeLegacyThemeColor()

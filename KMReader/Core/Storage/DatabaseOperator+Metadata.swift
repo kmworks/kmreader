@@ -154,7 +154,7 @@ extension DatabaseOperator {
         books[index].downloadAt = Date.now
         try save(books[index], db: db)
       }
-      recountDownloadAggregates(db: db, books: books, instanceId: instanceId)
+      try recountDownloadAggregates(db: db, books: books, instanceId: instanceId)
     }
   }
 
@@ -170,17 +170,17 @@ extension DatabaseOperator {
         books[index].downloadAt = nil
         try save(books[index], db: db)
       }
-      recountDownloadAggregates(db: db, books: books, instanceId: instanceId)
+      try recountDownloadAggregates(db: db, books: books, instanceId: instanceId)
     }
   }
 
   /// Bulk status writes bypass the per-book delta path, so the series/read-list
   /// rollups are recounted explicitly.
-  private func recountDownloadAggregates(db: Database, books: [KomgaBook], instanceId: String) {
+  private func recountDownloadAggregates(db: Database, books: [KomgaBook], instanceId: String) throws {
     for seriesId in Set(books.map(\.seriesId)) {
-      syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+      try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
     }
-    syncReadListsContainingBooksInTransaction(db: db, bookIds: books.map(\.bookId), instanceId: instanceId)
+    try syncReadListsContainingBooksInTransaction(db: db, bookIds: books.map(\.bookId), instanceId: instanceId)
   }
 }
 
@@ -534,16 +534,17 @@ extension DatabaseOperator {
 }
 
 extension DatabaseOperator {
-  func getDownloadStatus(bookId: String) -> DownloadStatus {
-    getDownloadStatus(bookId: bookId, instanceId: AppConfig.current.instanceId)
+  func getDownloadStatus(bookId: String) throws -> DownloadStatus {
+    try getDownloadStatus(bookId: bookId, instanceId: AppConfig.current.instanceId)
   }
 
-  func getDownloadStatus(bookId: String, instanceId: String) -> DownloadStatus {
+  /// Read failures propagate: callers queue, cancel, and delete downloads based on
+  /// this status, so an unreadable database must not read as "not downloaded".
+  func getDownloadStatus(bookId: String, instanceId: String) throws -> DownloadStatus {
     guard !instanceId.isEmpty else { return .notDownloaded }
-    return
-      (try? read { db in
-        try fetchBookRecord(db: db, id: bookId, instanceId: instanceId)?.downloadStatus
-      }) ?? .notDownloaded
+    return try read { db in
+      try fetchBookRecord(db: db, id: bookId, instanceId: instanceId)?.downloadStatus
+    } ?? .notDownloaded
   }
 
   func isBookReadCompleted(bookId: String, instanceId: String) -> Bool {
@@ -552,8 +553,8 @@ extension DatabaseOperator {
     }) ?? false
   }
 
-  func fetchPendingBooks(instanceId: String, limit: Int? = nil) -> [Book] {
-    (try? read { db in
+  func fetchPendingBooks(instanceId: String, limit: Int? = nil) throws -> [Book] {
+    try read { db in
       var request =
         KomgaBook
         .filter(KomgaBook.Columns.instanceId == instanceId && KomgaBook.Columns.downloadStatusRaw == "pending")
@@ -562,7 +563,7 @@ extension DatabaseOperator {
         request = request.limit(limit)
       }
       return try request.fetchAll(db).map { $0.toBook() }
-    }) ?? []
+    }
   }
 
   @discardableResult
@@ -592,9 +593,9 @@ extension DatabaseOperator {
         }
 
         for seriesId in affectedSeriesIds {
-          syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
+          try syncSeriesDownloadStatus(db: db, seriesId: seriesId, instanceId: instanceId)
         }
-        syncReadListsContainingBooksInTransaction(db: db, bookIds: affectedBookIds, instanceId: instanceId)
+        try syncReadListsContainingBooksInTransaction(db: db, bookIds: affectedBookIds, instanceId: instanceId)
       }
     } catch {
       logger.error("Failed to queue books offline: \(error)")
@@ -602,16 +603,16 @@ extension DatabaseOperator {
     return queuedCount
   }
 
-  func fetchDownloadQueueSummary(instanceId: String) -> DownloadQueueSummary {
+  func fetchDownloadQueueSummary(instanceId: String) throws -> DownloadQueueSummary {
     DownloadQueueSummary(
-      downloadingCount: fetchBooksCount(instanceId: instanceId, status: "downloading"),
-      pendingCount: fetchBooksCount(instanceId: instanceId, status: "pending"),
-      failedCount: fetchBooksCount(instanceId: instanceId, status: "failed")
+      downloadingCount: try fetchBooksCount(instanceId: instanceId, status: "downloading"),
+      pendingCount: try fetchBooksCount(instanceId: instanceId, status: "pending"),
+      failedCount: try fetchBooksCount(instanceId: instanceId, status: "failed")
     )
   }
 
-  func fetchDownloadedBooksCount(instanceId: String) -> Int {
-    fetchBooksCount(instanceId: instanceId, status: "downloaded")
+  func fetchDownloadedBooksCount(instanceId: String) throws -> Int {
+    try fetchBooksCount(instanceId: instanceId, status: "downloaded")
   }
 
   /// Offline books aggregate for the scope caption and content chip: the count
@@ -660,10 +661,20 @@ extension DatabaseOperator {
   /// Read failures must propagate because callers use absence to authorize deletion.
   func fetchDownloadStatusesByBookId(instanceId: String) throws -> [String: String] {
     try read { db in
-      try KomgaBook
-        .filter(KomgaBook.Columns.instanceId == instanceId && KomgaBook.Columns.downloadStatusRaw != "notDownloaded")
-        .fetchAll(db)
-        .reduce(into: [String: String]()) { $0[$1.bookId] = $1.downloadStatusRaw }
+      let rows = try Row.fetchAll(
+        db,
+        sql: """
+          SELECT book_id, download_status_raw
+          FROM \(KomgaBook.databaseTableName)
+          WHERE instance_id = ? AND download_status_raw != 'notDownloaded'
+          """,
+        arguments: [instanceId]
+      )
+      return rows.reduce(into: [String: String]()) { statuses, row in
+        let bookId: String = row["book_id"]
+        let status: String = row["download_status_raw"]
+        statuses[bookId] = status
+      }
     }
   }
 
@@ -960,8 +971,12 @@ extension DatabaseOperator {
     }) ?? []
   }
 
-  func fetchFailedBooksCount(instanceId: String) -> Int {
-    fetchBooksCount(instanceId: instanceId, status: "failed")
+  func fetchPendingBooksCount(instanceId: String) throws -> Int {
+    try fetchBooksCount(instanceId: instanceId, status: "pending")
+  }
+
+  func fetchFailedBooksCount(instanceId: String) throws -> Int {
+    try fetchBooksCount(instanceId: instanceId, status: "failed")
   }
 
   func fetchTotalBooksCount(instanceId: String, libraryId: String? = nil) -> Int {
@@ -1073,12 +1088,12 @@ extension DatabaseOperator {
     return try KomgaLibrary.fetchAll(db, sql: sql, arguments: arguments)
   }
 
-  func fetchBooksCount(instanceId: String, status: String) -> Int {
-    (try? read { db in
+  func fetchBooksCount(instanceId: String, status: String) throws -> Int {
+    try read { db in
       try KomgaBook
         .filter(KomgaBook.Columns.instanceId == instanceId && KomgaBook.Columns.downloadStatusRaw == status)
         .fetchCount(db)
-    }) ?? 0
+    }
   }
 
   func syncReadListsContainingBooksInTransaction(
@@ -1086,11 +1101,9 @@ extension DatabaseOperator {
     bookIds: [String],
     instanceId: String,
     excludingReadListId: String? = nil
-  ) {
+  ) throws {
     guard !bookIds.isEmpty else { return }
-    guard
-      let containingReadListIds = try? fetchReadListIdsContainingBooks(db: db, instanceId: instanceId, bookIds: bookIds)
-    else { return }
+    let containingReadListIds = try fetchReadListIdsContainingBooks(db: db, instanceId: instanceId, bookIds: bookIds)
     let readListIds = containingReadListIds.filter { readListId in
       if let excludingReadListId {
         return readListId != excludingReadListId
@@ -1098,10 +1111,10 @@ extension DatabaseOperator {
       return true
     }
     guard !readListIds.isEmpty else { return }
-    guard var readLists = try? fetchReadListsByIds(db: db, ids: readListIds, instanceId: instanceId) else { return }
+    var readLists = try fetchReadListsByIds(db: db, ids: readListIds, instanceId: instanceId)
     for index in readLists.indices {
-      syncReadListDownloadStatus(db: db, readList: &readLists[index])
-      try? save(readLists[index], db: db)
+      try syncReadListDownloadStatus(db: db, readList: &readLists[index])
+      try save(readLists[index], db: db)
     }
   }
 
