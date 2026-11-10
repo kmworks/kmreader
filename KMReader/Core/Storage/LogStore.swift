@@ -153,6 +153,66 @@ actor LogStore {
     let level: Int
     let category: String
     let message: String
+
+    func formattedLine(dateFormatter: DateFormatter) -> String {
+      "[\(dateFormatter.string(from: date))] [\(LogLevel(level).rawValue)] [\(category)] \(message)"
+    }
+  }
+
+  nonisolated static func makeLineDateFormatter() -> DateFormatter {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+    return formatter
+  }
+
+  /// Writes every entry matching the filters to `url` as text, oldest first.
+  func export(
+    minPriority: Int? = nil,
+    category: String? = nil,
+    search: String? = nil,
+    to url: URL
+  ) throws {
+    var conditions: [String] = []
+    var arguments: StatementArguments = []
+    Self.appendFilters(
+      minPriority: minPriority,
+      category: category,
+      search: search,
+      since: nil,
+      to: &conditions,
+      arguments: &arguments
+    )
+    let whereClause = conditions.isEmpty ? "" : "WHERE \(conditions.joined(separator: " AND "))"
+    let sql = """
+      SELECT id, date, level, category, message
+      FROM logs
+      \(whereClause)
+      ORDER BY date ASC, id ASC
+      """
+
+    try Data().write(to: url)
+    guard let dbQueue else { return }
+
+    let handle = try FileHandle(forWritingTo: url)
+    defer { try? handle.close() }
+
+    let dateFormatter = Self.makeLineDateFormatter()
+    let flushThreshold = 256 * 1024
+    var buffer = Data()
+
+    try dbQueue.read { db in
+      let rows = try Row.fetchCursor(db, sql: sql, arguments: arguments)
+      while let row = try rows.next() {
+        let line = Self.makeEntry(from: row).formattedLine(dateFormatter: dateFormatter)
+        buffer.append(contentsOf: line.utf8)
+        buffer.append(0x0A)
+        if buffer.count >= flushThreshold {
+          try handle.write(contentsOf: buffer)
+          buffer.removeAll(keepingCapacity: true)
+        }
+      }
+    }
+    try handle.write(contentsOf: buffer)
   }
 
   func query(

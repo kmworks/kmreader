@@ -33,6 +33,15 @@ struct SettingsLogsView: View {
     )
   }
 
+  private var logExportFile: LogExportFile {
+    let queryKey = currentQueryKey
+    return LogExportFile(
+      minPriority: queryKey.minPriority,
+      category: queryKey.category,
+      search: queryKey.search
+    )
+  }
+
   private var totalCount: Int {
     categoryCounts.reduce(0) { $0 + $1.count }
   }
@@ -86,7 +95,7 @@ struct SettingsLogsView: View {
       .toolbar {
         ToolbarItem(placement: .primaryAction) {
           Menu {
-            ShareLink(item: exportLogs()) {
+            ShareLink(item: logExportFile, preview: SharePreview(SettingsSection.logs.title)) {
               Label(String(localized: "Share"), systemImage: AppIcon.share)
             }
 
@@ -272,21 +281,13 @@ struct SettingsLogsView: View {
     }
   }
 
-  private func exportLogs() -> String {
-    pagination.items.map { formatEntry($0) }.joined(separator: "\n")
-  }
-
   private func clearLogs() async {
     await LogStore.shared.clear()
     await loadLogs()
   }
 
   private func formatEntry(_ entry: LogStore.LogEntry) -> String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-    let level = LogLevel(entry.level).rawValue
-    return
-      "[\(formatter.string(from: entry.date))] [\(level)] [\(entry.category)] \(entry.message)"
+    entry.formattedLine(dateFormatter: LogStore.makeLineDateFormatter())
   }
 
   private func copyToClipboard(_ text: String) {
