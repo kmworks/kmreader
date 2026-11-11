@@ -30,27 +30,31 @@ final class AnimatedImagePlayerController: NSObject {
     // CADisplayLink on macOS can only be created from a view.
     func start(sourceFileURL: URL, targetView: NSView) {
       guard let targetLayer = targetView.layer else { return }
+      let targetMaxPixelSize = resolvedMaxPixelSize(for: targetLayer)
+      guard !isPlaying(sourceFileURL, on: targetLayer, maxPixelSize: targetMaxPixelSize) else { return }
+      stop()
+      // Assigned after stop(), which clears it.
       self.targetView = targetView
-      startPlayback(sourceFileURL: sourceFileURL, targetLayer: targetLayer)
+      startPlayback(sourceFileURL: sourceFileURL, targetLayer: targetLayer, maxPixelSize: targetMaxPixelSize)
     }
   #else
     func start(sourceFileURL: URL, targetLayer: CALayer) {
-      startPlayback(sourceFileURL: sourceFileURL, targetLayer: targetLayer)
+      let targetMaxPixelSize = resolvedMaxPixelSize(for: targetLayer)
+      guard !isPlaying(sourceFileURL, on: targetLayer, maxPixelSize: targetMaxPixelSize) else { return }
+      stop()
+      startPlayback(sourceFileURL: sourceFileURL, targetLayer: targetLayer, maxPixelSize: targetMaxPixelSize)
     }
   #endif
 
-  private func startPlayback(sourceFileURL: URL, targetLayer: CALayer) {
-    let targetMaxPixelSize = resolvedMaxPixelSize(for: targetLayer)
-    if self.targetLayer === targetLayer,
-      currentSourceFileURL == sourceFileURL,
-      self.targetMaxPixelSize == targetMaxPixelSize,
-      playbackTask != nil
-    {
-      return
-    }
+  private func isPlaying(_ sourceFileURL: URL, on targetLayer: CALayer, maxPixelSize: Int?) -> Bool {
+    self.targetLayer === targetLayer
+      && currentSourceFileURL == sourceFileURL
+      && targetMaxPixelSize == maxPixelSize
+      && playbackTask != nil
+  }
 
-    stop()
-
+  /// Expects `stop()` to have run, so no previous playback state remains.
+  private func startPlayback(sourceFileURL: URL, targetLayer: CALayer, maxPixelSize targetMaxPixelSize: Int?) {
     self.currentSourceFileURL = sourceFileURL
     self.targetLayer = targetLayer
     self.targetMaxPixelSize = targetMaxPixelSize
