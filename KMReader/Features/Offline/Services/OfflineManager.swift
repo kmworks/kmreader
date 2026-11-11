@@ -254,9 +254,10 @@ actor OfflineManager {
     let dir = Self.bookDirectoryURL(instanceId: instanceId, bookId: bookId)
     var isDir: ObjCBool = false
     guard FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir),
-      isDir.boolValue, !Self.directoryContainsFiles(dir)
+      isDir.boolValue
     else { return }
     do {
+      guard try !Self.directoryContainsFiles(dir) else { return }
       try FileManager.default.removeItem(at: dir)
       logger.info("🗑️ Removed empty offline directory for book: \(bookId)")
     } catch {
@@ -853,6 +854,8 @@ actor OfflineManager {
     var deletedCount = 0
     var bytesFreed: Int64 = 0
     var contentlessDownloadedBookIds: [String] = []
+    var uninspectableCount = 0
+    var firstInspectionError: Error?
 
     for bookId in contents {
       let bookDir = instanceDir.appendingPathComponent(bookId)
@@ -867,7 +870,19 @@ actor OfflineManager {
         continue
       }
 
-      let hasFiles = Self.directoryContainsFiles(bookDir)
+      // A directory that cannot be read is left alone: only a confirmed absence of
+      // files may count as lost content.
+      let hasFiles: Bool
+      do {
+        hasFiles = try Self.directoryContainsFiles(bookDir)
+      } catch {
+        uninspectableCount += 1
+        if firstInspectionError == nil {
+          firstInspectionError = error
+        }
+        continue
+      }
+
       switch statusesByBookId[bookId] {
       case "downloaded":
         // A downloaded book whose directory holds no files lost its content (purged
@@ -893,6 +908,12 @@ actor OfflineManager {
       } catch {
         logger.error("❌ Failed to cleanup orphaned directory \(bookId): \(error)")
       }
+    }
+
+    if let firstInspectionError {
+      logger.error(
+        "❌ Skipped \(uninspectableCount) offline directories that could not be inspected: \(firstInspectionError)"
+      )
     }
 
     for bookId in contentlessDownloadedBookIds {
@@ -2026,24 +2047,34 @@ actor OfflineManager {
     return total
   }
 
-  private nonisolated static func directoryContainsFiles(_ url: URL) -> Bool {
-    guard
-      let enumerator = FileManager.default.enumerator(
+  /// Whether the directory tree holds at least one file; a missing directory holds
+  /// none. Throws when any directory in the tree cannot be read, because callers
+  /// take `false` as permission to delete. Reads each level in one call instead of
+  /// keeping a directory enumerator open, so scanning many book directories in a
+  /// row holds no file descriptors between calls.
+  private nonisolated static func directoryContainsFiles(_ url: URL) throws -> Bool {
+    let entries: [URL]
+    do {
+      entries = try FileManager.default.contentsOfDirectory(
         at: url,
         includingPropertiesForKeys: [.isDirectoryKey],
         options: [.skipsHiddenFiles]
       )
-    else {
+    } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
       return false
     }
 
-    for case let fileURL as URL in enumerator {
-      let attrs = try? fileURL.resourceValues(forKeys: [.isDirectoryKey])
-      if attrs?.isDirectory == false {
+    var subdirectories: [URL] = []
+    for entry in entries {
+      guard try entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true else {
         return true
       }
+      subdirectories.append(entry)
     }
 
+    for subdirectory in subdirectories where try directoryContainsFiles(subdirectory) {
+      return true
+    }
     return false
   }
 
@@ -2908,7 +2939,7 @@ actor OfflineManager {
       return existingImageArchiveFileURL(in: bookDir) != nil || Self.directoryContainsPageImages(bookDir)
     case .epubWebPub:
       return existingEpubFileURL(in: bookDir) != nil
-        || Self.directoryContainsFiles(Self.webPubRootDirectoryURL(bookDir: bookDir))
+        || (try? Self.directoryContainsFiles(Self.webPubRootDirectoryURL(bookDir: bookDir))) == true
     case .epubDivina:
       return existingEpubFileURL(in: bookDir) != nil || Self.directoryContainsPageImages(bookDir)
     default:
