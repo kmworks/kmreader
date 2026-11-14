@@ -23,7 +23,8 @@
 ### Readers
 
 - DIVINA reader on iOS, macOS, and tvOS with LTR, RTL, vertical, Webtoon, spreads, zoom, page curl on iOS, cover transitions, tap zone layout presets, keyboard support, per-page rotation, border cropping, preload profiles, and per-book preferences.
-- Manga translation: on-device text detection and OCR with downloadable model packs; translated text renders over the original bubbles, including vertical typesetting. Enable per reading session from the reader menu; custom AI providers or the system translation fallback.
+- Panel Mode on iOS walks through paged LTR and RTL comics panel by panel using an explicitly downloadable detection model. Optional volume-button page turns work across DIVINA, EPUB, and PDF on iOS.
+- Manga translation: on-device text detection and OCR with downloadable model packs; translated text renders over the original bubbles, including vertical typesetting. Enable per reading session from the reader controls; custom AI providers or the system translation fallback.
 - EPUB reader on iOS/macOS with paged, scrolled, curl, or cover layouts, custom fonts, per-book theme and typography controls, dedicated EPUB behavior settings, status/footer overlays, multi-column reading, and nested table of contents.
 - PDF reader on iOS/macOS with native PDF or DIVINA mode, search, table of contents, page jump, automatic or explicit page presentation modes, spread layouts, configurable render quality, and continuous reading options.
 - Animated GIF and WebP pages play inline. Peek mode (progress-free reading), page image actions, persistent reader progress overlays, AI upscaling, and iOS Live Text are supported where available.
@@ -33,7 +34,7 @@
 - Dashboard sections for Keep Reading, On Deck, Recently Added, Recently Updated, and Read Lists in Progress, with per-section card styles, cover-tinted horizontal cards, and quick offline actions for current or full book sections where supported.
 - A dedicated Lists page unifies collections and read lists on every platform, with pinned items first; on supported servers, smart lists evaluate saved searches live and can be created and edited in the app.
 - Ordered read lists can continue like series: books navigate in list order from any entry point, and per-list reading state syncs across devices.
-- Browse series and books with metadata filters including age rating and release year, all/any matching, saved filters, reading history, an adjustable pages-read heatmap, optional unread-cover blur, and batch selection to mark read status or add items to lists.
+- Browse series and books with metadata filters including age rating, release year, and notable entities such as characters, teams, and locations; all/any matching, saved filters, reading history, an adjustable pages-read heatmap, optional unread-cover blur, and batch selection to mark read status or add items to lists.
 - Reading stats aggregate on the server when available — with current and longest streaks — and fall back to on-device data otherwise.
 - iPhone gets dedicated Library, Lists, and Search tabs for content-first browsing.
 - Local database storage keeps large libraries, dashboards, logs, downloaded content, and offline browsing responsive.
@@ -52,7 +53,8 @@
 
 - Save multiple Komga servers, protect private servers with device authentication, and switch instantly.
 - Sign in with username/password or API key — the login screen can create a key for you — set up a brand-new Komga server right from the login screen, and manage Komga API keys inside the app.
-- Admin tools cover metadata editing, library management, media analysis, missing posters, duplicate files/pages, and paginated log viewing, export, and clearing.
+- On supported servers, manage AniList, MyAnimeList, Bangumi, and MangaBaka tracker accounts and series links, including provider search, remote reading status, progress edits, and linked-series browsing.
+- Admin tools cover metadata editing, library management, media analysis, missing posters, duplicate files/pages, paginated log viewing and clearing, and complete filtered log export. Supported servers also expose update checks and user or administrator session management.
 - A Server Info overview reports version, uptime, CPU, memory, disk, and content totals, with live task queue, sessions, and scheduled-task pages — on stock Komga servers too. On servers with the komf integration, Identify, Match, and Reset Metadata fetch metadata without leaving the app.
 
 ### Platform Highlights

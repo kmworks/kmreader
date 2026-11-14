@@ -1,18 +1,22 @@
 New
-- EPUB on iOS gains an optional Core Text engine with paged, scrolled, cover, and page-curl layouts, embedded fonts, themes, offline resources, and reliable reading-position restoration.
-- Manga translation on iOS and macOS now has a Live Text-style button on every displayed page. Translate one page or switch between original and translated text independently, including individual pages in a spread.
-- On supported servers, smart lists can be pinned alongside collections and read lists, with pinned items appearing first on the Lists page and in browse results.
-- New translation providers start with OpenRouter preselected, while custom endpoints remain available.
+- Panel Mode on iPhone and iPad walks through paged LTR and RTL comics panel by panel. Download the detection model explicitly, then use the dedicated reader toggle to enter or leave the mode.
+- Optional volume-button page turns on iOS work across DIVINA, EPUB, and PDF, respecting reading direction and continuous-book navigation.
+- Manage AniList, MyAnimeList, Bangumi, and MangaBaka tracker accounts and series links on supported servers. Search providers, review linked series, and update remote reading status and progress.
+- Characters, teams, locations, and other notable entities now appear in book and series metadata, with editing and exact kind-and-name browse filters.
 
 Reader
-- Translated bubbles are easier to read: English words stay intact when wrapping, text adapts to light and dark backgrounds, and backgrounds no longer blur the original bubble border.
-- Translation now skips pages whose source and target languages match, treating Simplified and Traditional Chinese as the same language. Page-level translation is no longer offered in Webtoon mode.
-- Core Text EPUB rendering improves oversized images, table layouts, line spacing, margins, superscripts, subscripts, and letter spacing. A chapter that cannot render becomes an inline error page instead of blocking the whole book.
-- Choose what the Space bar does while reading: Toggle Controls or Next Page, across DIVINA, EPUB, and PDF with an external keyboard.
-- The iOS Home indicator hides automatically while reading.
+- Panel Mode and manga translation have clear labeled controls, and their configuration is unified under Manga Tools.
+- Animated WebP and GIF pages now autoplay in the macOS reader.
+- EPUB Core Text rendering improves ruby and emphasized text, vertical-writing images, and other layout details while preserving reading positions.
 
-Browse & Offline
-- Pinned libraries now lead library scope selectors, and the iPad Libraries tab opens the pinned scope by default.
-- Collection, read list, and smart list menus now share a consistent set of actions.
-- Connection status uses compact icons instead of the persistent Dashboard offline banner, and successful downloads no longer interrupt reading with a completion toast.
-- Scenario-based user guides are available from Settings → About.
+Browse & Server
+- Keep Reading, On Deck, widgets, and next-book suggestions follow the server's recent-reading window and next-unread preference on supported servers, both online and offline.
+- Library, Search, and Offline tabs remember their selected library scopes across app restarts.
+- Server Info can report available updates on supported servers, and account settings provide session lists for users and administrators.
+- Tracker search and linking are clearer, with alternate titles, localized MangaBaka results, and compact linked-series browsing.
+
+Offline & Logs
+- Large download queues finish more efficiently, and database failures no longer masquerade as missing downloads or empty queues.
+- Launch cleanup handles large offline libraries without exhausting file descriptors or clearing valid downloads when storage cannot be read.
+- Log sharing exports every entry matching the current filters as a text file, not just rows already loaded on screen.
+- Live server updates resume from the last received event after a temporary disconnect on supported servers.
