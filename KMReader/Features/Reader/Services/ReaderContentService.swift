@@ -71,8 +71,8 @@ struct ReaderContentService {
     } else {
       throw APIError.offline
     }
-    return await resolvePageDimensions(
-      bookId: book.id,
+    return await resolvePages(
+      for: book,
       pages: storedPages,
       shouldRefreshCachedPages: shouldRefreshCachedPages
     )
@@ -118,35 +118,33 @@ struct ReaderContentService {
       }
     }
 
-    return await resolvePageDimensions(
-      bookId: book.id,
+    return await resolvePages(
+      for: book,
       pages: fetchedPages,
       shouldRefreshCachedPages: shouldRefreshCachedPages
     )
   }
 
-  private func resolvePageDimensions(
-    bookId: String,
+  private func resolvePages(
+    for book: Book,
     pages: [BookPage],
     shouldRefreshCachedPages: Bool
   ) async -> [BookPage] {
     var resolvedPages = pages
 
-    if shouldRefreshCachedPages,
-      resolvedPages.contains(where: { !$0.hasValidDimensions })
-    {
+    if shouldRefreshCachedPages, await cachedPagesNeedRefresh(resolvedPages, for: book) {
       do {
-        let refreshedPages = try await BookService.getBookPages(id: bookId)
+        let refreshedPages = try await BookService.getBookPages(id: book.id)
         resolvedPages = preservingKnownDimensions(
           in: refreshedPages,
           from: resolvedPages
         )
         if let database = await DatabaseOperator.databaseIfConfigured() {
-          await database.updateBookPages(bookId: bookId, pages: resolvedPages)
+          await database.updateBookPages(bookId: book.id, pages: resolvedPages)
         }
       } catch {
         logger.warning(
-          "⚠️ Failed to refresh page dimensions from server for book \(bookId): \(error)"
+          "⚠️ Failed to refresh pages from server for book \(book.id): \(error)"
         )
       }
     }
@@ -154,12 +152,24 @@ struct ReaderContentService {
     if resolvedPages.contains(where: { !$0.hasValidDimensions }) {
       resolvedPages = await OfflineManager.shared.fillMissingPageDimensions(
         instanceId: AppConfig.current.instanceId,
-        bookId: bookId,
+        bookId: book.id,
         pages: resolvedPages
       )
     }
 
     return resolvedPages
+  }
+
+  /// Cached pages need a refresh when some lack dimensions, or when they no
+  /// longer match the book's page count: the server analyzed a changed file
+  /// and serves page images by number from that analysis. A downloaded book
+  /// keeps mismatched pages, since they describe its downloaded files.
+  private func cachedPagesNeedRefresh(_ pages: [BookPage], for book: Book) async -> Bool {
+    if pages.contains(where: { !$0.hasValidDimensions }) {
+      return true
+    }
+    guard pages.count != book.media.pagesCount else { return false }
+    return await !OfflineManager.shared.isBookDownloaded(bookId: book.id)
   }
 
   private func preservingKnownDimensions(
