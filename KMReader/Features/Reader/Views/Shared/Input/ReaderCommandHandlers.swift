@@ -8,8 +8,7 @@ struct ReaderCommandHandlers {
   let showTableOfContents: () -> Void
   let showPageJump: () -> Void
   let showSearch: () -> Void
-  let openPreviousBook: () -> Void
-  let openNextBook: () -> Void
+  let showBookNavigation: () -> Void
   let setReadingDirection: (ReadingDirection) -> Void
   let setPageLayout: (PageLayout) -> Void
   let toggleSoloCoverPage: () -> Void

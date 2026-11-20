@@ -14,12 +14,15 @@ struct DivinaControlsOverlayView: View {
 
   @Binding var showingPageJumpSheet: Bool
   @Binding var showingTOCSheet: Bool
+  @Binding var showingBookNavigationSheet: Bool
   @Binding var showingReaderSettingsSheet: Bool
   @Binding var showingDetailSheet: Bool
   @Binding var showingMangaTranslationSettings: Bool
 
   let viewModel: ReaderViewModel
   let currentBook: Book?
+  let previousBook: Book?
+  let nextBook: Book?
   let dualPage: Bool
   let incognito: Bool
   let onDismiss: () -> Void

@@ -131,8 +131,15 @@ extension DivinaControlsOverlayView {
 
     Section {
       pageNavigation()
+      if previousBook != nil || nextBook != nil {
+        Button {
+          showingBookNavigationSheet = true
+        } label: {
+          Label(String(localized: "Book Navigation"), systemImage: "list.number")
+        }
+      }
     } header: {
-      Text(String(localized: "Page Navigation"))
+      Text(String(localized: "Navigation"))
     }
   }
 

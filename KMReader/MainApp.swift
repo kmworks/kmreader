@@ -372,17 +372,12 @@ struct MainApp: App {
         }
 
         if state.supportsBookNavigation {
-          Button("Open Previous Book") {
-            readerPresentation.openPreviousBookFromCommand()
+          Button("Book Navigation") {
+            readerPresentation.showBookNavigationFromCommand()
           }
-          .disabled(!state.isActive || !state.canOpenPreviousBook)
-        }
-
-        if state.supportsBookNavigation {
-          Button("Open Next Book") {
-            readerPresentation.openNextBookFromCommand()
-          }
-          .disabled(!state.isActive || !state.canOpenNextBook)
+          .disabled(
+            !state.isActive || (!state.canOpenPreviousBook && !state.canOpenNextBook)
+          )
         }
 
         if !state.commandPageIDs.isEmpty {
