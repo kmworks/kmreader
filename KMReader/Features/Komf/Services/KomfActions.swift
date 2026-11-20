@@ -9,17 +9,26 @@ import Foundation
 nonisolated enum KomfActions {
   static func match(libraryId: String, seriesId: String, seriesTitle: String) async {
     do {
-      let response = try await KomfService.matchSeries(
-        libraryId: libraryId, seriesId: seriesId)
-      await KomfJobTracker.shared.track(
-        jobId: response.id,
-        seriesId: seriesId,
-        seriesTitle: seriesTitle
-      )
+      _ = try await submitMatch(
+        libraryId: libraryId, seriesId: seriesId, seriesTitle: seriesTitle)
     } catch {
       await KomfIntegrationStore.shared.handleConflictIfNeeded(error)
       await ErrorManager.shared.alert(error: error)
     }
+  }
+
+  @discardableResult
+  static func submitMatch(libraryId: String, seriesId: String, seriesTitle: String) async throws
+    -> KomfMetadataJobResponse
+  {
+    let response = try await KomfService.matchSeries(
+      libraryId: libraryId, seriesId: seriesId)
+    await KomfJobTracker.shared.track(
+      jobId: response.id,
+      seriesId: seriesId,
+      seriesTitle: seriesTitle
+    )
+    return response
   }
 
   static func reset(libraryId: String, seriesId: String, seriesTitle: String) async {

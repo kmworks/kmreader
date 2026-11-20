@@ -15,11 +15,17 @@ struct CollectionSeriesListView: View {
   @AppStorage("collectionSeriesBrowseOptions") private var browseOpts: CollectionSeriesBrowseOptions =
     CollectionSeriesBrowseOptions()
   @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("isOffline") private var isOffline: Bool = false
 
   @State private var seriesViewModel = SeriesViewModel()
   @State private var selectedSeriesIds: Set<String> = []
   @State private var isSelectionMode = false
   @State private var isDeleting = false
+  @State private var isBatchSelectionMode = false
+  @State private var batchController = BatchOperationController()
+  @State private var showCollectionPicker = false
+  @State private var showBatchEditor = false
+  @State private var showDeleteConfirmation = false
   @State private var collectionItem: CollectionDisplayItem?
   @State private var loadedCollectionId: String?
 
@@ -52,17 +58,33 @@ struct CollectionSeriesListView: View {
           layoutMode: $layoutMode
         )
 
-        if supportsSelectionMode && !isSelectionMode && current.isAdmin {
-          Button {
-            withAnimation {
-              isSelectionMode = true
+        if supportsSelectionMode && !isSelectionMode && !isBatchSelectionMode {
+          if !isOffline {
+            Button {
+              withAnimation {
+                isBatchSelectionMode = true
+              }
+            } label: {
+              Image(systemName: "checkmark.circle")
             }
-          } label: {
-            Image(systemName: "checkmark.circle")
+            .adaptiveButtonStyle(.bordered)
+            .optimizedControlSize()
+            .transition(.opacity.combined(with: .scale))
           }
-          .adaptiveButtonStyle(.bordered)
-          .optimizedControlSize()
-          .transition(.opacity.combined(with: .scale))
+
+          if current.isAdmin {
+            Button {
+              withAnimation {
+                isSelectionMode = true
+              }
+            } label: {
+              Image(systemName: "minus.circle")
+            }
+            .adaptiveButtonStyle(.bordered)
+            .optimizedControlSize()
+            .accessibilityLabel(String(localized: "Edit Members"))
+            .transition(.opacity.combined(with: .scale))
+          }
         }
       }
       .padding(.horizontal)
@@ -94,15 +116,50 @@ struct CollectionSeriesListView: View {
         .padding(.horizontal)
       }
 
+      if supportsSelectionMode && isBatchSelectionMode {
+        SelectionActionsToolbar(
+          selectedCount: selectedSeriesIds.count,
+          totalCount: collectionItem?.seriesIds.count ?? 0,
+          isSubmitting: batchController.isRunning,
+          completedCount: batchController.completedCount,
+          runningTotalCount: batchController.totalCount,
+          addLabel: String(localized: "Add to Collection"),
+          editLabel: String(localized: "Edit Metadata"),
+          deleteLabel: current.isAdmin ? String(localized: "Delete Files") : nil,
+          komfMatchLabel: KomfIntegrationStore.shared.isAvailable
+            ? String(localized: "Match with komf") : nil,
+          onSelectAll: toggleSelectAll,
+          onMarkRead: {
+            Task { await markSelected(read: true) }
+          },
+          onMarkUnread: {
+            Task { await markSelected(read: false) }
+          },
+          onAdd: {
+            showCollectionPicker = true
+          },
+          onEdit: {
+            showBatchEditor = true
+          },
+          onDelete: {
+            showDeleteConfirmation = true
+          },
+          onKomfMatch: {
+            Task { await matchSelectedWithKomf() }
+          },
+          onCancel: exitBatchSelectionMode
+        )
+        .padding(.horizontal)
+      }
+
       if collectionItem != nil {
         CollectionSeriesQueryView(
           collectionId: collectionId,
           seriesViewModel: seriesViewModel,
           browseOpts: browseOpts,
           browseLayout: layoutMode,
-          isSelectionMode: isSelectionMode,
-          selectedSeriesIds: $selectedSeriesIds,
-          isAdmin: current.isAdmin
+          isSelectionMode: isSelectionMode || isBatchSelectionMode,
+          selectedSeriesIds: $selectedSeriesIds
         )
       } else if seriesViewModel.isLoading {
         ProgressView()
@@ -129,6 +186,40 @@ struct CollectionSeriesListView: View {
       notification in
       guard notification.userInfo?["collectionId"] as? String == collectionId else { return }
       Task { await revalidateSeries() }
+    }
+    .sheet(isPresented: $showCollectionPicker) {
+      CollectionPickerSheet(
+        seriesIds: selectedSeriesIdsInCollectionOrder,
+        onSelect: addSelectedToCollection,
+        onCreate: { _ in finishBatchSelection([]) }
+      )
+    }
+    .sheet(isPresented: $showBatchEditor) {
+      SeriesBatchEditSheet(
+        seriesIds: selectedSeriesIdsInCollectionOrder,
+        onCompleted: finishBatchSelection
+      )
+    }
+    .alert("Delete Series Files", isPresented: $showDeleteConfirmation) {
+      Button("Cancel", role: .cancel) {}
+      Button("Delete", role: .destructive) {
+        Task { await deleteSelectedFiles() }
+      }
+    } message: {
+      Text("batch.series.deleteConfirmation \(selectedSeriesIds.count)")
+    }
+  }
+
+  private var selectedSeriesIdsInCollectionOrder: [String] {
+    (collectionItem?.seriesIds ?? []).filter(selectedSeriesIds.contains)
+  }
+
+  private func toggleSelectAll() {
+    guard let seriesIds = collectionItem?.seriesIds else { return }
+    if selectedSeriesIds.count == seriesIds.count {
+      selectedSeriesIds.removeAll()
+    } else {
+      selectedSeriesIds = Set(seriesIds)
     }
   }
 
@@ -174,6 +265,73 @@ struct CollectionSeriesListView: View {
       collectionId: collectionId,
       browseOpts: browseOpts
     )
+  }
+
+  private func markSelected(read: Bool) async {
+    guard !selectedSeriesIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await SeriesBatchActions.mark(
+      ids: Array(selectedSeriesIds),
+      read: read,
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func addSelectedToCollection(collectionId targetCollectionId: String) {
+    let seriesIds = selectedSeriesIdsInCollectionOrder
+    guard !seriesIds.isEmpty else { return }
+
+    Task {
+      do {
+        try await CollectionService.addSeriesToCollection(
+          collectionId: targetCollectionId,
+          seriesIds: seriesIds
+        )
+        ErrorManager.shared.notify(
+          message: String(localized: "notification.series.addedToCollection"))
+        await ContentProjectionNotifier.postCollectionDidChange(collectionId: targetCollectionId)
+        finishBatchSelection([])
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func deleteSelectedFiles() async {
+    guard !selectedSeriesIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await SeriesBatchActions.deleteFiles(
+      ids: Array(selectedSeriesIds),
+      instanceId: current.instanceId,
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func matchSelectedWithKomf() async {
+    guard !selectedSeriesIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await SeriesBatchActions.matchWithKomf(
+      ids: Array(selectedSeriesIds),
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func finishBatchSelection(_ failedIds: Set<String>) {
+    withAnimation {
+      selectedSeriesIds = failedIds
+      isBatchSelectionMode = !failedIds.isEmpty
+    }
+    Task { await refreshSeries() }
+  }
+
+  private func exitBatchSelectionMode() {
+    withAnimation {
+      selectedSeriesIds.removeAll()
+      isBatchSelectionMode = false
+    }
   }
 
   private func deleteSelectedSeries() async {

@@ -24,8 +24,10 @@ struct BooksBrowseView: View {
   @State private var initializedKey: String?
   @State private var selectedBookIds: Set<String> = []
   @State private var isSelectionMode = false
-  @State private var isSubmitting = false
+  @State private var batchController = BatchOperationController()
   @State private var showReadListPicker = false
+  @State private var showBatchEditor = false
+  @State private var showDeleteConfirmation = false
 
   private var supportsSelectionMode: Bool {
     #if os(tvOS)
@@ -73,8 +75,13 @@ struct BooksBrowseView: View {
         SelectionActionsToolbar(
           selectedCount: selectedBookIds.count,
           totalCount: loadedBookIds.count,
-          isSubmitting: isSubmitting,
+          isSubmitting: batchController.isRunning,
+          completedCount: batchController.completedCount,
+          runningTotalCount: batchController.totalCount,
           addLabel: String(localized: "Add to Read List"),
+          editLabel: String(localized: "Edit Metadata"),
+          deleteLabel: current.isAdmin ? String(localized: "Delete Files") : nil,
+          komfMatchLabel: nil,
           onSelectAll: {
             if selectedBookIds.count == loadedBookIds.count {
               selectedBookIds.removeAll()
@@ -95,6 +102,13 @@ struct BooksBrowseView: View {
           onAdd: {
             showReadListPicker = true
           },
+          onEdit: {
+            showBatchEditor = true
+          },
+          onDelete: {
+            showDeleteConfirmation = true
+          },
+          onKomfMatch: {},
           onCancel: {
             isSelectionMode = false
             selectedBookIds.removeAll()
@@ -161,6 +175,20 @@ struct BooksBrowseView: View {
         }
       )
     }
+    .sheet(isPresented: $showBatchEditor) {
+      BookBatchEditSheet(
+        bookIds: selectedBookIdsInDisplayOrder,
+        onCompleted: finishBatchSelection
+      )
+    }
+    .alert("Delete Book Files", isPresented: $showDeleteConfirmation) {
+      Button("Cancel", role: .cancel) {}
+      Button("Delete", role: .destructive) {
+        Task { await deleteSelectedFiles() }
+      }
+    } message: {
+      Text("batch.books.deleteConfirmation \(selectedBookIds.count)")
+    }
   }
 
   /// Selected ids in display order, so read-list appends keep the list's order.
@@ -197,95 +225,20 @@ struct BooksBrowseView: View {
   }
 
   private func markSelected(read: Bool) async {
-    guard !selectedBookIds.isEmpty, !isSubmitting else { return }
+    guard !selectedBookIds.isEmpty, !batchController.isRunning else { return }
 
-    isSubmitting = true
-    defer { isSubmitting = false }
+    let outcome = await BookBatchActions.mark(
+      ids: Array(selectedBookIds),
+      read: read,
+      instanceId: current.instanceId,
+      using: batchController
+    )
 
-    let bookIds = Array(selectedBookIds)
-    let outcome = await withTaskGroup(
-      of: (id: String, error: Error?).self,
-      returning: (succeeded: [String], failed: [String], firstError: Error?).self
-    ) { group in
-      for bookId in bookIds {
-        group.addTask {
-          do {
-            if read {
-              try await BookService.markAsRead(bookId: bookId)
-            } else {
-              try await BookService.markAsUnread(bookId: bookId)
-            }
-            return (bookId, nil)
-          } catch {
-            return (bookId, error)
-          }
-        }
-      }
-      var succeeded: [String] = []
-      var failed: [String] = []
-      var firstError: Error?
-      for await result in group {
-        if let error = result.error {
-          failed.append(result.id)
-          if firstError == nil { firstError = error }
-        } else {
-          succeeded.append(result.id)
-        }
-      }
-      return (succeeded: succeeded, failed: failed, firstError: firstError)
-    }
-
-    // Sync whatever succeeded so the UI never goes stale, then report failures.
-    if !outcome.succeeded.isEmpty {
-      await SyncService.syncVisitedItems(
-        bookIds: Set(outcome.succeeded),
-        seriesIds: await seriesIds(forBookIds: outcome.succeeded)
-      )
-      await ContentProjectionNotifier.postBooksAndSeriesDidChange(
-        bookIds: outcome.succeeded,
-        instanceId: current.instanceId,
-        reason: .readingProgress
-      )
-      await DashboardSectionRefreshNotifier.postReadStatusChanged(
-        source: .manual,
-        reason: "Books read status changed"
-      )
-    }
-
-    if let firstError = outcome.firstError {
-      ErrorManager.shared.alert(error: firstError)
-    } else if read {
-      ErrorManager.shared.notify(message: String(localized: "notification.book.markedRead"))
-    } else {
-      ErrorManager.shared.notify(message: String(localized: "notification.book.markedUnread"))
-    }
-
-    // Keep the failed items selected so the batch can be retried.
     withAnimation {
-      if outcome.failed.isEmpty {
-        selectedBookIds.removeAll()
-        isSelectionMode = false
-      } else {
-        selectedBookIds = Set(outcome.failed)
-      }
+      selectedBookIds = Set(outcome.failed)
+      isSelectionMode = !outcome.failed.isEmpty
     }
-
     await loadBooks(refresh: true)
-  }
-
-  /// Series ids of the given books from the local mirror, for the batch re-sync.
-  private func seriesIds(forBookIds bookIds: [String]) async -> Set<String> {
-    guard let database = try? await DatabaseOperator.database() else { return [] }
-    var ids: Set<String> = []
-    for bookId in bookIds {
-      if let item = try? await database.fetchBookDisplayItem(
-        bookId: bookId,
-        instanceId: current.instanceId
-      ) {
-        ids.insert(item.book.seriesId)
-      }
-    }
-    return ids
   }
 
   private func addSelectedToReadList(readListId: String) {
@@ -306,6 +259,25 @@ struct BooksBrowseView: View {
         ErrorManager.shared.alert(error: error)
       }
     }
+  }
+
+  private func deleteSelectedFiles() async {
+    guard !selectedBookIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await BookBatchActions.deleteFiles(
+      ids: Array(selectedBookIds),
+      instanceId: current.instanceId,
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func finishBatchSelection(_ failedIds: Set<String>) {
+    withAnimation {
+      selectedBookIds = failedIds
+      isSelectionMode = !failedIds.isEmpty
+    }
+    Task { await loadBooks(refresh: true) }
   }
 
   private func exitSelectionMode() {
