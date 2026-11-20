@@ -11,14 +11,18 @@ struct SelectAllButton: View {
   let totalCount: Int
   let action: () -> Void
 
+  private var allSelected: Bool {
+    totalCount > 0 && selectedCount == totalCount
+  }
+
   private var label: String {
-    selectedCount == totalCount
+    allSelected
       ? String(localized: "Deselect All")
       : String(localized: "Select All")
   }
 
   private var image: String {
-    selectedCount == totalCount ? "checkmark.circle.fill" : "checkmark.circle"
+    allSelected ? "checkmark.circle.fill" : "checkmark.circle"
   }
 
   var body: some View {
@@ -31,5 +35,6 @@ struct SelectAllButton: View {
         .font(.footnote)
     }
     .adaptiveButtonStyle(.bordered)
+    .disabled(totalCount == 0)
   }
 }

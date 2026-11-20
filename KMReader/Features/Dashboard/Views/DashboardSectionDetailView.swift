@@ -12,6 +12,7 @@ struct DashboardSectionDetailView: View {
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("dashboardSectionDetailLayout") private var browseLayout: BrowseLayoutMode = .grid
   @AppStorage("isOffline") private var isOffline: Bool = false
+  @AppStorage("currentAccount") private var current: Current = .init()
 
   @State private var pagination = PaginationState<IdentifiedString>(pageSize: 50)
   @State private var isLoading = false
@@ -19,6 +20,14 @@ struct DashboardSectionDetailView: View {
   @State private var isQueueingAllOffline = false
   @State private var hasLoadedInitial = false
   @State private var needsRefreshAfterCurrentLoad = false
+  @State private var selectedItemIds: Set<String> = []
+  @State private var isSelectionMode = false
+  @State private var batchController = BatchOperationController()
+  @State private var showReadListPicker = false
+  @State private var showCollectionPicker = false
+  @State private var showBookBatchEditor = false
+  @State private var showSeriesBatchEditor = false
+  @State private var showDeleteConfirmation = false
 
   private var isQueueingOffline: Bool {
     isQueueingLatestOffline || isQueueingAllOffline
@@ -41,6 +50,54 @@ struct DashboardSectionDetailView: View {
       get: { browseLayout },
       set: { setBrowseLayout($0) }
     )
+  }
+
+  private var supportsSelectionMode: Bool {
+    #if os(tvOS)
+      return false
+    #else
+      return true
+    #endif
+  }
+
+  private var loadedItemIds: [String] {
+    pagination.items.map(\.id)
+  }
+
+  private var selectedItemIdsInDisplayOrder: [String] {
+    loadedItemIds.filter(selectedItemIds.contains)
+  }
+
+  private var addLabel: String {
+    switch section.contentKind {
+    case .books:
+      return String(localized: "Add to Read List")
+    case .series:
+      return String(localized: "Add to Collection")
+    }
+  }
+
+  private var komfMatchLabel: String? {
+    guard section.contentKind == .series, KomfIntegrationStore.shared.isAvailable else { return nil }
+    return String(localized: "Match with komf")
+  }
+
+  private var deleteAlertTitle: LocalizedStringKey {
+    switch section.contentKind {
+    case .books:
+      return "Delete Book Files"
+    case .series:
+      return "Delete Series Files"
+    }
+  }
+
+  private var deleteConfirmationMessage: LocalizedStringKey {
+    switch section.contentKind {
+    case .books:
+      return "batch.books.deleteConfirmation \(selectedItemIds.count)"
+    case .series:
+      return "batch.series.deleteConfirmation \(selectedItemIds.count)"
+    }
   }
 
   private var emptyStateIcon: String {
@@ -89,6 +146,51 @@ struct DashboardSectionDetailView: View {
         }
       #endif
 
+      #if os(iOS) || os(macOS)
+        if !isSelectionMode && !isOffline {
+          HStack {
+            Spacer()
+            Button {
+              withAnimation { isSelectionMode = true }
+            } label: {
+              Image(systemName: "checkmark.circle")
+            }
+            .adaptiveButtonStyle(.bordered)
+            .optimizedControlSize()
+          }
+          .padding(.horizontal)
+        }
+
+        if isSelectionMode {
+          SelectionActionsToolbar(
+            selectedCount: selectedItemIds.count,
+            totalCount: loadedItemIds.count,
+            isSubmitting: batchController.isRunning,
+            completedCount: batchController.completedCount,
+            runningTotalCount: batchController.totalCount,
+            addLabel: addLabel,
+            editLabel: String(localized: "Edit Metadata"),
+            deleteLabel: current.isAdmin ? String(localized: "Delete Files") : nil,
+            komfMatchLabel: komfMatchLabel,
+            onSelectAll: toggleSelectAll,
+            onMarkRead: {
+              Task { await markSelected(read: true) }
+            },
+            onMarkUnread: {
+              Task { await markSelected(read: false) }
+            },
+            onAdd: showMembershipPicker,
+            onEdit: showBatchEditor,
+            onDelete: { showDeleteConfirmation = true },
+            onKomfMatch: {
+              Task { await matchSelectedWithKomf() }
+            },
+            onCancel: exitSelectionMode
+          )
+          .padding(.horizontal)
+        }
+      #endif
+
       BrowseStateView(
         isLoading: isLoading,
         isEmpty: pagination.isEmpty,
@@ -120,6 +222,40 @@ struct DashboardSectionDetailView: View {
       }
       guard command.includes(section) else { return }
       Task { await revalidateItems() }
+    }
+    .sheet(isPresented: $showReadListPicker) {
+      ReadListPickerSheet(
+        bookIds: selectedItemIdsInDisplayOrder,
+        onSelect: addSelectedToReadList,
+        onCreate: { _ in finishBatchSelection([]) }
+      )
+    }
+    .sheet(isPresented: $showCollectionPicker) {
+      CollectionPickerSheet(
+        seriesIds: selectedItemIdsInDisplayOrder,
+        onSelect: addSelectedToCollection,
+        onCreate: { _ in finishBatchSelection([]) }
+      )
+    }
+    .sheet(isPresented: $showBookBatchEditor) {
+      BookBatchEditSheet(
+        bookIds: selectedItemIdsInDisplayOrder,
+        onCompleted: finishBatchSelection
+      )
+    }
+    .sheet(isPresented: $showSeriesBatchEditor) {
+      SeriesBatchEditSheet(
+        seriesIds: selectedItemIdsInDisplayOrder,
+        onCompleted: finishBatchSelection
+      )
+    }
+    .alert(deleteAlertTitle, isPresented: $showDeleteConfirmation) {
+      Button("Cancel", role: .cancel) {}
+      Button("Delete", role: .destructive) {
+        Task { await deleteSelectedFiles() }
+      }
+    } message: {
+      Text(deleteConfirmationMessage)
     }
     #if os(iOS) || os(macOS)
       .toolbar {
@@ -191,15 +327,27 @@ struct DashboardSectionDetailView: View {
     case .grid, .largeGrid:
       LazyVGrid(columns: columns, spacing: spacing) {
         ForEach(pagination.items) { book in
-          BookQueryItemView(
-            bookId: book.id,
-            layout: browseLayout,
-            showSeriesTitle: true,
-            cardWidth: browseLayout.cardWidth,
-            onItemMissing: {
-              removeItem(id: book.id)
+          Group {
+            if isSelectionMode {
+              BookSelectionItemView(
+                bookId: book.id,
+                layout: browseLayout,
+                selectedBookIds: $selectedItemIds,
+                cardWidth: browseLayout.cardWidth,
+                showSeriesTitle: true
+              )
+            } else {
+              BookQueryItemView(
+                bookId: book.id,
+                layout: browseLayout,
+                showSeriesTitle: true,
+                cardWidth: browseLayout.cardWidth,
+                onItemMissing: {
+                  removeItem(id: book.id)
+                }
+              )
             }
-          )
+          }
           .onAppear {
             if pagination.shouldLoadMore(after: book) {
               Task { await loadItems(refresh: false) }
@@ -210,14 +358,25 @@ struct DashboardSectionDetailView: View {
     case .list:
       LazyVStack {
         ForEach(pagination.items) { book in
-          BookQueryItemView(
-            bookId: book.id,
-            layout: .list,
-            showSeriesTitle: true,
-            onItemMissing: {
-              removeItem(id: book.id)
+          Group {
+            if isSelectionMode {
+              BookSelectionItemView(
+                bookId: book.id,
+                layout: .list,
+                selectedBookIds: $selectedItemIds,
+                showSeriesTitle: true
+              )
+            } else {
+              BookQueryItemView(
+                bookId: book.id,
+                layout: .list,
+                showSeriesTitle: true,
+                onItemMissing: {
+                  removeItem(id: book.id)
+                }
+              )
             }
-          )
+          }
           .onAppear {
             if pagination.shouldLoadMore(after: book) {
               Task { await loadItems(refresh: false) }
@@ -237,14 +396,25 @@ struct DashboardSectionDetailView: View {
     case .grid, .largeGrid:
       LazyVGrid(columns: columns, spacing: spacing) {
         ForEach(pagination.items) { series in
-          SeriesQueryItemView(
-            seriesId: series.id,
-            layout: browseLayout,
-            cardWidth: browseLayout.cardWidth,
-            onItemMissing: {
-              removeItem(id: series.id)
+          Group {
+            if isSelectionMode {
+              SeriesSelectionItemView(
+                seriesId: series.id,
+                layout: browseLayout,
+                selectedSeriesIds: $selectedItemIds,
+                cardWidth: browseLayout.cardWidth
+              )
+            } else {
+              SeriesQueryItemView(
+                seriesId: series.id,
+                layout: browseLayout,
+                cardWidth: browseLayout.cardWidth,
+                onItemMissing: {
+                  removeItem(id: series.id)
+                }
+              )
             }
-          )
+          }
           .onAppear {
             if pagination.shouldLoadMore(after: series) {
               Task { await loadItems(refresh: false) }
@@ -255,13 +425,23 @@ struct DashboardSectionDetailView: View {
     case .list:
       LazyVStack {
         ForEach(pagination.items) { series in
-          SeriesQueryItemView(
-            seriesId: series.id,
-            layout: .list,
-            onItemMissing: {
-              removeItem(id: series.id)
+          Group {
+            if isSelectionMode {
+              SeriesSelectionItemView(
+                seriesId: series.id,
+                layout: .list,
+                selectedSeriesIds: $selectedItemIds
+              )
+            } else {
+              SeriesQueryItemView(
+                seriesId: series.id,
+                layout: .list,
+                onItemMissing: {
+                  removeItem(id: series.id)
+                }
+              )
             }
-          )
+          }
           .onAppear {
             if pagination.shouldLoadMore(after: series) {
               Task { await loadItems(refresh: false) }
@@ -272,6 +452,140 @@ struct DashboardSectionDetailView: View {
           }
         }
       }
+    }
+  }
+
+  private func toggleSelectAll() {
+    if selectedItemIds.count == loadedItemIds.count {
+      selectedItemIds.removeAll()
+    } else {
+      selectedItemIds = Set(loadedItemIds)
+    }
+  }
+
+  private func showMembershipPicker() {
+    switch section.contentKind {
+    case .books:
+      showReadListPicker = true
+    case .series:
+      showCollectionPicker = true
+    }
+  }
+
+  private func showBatchEditor() {
+    switch section.contentKind {
+    case .books:
+      showBookBatchEditor = true
+    case .series:
+      showSeriesBatchEditor = true
+    }
+  }
+
+  private func markSelected(read: Bool) async {
+    guard !selectedItemIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome: BatchOperationOutcome
+    switch section.contentKind {
+    case .books:
+      outcome = await BookBatchActions.mark(
+        ids: Array(selectedItemIds),
+        read: read,
+        instanceId: current.instanceId,
+        using: batchController
+      )
+    case .series:
+      outcome = await SeriesBatchActions.mark(
+        ids: Array(selectedItemIds),
+        read: read,
+        using: batchController
+      )
+    }
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func addSelectedToReadList(readListId: String) {
+    let bookIds = selectedItemIdsInDisplayOrder
+    guard !bookIds.isEmpty else { return }
+
+    Task {
+      do {
+        try await ReadListService.addBooksToReadList(readListId: readListId, bookIds: bookIds)
+        ErrorManager.shared.notify(
+          message: String(localized: "notification.book.booksAddedToReadList"))
+        await ContentProjectionNotifier.postReadListDidChange(readListId: readListId)
+        finishBatchSelection([])
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func addSelectedToCollection(collectionId: String) {
+    let seriesIds = selectedItemIdsInDisplayOrder
+    guard !seriesIds.isEmpty else { return }
+
+    Task {
+      do {
+        try await CollectionService.addSeriesToCollection(
+          collectionId: collectionId,
+          seriesIds: seriesIds
+        )
+        ErrorManager.shared.notify(
+          message: String(localized: "notification.series.addedToCollection"))
+        await ContentProjectionNotifier.postCollectionDidChange(collectionId: collectionId)
+        finishBatchSelection([])
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func deleteSelectedFiles() async {
+    guard !selectedItemIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome: BatchOperationOutcome
+    switch section.contentKind {
+    case .books:
+      outcome = await BookBatchActions.deleteFiles(
+        ids: Array(selectedItemIds),
+        instanceId: current.instanceId,
+        using: batchController
+      )
+    case .series:
+      outcome = await SeriesBatchActions.deleteFiles(
+        ids: Array(selectedItemIds),
+        instanceId: current.instanceId,
+        using: batchController
+      )
+    }
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func matchSelectedWithKomf() async {
+    guard section.contentKind == .series,
+      !selectedItemIds.isEmpty,
+      !batchController.isRunning
+    else { return }
+
+    let outcome = await SeriesBatchActions.matchWithKomf(
+      ids: Array(selectedItemIds),
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func finishBatchSelection(_ failedIds: Set<String>) {
+    withAnimation {
+      selectedItemIds = failedIds
+      isSelectionMode = !failedIds.isEmpty
+    }
+    Task { await revalidateItems() }
+  }
+
+  private func exitSelectionMode() {
+    withAnimation {
+      selectedItemIds.removeAll()
+      isSelectionMode = false
     }
   }
 

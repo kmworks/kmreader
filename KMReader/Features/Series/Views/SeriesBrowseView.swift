@@ -17,14 +17,17 @@ struct SeriesBrowseView: View {
   @AppStorage("seriesBrowseLayout") private var browseLayout: BrowseLayoutMode = .grid
   @AppStorage("searchIgnoreFilters") private var searchIgnoreFilters: Bool = false
   @AppStorage("isOffline") private var isOffline: Bool = false
+  @AppStorage("currentAccount") private var current: Current = .init()
 
   @State private var browseOpts: SeriesBrowseOptions = SeriesBrowseOptions()
   @State private var viewModel = SeriesViewModel()
   @State private var initializedKey: String?
   @State private var selectedSeriesIds: Set<String> = []
   @State private var isSelectionMode = false
-  @State private var isSubmitting = false
+  @State private var batchController = BatchOperationController()
   @State private var showCollectionPicker = false
+  @State private var showBatchEditor = false
+  @State private var showDeleteConfirmation = false
 
   private var supportsSelectionMode: Bool {
     #if os(tvOS)
@@ -71,8 +74,14 @@ struct SeriesBrowseView: View {
         SelectionActionsToolbar(
           selectedCount: selectedSeriesIds.count,
           totalCount: loadedSeriesIds.count,
-          isSubmitting: isSubmitting,
+          isSubmitting: batchController.isRunning,
+          completedCount: batchController.completedCount,
+          runningTotalCount: batchController.totalCount,
           addLabel: String(localized: "Add to Collection"),
+          editLabel: String(localized: "Edit Metadata"),
+          deleteLabel: current.isAdmin ? String(localized: "Delete Files") : nil,
+          komfMatchLabel: KomfIntegrationStore.shared.isAvailable
+            ? String(localized: "Match with komf") : nil,
           onSelectAll: {
             if selectedSeriesIds.count == loadedSeriesIds.count {
               selectedSeriesIds.removeAll()
@@ -92,6 +101,15 @@ struct SeriesBrowseView: View {
           },
           onAdd: {
             showCollectionPicker = true
+          },
+          onEdit: {
+            showBatchEditor = true
+          },
+          onDelete: {
+            showDeleteConfirmation = true
+          },
+          onKomfMatch: {
+            Task { await matchSelectedWithKomf() }
           },
           onCancel: {
             isSelectionMode = false
@@ -159,6 +177,20 @@ struct SeriesBrowseView: View {
         }
       )
     }
+    .sheet(isPresented: $showBatchEditor) {
+      SeriesBatchEditSheet(
+        seriesIds: selectedSeriesIdsInDisplayOrder,
+        onCompleted: finishBatchSelection
+      )
+    }
+    .alert("Delete Series Files", isPresented: $showDeleteConfirmation) {
+      Button("Cancel", role: .cancel) {}
+      Button("Delete", role: .destructive) {
+        Task { await deleteSelectedFiles() }
+      }
+    } message: {
+      Text("batch.series.deleteConfirmation \(selectedSeriesIds.count)")
+    }
   }
 
   /// Selected ids in display order, so collection appends keep that order.
@@ -195,82 +227,18 @@ struct SeriesBrowseView: View {
   }
 
   private func markSelected(read: Bool) async {
-    guard !selectedSeriesIds.isEmpty, !isSubmitting else { return }
+    guard !selectedSeriesIds.isEmpty, !batchController.isRunning else { return }
 
-    isSubmitting = true
-    defer { isSubmitting = false }
+    let outcome = await SeriesBatchActions.mark(
+      ids: Array(selectedSeriesIds),
+      read: read,
+      using: batchController
+    )
 
-    let seriesIds = Array(selectedSeriesIds)
-    let outcome = await withTaskGroup(
-      of: (id: String, error: Error?).self,
-      returning: (succeeded: [String], failed: [String], firstError: Error?).self
-    ) { group in
-      for seriesId in seriesIds {
-        group.addTask {
-          do {
-            if read {
-              try await SeriesService.markAsRead(seriesId: seriesId)
-            } else {
-              try await SeriesService.markAsUnread(seriesId: seriesId)
-            }
-            return (seriesId, nil)
-          } catch {
-            return (seriesId, error)
-          }
-        }
-      }
-      var succeeded: [String] = []
-      var failed: [String] = []
-      var firstError: Error?
-      for await result in group {
-        if let error = result.error {
-          failed.append(result.id)
-          if firstError == nil { firstError = error }
-        } else {
-          succeeded.append(result.id)
-        }
-      }
-      return (succeeded: succeeded, failed: failed, firstError: firstError)
-    }
-
-    // Sync whatever succeeded so the UI never goes stale, then report failures.
-    if !outcome.succeeded.isEmpty {
-      await withTaskGroup(of: Void.self) { group in
-        for seriesId in outcome.succeeded {
-          group.addTask {
-            _ = try? await SyncService.syncSeriesDetail(seriesId: seriesId)
-            try? await SyncService.syncAllSeriesBooks(seriesId: seriesId)
-            await ContentProjectionNotifier.postSeriesBooksDidChange(
-              seriesId: seriesId,
-              reason: .readingProgress
-            )
-          }
-        }
-      }
-      await DashboardSectionRefreshNotifier.postReadStatusChanged(
-        source: .manual,
-        reason: "Series read status changed"
-      )
-    }
-
-    if let firstError = outcome.firstError {
-      ErrorManager.shared.alert(error: firstError)
-    } else if read {
-      ErrorManager.shared.notify(message: String(localized: "notification.series.markedRead"))
-    } else {
-      ErrorManager.shared.notify(message: String(localized: "notification.series.markedUnread"))
-    }
-
-    // Keep the failed items selected so the batch can be retried.
     withAnimation {
-      if outcome.failed.isEmpty {
-        selectedSeriesIds.removeAll()
-        isSelectionMode = false
-      } else {
-        selectedSeriesIds = Set(outcome.failed)
-      }
+      selectedSeriesIds = Set(outcome.failed)
+      isSelectionMode = !outcome.failed.isEmpty
     }
-
     await loadSeries(refresh: true)
   }
 
@@ -292,6 +260,35 @@ struct SeriesBrowseView: View {
         ErrorManager.shared.alert(error: error)
       }
     }
+  }
+
+  private func deleteSelectedFiles() async {
+    guard !selectedSeriesIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await SeriesBatchActions.deleteFiles(
+      ids: Array(selectedSeriesIds),
+      instanceId: current.instanceId,
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func matchSelectedWithKomf() async {
+    guard !selectedSeriesIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await SeriesBatchActions.matchWithKomf(
+      ids: Array(selectedSeriesIds),
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func finishBatchSelection(_ failedIds: Set<String>) {
+    withAnimation {
+      selectedSeriesIds = failedIds
+      isSelectionMode = !failedIds.isEmpty
+    }
+    Task { await loadSeries(refresh: true) }
   }
 
   private func exitSelectionMode() {

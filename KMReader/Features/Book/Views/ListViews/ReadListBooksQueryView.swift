@@ -13,7 +13,6 @@ struct ReadListBooksQueryView: View {
   let browseLayout: BrowseLayoutMode
   let isSelectionMode: Bool
   @Binding var selectedBookIds: Set<String>
-  let isAdmin: Bool
 
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
@@ -30,8 +29,7 @@ struct ReadListBooksQueryView: View {
     browseOpts: ReadListBookBrowseOptions,
     browseLayout: BrowseLayoutMode,
     isSelectionMode: Bool,
-    selectedBookIds: Binding<Set<String>>,
-    isAdmin: Bool
+    selectedBookIds: Binding<Set<String>>
   ) {
     self.readListId = readListId
     self.readListContext = readListContext
@@ -40,7 +38,6 @@ struct ReadListBooksQueryView: View {
     self.browseLayout = browseLayout
     self.isSelectionMode = isSelectionMode
     self._selectedBookIds = selectedBookIds
-    self.isAdmin = isAdmin
   }
 
   var body: some View {
@@ -55,7 +52,7 @@ struct ReadListBooksQueryView: View {
           LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(bookViewModel.pagination.items) { book in
               Group {
-                if isSelectionMode && isAdmin {
+                if isSelectionMode {
                   BookSelectionItemView(
                     bookId: book.id,
                     layout: browseLayout,
@@ -88,7 +85,7 @@ struct ReadListBooksQueryView: View {
           LazyVStack {
             ForEach(bookViewModel.pagination.items) { book in
               Group {
-                if isSelectionMode && isAdmin {
+                if isSelectionMode {
                   BookSelectionItemView(
                     bookId: book.id,
                     layout: .list,

@@ -12,7 +12,6 @@ struct CollectionSeriesQueryView: View {
   let browseLayout: BrowseLayoutMode
   let isSelectionMode: Bool
   @Binding var selectedSeriesIds: Set<String>
-  let isAdmin: Bool
 
   private var columns: [GridItem] {
     LayoutConfig.adaptiveColumns(cardWidth: browseLayout.cardWidth)
@@ -38,7 +37,7 @@ struct CollectionSeriesQueryView: View {
         LazyVGrid(columns: columns, spacing: spacing) {
           ForEach(seriesViewModel.pagination.items) { series in
             Group {
-              if isSelectionMode && isAdmin {
+              if isSelectionMode {
                 SeriesSelectionItemView(
                   seriesId: series.id,
                   layout: browseLayout,
@@ -68,7 +67,7 @@ struct CollectionSeriesQueryView: View {
         LazyVStack {
           ForEach(seriesViewModel.pagination.items) { series in
             Group {
-              if isSelectionMode && isAdmin {
+              if isSelectionMode {
                 SeriesSelectionItemView(
                   seriesId: series.id,
                   layout: .list,

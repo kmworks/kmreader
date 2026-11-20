@@ -15,11 +15,17 @@ struct BooksListViewForReadList: View {
   @AppStorage("readListBookBrowseOptions") private var browseOpts: ReadListBookBrowseOptions =
     ReadListBookBrowseOptions()
   @AppStorage("currentAccount") private var current: Current = .init()
+  @AppStorage("isOffline") private var isOffline: Bool = false
 
   @State private var bookViewModel = BookViewModel()
   @State private var selectedBookIds: Set<String> = []
   @State private var isSelectionMode = false
   @State private var isDeleting = false
+  @State private var isBatchSelectionMode = false
+  @State private var batchController = BatchOperationController()
+  @State private var showAddToReadListPicker = false
+  @State private var showBatchEditor = false
+  @State private var showDeleteConfirmation = false
   @State private var readListItem: ReadListDisplayItem?
   @State private var loadedReadListId: String?
 
@@ -57,17 +63,33 @@ struct BooksListViewForReadList: View {
           layoutMode: $layoutMode
         )
 
-        if supportsSelectionMode && !isSelectionMode && current.isAdmin {
-          Button {
-            withAnimation {
-              isSelectionMode = true
+        if supportsSelectionMode && !isSelectionMode && !isBatchSelectionMode {
+          if !isOffline {
+            Button {
+              withAnimation {
+                isBatchSelectionMode = true
+              }
+            } label: {
+              Image(systemName: "checkmark.circle")
             }
-          } label: {
-            Image(systemName: "checkmark.circle")
+            .adaptiveButtonStyle(.bordered)
+            .optimizedControlSize()
+            .transition(.opacity.combined(with: .scale))
           }
-          .adaptiveButtonStyle(.bordered)
-          .optimizedControlSize()
-          .transition(.opacity.combined(with: .scale))
+
+          if current.isAdmin {
+            Button {
+              withAnimation {
+                isSelectionMode = true
+              }
+            } label: {
+              Image(systemName: "minus.circle")
+            }
+            .adaptiveButtonStyle(.bordered)
+            .optimizedControlSize()
+            .accessibilityLabel(String(localized: "Edit Members"))
+            .transition(.opacity.combined(with: .scale))
+          }
         }
       }
       .padding(.horizontal)
@@ -99,6 +121,39 @@ struct BooksListViewForReadList: View {
         .padding(.horizontal)
       }
 
+      if supportsSelectionMode && isBatchSelectionMode {
+        SelectionActionsToolbar(
+          selectedCount: selectedBookIds.count,
+          totalCount: readListItem?.bookIds.count ?? 0,
+          isSubmitting: batchController.isRunning,
+          completedCount: batchController.completedCount,
+          runningTotalCount: batchController.totalCount,
+          addLabel: String(localized: "Add to Read List"),
+          editLabel: String(localized: "Edit Metadata"),
+          deleteLabel: current.isAdmin ? String(localized: "Delete Files") : nil,
+          komfMatchLabel: nil,
+          onSelectAll: toggleSelectAll,
+          onMarkRead: {
+            Task { await markSelected(read: true) }
+          },
+          onMarkUnread: {
+            Task { await markSelected(read: false) }
+          },
+          onAdd: {
+            showAddToReadListPicker = true
+          },
+          onEdit: {
+            showBatchEditor = true
+          },
+          onDelete: {
+            showDeleteConfirmation = true
+          },
+          onKomfMatch: {},
+          onCancel: exitBatchSelectionMode
+        )
+        .padding(.horizontal)
+      }
+
       if readListItem != nil {
         ReadListBooksQueryView(
           readListId: readListId,
@@ -106,9 +161,8 @@ struct BooksListViewForReadList: View {
           bookViewModel: bookViewModel,
           browseOpts: browseOpts,
           browseLayout: layoutMode,
-          isSelectionMode: isSelectionMode,
-          selectedBookIds: $selectedBookIds,
-          isAdmin: current.isAdmin
+          isSelectionMode: isSelectionMode || isBatchSelectionMode,
+          selectedBookIds: $selectedBookIds
         )
       } else if bookViewModel.isLoading {
         ProgressView()
@@ -135,6 +189,40 @@ struct BooksListViewForReadList: View {
       notification in
       guard notification.userInfo?["readListId"] as? String == readListId else { return }
       Task { await revalidateBooks() }
+    }
+    .sheet(isPresented: $showAddToReadListPicker) {
+      ReadListPickerSheet(
+        bookIds: selectedBookIdsInReadListOrder,
+        onSelect: addSelectedToReadList,
+        onCreate: { _ in finishBatchSelection([]) }
+      )
+    }
+    .sheet(isPresented: $showBatchEditor) {
+      BookBatchEditSheet(
+        bookIds: selectedBookIdsInReadListOrder,
+        onCompleted: finishBatchSelection
+      )
+    }
+    .alert("Delete Book Files", isPresented: $showDeleteConfirmation) {
+      Button("Cancel", role: .cancel) {}
+      Button("Delete", role: .destructive) {
+        Task { await deleteSelectedFiles() }
+      }
+    } message: {
+      Text("batch.books.deleteConfirmation \(selectedBookIds.count)")
+    }
+  }
+
+  private var selectedBookIdsInReadListOrder: [String] {
+    (readListItem?.bookIds ?? []).filter(selectedBookIds.contains)
+  }
+
+  private func toggleSelectAll() {
+    guard let bookIds = readListItem?.bookIds else { return }
+    if selectedBookIds.count == bookIds.count {
+      selectedBookIds.removeAll()
+    } else {
+      selectedBookIds = Set(bookIds)
     }
   }
 
@@ -180,6 +268,64 @@ struct BooksListViewForReadList: View {
       readListId: readListId,
       browseOpts: browseOpts
     )
+  }
+
+  private func markSelected(read: Bool) async {
+    guard !selectedBookIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await BookBatchActions.mark(
+      ids: Array(selectedBookIds),
+      read: read,
+      instanceId: current.instanceId,
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func addSelectedToReadList(readListId targetReadListId: String) {
+    let bookIds = selectedBookIdsInReadListOrder
+    guard !bookIds.isEmpty else { return }
+
+    Task {
+      do {
+        try await ReadListService.addBooksToReadList(
+          readListId: targetReadListId,
+          bookIds: bookIds
+        )
+        ErrorManager.shared.notify(
+          message: String(localized: "notification.book.booksAddedToReadList"))
+        await ContentProjectionNotifier.postReadListDidChange(readListId: targetReadListId)
+        finishBatchSelection([])
+      } catch {
+        ErrorManager.shared.alert(error: error)
+      }
+    }
+  }
+
+  private func deleteSelectedFiles() async {
+    guard !selectedBookIds.isEmpty, !batchController.isRunning else { return }
+
+    let outcome = await BookBatchActions.deleteFiles(
+      ids: Array(selectedBookIds),
+      instanceId: current.instanceId,
+      using: batchController
+    )
+    finishBatchSelection(Set(outcome.failed))
+  }
+
+  private func finishBatchSelection(_ failedIds: Set<String>) {
+    withAnimation {
+      selectedBookIds = failedIds
+      isBatchSelectionMode = !failedIds.isEmpty
+    }
+    Task { await refreshBooks() }
+  }
+
+  private func exitBatchSelectionMode() {
+    withAnimation {
+      selectedBookIds.removeAll()
+      isBatchSelectionMode = false
+    }
   }
 
   private func deleteSelectedBooks() async {
