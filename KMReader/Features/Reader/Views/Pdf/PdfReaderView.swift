@@ -760,8 +760,7 @@
                 showingSearchSheet = true
               }
             },
-            openPreviousBook: {},
-            openNextBook: {},
+            showBookNavigation: {},
             setReadingDirection: { direction in
               readingDirection = pdfReadingDirection(from: direction)
             },

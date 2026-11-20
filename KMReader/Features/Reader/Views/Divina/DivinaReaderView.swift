@@ -106,6 +106,8 @@ struct DivinaReaderView: View {
   // UI Panels states
   @State private var showingPageJumpSheet = false
   @State private var showingTOCSheet = false
+  @State private var showingBookNavigationSheet = false
+  @State private var bookNavigationBooks: [Book] = []
   @State private var showingReaderSettingsSheet = false
   @State private var showingDetailSheet = false
   @State private var showingMangaTranslationSettings = false
@@ -432,6 +434,7 @@ struct DivinaReaderView: View {
   private var isPresentingModalSheet: Bool {
     showingPageJumpSheet
       || showingTOCSheet
+      || showingBookNavigationSheet
       || showingReaderSettingsSheet
       || showingDetailSheet
   }
@@ -643,6 +646,7 @@ struct DivinaReaderView: View {
     private var shouldEnableUIKitRemoteCapture: Bool {
       !showingPageJumpSheet
         && !showingTOCSheet
+        && !showingBookNavigationSheet
         && !showingReaderSettingsSheet
         && !showingDetailSheet
         && viewModel.hasPages
@@ -865,6 +869,22 @@ struct DivinaReaderView: View {
           jumpToTOCEntry(entry)
         }
       )
+    }
+    .sheet(isPresented: $showingBookNavigationSheet) {
+      DivinaBookNavigationSheetView(
+        books: bookNavigationBooks,
+        currentBookId: currentSegmentBookId,
+        collectionTitle: readListContext?.name ?? currentSeries?.metadata.title ?? currentSegmentBook?.seriesTitle,
+        showsSeriesTitle: readListContext != nil,
+        onSelect: { selectedBook in
+          showingBookNavigationSheet = false
+          guard selectedBook.id != currentSegmentBookId else { return }
+          openAdjacentBook(bookId: selectedBook.id)
+        }
+      )
+      .task {
+        await loadBookNavigation()
+      }
     }
     .onChange(of: panelModeActive) { _, isActive in
       handlePanelModeEnabledChange()
@@ -1308,11 +1328,14 @@ struct DivinaReaderView: View {
       rotation: $rotation,
       showingPageJumpSheet: $showingPageJumpSheet,
       showingTOCSheet: $showingTOCSheet,
+      showingBookNavigationSheet: $showingBookNavigationSheet,
       showingReaderSettingsSheet: $showingReaderSettingsSheet,
       showingDetailSheet: $showingDetailSheet,
       showingMangaTranslationSettings: $showingMangaTranslationSettings,
       viewModel: viewModel,
       currentBook: currentSegmentBook,
+      previousBook: currentSegmentPreviousBook,
+      nextBook: currentSegmentNextBook,
       dualPage: useDualPage,
       incognito: incognito,
       onDismiss: { closeReader() },
@@ -1964,14 +1987,9 @@ struct DivinaReaderView: View {
             }
           },
           showSearch: {},
-          openPreviousBook: {
-            if let previousBook = currentSegmentPreviousBook {
-              openAdjacentBook(bookId: previousBook.id)
-            }
-          },
-          openNextBook: {
-            if let nextBook = currentSegmentNextBook {
-              openAdjacentBook(bookId: nextBook.id)
+          showBookNavigation: {
+            if currentSegmentPreviousBook != nil || currentSegmentNextBook != nil {
+              showingBookNavigationSheet = true
             }
           },
           setReadingDirection: { direction in
@@ -2248,6 +2266,20 @@ struct DivinaReaderView: View {
         self.hideKeyboardHelp()
       }
     }
+  }
+
+  private func loadBookNavigation() async {
+    guard let activeBook = currentSegmentBook else {
+      bookNavigationBooks = []
+      return
+    }
+    bookNavigationBooks = [activeBook]
+    let books = await contentService.loadBookNavigation(
+      for: activeBook,
+      readListId: readListContext?.id
+    )
+    guard !Task.isCancelled, currentSegmentBookId == activeBook.id else { return }
+    bookNavigationBooks = books
   }
 
   private func openAdjacentBook(bookId: String) {

@@ -298,12 +298,8 @@ final class ReaderPresentationManager {
       readerCommandHandlers?.showSearch()
     }
 
-    func openPreviousBookFromCommand() {
-      readerCommandHandlers?.openPreviousBook()
-    }
-
-    func openNextBookFromCommand() {
-      readerCommandHandlers?.openNextBook()
+    func showBookNavigationFromCommand() {
+      readerCommandHandlers?.showBookNavigation()
     }
 
     func setReadingDirectionFromCommand(_ direction: ReadingDirection) {

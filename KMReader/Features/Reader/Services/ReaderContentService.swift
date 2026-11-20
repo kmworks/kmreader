@@ -239,6 +239,42 @@ struct ReaderContentService {
     return []
   }
 
+  func loadBookNavigation(for book: Book, readListId: String?) async -> [Book] {
+    let instanceId = AppConfig.current.instanceId
+    let database = await DatabaseOperator.databaseIfConfigured()
+    let cachedBooks =
+      await database?.fetchBookNavigationBooks(
+        bookId: book.id,
+        readListId: readListId,
+        instanceId: instanceId
+      ) ?? []
+
+    if AppConfig.isOffline {
+      return cachedBooks.contains(where: { $0.id == book.id }) ? cachedBooks : [book]
+    }
+
+    do {
+      if let readListId {
+        try await SyncService.syncAllReadListBooks(readListId: readListId, instanceId: instanceId)
+      } else {
+        try await SyncService.syncAllSeriesBooks(seriesId: book.seriesId)
+      }
+    } catch {
+      logger.warning("⚠️ Failed to refresh book navigation for \(book.id): \(error)")
+    }
+
+    let refreshedBooks =
+      await database?.fetchBookNavigationBooks(
+        bookId: book.id,
+        readListId: readListId,
+        instanceId: instanceId
+      ) ?? []
+    if refreshedBooks.contains(where: { $0.id == book.id }) {
+      return refreshedBooks
+    }
+    return cachedBooks.contains(where: { $0.id == book.id }) ? cachedBooks : [book]
+  }
+
   func resolveAdjacentBooks(for bookId: String, readListId: String?) async -> (
     previous: Book?, next: Book?
   ) {

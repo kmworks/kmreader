@@ -602,6 +602,21 @@ extension DatabaseOperator {
     }
   }
 
+  func fetchBookNavigationBooks(
+    bookId: String,
+    readListId: String?,
+    instanceId: String
+  ) async -> [Book] {
+    (try? read { db in
+      try fetchSiblingBooks(
+        db: db,
+        bookId: bookId,
+        readListId: readListId,
+        instanceId: instanceId
+      )?.books ?? []
+    }) ?? []
+  }
+
   /// The locally known books of `bookId`'s series, or of `readListId`, in
   /// reading order, with `bookId`'s position among them.
   private func fetchSiblingBooks(
@@ -615,10 +630,11 @@ extension DatabaseOperator {
     }
     let books: [Book]
     if let readListId {
-      books = try fetchReadListBooks(db: db, readListId: readListId, instanceId: instanceId, page: 0, size: 1000)
+      books = try fetchReadListBooks(
+        db: db, readListId: readListId, instanceId: instanceId, page: 0, size: Int.max)
     } else {
       books = try fetchSeriesBooks(
-        db: db, seriesId: currentBook.seriesId, instanceId: instanceId, page: 0, size: 1000)
+        db: db, seriesId: currentBook.seriesId, instanceId: instanceId, page: 0, size: Int.max)
     }
     guard let index = books.firstIndex(where: { $0.id == bookId }) else {
       return nil
