@@ -7,12 +7,12 @@ import Foundation
 
 enum SeriesSortField: String, CaseIterable, Sendable {
   case name = "metadata.titleSort"
-  case dateAdded = "created"
-  case dateUpdated = "lastModified"
-  case dateRead = "fileLastModified"
+  case dateAdded = "createdDate"
+  case dateUpdated = "lastModifiedDate"
+  case dateRead = "readDate"
   case releaseDate = "booksMetadata.releaseDate"
   case downloadDate = "downloadAt"
-  case folderName = "metadata.title"
+  case folderName = "name"
   case booksCount = "booksCount"
   case random = "random"
 
@@ -40,5 +40,22 @@ enum SeriesSortField: String, CaseIterable, Sendable {
 
   var supportsDirection: Bool {
     self != .random
+  }
+
+  /// Keys persisted by earlier builds, which stored the series DTO field names
+  /// instead of the sort keys `/api/v1/series/list` documents: `fileLastModified`
+  /// and `metadata.title` were dropped by the server, so those orders did
+  /// nothing. The raw values above replace them; saved options and presets still
+  /// carry the older strings and decode through this map, which can go away once
+  /// no build before this one can load.
+  nonisolated static func decode(_ value: String) -> SeriesSortField? {
+    if let field = SeriesSortField(rawValue: value) { return field }
+    switch value {
+    case "created": return .dateAdded
+    case "lastModified": return .dateUpdated
+    case "fileLastModified": return .dateRead
+    case "metadata.title": return .folderName
+    default: return nil
+    }
   }
 }
