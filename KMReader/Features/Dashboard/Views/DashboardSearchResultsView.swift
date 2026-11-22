@@ -16,7 +16,7 @@ struct DashboardSearchResultsView: View {
   @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
 
-  @State private var dashboardScopeStore = DashboardLibraryScopeStore.shared
+  @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
   @State private var refreshTrigger = UUID()
   // The in-content filter bars drive these bindings; without real state the
   // sort/preset chips would be dead buttons here (unlike `BrowseView`, the
@@ -34,7 +34,7 @@ struct DashboardSearchResultsView: View {
       refreshTrigger: refreshTrigger,
       showFilterSheet: $showFilterSheet,
       showSavedFilters: $showSavedFilters,
-      libraryIds: dashboardScopeStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
+      libraryIds: scopeSelectionStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
     )
     .background(PlatformHelper.systemBackgroundColor)
     .sheet(isPresented: $showSavedFilters) {

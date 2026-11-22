@@ -25,7 +25,7 @@ struct ListsBrowseView: View {
   @State private var readListsViewModel = ReadListsViewModel(pageSize: 20)
   @State private var smartListsViewModel = SmartListsViewModel()
   @State private var scopeStore = LibraryScopeStore()
-  @State private var browseScope: LibraryBrowseScope?
+  @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
   @State private var showLibraryPicker = false
   @State private var initialLoadDone = false
   @State private var initializedLoadKey: String?
@@ -34,7 +34,7 @@ struct ListsBrowseView: View {
   @State private var smartListsReloadTask: Task<Void, Never>?
 
   private var effectiveScope: LibraryBrowseScope {
-    browseScope ?? .pinned
+    scopeSelectionStore.scope
   }
 
   private var resolvedLibraryIds: [String] {
@@ -47,10 +47,6 @@ struct ListsBrowseView: View {
 
   private var resolvedLibraryIdsKey: String {
     resolvedLibraryIds.joined(separator: ",")
-  }
-
-  private var scopeMenuBinding: Binding<LibraryBrowseScope> {
-    Binding(get: { effectiveScope }, set: { browseScope = $0 })
   }
 
   var body: some View {
@@ -73,7 +69,7 @@ struct ListsBrowseView: View {
         LibraryScopeMenu(
           libraries: scopeStore.libraries,
           showLibraryPicker: $showLibraryPicker,
-          scope: scopeMenuBinding)
+          scope: $scopeSelectionStore.scope)
       }
     }
     .sheet(isPresented: $showLibraryPicker) {
@@ -132,21 +128,6 @@ struct ListsBrowseView: View {
           initialLoadDone = true
         }
       }
-    }
-    .onChange(of: scopeStore.libraries) { _, libraries in
-      // A scoped library that vanished falls back to the aggregate.
-      guard !libraries.isEmpty else { return }
-      if let scopedId = browseScope?.libraryId,
-        !libraries.contains(where: { $0.libraryId == scopedId })
-      {
-        browseScope = nil
-      }
-    }
-    .onChange(of: dashboard.libraryIds) { _, pinnedIds in
-      // The Pinned item only exists while pins do; an emptied pinned set is
-      // the full set, which All already represents.
-      guard pinnedIds.isEmpty, browseScope == .pinned else { return }
-      browseScope = .all
     }
   }
 

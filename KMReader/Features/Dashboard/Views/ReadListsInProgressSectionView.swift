@@ -18,7 +18,7 @@ struct ReadListsInProgressSectionView: View {
   /// continues with; which book that is never depends on the scope.
   private var continuations: [ReadListContinuation] {
     let librarySelection = Set(
-      DashboardLibraryScopeStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds))
+      LibraryScopeSelectionStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds))
     return ReadListReadingService.shared.continuations.filter {
       librarySelection.isEmpty || librarySelection.contains($0.libraryId)
     }
@@ -32,7 +32,7 @@ struct ReadListsInProgressSectionView: View {
     if !continuations.isEmpty {
       DashboardSectionLayout(
         section: section,
-        destination: .browseReadLists(scope: DashboardLibraryScopeStore.shared.scope),
+        destination: .browseReadLists(scope: LibraryScopeSelectionStore.shared.scope),
         showsCardKindMenu: true,
         itemIds: continuations.map(\.readListId)
       ) {

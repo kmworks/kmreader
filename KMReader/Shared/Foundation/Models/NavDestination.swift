@@ -13,7 +13,7 @@ enum NavDestination: Hashable {
   case browse(scope: LibraryBrowseScope)
   case browseSearch
   /// Full single-type lists; `scope` seeds the pushed page's session scope
-  /// from the surface that linked here (nil keeps the pinned default).
+  /// from the surface that linked here (nil inherits the shared root scope).
   case browseCollections(scope: LibraryBrowseScope?)
   case browseReadLists(scope: LibraryBrowseScope?)
   /// Smart lists have no library filter, hence no scope.
@@ -102,25 +102,28 @@ enum NavDestination: Hashable {
     return nil
   }
 
-  /// Scope binding for a shell-synced browse root: reads the destination's
-  /// own scope and forwards in-page picks to the shell's selection writer.
-  /// Nil for non-browse destinations — their pages keep a page-local session
-  /// scope.
-  func libraryScopeBinding(
-    apply: @escaping (LibraryBrowseScope) -> Void
-  ) -> Binding<LibraryBrowseScope>? {
+  /// The scope represented by a shell-owned browse root. Other destinations
+  /// either use the shared root scope directly or keep a page-local override.
+  var browseScope: LibraryBrowseScope? {
     switch self {
     case .browse(let scope):
-      return Binding(
-        get: { scope },
-        set: { apply($0) })
+      return scope
     case .browseLibrary(let selection):
-      return Binding(
-        get: { .library(selection.libraryId) },
-        set: { apply($0) })
+      return .library(selection.libraryId)
     default:
       return nil
     }
+  }
+
+  /// Scope binding for a shell-synced browse root: reads the destination's
+  /// own scope and forwards in-page picks to the shell's selection writer.
+  func libraryScopeBinding(
+    apply: @escaping (LibraryBrowseScope) -> Void
+  ) -> Binding<LibraryBrowseScope>? {
+    guard let browseScope else { return nil }
+    return Binding(
+      get: { browseScope },
+      set: { apply($0) })
   }
 
   @ViewBuilder
@@ -138,7 +141,8 @@ enum NavDestination: Hashable {
     case .browseSearch:
       BrowseView(
         authViewModel: context.authViewModel,
-        focusesSearchOnAppear: true
+        focusesSearchOnAppear: true,
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseCollections(let scope):
       ListsBrowseDetailView(
@@ -174,49 +178,57 @@ enum NavDestination: Hashable {
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .series,
-        metadataFilter: MetadataFilterConfig.forPublisher(publisher)
+        metadataFilter: MetadataFilterConfig.forPublisher(publisher),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseSeriesWithAuthor(let author):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .series,
-        metadataFilter: MetadataFilterConfig.forAuthors([author])
+        metadataFilter: MetadataFilterConfig.forAuthors([author]),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseSeriesWithGenre(let genre):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .series,
-        metadataFilter: MetadataFilterConfig.forGenres([genre])
+        metadataFilter: MetadataFilterConfig.forGenres([genre]),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseSeriesWithTag(let tag):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .series,
-        metadataFilter: MetadataFilterConfig.forTags([tag])
+        metadataFilter: MetadataFilterConfig.forTags([tag]),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseBooksWithAuthor(let author):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .books,
-        metadataFilter: MetadataFilterConfig.forAuthors([author])
+        metadataFilter: MetadataFilterConfig.forAuthors([author]),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseBooksWithTag(let tag):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .books,
-        metadataFilter: MetadataFilterConfig.forTags([tag])
+        metadataFilter: MetadataFilterConfig.forTags([tag]),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseSeriesWithNotableEntity(let entity):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .series,
-        metadataFilter: MetadataFilterConfig.forNotableEntity(entity)
+        metadataFilter: MetadataFilterConfig.forNotableEntity(entity),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
     case .browseBooksWithNotableEntity(let entity):
       BrowseView(
         authViewModel: context.authViewModel,
         fixedContent: .books,
-        metadataFilter: MetadataFilterConfig.forNotableEntity(entity)
+        metadataFilter: MetadataFilterConfig.forNotableEntity(entity),
+        initialScope: LibraryScopeSelectionStore.shared.scope
       )
 
     case .seriesDetail(let seriesId):

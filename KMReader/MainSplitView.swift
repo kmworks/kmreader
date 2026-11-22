@@ -11,7 +11,9 @@ import SwiftUI
     @State private var nav: NavDestination? = .home
     @State private var detailPath = NavigationPath()
     @State private var store = SidebarItemsStore()
+    @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
 
+    @AppStorage("currentAccount") private var current: Current = .init()
     @AppStorage("dashboard") private var dashboard: DashboardConfiguration = .init()
     #if os(macOS)
       @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -63,11 +65,17 @@ import SwiftUI
           nav = .browse(scope: .all)
         }
       }
+      .onChange(of: nav) { _, destination in
+        guard let scope = destination?.browseScope else { return }
+        scopeSelectionStore.scope = scope
+      }
+      .onChange(of: scopeSelectionStore.scope) { _, _ in
+        reconcileBrowseScope()
+      }
       .onChange(of: store.libraries) { _, libraries in
-        guard case .browseLibrary(let selection) = nav else { return }
-        if !libraries.contains(where: { $0.libraryId == selection.libraryId }) {
-          nav = .home
-        }
+        LibraryScopeSelectionStore.shared.librariesDidChange(
+          libraries, pinnedIds: dashboard.libraryIds, instanceId: current.instanceId)
+        reconcileBrowseScope()
       }
     }
 
@@ -84,6 +92,31 @@ import SwiftUI
     /// library selects its sidebar row; choosing All/Pinned selects the
     /// matching aggregate row.
     private func applyScope(_ scope: LibraryBrowseScope) {
+      scopeSelectionStore.scope = scope
+      reconcileBrowseScope()
+      guard let libraryId = scope.libraryId,
+        !store.libraries.contains(where: { $0.libraryId == libraryId })
+      else { return }
+      Task {
+        guard await store.load(instanceId: current.instanceId) else { return }
+        LibraryScopeSelectionStore.shared.librariesDidChange(
+          store.libraries, pinnedIds: dashboard.libraryIds, instanceId: current.instanceId)
+        reconcileBrowseScope()
+      }
+    }
+
+    private func reconcileBrowseScope() {
+      guard nav?.browseScope != nil else { return }
+      if store.libraries.isEmpty {
+        if scopeSelectionStore.scope.libraryId == nil {
+          nav = .home
+        }
+        return
+      }
+      selectBrowseScope(scopeSelectionStore.scope)
+    }
+
+    private func selectBrowseScope(_ scope: LibraryBrowseScope) {
       switch scope {
       case .library(let libraryId):
         guard let item = store.libraries.first(where: { $0.libraryId == libraryId }) else { return }

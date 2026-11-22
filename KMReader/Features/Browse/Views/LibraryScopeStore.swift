@@ -18,6 +18,7 @@ final class LibraryScopeStore {
   /// Gates empty-library guidance until the first successful load, so guidance
   /// for the previous instance never flashes during a switch.
   private(set) var hasLoaded = false
+  @ObservationIgnored private var loadGeneration = 0
 
   func refresh(instanceId: String) async {
     hasLoaded = false
@@ -45,12 +46,17 @@ final class LibraryScopeStore {
   }
 
   func load(instanceId: String) async {
+    loadGeneration += 1
+    let generation = loadGeneration
     do {
       let loaded = try await fetchLibraries(instanceId: instanceId)
+      let allEntry = try await fetchAllLibrariesEntry(instanceId: instanceId)
+      guard generation == loadGeneration else { return }
       if libraries != loaded {
         libraries = loaded
       }
-      let allEntry = try await fetchAllLibrariesEntry(instanceId: instanceId)
+      LibraryScopeSelectionStore.shared.librariesDidChange(
+        loaded, pinnedIds: AppConfig.dashboard.libraryIds, instanceId: instanceId)
       if allLibrariesEntry != allEntry {
         allLibrariesEntry = allEntry
       }
@@ -59,6 +65,7 @@ final class LibraryScopeStore {
         hasLoaded = true
       }
     } catch {
+      guard generation == loadGeneration else { return }
       ErrorManager.shared.alert(error: error)
     }
   }

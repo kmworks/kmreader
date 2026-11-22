@@ -34,7 +34,7 @@ struct DashboardSectionDetailView: View {
   }
 
   private var effectiveLibraryIds: [String] {
-    DashboardLibraryScopeStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds)
+    LibraryScopeSelectionStore.shared.effectiveLibraryIds(pinned: dashboard.libraryIds)
   }
 
   private var columns: [GridItem] {

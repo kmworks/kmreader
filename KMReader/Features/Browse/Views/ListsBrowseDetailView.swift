@@ -13,7 +13,6 @@ import SwiftUI
 struct ListsBrowseDetailView: View {
   let authViewModel: AuthViewModel
   let fixedContent: ListsBrowseContentType
-  let initialScope: LibraryBrowseScope?
 
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
@@ -28,17 +27,16 @@ struct ListsBrowseDetailView: View {
   @State private var showLibraryPicker = false
   @State private var showFilterSheet = false
   @State private var scopeStore = LibraryScopeStore()
-  @State private var browseScope: LibraryBrowseScope?
+  @State private var browseScope: LibraryBrowseScope
 
   init(authViewModel: AuthViewModel, fixedContent: ListsBrowseContentType, initialScope: LibraryBrowseScope? = nil) {
     self.authViewModel = authViewModel
     self.fixedContent = fixedContent
-    self.initialScope = initialScope
-    _browseScope = State(initialValue: initialScope)
+    _browseScope = State(initialValue: initialScope ?? LibraryScopeSelectionStore.shared.scope)
   }
 
   private var effectiveScope: LibraryBrowseScope {
-    browseScope ?? .pinned
+    browseScope
   }
 
   private var menuScopeBinding: Binding<LibraryBrowseScope> {
@@ -152,11 +150,10 @@ struct ListsBrowseDetailView: View {
     }
     .onChange(of: scopeStore.libraries) { _, libraries in
       // A scoped library that vanished falls back to the aggregate.
-      guard !libraries.isEmpty else { return }
-      if let scopedId = browseScope?.libraryId,
+      if let scopedId = browseScope.libraryId,
         !libraries.contains(where: { $0.libraryId == scopedId })
       {
-        browseScope = nil
+        browseScope = dashboard.libraryIds.isEmpty ? .all : .pinned
       }
     }
     .onChange(of: dashboard.libraryIds) { _, pinnedIds in

@@ -27,6 +27,7 @@ import SwiftUI
     @AppStorage("dashboard") private var dashboard: DashboardConfiguration = .init()
 
     @State private var store = SidebarItemsStore()
+    @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
     @State private var selection: PadTab = .home
     @State private var homePath = NavigationPath()
 
@@ -114,10 +115,9 @@ import SwiftUI
         }
       }
       .onChange(of: store.libraries) { _, libraries in
-        guard case .library(let libraryId) = selection else { return }
-        if !libraries.contains(where: { $0.libraryId == libraryId }) {
-          selection = .home
-        }
+        LibraryScopeSelectionStore.shared.librariesDidChange(
+          libraries, pinnedIds: dashboard.libraryIds, instanceId: current.instanceId)
+        reconcileBrowseScope()
       }
       .onChange(of: dashboard.libraryIds) { _, pinnedIds in
         // The Pinned tab only exists while pins do; an emptied pinned set is
@@ -125,6 +125,13 @@ import SwiftUI
         if pinnedIds.isEmpty, selection == .libraries(.pinned) {
           selection = .libraries(.all)
         }
+      }
+      .onChange(of: selection) { _, tab in
+        guard let scope = browseScope(for: tab) else { return }
+        scopeSelectionStore.scope = scope
+      }
+      .onChange(of: scopeSelectionStore.scope) { _, _ in
+        reconcileBrowseScope()
       }
       .deepLinkRouting(
         selection: $selection,
@@ -148,8 +155,45 @@ import SwiftUI
     /// switches to its tab; choosing All/Pinned switches to the matching
     /// aggregate tab.
     private func applyScope(_ scope: LibraryBrowseScope) {
+      scopeSelectionStore.scope = scope
+      reconcileBrowseScope()
+      guard let libraryId = scope.libraryId,
+        !store.libraries.contains(where: { $0.libraryId == libraryId })
+      else { return }
+      Task {
+        guard await store.load(instanceId: current.instanceId) else { return }
+        LibraryScopeSelectionStore.shared.librariesDidChange(
+          store.libraries, pinnedIds: dashboard.libraryIds, instanceId: current.instanceId)
+        reconcileBrowseScope()
+      }
+    }
+
+    private func reconcileBrowseScope() {
+      guard browseScope(for: selection) != nil else { return }
+      if store.libraries.isEmpty {
+        if scopeSelectionStore.scope.libraryId == nil {
+          selection = .home
+        }
+        return
+      }
+      selectBrowseScope(scopeSelectionStore.scope)
+    }
+
+    private func browseScope(for tab: PadTab) -> LibraryBrowseScope? {
+      switch tab {
+      case .libraries(let scope):
+        return scope
+      case .library(let libraryId):
+        return .library(libraryId)
+      default:
+        return nil
+      }
+    }
+
+    private func selectBrowseScope(_ scope: LibraryBrowseScope) {
       switch scope {
       case .library(let libraryId):
+        guard store.libraries.contains(where: { $0.libraryId == libraryId }) else { return }
         selection = .library(libraryId)
       case .pinned, .all:
         // The Pinned tab is hidden while the pinned set is empty; an emptied

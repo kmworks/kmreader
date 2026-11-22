@@ -14,7 +14,7 @@ struct DashboardView: View {
   @State private var showLibraryPicker = false
   @State private var showLibraryAddSheet = false
   @State private var scopeStore = LibraryScopeStore()
-  @State private var dashboardScopeStore = DashboardLibraryScopeStore.shared
+  @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
   @State private var viewModel = DashboardViewModel()
   @State private var searchQuery = ""
   // Results re-query only on submit, so the submitted text is stored apart
@@ -36,7 +36,7 @@ struct DashboardView: View {
   }
 
   private var effectiveLibraryIds: [String] {
-    dashboardScopeStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
+    scopeSelectionStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
   }
 
   private var showsDashboardSearchField: Bool {
@@ -57,7 +57,7 @@ struct DashboardView: View {
         LibraryScopeMenu(
           libraries: scopeStore.libraries,
           showLibraryPicker: $showLibraryPicker,
-          scope: $dashboardScopeStore.scope,
+          scope: $scopeSelectionStore.scope,
           iconOnly: false)
 
         NavigationLink(value: NavDestination.settingsReadingStats) {
@@ -121,7 +121,7 @@ struct DashboardView: View {
         DashboardScopeHeaderView(
           authViewModel: authViewModel,
           scopeStore: scopeStore,
-          dashboardScopeStore: dashboardScopeStore)
+          scopeSelectionStore: scopeSelectionStore)
 
         DashboardEmptyLibraryGuidanceView(scopeStore: scopeStore) {
           showLibraryAddSheet = true
@@ -178,12 +178,7 @@ struct DashboardView: View {
         }
       }
     }
-    .onChange(of: dashboard.libraryIds) { _, pinnedIds in
-      // The Pinned item only exists while pins do; an emptied pinned set is
-      // the full set, which All already represents.
-      if pinnedIds.isEmpty, dashboardScopeStore.scope == .pinned {
-        dashboardScopeStore.scope = .all
-      }
+    .onChange(of: dashboard.libraryIds) { _, _ in
       // Skip during server switch - dedicated refresh happens when switch completes
       guard !authViewModel.isSwitching else { return }
       // Bypass auto-refresh setting for configuration changes
@@ -192,21 +187,12 @@ struct DashboardView: View {
       }
       WidgetDataService.refreshWidgetData()
     }
-    .onChange(of: dashboardScopeStore.scope) { _, _ in
-      // Widget data follows the pinned aggregate, not the session scope.
+    .onChange(of: scopeSelectionStore.scope) { _, _ in
+      // Widget data follows the pinned aggregate, not the active root scope.
       guard !authViewModel.isSwitching else { return }
       Task {
         await refreshDashboard(reason: "Library scope changed")
       }
-    }
-    .onChange(of: scopeStore.libraries) { _, libraries in
-      // A scoped library that vanished (deleted or never loaded) falls back
-      // to the aggregate.
-      guard !libraries.isEmpty,
-        let scopedId = dashboardScopeStore.scope.libraryId,
-        !libraries.contains(where: { $0.libraryId == scopedId })
-      else { return }
-      dashboardScopeStore.reset()
     }
     .task {
       DashboardRefreshCoordinator.shared.configure(
@@ -265,7 +251,7 @@ struct DashboardView: View {
         DashboardToolbar(
           scopeStore: scopeStore,
           showLibraryPicker: $showLibraryPicker,
-          scope: $dashboardScopeStore.scope)
+          scope: $scopeSelectionStore.scope)
       }
       .refreshableWithMinimumHold {
         await refreshDashboard(reason: "Pull to refresh")
