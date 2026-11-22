@@ -55,7 +55,8 @@ struct BrowseView: View {
     libraryTab: Bool = false,
     searchOnly: Bool = false,
     libraryIds: [String]? = nil,
-    libraryTabScope: Binding<LibraryBrowseScope>? = nil
+    libraryTabScope: Binding<LibraryBrowseScope>? = nil,
+    initialScope: LibraryBrowseScope? = nil
   ) {
     self.authViewModel = authViewModel
     self.fixedContent = fixedContent
@@ -65,7 +66,7 @@ struct BrowseView: View {
     self.searchOnly = searchOnly
     self.libraryIds = libraryIds
     self.libraryTabScope = libraryTabScope
-    _browseScope = State(initialValue: nil)
+    _browseScope = State(initialValue: initialScope)
   }
 
   var title: String {
@@ -86,12 +87,17 @@ struct BrowseView: View {
 
   /// The page's active scope: the shell-owned scope when the shell syncs one
   /// (iPad/macOS roots), then the page-local session choice, then the pushed
-  /// single-library selection as the initial value, then the pinned set.
+  /// single-library selection as the initial value, then All for an unscoped page.
   private var effectiveScope: LibraryBrowseScope {
     if let shellScope { return shellScope.wrappedValue }
     if let browseScope { return browseScope }
     if let library = librarySelection { return .library(library.libraryId) }
-    return .pinned
+    #if os(tvOS)
+      // The tvOS Browse tab is a root without a shell scope binding.
+      return LibraryScopeSelectionStore.shared.scope
+    #else
+      return .all
+    #endif
   }
 
   /// The scope menu's binding: shell scope (writes through to the shell's
@@ -196,28 +202,17 @@ struct BrowseView: View {
       browseScope = nil
     }
     .onChange(of: scopeStore.libraries) { _, libraries in
-      // A scoped library that vanished falls back to the aggregate, for the
-      // page-local and the tab-root scope alike.
-      guard !libraries.isEmpty else { return }
+      // A page-local scoped library that vanished falls back to the aggregate.
       if let scopedId = browseScope?.libraryId,
         !libraries.contains(where: { $0.libraryId == scopedId })
       {
-        browseScope = nil
-      }
-      if let tabScope = libraryTabScope,
-        let scopedId = tabScope.wrappedValue.libraryId,
-        !libraries.contains(where: { $0.libraryId == scopedId })
-      {
-        tabScope.wrappedValue = .pinned
+        browseScope = dashboard.libraryIds.isEmpty ? .all : .pinned
       }
     }
     .onChange(of: dashboard.libraryIds) { _, pinnedIds in
       // The Pinned item only exists while pins do; an emptied pinned set is
       // the full set, which All already represents.
       guard pinnedIds.isEmpty else { return }
-      if libraryTabScope?.wrappedValue == .pinned {
-        libraryTabScope?.wrappedValue = .all
-      }
       if browseScope == .pinned {
         browseScope = .all
       }

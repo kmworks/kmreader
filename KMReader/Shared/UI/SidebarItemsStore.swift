@@ -9,19 +9,26 @@ import SwiftUI
 @MainActor
 final class SidebarItemsStore {
   private(set) var libraries: [SidebarLibraryItem] = []
+  @ObservationIgnored private var loadGeneration = 0
 
-  func load(instanceId: String) async {
+  @discardableResult
+  func load(instanceId: String) async -> Bool {
+    loadGeneration += 1
+    let generation = loadGeneration
     guard !instanceId.isEmpty else {
       clearIfNeeded()
-      return
+      return true
     }
 
     do {
       let database = try await DatabaseOperator.database()
       let loadedLibraries = try await database.fetchSidebarLibraries(instanceId: instanceId)
+      guard generation == loadGeneration else { return false }
       apply(libraries: loadedLibraries)
+      return true
     } catch {
       ErrorManager.shared.alert(error: error)
+      return false
     }
   }
 

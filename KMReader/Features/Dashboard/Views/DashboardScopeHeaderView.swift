@@ -11,7 +11,7 @@ import SwiftUI
 struct DashboardScopeHeaderView: View {
   let authViewModel: AuthViewModel
   let scopeStore: LibraryScopeStore
-  let dashboardScopeStore: DashboardLibraryScopeStore
+  let scopeSelectionStore: LibraryScopeSelectionStore
 
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
   @AppStorage("currentAccount") private var current: Current = .init()
@@ -20,7 +20,7 @@ struct DashboardScopeHeaderView: View {
   var body: some View {
     LibraryScopeHeader(
       isConnecting: authViewModel.bootstrapState == .validating,
-      scope: dashboardScopeStore.scope,
+      scope: scopeSelectionStore.scope,
       pinnedIds: dashboard.libraryIds,
       libraries: scopeStore.libraries,
       allLibrariesEntry: scopeStore.allLibrariesEntry

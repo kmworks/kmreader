@@ -23,7 +23,7 @@ struct OfflineView: View {
   @State private var activeSearchText: String = ""
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
-  @AppStorage("offlineBrowseScope") private var scope: LibraryBrowseScope = .pinned
+  @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
   @State private var shortcutsWidth: CGFloat = PlatformHelper.isPad ? .infinity : 0
   @State private var downloadStats: (count: Int, sizeBytes: Int64)?
   @State private var downloadedSeriesCount = 0
@@ -42,6 +42,10 @@ struct OfflineView: View {
       return library.name
     }
     return String(localized: "tab.offline")
+  }
+
+  private var scope: LibraryBrowseScope {
+    scopeSelectionStore.scope
   }
 
   private var resolvedLibraryIds: [String] {
@@ -196,21 +200,6 @@ struct OfflineView: View {
           await scopeStore.load(instanceId: current.instanceId)
         }
       }
-      .onChange(of: scopeStore.libraries) { _, libraries in
-        // A scoped library that vanished falls back to the aggregate.
-        guard !libraries.isEmpty,
-          let scopedId = scope.libraryId,
-          !libraries.contains(where: { $0.libraryId == scopedId })
-        else { return }
-        scope = .pinned
-      }
-      .onChange(of: dashboard.libraryIds) { _, pinnedIds in
-        // The Pinned item only exists while pins do; an emptied pinned set
-        // is the full set, which All already represents.
-        if pinnedIds.isEmpty, scope == .pinned {
-          scope = .all
-        }
-      }
       .toolbar {
         InlineLargeTitleToolbarItem(title: title, enabled: librarySelection == nil)
 
@@ -221,7 +210,7 @@ struct OfflineView: View {
           LibraryScopeMenu(
             libraries: scopeStore.libraries,
             showLibraryPicker: $showLibraryPicker,
-            scope: $scope)
+            scope: $scopeSelectionStore.scope)
         }
 
         ToolbarItem(placement: .confirmationAction) {
