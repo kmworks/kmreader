@@ -131,7 +131,7 @@ nonisolated struct SeriesBrowseOptions: Equatable, RawRepresentable, Sendable {
     self.deletedFilter = TriStateFilter.decode(dict["deletedFilter"])
     self.metadataFilter =
       MetadataFilterConfig(rawValue: dict["metadataFilter"] ?? "") ?? MetadataFilterConfig()
-    self.sortField = SeriesSortField.decode(dict["sortField"] ?? "") ?? .name
+    self.sortField = SeriesSortField(rawValue: dict["sortField"] ?? "") ?? .name
     self.sortDirection = SortDirection(rawValue: dict["sortDirection"] ?? "") ?? .ascending
   }
 
