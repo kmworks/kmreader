@@ -466,8 +466,17 @@
 
         // A cross-chapter link with a fragment lands here once the target
         // chapter has laid out.
-        if let webView, let anchor = parent.viewModel.consumePendingAnchor(for: chapterIndex) {
-          scrollToAnchor(anchor, on: webView) { _ in }
+        if let webView, let anchor = parent.viewModel.pendingAnchorNavigation(for: chapterIndex) {
+          scrollToAnchor(anchor.anchor, on: webView) { [weak self] found in
+            guard let self, parent.viewModel.acknowledgeAnchorNavigation(anchor) else { return }
+            if !found { scrollDocument(to: 0) }
+            webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
+              guard let self else { return }
+              let offset = (result as? Double) ?? 0
+              currentSubPageIndex = max(0, min(totalPagesInChapter - 1, Int(offset / effectiveViewportHeight)))
+              updateViewModelLocation(from: currentSubPageIndex)
+            }
+          }
         }
       } else if currentSubPageIndex != actualPage {
         currentSubPageIndex = actualPage
@@ -510,6 +519,7 @@
       let js = """
           (function() {
             var target = \(targetPageIndex);
+            var requiresFullExtent = \(targetProgressionOnReady != nil || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex) ? "true" : "false");
             var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
             var hasFinalized = false;

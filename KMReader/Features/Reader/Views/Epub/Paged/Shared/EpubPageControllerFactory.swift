@@ -83,12 +83,13 @@
         renderingEngine: renderingEngine,
         onPageCountReady: onPageCountReady
       )
+      controller.requiresFullExtentProvider = { [weak viewModel] chapterIndex in
+        viewModel?.navigationRequiresFullExtent(for: chapterIndex) ?? false
+      }
       controller.preferLastPageOnReady = preferLastPageOnReady
       controller.targetProgressionOnReady = initialProgression
       controller.onChapterLoadFailed = { [weak viewModel] in
-        Task { @MainActor in
-          viewModel?.markChapterLoadFailed(chapterIndex)
-        }
+        viewModel?.markChapterLoadFailed(chapterIndex)
       }
       return controller
     }
@@ -151,9 +152,7 @@
     private func pageCountCallback(chapterIndex: Int) -> (Int) -> Void {
       let chapterIndexForCallback = chapterIndex
       return { [weak viewModel] pageCount in
-        Task { @MainActor in
-          viewModel?.updateChapterPageCount(pageCount, for: chapterIndexForCallback)
-        }
+        viewModel?.updateChapterPageCount(pageCount, for: chapterIndexForCallback)
       }
     }
   }

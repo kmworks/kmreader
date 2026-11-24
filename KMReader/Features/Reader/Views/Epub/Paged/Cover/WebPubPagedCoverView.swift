@@ -266,8 +266,12 @@
             pageIndex: originPage
           )
         }
-        controller.pendingAnchorProvider = { [weak self] chapterIndex in
-          self?.parent.viewModel.consumePendingAnchor(for: chapterIndex)
+        controller.pendingAnchorProvider = { [weak self, weak controller] chapterIndex in
+          guard let self, let controller, self.currentController === controller, self.session == nil else { return nil }
+          return self.parent.viewModel.pendingAnchorNavigation(for: chapterIndex)
+        }
+        controller.onPendingAnchorLanding = { [weak self] navigation in
+          self?.parent.viewModel.acknowledgeAnchorNavigation(navigation) ?? false
         }
         controller.loadViewIfNeeded()
         return controller
@@ -520,6 +524,7 @@
           parent.viewModel.targetChapterIndex = nil
           parent.viewModel.targetPageIndex = nil
           parent.viewModel.pageDidChange()
+          currentController?.applyPendingAnchor()
         }
       }
 

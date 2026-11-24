@@ -519,13 +519,11 @@
               closeReader()
             }
           )
-          .onAppear {
-            Task { @MainActor in
-              await viewModel.loadEndPageAdjacentBooks(
-                bookId: currentBook?.id ?? book.id,
-                readListId: readListContext?.id
-              )
-            }
+          .task {
+            await viewModel.loadEndPageAdjacentBooks(
+              bookId: currentBook?.id ?? book.id,
+              readListId: readListContext?.id
+            )
           }
         } else {
           let showsReaderContent =

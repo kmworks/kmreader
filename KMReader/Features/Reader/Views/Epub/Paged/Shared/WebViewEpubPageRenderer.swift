@@ -188,7 +188,9 @@
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
-        generation: paginationGeneration
+        generation: paginationGeneration,
+        requiresFullExtent: host?.targetProgressionOnReady != nil
+          || host?.requiresFullExtentProvider?(configuration.chapterIndex) == true
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -354,10 +356,8 @@
           }
 
           // Sync the current sub-page index with the actual page landed on by JS or progression calculation.
-          if host.currentSubPageIndex != actualPage {
-            host.currentSubPageIndex = actualPage
-            host.onPageIndexAdjusted?(actualPage)
-          }
+          host.currentSubPageIndex = actualPage
+          host.onPageIndexAdjusted?(actualPage)
 
           host.preferLastPageOnReady = false
           host.updateOverlayLabels()
@@ -369,12 +369,7 @@
         // A cross-chapter link with a fragment lands here: jump from page 0
         // to the anchor once the target chapter has paginated, and commit the
         // resolved page so progress does not stick to the chapter start.
-        if let anchor = host.consumePendingAnchor() {
-          scrollToAnchor(anchor) { [weak host] page in
-            guard let host, let page else { return }
-            host.commitAnchorLanding(page: page, originPage: nil)
-          }
-        }
+        host.applyPendingAnchor()
         host.onPaginationReady?()
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
         // Handle incremental layout updates from the extent watchers

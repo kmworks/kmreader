@@ -64,8 +64,10 @@
     /// Called after a same-chapter anchor jump with the origin page, so the
     /// view model can push the in-book link back stack.
     var onAnchorJump: ((Int) -> Void)?
-    /// Provides a pending anchor to land on for a chapter index, if any.
-    var pendingAnchorProvider: ((Int) -> String?)?
+    /// Exposes the current link command without consuming it.
+    var requiresFullExtentProvider: ((Int) -> Bool)?
+    var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
+    var onPendingAnchorLanding: ((EpubAnchorNavigation) -> Bool)?
 
     var currentChapterIndex: Int { chapterIndex }
     var currentPageIndex: Int { currentSubPageIndex }
@@ -636,7 +638,7 @@
     func webView(
       _ webView: WKWebView,
       decidePolicyFor navigationAction: WKNavigationAction,
-      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+      decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
       guard navigationAction.navigationType == .linkActivated,
         let url = navigationAction.request.url
@@ -887,6 +889,7 @@
       let js = """
           (function() {
             var target = \(targetPageIndex);
+            var requiresFullExtent = \(targetProgressionOnReady != nil || requiresFullExtentProvider?(chapterIndex) == true ? "true" : "false");
             var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
             var hasFinalized = false;
@@ -1154,7 +1157,18 @@
           // Land on a pending in-book anchor (cross-chapter link) now that
           // the document is laid out.
           if let anchor = pendingAnchorProvider?(chapterIndex) {
-            scrollToAnchor(anchor) { _ in }
+            scrollToAnchor(anchor.anchor) { [weak self] found in
+              guard let self, onPendingAnchorLanding?(anchor) == true else { return }
+              if !found { scrollToPage(0, animated: false) }
+              webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
+                guard let self else { return }
+                lastKnownDocumentScrollTop = (result as? Double) ?? 0
+                currentSubPageIndex = max(
+                  0, min(totalPagesInChapter - 1, Int(round(lastKnownDocumentScrollTop / effectiveViewportHeight))))
+                updateOverlayLabels()
+                onPageDidChange?(chapterIndex, currentSubPageIndex)
+              }
+            }
           }
         }
 

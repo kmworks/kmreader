@@ -15,8 +15,10 @@
     // Fires after a same-chapter anchor jump (footnote/cross-reference) with
     // the page the reader came from, so a back stack can restore it.
     var onAnchorJump: ((Int) -> Void)?
-    // Returns a pending cross-chapter anchor for this chapter, consuming it.
-    var pendingAnchorProvider: ((Int) -> String?)?
+    // The view model retains a link command until the resolved landing is acknowledged.
+    var requiresFullExtentProvider: ((Int) -> Bool)?
+    var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
+    var onPendingAnchorLanding: ((EpubAnchorNavigation) -> Bool)?
     var onPageIndexAdjusted: ((Int) -> Void)?
     var onPaginationReady: (() -> Void)?
     var onChapterLoadFailed: (() -> Void)?
@@ -27,6 +29,8 @@
     var targetProgressionOnReady: Double?
 
     var chapterIndex: Int { configuration.chapterIndex }
+    private var hasPaginated = false
+
     var isContentLoaded: Bool { renderer?.isContentLoaded ?? false }
 
     private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
@@ -342,6 +346,7 @@
     }
 
     func rendererPrepareForReload() {
+      hasPaginated = false
       pendingPageIndex = currentSubPageIndex
     }
 
@@ -358,12 +363,23 @@
     }
 
     func rendererDidProducePageCount(_ pageCount: Int) {
+      hasPaginated = true
       totalPagesInChapter = pageCount
       onPageCountReady?(pageCount)
     }
 
-    func consumePendingAnchor() -> String? {
-      pendingAnchorProvider?(chapterIndex)
+    func applyPendingAnchor() {
+      guard hasPaginated, let anchor = pendingAnchorProvider?(chapterIndex) else { return }
+      scrollToAnchor(anchor.anchor) { [weak self] page in
+        guard let self, onPendingAnchorLanding?(anchor) == true else { return }
+        if let page {
+          commitAnchorLanding(page: page, originPage: nil)
+        } else {
+          scrollToPageIndex(0) { [weak self] in
+            self?.commitAnchorLanding(page: 0, originPage: nil)
+          }
+        }
+      }
     }
 
     // Commits a programmatic anchor landing so the native page state, the
@@ -371,6 +387,7 @@
     // and curl controllers have no scroll delegate reporting programmatic
     // offsets, so the anchor script's resolved page must be committed here.
     func commitAnchorLanding(page: Int, originPage: Int?) {
+      guard page >= 0, page < totalPagesInChapter else { return }
       currentSubPageIndex = page
       onPageIndexAdjusted?(page)
       updateOverlayLabels()

@@ -118,8 +118,14 @@
           pageIndex: originPage
         )
       }
+      vc.requiresFullExtentProvider = { [weak viewModel] chapterIndex in
+        viewModel?.navigationRequiresFullExtent(for: chapterIndex) ?? false
+      }
       vc.pendingAnchorProvider = { [weak viewModel] chapterIndex in
-        viewModel?.consumePendingAnchor(for: chapterIndex)
+        viewModel?.pendingAnchorNavigation(for: chapterIndex)
+      }
+      vc.onPendingAnchorLanding = { [weak viewModel] navigation in
+        viewModel?.acknowledgeAnchorNavigation(navigation) ?? false
       }
       context.coordinator.viewController = vc
 

@@ -73,6 +73,8 @@
     private var readiumProperties: [String: String?] = [:]
     private var publicationLanguage: String?
     private var publicationReadingProgression: WebPubReadingProgression?
+    private var paginationGeneration = 0
+    private var detectedVerticalLayout = false
     private var isContentLoaded = false
     private var pendingPageIndex: Int?
     private var pendingJumpToLastPage: Bool = false
@@ -85,7 +87,8 @@
     private var paginationLayout: WebPubPaginationLayout {
       WebPubPaginationLayout.resolve(
         language: publicationLanguage,
-        readingProgression: publicationReadingProgression
+        readingProgression: publicationReadingProgression,
+        forceVertical: detectedVerticalLayout
       )
     }
 
@@ -179,6 +182,9 @@
     private func loadContent(in webView: WKWebView) {
       guard let chapterURL, let rootURL else { return }
       isContentLoaded = false
+      detectedVerticalLayout = false
+      paginationGeneration += 1
+      refreshDocumentStartUserScript(on: webView)
       totalPagesInChapter = 1
       isAwaitingPaginationReady = true
       webView.alphaValue = 0.01
@@ -369,9 +375,16 @@
       didReceive message: WKScriptMessage
     ) {
       guard let body = message.body as? [String: Any],
-        let type = body["type"] as? String,
-        type == "ready"
+        let type = body["type"] as? String
       else { return }
+      if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+      if type == "writingModeMismatch" {
+        guard !detectedVerticalLayout, let webView else { return }
+        detectedVerticalLayout = true
+        applyPagination(on: webView, targetPageIndex: currentSubPageIndex)
+        return
+      }
+      guard type == "ready" || type == "pageCountUpdate" else { return }
 
       if let total = body["totalPages"] as? Int {
         totalPagesInChapter = max(1, total)
@@ -379,6 +392,11 @@
       }
 
       var actualPage = max(0, body["currentPage"] as? Int ?? currentSubPageIndex)
+
+      if type == "pageCountUpdate" {
+        commitPage(min(actualPage, totalPagesInChapter - 1))
+        return
+      }
 
       if pendingJumpToLastPage {
         pendingJumpToLastPage = false
@@ -400,9 +418,11 @@
 
       // A cross-chapter link with a fragment lands here once the target
       // chapter has paginated.
-      if let webView, let anchor = parent.viewModel.consumePendingAnchor(for: chapterIndex) {
-        scrollToAnchor(anchor, on: webView) { [weak self] page in
-          guard let self, let page else { return }
+      if let webView, let anchor = parent.viewModel.pendingAnchorNavigation(for: chapterIndex) {
+        scrollToAnchor(anchor.anchor, on: webView) { [weak self] resolvedPage in
+          guard let self, parent.viewModel.acknowledgeAnchorNavigation(anchor) else { return }
+          let page = resolvedPage ?? 0
+          if resolvedPage == nil { scrollToPage(0, animated: false) }
           commitPage(page)
         }
       }
@@ -413,13 +433,31 @@
       targetPageIndex: Int,
       preferLastPage: Bool
     ) {
+      paginationGeneration += 1
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
         targetPageIndex: targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
-        paginationLayout: paginationLayout
+        paginationLayout: paginationLayout,
+        generation: paginationGeneration,
+        requiresFullExtent: targetProgressionOnReady != nil
+          || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex)
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func refreshDocumentStartUserScript(on webView: WKWebView) {
+      let controller = webView.configuration.userContentController
+      controller.removeAllUserScripts()
+      let script = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: contentCSS,
+        readiumProperties: readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: publicationLanguage,
+        readingProgression: publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
+      )
+      controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
     }
 
     private func injectCSS(on webView: WKWebView, completion: (() -> Void)? = nil) {
@@ -428,7 +466,8 @@
         readiumProperties: readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
         language: publicationLanguage,
-        readingProgression: publicationReadingProgression
+        readingProgression: publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
       )
       webView.evaluateJavaScript(js) { _, _ in
         completion?()

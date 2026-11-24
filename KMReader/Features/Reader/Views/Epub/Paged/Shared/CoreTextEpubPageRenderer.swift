@@ -151,7 +151,7 @@
         errorView.bottomAnchor.constraint(equalTo: displayView.bottomAnchor),
       ])
       self.errorView = errorView
-      host.rendererDidProducePageCount(1)
+      host.totalPagesInChapter = 1
       host.onChapterLoadFailed?()
 
       let previousPageIndex = host.currentSubPageIndex
@@ -172,7 +172,6 @@
       self.linkRegions = linkRegions
       host.rendererDidProducePageCount(pages.count)
 
-      let previousPageIndex = host.currentSubPageIndex
       let requestedPage: Int
       if host.preferLastPageOnReady {
         requestedPage = pages.count - 1
@@ -185,9 +184,7 @@
       host.rendererConsumePendingPageIndex()
       isContentLoaded = true
       showPage(at: pageIndex)
-      if previousPageIndex != pageIndex {
-        host.onPageIndexAdjusted?(pageIndex)
-      }
+      host.onPageIndexAdjusted?(pageIndex)
       host.rendererStopLoading()
       host.onPaginationReady?()
       finishSettleCompletions()

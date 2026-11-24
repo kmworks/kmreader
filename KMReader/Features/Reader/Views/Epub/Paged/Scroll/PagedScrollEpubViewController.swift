@@ -46,8 +46,10 @@
     /// Called after a same-chapter anchor jump with the origin page, so the
     /// view model can push the in-book link back stack.
     var onAnchorJump: ((Int) -> Void)?
-    /// Provides a pending anchor to land on for a chapter index, if any.
-    var pendingAnchorProvider: ((Int) -> String?)?
+    /// Exposes the current link command without consuming it.
+    var requiresFullExtentProvider: ((Int) -> Bool)?
+    var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
+    var onPendingAnchorLanding: ((EpubAnchorNavigation) -> Bool)?
 
     private var bookTitle: String?
     private var chapterTitle: String?
@@ -638,6 +640,8 @@
       }
 
       isContentLoaded = false
+      detectedVerticalLayout = false
+      paginationGeneration += 1
       webView.alpha = 0.01
       loadingIndicator?.startAnimating()
       refreshDocumentStartUserScript()
@@ -737,7 +741,8 @@
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
-        generation: paginationGeneration
+        generation: paginationGeneration,
+        requiresFullExtent: targetProgressionOnReady != nil || requiresFullExtentProvider?(chapterIndex) == true
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -800,7 +805,7 @@
     func webView(
       _ webView: WKWebView,
       decidePolicyFor navigationAction: WKNavigationAction,
-      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+      decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
     ) {
       guard navigationAction.navigationType == .linkActivated,
         let url = navigationAction.request.url
@@ -886,8 +891,10 @@
           // pagination settled, and commit the resolved page so progress does
           // not stick to the chapter start.
           if let anchor = pendingAnchorProvider?(chapterIndex) {
-            scrollToAnchor(anchor) { [weak self] page in
-              guard let self, let page else { return }
+            scrollToAnchor(anchor.anchor) { [weak self] resolvedPage in
+              guard let self, onPendingAnchorLanding?(anchor) == true else { return }
+              let page = resolvedPage ?? 0
+              if resolvedPage == nil { scrollToPage(0, animated: false) }
               self.currentSubPageIndex = page
               self.updateOverlayLabels()
               self.onPageDidChange?(self.chapterIndex, page)

@@ -180,17 +180,30 @@
     private static func darkContentScript(darkThemeForeground: String?) -> String {
       let foregroundJSON = WebPubJavaScriptSupport.escapedJSONString(darkThemeForeground)
       return """
+        if (window.__kmClearDarkContent) { window.__kmClearDarkContent(); }
         var kmDarkFg = \(foregroundJSON);
         if (kmDarkFg) {
+          var pinnedStyles = [];
+          var pin = function(el, property, value) {
+            pinnedStyles.push({
+              el: el, property: property,
+              value: el.style.getPropertyValue(property),
+              priority: el.style.getPropertyPriority(property)
+            });
+            el.style.setProperty(property, value, 'important');
+          };
+          var rewrittenElements = new WeakSet();
           window.__kmRewriteDarkText = function() {
             if (!document.body || !window.getComputedStyle) { return; }
             var all = document.body.querySelectorAll('*');
             for (var i = 0; i < all.length; i++) {
               var el = all[i];
+              if (rewrittenElements.has(el)) { continue; }
+              rewrittenElements.add(el);
               var cs = window.getComputedStyle(el);
               if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
                 if (el.tagName.toLowerCase() === 'text') {
-                  el.style.setProperty('fill', kmDarkFg, 'important');
+                  pin(el, 'fill', kmDarkFg);
                   el.setAttribute('data-km-dark-pinned', 'fill');
                 }
                 continue;
@@ -201,15 +214,15 @@
               var maxc = Math.max(+m[1], +m[2], +m[3]);
               var fill = cs.webkitTextFillColor || color;
               if (maxc <= 96) {
-                el.style.setProperty('color', kmDarkFg, 'important');
+                pin(el, 'color', kmDarkFg);
                 if (fill !== kmDarkFg) {
-                  el.style.setProperty('-webkit-text-fill-color', kmDarkFg, 'important');
+                  pin(el, '-webkit-text-fill-color', kmDarkFg);
                 }
                 el.setAttribute('data-km-dark-pinned', 'color');
               } else if (fill !== color) {
                 // An inherited fill wins over `color` at paint time; pin it
                 // back so publisher-colored spans survive the dark override.
-                el.style.setProperty('-webkit-text-fill-color', color, 'important');
+                pin(el, '-webkit-text-fill-color', color);
                 el.setAttribute('data-km-dark-pinned', 'fill');
               }
             }
@@ -242,11 +255,11 @@
                 if (luma < 96) { dark++; }
               }
               // Opaque illustrations must never be inverted.
-              if (transparent / total <= 0.3) { return; }
+              if (transparent / total <= 0.3 || opaque === 0 || dark / opaque <= 0.25) { return; }
               var parent = img.parentElement;
               var text = parent ? (parent.textContent || '').replace(/\\s+/g, '') : '';
               if (/[\\p{L}\\p{N}]/u.test(text)) {
-                // Inline glyph surrogate inside a sentence: always invert.
+                // Dark inline glyph surrogate inside a sentence.
                 img.classList.add('km-inline-img');
                 return;
               }
@@ -263,13 +276,14 @@
             var imgs = root.tagName === 'IMG' ? [root] : root.querySelectorAll('img');
             for (var i = 0; i < imgs.length; i++) { kmClassifyOneImage(imgs[i]); }
           };
-          document.addEventListener('load', function(event) {
+          var onImageLoad = function(event) {
             var t = event.target;
             if (t && t.tagName === 'IMG') { kmClassifyOneImage(t); }
-          }, true);
+          };
+          document.addEventListener('load', onImageLoad, true);
           var kmRunDarkPass = function() {
-            window.__kmRewriteDarkText();
-            window.__kmClassifyImages(document.body);
+            if (window.__kmRewriteDarkText) { window.__kmRewriteDarkText(); }
+            if (window.__kmClassifyImages) { window.__kmClassifyImages(document.body); }
           };
           // Document-start injection runs before <body> exists, and the
           // scrolled engine never re-invokes these functions; both passes are
@@ -280,25 +294,29 @@
             kmRunDarkPass();
           }
           window.addEventListener('load', kmRunDarkPass, { once: true });
+          window.__kmClearDarkContent = function() {
+            document.removeEventListener('load', onImageLoad, true);
+            document.removeEventListener('DOMContentLoaded', kmRunDarkPass);
+            window.removeEventListener('load', kmRunDarkPass);
+            pinnedStyles.forEach(function(saved) {
+              if (saved.value) {
+                saved.el.style.setProperty(saved.property, saved.value, saved.priority);
+              } else {
+                saved.el.style.removeProperty(saved.property);
+              }
+              saved.el.removeAttribute('data-km-dark-pinned');
+            });
+            if (document.body) {
+              document.body.querySelectorAll('img').forEach(function(img) {
+                img.classList.remove('km-mono-img', 'km-inline-img');
+                delete img.__kmClassified;
+              });
+            }
+            window.__kmClearDarkContent = null;
+          };
         } else {
-          // Theme switched back to light: drop the pins the dark pass wrote.
           window.__kmRewriteDarkText = null;
           window.__kmClassifyImages = null;
-          if (document.body) {
-            var pinned = document.body.querySelectorAll('[data-km-dark-pinned]');
-            for (var i = 0; i < pinned.length; i++) {
-              pinned[i].style.removeProperty('color');
-              pinned[i].style.removeProperty('-webkit-text-fill-color');
-              pinned[i].style.removeProperty('fill');
-              pinned[i].removeAttribute('data-km-dark-pinned');
-            }
-            var classifiedImgs = document.body.querySelectorAll('img.km-mono-img, img.km-inline-img');
-            for (var j = 0; j < classifiedImgs.length; j++) {
-              classifiedImgs[j].classList.remove('km-mono-img');
-              classifiedImgs[j].classList.remove('km-inline-img');
-              delete classifiedImgs[j].__kmClassified;
-            }
-          }
         }
         """
     }
@@ -306,7 +324,7 @@
     // Shared by every pagination script (this builder and both scrolled views'
     // inline scripts) so the guard and its wait cap cannot drift apart.
     static let fullExtentGuardScript = """
-      var needsFullExtent = preferLast || target > 0;
+      var needsFullExtent = preferLast || target > 0 || requiresFullExtent;
       var imageWaitMaxAttempts = 600;
       var imagesPending = function() {
         var imgs = document.images;
@@ -340,7 +358,8 @@
       preferLastPage: Bool,
       waitForLoadEvents: Bool,
       paginationLayout: WebPubPaginationLayout,
-      generation: Int = 0
+      generation: Int = 0,
+      requiresFullExtent: Bool = false
     ) -> String {
       """
       (function() {
@@ -348,6 +367,7 @@
         window.__kmreaderPaginationGeneration = generation;
         var isCurrent = function() { return window.__kmreaderPaginationGeneration === generation; };
         var target = \(targetPageIndex);
+        var requiresFullExtent = \(requiresFullExtent ? "true" : "false");
         var preferLast = \(preferLastPage ? "true" : "false");
         \(paginationRuntimeScript(paginationLayout: paginationLayout))
         var lastReportedPageCount = 0;
@@ -567,7 +587,7 @@
 
     // Scrolls to an in-chapter anchor (footnote, endnote, cross-reference)
     // and lands on the page containing it. Returns the resolved page index,
-    // or -1 when the anchor does not exist so the caller can fall back to the
+    // or null when the anchor does not exist so the caller can fall back to the
     // chapter start.
     static func makeScrollToAnchorScript(
       anchor: String,
@@ -578,21 +598,23 @@
         (function() {
           \(paginationRuntimeScript(paginationLayout: paginationLayout))
           var id = \(anchorJSON);
+          try { id = decodeURIComponent(id); } catch (e) {}
           var el = document.getElementById(id);
           if (!el) {
             try { el = document.querySelector('[name="' + id.replace(/"/g, '') + '"]'); } catch (e) { el = null; }
           }
-          if (!el) { return -1; }
+          if (!el) { return null; }
           var metrics = measurePagination();
           var pageWidth = metrics.pageWidth;
-          if (pageWidth <= 0) { return -1; }
-          var rect = el.getBoundingClientRect();
+          if (pageWidth <= 0) { return null; }
+          var fragments = el.getClientRects();
+          var rect = fragments.length ? fragments[0] : el.getBoundingClientRect();
           var logical;
           if (reverseScrollLeft) {
             // Later columns lie left of the right-hand origin (negative
             // physical x once the transform shift is removed), so the logical
             // distance is measured back from the active offset.
-            logical = currentLogicalOffset() - rect.left;
+            logical = pageWidth + currentLogicalOffset() - rect.right;
           } else {
             logical = rect.left + (window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0) || 0);
           }
@@ -612,6 +634,7 @@
       return """
         (function() {
           var id = \(anchorJSON);
+          try { id = decodeURIComponent(id); } catch (e) {}
           var el = document.getElementById(id);
           if (!el) {
             try { el = document.querySelector('[name="' + id.replace(/"/g, '') + '"]'); } catch (e) { el = null; }
@@ -769,7 +792,7 @@
             var stored = parseFloat(body.getAttribute('data-kmreader-logical-offset') || '0');
             if (!isNaN(stored)) { return stored; }
           }
-          return activeLogicalOffset;
+          return 0;
         }
         var root = document.documentElement;
         var left = window.pageXOffset || (root ? root.scrollLeft : 0) || 0;
@@ -778,10 +801,7 @@
       var measurePagination = function() {
         var root = document.documentElement;
         var body = document.body;
-        var previousOffset = activeLogicalOffset;
-        if (body && body.hasAttribute('data-kmreader-logical-offset')) {
-          previousOffset = parseFloat(body.getAttribute('data-kmreader-logical-offset') || '0') || previousOffset;
-        }
+        var previousOffset = currentLogicalOffset();
         if (reverseScrollLeft) {
           unwrapLegacyPaginationStrip();
           restorePageElementTransforms();
