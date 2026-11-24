@@ -718,18 +718,6 @@
       }
     }
 
-    private func isCurrentChapterURL(_ url: URL) -> Bool {
-      guard let chapterURL else { return false }
-      let base = url.deletingFragment
-      if let rootURL,
-        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
-        base == chapterSchemeURL.deletingFragment
-      {
-        return true
-      }
-      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
-    }
-
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
       applyPagination(on: webView, targetPageIndex: pendingPageIndex ?? currentSubPageIndex)
@@ -745,24 +733,6 @@
         let url = navigationAction.request.url
       else {
         decisionHandler(.allow)
-        return
-      }
-
-      if let fragment = url.fragment, !fragment.isEmpty, isCurrentChapterURL(url) {
-        // Same-chapter anchor: land on the fragment in place instead of
-        // reloading the chapter, commit the resolved page, and push the
-        // origin onto the link back stack.
-        decisionHandler(.cancel)
-        let originPage = currentSubPageIndex
-        scrollToAnchor(fragment, on: webView) { [weak self] page in
-          guard let self else { return }
-          if let page {
-            commitPage(page)
-            parent.viewModel.pushLinkBack(chapterIndex: chapterIndex, pageIndex: originPage)
-          } else {
-            parent.viewModel.navigateToURL(url)
-          }
-        }
         return
       }
 
@@ -827,8 +797,7 @@
         commitPage(actualPage)
       }
 
-      // A cross-chapter link with a fragment lands here once the target
-      // chapter has paginated.
+      // Fragment navigation lands after the target chapter has paginated.
       if let webView, let anchor = parent.viewModel.pendingAnchorNavigation(for: chapterIndex) {
         scrollToAnchor(anchor.anchor, on: webView) { [weak self] resolvedPage in
           guard let self, parent.viewModel.acknowledgeAnchorNavigation(anchor) else { return }

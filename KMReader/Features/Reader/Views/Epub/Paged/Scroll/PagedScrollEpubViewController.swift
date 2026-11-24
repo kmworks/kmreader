@@ -40,12 +40,8 @@
     /// presentation while the manifest did not; never downgraded.
     private var detectedVerticalLayout = false
 
-    /// Called when an in-book link target needs view-model navigation
-    /// (cross-chapter links, images).
+    /// Registers in-book links before asynchronous navigation begins.
     var onLinkTap: ((URL) -> Void)?
-    /// Called after a same-chapter anchor jump with the origin page, so the
-    /// view model can push the in-book link back stack.
-    var onAnchorJump: ((Int) -> Void)?
     /// Exposes the current link command without consuming it.
     var requiresFullExtentProvider: ((Int) -> Bool)?
     var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
@@ -808,18 +804,6 @@
       }
     }
 
-    private func isCurrentChapterURL(_ url: URL) -> Bool {
-      guard let chapterURL else { return false }
-      let base = url.deletingFragment
-      if let rootURL,
-        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
-        base == chapterSchemeURL.deletingFragment
-      {
-        return true
-      }
-      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
-    }
-
     func webView(
       _ webView: WKWebView,
       decidePolicyFor navigationAction: WKNavigationAction,
@@ -840,28 +824,6 @@
         || url.scheme == nil
       guard isInBook else {
         decisionHandler(.cancel)
-        return
-      }
-
-      if let fragment = url.fragment, !fragment.isEmpty,
-        isCurrentChapterURL(url)
-      {
-        // Same-chapter anchor: land on the fragment in place, commit the
-        // resolved page so overlay labels and progress follow the jump, and
-        // let the host push the origin onto the link back stack.
-        decisionHandler(.cancel)
-        let originPage = currentSubPageIndex
-        scrollToAnchor(fragment) { [weak self] page in
-          guard let self else { return }
-          if let page {
-            self.currentSubPageIndex = page
-            self.updateOverlayLabels()
-            self.reportCurrentPosition()
-            self.onAnchorJump?(originPage)
-          } else {
-            self.onLinkTap?(url)
-          }
-        }
         return
       }
 

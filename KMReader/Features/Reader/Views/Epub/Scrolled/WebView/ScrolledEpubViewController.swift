@@ -61,12 +61,8 @@
     private var renderedNavigationID = UUID()
     var onPageDidChange: ((EpubPageLanding) -> Void)?
     var onPageCountReady: ((Int, Int, UUID) -> Void)?
-    /// Called when an in-book link target needs view-model navigation
-    /// (cross-chapter links, images).
+    /// Registers in-book links before asynchronous navigation begins.
     var onLinkTap: ((URL) -> Void)?
-    /// Called after a same-chapter anchor jump with the origin page, so the
-    /// view model can push the in-book link back stack.
-    var onAnchorJump: ((Int) -> Void)?
     /// Exposes the current link command without consuming it.
     var requiresFullExtentProvider: ((Int) -> Bool)?
     var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
@@ -640,18 +636,6 @@
       }
     }
 
-    private func isCurrentChapterURL(_ url: URL) -> Bool {
-      guard let chapterURL else { return false }
-      let base = url.deletingFragment
-      if let rootURL,
-        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
-        base == chapterSchemeURL.deletingFragment
-      {
-        return true
-      }
-      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
-    }
-
     func webView(
       _ webView: WKWebView,
       decidePolicyFor navigationAction: WKNavigationAction,
@@ -672,24 +656,6 @@
         || url.scheme == nil
       guard isInBook else {
         decisionHandler(.cancel)
-        return
-      }
-
-      if let fragment = url.fragment, !fragment.isEmpty,
-        isCurrentChapterURL(url)
-      {
-        // Same-chapter anchor: land on the fragment in place and let the
-        // host push the origin onto the link back stack.
-        decisionHandler(.cancel)
-        let originPage = currentSubPageIndex
-        scrollToAnchor(fragment) { [weak self] handled in
-          guard let self else { return }
-          if handled {
-            self.onAnchorJump?(originPage)
-          } else {
-            self.onLinkTap?(url)
-          }
-        }
         return
       }
 

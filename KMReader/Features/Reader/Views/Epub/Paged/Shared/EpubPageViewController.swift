@@ -41,9 +41,6 @@
     private var pendingPageIndex: Int?
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
-    // Fires after a same-chapter anchor jump (footnote/cross-reference) with
-    // the page the reader came from, so a back stack can restore it.
-    var onAnchorJump: ((Int) -> Void)?
     // The view model retains a link command until the resolved landing is acknowledged.
     var requiresFullExtentProvider: ((Int) -> Bool)?
     var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
@@ -432,11 +429,11 @@
         guard let self, acceptsNavigation(requestID) else { return }
         if let page {
           guard onPendingAnchorLanding?(anchor) == true else { return }
-          commitAnchorLanding(page: page, originPage: nil)
+          commitAnchorLanding(page: page)
         } else {
           scrollToPageIndex(0) { [weak self] in
             guard let self, acceptsNavigation(requestID), onPendingAnchorLanding?(anchor) == true else { return }
-            commitAnchorLanding(page: 0, originPage: nil)
+            commitAnchorLanding(page: 0)
           }
         }
       }
@@ -446,14 +443,11 @@
     // overlay labels, and progress reporting follow the jumped-to page. Cover
     // and curl controllers have no scroll delegate reporting programmatic
     // offsets, so the anchor script's resolved page must be committed here.
-    func commitAnchorLanding(page: Int, originPage: Int?) {
+    private func commitAnchorLanding(page: Int) {
       guard isNavigationCurrent, page >= 0, page < totalPagesInChapter else { return }
       currentSubPageIndex = page
       onPageIndexAdjusted?(page)
       updateOverlayLabels()
-      if let originPage {
-        onAnchorJump?(originPage)
-      }
     }
 
     func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {

@@ -287,13 +287,6 @@
             parent.viewModel.navigateToChapter(containing: url)
           }
         }
-        controller.onAnchorJump = { [weak self, weak controller] originPage in
-          guard let self, let controller else { return }
-          self.parent.viewModel.pushLinkBack(
-            chapterIndex: controller.chapterIndex,
-            pageIndex: originPage
-          )
-        }
         controller.pendingAnchorProvider = { [weak self, weak controller] chapterIndex in
           guard let self, let controller, self.currentChapterController === controller, self.turnSession == nil else {
             return nil
@@ -908,7 +901,7 @@
             reconfigureHosts()
             return
           }
-          if let controller = currentChapterController {
+          if let controller = currentChapterController, controller.hasPaginated {
             controller.preferLastPageOnReady = false
             controller.targetProgressionOnReady = nil
           }

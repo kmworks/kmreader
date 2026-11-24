@@ -608,10 +608,7 @@
     }
 
     private func navigateToChapterLink(chapterIndex: Int, fragment: String?) {
-      // Same-chapter anchors are scrolled in place by the WebView page
-      // renderer, which also pushes the origin onto the back stack; renderers
-      // without anchor support fall back to the chapter's first page.
-      guard chapterIndex != currentChapterIndex else {
+      if chapterIndex == currentChapterIndex, fragment == nil || fragment?.isEmpty == true {
         navigateToPage(chapterIndex: chapterIndex, pageIndex: 0)
         return
       }

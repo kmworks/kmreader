@@ -305,25 +305,6 @@
           || url.scheme == "file"
           || url.scheme == nil
         if isInBookLink {
-          // Same-chapter anchors (footnotes, cross-references) scroll in
-          // place; a full navigation would land on page 0 of the chapter.
-          if let fragment = url.fragment, !fragment.isEmpty, isCurrentChapterURL(url) {
-            let originPage = host?.currentSubPageIndex ?? 0
-            scrollToAnchor(fragment) { [weak host] page in
-              guard let host else { return }
-              // Commit the resolved page so native navigation and progress
-              // reporting follow the jumped-to page; cover and curl
-              // controllers never see a scroll event for this programmatic
-              // move.
-              if let page {
-                host.commitAnchorLanding(page: page, originPage: originPage)
-              } else {
-                host.onLinkTap?(url)
-              }
-            }
-            decisionHandler(.cancel, preferences)
-            return
-          }
           host?.onLinkTap?(url)
           decisionHandler(.cancel, preferences)
           return
@@ -334,18 +315,6 @@
       }
 
       decisionHandler(.allow, preferences)
-    }
-
-    private func isCurrentChapterURL(_ url: URL) -> Bool {
-      guard let chapterURL = configuration.chapterURL else { return false }
-      let base = url.deletingFragment
-      if let rootURL = configuration.rootURL,
-        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
-        base == chapterSchemeURL.deletingFragment
-      {
-        return true
-      }
-      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
     }
 
     func userContentController(
