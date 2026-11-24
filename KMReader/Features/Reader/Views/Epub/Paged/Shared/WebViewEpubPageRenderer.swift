@@ -8,8 +8,7 @@
     private var configuration: EpubChapterConfiguration
     private var webView: WKWebView!
     private let epubResourceSchemeHandler = EpubResourceSchemeHandler()
-    private var paginationGeneration = 0
-    private var paginationNavigationID = UUID()
+    private(set) var layoutGeneration = 0
     // Set when the content probe reports a publisher-declared vertical writing
     // mode that the manifest metadata did not advertise.
     private var detectedVerticalLayout = false
@@ -122,9 +121,9 @@
       // New content loading - show indicator and keep webview active but hidden
       isContentLoaded = false
       detectedVerticalLayout = false
-      paginationGeneration += 1
+      layoutGeneration += 1
       refreshDocumentStartUserScript()
-      host.rendererPrepareForReload()
+      host.rendererWillPaginate()
 
       // Use a near-zero alpha instead of exactly 0.
       // WebKit sometimes throttles layout/JS execution for elements with alpha=0.
@@ -140,6 +139,22 @@
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
     }
 
+    func prepareNavigation() {
+      guard isContentLoaded, let host else { return }
+      if host.preferLastPageOnReady || host.targetProgressionOnReady != nil
+        || host.requiresFullExtentProvider?(host.chapterIndex) == true
+      {
+        host.rendererWillPaginate()
+        layoutGeneration += 1
+        injectPaginationJS(
+          targetPageIndex: host.rendererPendingOrCurrentPageIndex(),
+          preferLastPage: host.preferLastPageOnReady
+        )
+      } else if host.hasPaginated {
+        host.rendererDidFinishPagination(host.totalPagesInChapter, currentPageIndex: host.currentSubPageIndex)
+      }
+    }
+
     func applyPagination(scrollToPage pageIndex: Int) {
       guard isContentLoaded else { return }
       let size = webView.bounds.size
@@ -152,11 +167,11 @@
         host?.rendererStartLoading()
       }
 
-      paginationGeneration += 1
-      let generation = paginationGeneration
-      paginationNavigationID = host?.navigationID ?? UUID()
+      host?.rendererWillPaginate()
+      layoutGeneration += 1
+      let generation = layoutGeneration
       injectCSS { [weak self] in
-        guard let self, generation == paginationGeneration else { return }
+        guard let self, generation == layoutGeneration else { return }
         self.injectPaginationJS(
           targetPageIndex: pageIndex,
           preferLastPage: self.host?.preferLastPageOnReady ?? false
@@ -192,7 +207,7 @@
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
-        generation: paginationGeneration,
+        generation: layoutGeneration,
         requiresFullExtent: host?.targetProgressionOnReady != nil
           || host?.requiresFullExtentProvider?(configuration.chapterIndex) == true
       )
@@ -260,7 +275,6 @@
       guard let host else { return }
       isContentLoaded = true
       applyPagination(scrollToPage: host.rendererPendingOrCurrentPageIndex())
-      host.rendererConsumePendingPageIndex()
       // Visibility is handled in userContentController when pagination is ready
     }
 
@@ -340,60 +354,27 @@
     ) {
       guard let host, let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
-      guard paginationNavigationID == host.navigationID else { return }
 
       if type == "ready" {
         // A superseded pagination pass must not resurrect stale counts or positions.
-        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          var actualPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
-
-          host.rendererDidProducePageCount(normalizedTotal, navigationID: paginationNavigationID)
-
-          // Handle target progression jump if requested (e.g. on initial book open).
-          // We ignore this if preferLastPageOnReady is true, as that takes precedence.
-          if let progression = host.targetProgressionOnReady, !host.preferLastPageOnReady {
-            let targetIndex = max(0, min(normalizedTotal - 1, Int(floor(Double(normalizedTotal) * progression))))
-            if targetIndex != actualPage {
-              actualPage = targetIndex
-              scrollToPage(targetIndex, completion: nil)
-            }
-            host.targetProgressionOnReady = nil
-          }
-
-          // Sync the current sub-page index with the actual page landed on by JS or progression calculation.
-          host.currentSubPageIndex = actualPage
-          host.rendererDidAdjustPageIndex(actualPage, navigationID: paginationNavigationID)
-
+          let actualPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
+          host.rendererStopLoading()
+          webView.alpha = 1
+          host.rendererDidFinishPagination(normalizedTotal, currentPageIndex: actualPage)
+          host.targetProgressionOnReady = nil
           host.preferLastPageOnReady = false
-          host.updateOverlayLabels()
         }
-
-        // Stop the loading indicator and finally show the WebView content.
-        host.rendererStopLoading()
-        webView.alpha = 1
-        // A cross-chapter link with a fragment lands here: jump from page 0
-        // to the anchor once the target chapter has paginated, and commit the
-        // resolved page so progress does not stick to the chapter start.
-        host.applyPendingAnchor()
-        host.onPaginationReady?()
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
         // Handle incremental layout updates from the extent watchers
-        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         let normalizedTotal = max(1, total)
-        if host.totalPagesInChapter != normalizedTotal {
-          host.rendererDidProducePageCount(normalizedTotal, navigationID: paginationNavigationID)
-        }
-        // The keep-page pass tracks the chapter end when the reader was on
-        // the last page; adopt where it landed without re-scrolling.
-        if let currentPage = body["currentPage"] as? Int, host.currentSubPageIndex != currentPage {
-          host.currentSubPageIndex = currentPage
-          host.rendererDidAdjustPageIndex(currentPage, navigationID: paginationNavigationID)
-        }
-        host.updateOverlayLabels()
+        let currentPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
+        host.rendererDidFinishPagination(normalizedTotal, currentPageIndex: currentPage)
       } else if type == "writingModeMismatch" {
-        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         // The content probe found publisher-declared vertical writing that
         // the manifest missed; re-lay out once with the vertical variant.
         guard !detectedVerticalLayout else { return }

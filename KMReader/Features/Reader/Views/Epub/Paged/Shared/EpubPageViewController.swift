@@ -20,7 +20,6 @@
     func prepareNavigation(_ navigationID: UUID, pageIndex: Int? = nil, progression: Double? = nil) {
       guard self.navigationID != navigationID else { return }
       self.navigationID = navigationID
-      hasPaginated = false
       targetProgressionOnReady = progression
       if let pageIndex {
         preferLastPageOnReady = pageIndex < 0
@@ -29,7 +28,7 @@
           pendingPageIndex = pageIndex
         }
       }
-      if isContentLoaded { refreshDisplay() }
+      renderer?.prepareNavigation()
     }
 
     func rendererDidAdjustPageIndex(_ pageIndex: Int, navigationID: UUID) {
@@ -59,7 +58,7 @@
     var targetProgressionOnReady: Double?
 
     var chapterIndex: Int { configuration.chapterIndex }
-    private var hasPaginated = false
+    private(set) var hasPaginated = false
 
     var isContentLoaded: Bool { renderer?.isContentLoaded ?? false }
 
@@ -375,7 +374,7 @@
       renderer?.handleLinkTap(at: point, in: view) ?? false
     }
 
-    func rendererPrepareForReload() {
+    func rendererWillPaginate() {
       hasPaginated = false
       pendingPageIndex = currentSubPageIndex
     }
@@ -392,11 +391,38 @@
       pendingPageIndex = nil
     }
 
-    func rendererDidProducePageCount(_ pageCount: Int, navigationID: UUID) {
-      guard self.navigationID == navigationID else { return }
+    private func rendererDidProducePageCount(_ pageCount: Int) {
       hasPaginated = true
-      totalPagesInChapter = pageCount
-      if acceptsNavigation(navigationID) { onPageCountReady?(pageCount) }
+      totalPagesInChapter = max(1, pageCount)
+      if isNavigationCurrent { onPageCountReady?(totalPagesInChapter) }
+    }
+
+    func rendererDidFinishPagination(_ pageCount: Int, currentPageIndex: Int) {
+      guard let renderer else { return }
+      let requestID = navigationID
+      let generation = renderer.layoutGeneration
+      rendererDidProducePageCount(pageCount)
+      let requestedPage: Int
+      if preferLastPageOnReady {
+        requestedPage = totalPagesInChapter - 1
+      } else if let progression = targetProgressionOnReady {
+        requestedPage = Int(floor(Double(totalPagesInChapter) * progression))
+      } else {
+        requestedPage = pendingPageIndex ?? currentPageIndex
+      }
+      let pageIndex = max(0, min(totalPagesInChapter - 1, requestedPage))
+      pendingPageIndex = pageIndex
+      renderer.scrollToPageAndSettle(pageIndex) { [weak self] in
+        guard let self, self.navigationID == requestID,
+          self.renderer?.layoutGeneration == generation
+        else { return }
+        self.pendingPageIndex = nil
+        self.currentSubPageIndex = pageIndex
+        self.rendererDidAdjustPageIndex(pageIndex, navigationID: requestID)
+        self.updateOverlayLabels()
+        self.applyPendingAnchor()
+        self.onPaginationReady?()
+      }
     }
 
     func applyPendingAnchor() {

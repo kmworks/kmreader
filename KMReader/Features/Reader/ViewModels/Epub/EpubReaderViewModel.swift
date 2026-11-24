@@ -244,10 +244,24 @@
         var savedProgression: R2Progression?
         if shouldResumeFromProgression, !incognito {
           var remoteFetchFailed = false
-          if !AppConfig.isOffline {
-            remoteFetchFailed = await syncRemoteProgressionToLocal(bookId: bookId)
+          var remoteProgressUnavailable = false
+          if AppConfig.isOffline {
+            savedProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId)
+          } else {
+            let result = await syncRemoteProgressionToLocal(bookId: bookId, instanceId: instanceId)
+            switch result {
+            case .available(let progression):
+              savedProgression = progression
+            case .missing:
+              break
+            case .retryableFailure(let localProgression):
+              savedProgression = localProgression
+              remoteFetchFailed = true
+            case .unavailable:
+              remoteProgressUnavailable = true
+            }
           }
-          savedProgression = await database.fetchBookEpubProgression(bookId: bookId)
+          guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return }
 
           if savedProgression == nil,
             let fallbackPage = fallbackPageNumber,
@@ -276,7 +290,9 @@
             logger.warning(
               "⚠️ [Progress/Epub] Remote progression fetch failed and no local progression exists; suppressing progress submission until a retry succeeds: book=\(bookId)"
             )
-            scheduleProgressionFetchRetry(bookId: bookId)
+            scheduleProgressionFetchRetry(bookId: bookId, instanceId: instanceId)
+          } else if remoteProgressUnavailable && savedProgression == nil {
+            progressSubmissionSuppressed = true
           }
         }
 
@@ -1389,119 +1405,88 @@
       return readingOrder.firstIndex { Self.normalizedHref($0.href ?? "") == normalized }
     }
 
-    /// Syncs the remote progression into local storage. Returns `true` when the
-    /// fetch failed transiently, meaning the server-side position is unknown.
-    private func syncRemoteProgressionToLocal(bookId: String) async -> Bool {
-      guard let database = await DatabaseOperator.databaseIfConfigured() else { return true }
-
-      let instanceId = AppConfig.current.instanceId
+    private func syncRemoteProgressionToLocal(bookId: String, instanceId: String) async -> EpubProgressionSyncResult {
+      guard let database = await DatabaseOperator.databaseIfConfigured() else { return .unavailable }
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+        return .unavailable
+      }
       await ProgressSyncService.shared.syncPendingProgress(instanceId: instanceId)
-      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return true }
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+        return .unavailable
+      }
       let remoteState = await BookService.fetchRemoteWebPubProgression(bookId: bookId)
-      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return true }
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+        return .unavailable
+      }
 
       switch remoteState {
       case .available(let progression):
-        await database.updateBookEpubProgression(
-          bookId: bookId,
-          progression: progression
-        )
-        logger.debug(
-          "Synced remote EPUB progression to local storage: href=\(progression.locator.href), progression=\(progression.locator.locations?.progression ?? 0)"
-        )
-        return false
+        await database.updateBookEpubProgression(bookId: bookId, instanceId: instanceId, progression: progression)
+        return .available(progression)
       case .missing:
-        // A bare GET must never destroy a locally saved position: a busy or
-        // misbehaving server can answer with a missing-shaped response, and
-        // wiping local state here makes the reader reopen at page 0 and then
-        // upload that regressed position back to the server. Only record
-        // "missing" when there is no local progression to lose.
-        if await database.fetchBookEpubProgression(bookId: bookId) == nil {
-          await database.updateBookEpubProgression(
-            bookId: bookId,
-            progression: nil
-          )
-          logger.debug("Synced remote EPUB progression to local storage: missing progression")
-        } else {
-          logger.warning(
-            "⚠️ Remote EPUB progression reported missing but a local progression exists; keeping local position for book \(bookId)"
-          )
+        // A remote missing response must never erase a saved local position.
+        let localProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId)
+        guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+          return .unavailable
         }
-        return false
+        if let localProgression { return .available(localProgression) }
+        await database.updateBookEpubProgression(bookId: bookId, instanceId: instanceId, progression: nil)
+        return .missing
       case .retryableFailure(let error):
-        logger.warning(
-          "Failed to fetch remote EPUB progression for book \(bookId): \(error.localizedDescription)"
-        )
-        return true
+        logger.warning("Failed to fetch remote EPUB progression for book \(bookId): \(error.localizedDescription)")
+        let localProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId)
+        return .retryableFailure(localProgression: localProgression)
       case .invalidPayload(let error):
-        // Same rule as .missing: never downgrade a local available progression
-        // on an unparseable or non-retryable response.
-        if await database.fetchBookEpubProgression(bookId: bookId) == nil {
-          await database.updateBookEpubProgression(
-            bookId: bookId,
-            progression: nil
-          )
+        logger.warning("Ignoring invalid remote EPUB progression for book \(bookId): \(error.localizedDescription)")
+        if let localProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId) {
+          return .available(localProgression)
         }
-        logger.warning(
-          "Ignoring non-retryable remote EPUB progression payload for book \(bookId): \(error.localizedDescription)"
-        )
-        return false
+        return .unavailable
       }
     }
 
-    /// Retries the remote progression fetch with exponential backoff while the
-    /// session is suppressed because of a transient fetch failure. On success
-    /// the suppression lifts; a restored position is applied only while the
-    /// reader still sits at the fallback position.
-    private func scheduleProgressionFetchRetry(bookId: String) {
+    private func scheduleProgressionFetchRetry(bookId: String, instanceId: String) {
       progressionRetryTask?.cancel()
       progressionRetryTask = Task { [weak self] in
         var delay: TimeInterval = 2
-        let maxDelay: TimeInterval = 60
         while !Task.isCancelled {
           try? await Task.sleep(for: .seconds(delay))
-          guard !Task.isCancelled else { return }
-          guard let self, self.bookId == bookId, self.progressSubmissionSuppressed else { return }
-          let failed = await self.syncRemoteProgressionToLocal(bookId: bookId)
-          if failed {
-            delay = min(delay * 2, maxDelay)
+          guard !Task.isCancelled, let self, self.bookId == bookId,
+            AppConfig.current.instanceId == instanceId, self.progressSubmissionSuppressed
+          else { return }
+          let result = await self.syncRemoteProgressionToLocal(bookId: bookId, instanceId: instanceId)
+          guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return }
+          if case .retryableFailure = result {
+            delay = min(delay * 2, 60)
             continue
           }
-          guard !Task.isCancelled, self.bookId == bookId else { return }
-          await self.applyRetriedRemoteProgression(bookId: bookId)
+          self.applyRetriedRemoteProgression(result)
           return
         }
       }
     }
 
-    private func applyRetriedRemoteProgression(bookId: String) async {
-      guard let database = await DatabaseOperator.databaseIfConfigured() else { return }
-      guard
-        let progression = await database.fetchBookEpubProgression(bookId: bookId),
-        let chapterIndex = chapterIndexForHref(progression.locator.href)
-      else {
-        // The server has no progress after all, so the fallback position is
-        // safe to upload.
+    private func applyRetriedRemoteProgression(_ result: EpubProgressionSyncResult) {
+      switch result {
+      case .missing:
         progressSubmissionSuppressed = false
-        logger.info(
-          "✅ [Progress/Epub] Remote progression retry succeeded; no server progress exists, lifting submission suppression: book=\(bookId)"
+      case .available(let progression):
+        guard let chapterIndex = chapterIndexForHref(progression.locator.href) else {
+          logger.warning("Remote EPUB progression retry has an unknown chapter; keeping submission suppressed")
+          return
+        }
+        guard currentChapterIndex == 0, currentPageIndex == 0 else {
+          logger.warning("Remote EPUB progression retry completed after navigation; keeping submission suppressed")
+          return
+        }
+        navigateToProgression(
+          chapterIndex: chapterIndex,
+          progression: Double(progression.locator.locations?.progression ?? 0),
+          restoresRemoteProgress: true
         )
-        return
+      case .retryableFailure, .unavailable:
+        break
       }
-      // A reader who already moved past the fallback keeps their place; the
-      // session stays suppressed so that position cannot regress the server.
-      guard currentChapterIndex == 0, currentPageIndex == 0 else {
-        logger.warning(
-          "⚠️ [Progress/Epub] Remote progression retry found server progress but the reader already moved; keeping submission suppressed: book=\(bookId)"
-        )
-        return
-      }
-      let progressionValue = Double(progression.locator.locations?.progression ?? 0)
-      navigateToProgression(
-        chapterIndex: chapterIndex,
-        progression: progressionValue,
-        restoresRemoteProgress: true
-      )
     }
 
     /// Maps a page-based server read progress to a locator using the WebPub
