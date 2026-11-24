@@ -284,80 +284,15 @@
       scrollDocument(to: min(maxOffset, currentOffset + step))
     }
 
-    private func scrollDocument(to targetOffset: CGFloat) {
+    private func scrollDocument(to targetOffset: CGFloat, animated: Bool = true) {
       guard let webView else { return }
       let clampedOffset = max(0, targetOffset)
       lastKnownDocumentScrollTop = clampedOffset
       let offset = Double(clampedOffset)
-      let duration = animateTapTurns ? 0.3 : 0
-      let js = """
-          (function() {
-            var top = \(offset);
-            var duration = \(duration);
-            var root = document.documentElement;
-            var body = document.body;
-            var scrolling = document.scrollingElement || root || body;
-            var getCurrentTop = function() {
-              return Math.max(
-                0,
-                window.scrollY
-                || (scrolling && scrolling.scrollTop)
-                || (root && root.scrollTop)
-                || (body && body.scrollTop)
-                || 0
-              );
-            };
-            var setTop = function(value) {
-              window.scrollTo(0, value);
-              if (scrolling) { scrolling.scrollTop = value; }
-              if (root) { root.scrollTop = value; }
-              if (body) { body.scrollTop = value; }
-            };
-            var finish = function() {
-              if (window.__kmreaderPostMetrics) {
-                window.requestAnimationFrame(function() {
-                  window.__kmreaderPostMetrics('scroll');
-                });
-              }
-            };
-            if (window.__kmreaderScrollAnimationFrame) {
-              window.cancelAnimationFrame(window.__kmreaderScrollAnimationFrame);
-              window.__kmreaderScrollAnimationFrame = null;
-            }
-            if (!(duration > 0)) {
-              setTop(top);
-              finish();
-              return true;
-            }
-            var startTop = getCurrentTop();
-            var distance = top - startTop;
-            if (Math.abs(distance) < 0.5) {
-              setTop(top);
-              finish();
-              return true;
-            }
-            var startTime = null;
-            var easeOutCubic = function(progress) {
-              return 1 - Math.pow(1 - progress, 3);
-            };
-            var step = function(timestamp) {
-              if (startTime === null) {
-                startTime = timestamp;
-              }
-              var progress = Math.min(1, (timestamp - startTime) / (duration * 1000));
-              var eased = easeOutCubic(progress);
-              setTop(startTop + (distance * eased));
-              if (progress < 1) {
-                window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
-                return;
-              }
-              window.__kmreaderScrollAnimationFrame = null;
-              finish();
-            };
-            window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
-            return true;
-          })();
-        """
+      let duration = animated && animateTapTurns ? 0.3 : 0
+      let js = WebPubPagedJavaScriptBuilder.makeScrollDocumentScript(
+        targetOffset: offset, duration: duration, token: readyToken
+      )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
@@ -462,29 +397,16 @@
 
       if type == "ready" {
         renderedNavigationID = paginationNavigationID
-        var resolvedPage = actualPage
-        if pendingJumpToLastPage {
-          resolvedPage = max(0, totalPagesInChapter - 1)
-          scrollDocument(to: scrollPagination.offset(for: resolvedPage))
-          pendingJumpToLastPage = false
-        } else if let progression = targetProgressionOnReady {
-          resolvedPage = max(
-            0,
-            min(totalPagesInChapter - 1, Int(floor(Double(totalPagesInChapter) * progression)))
-          )
-          if resolvedPage != actualPage {
-            scrollDocument(to: scrollPagination.offset(for: resolvedPage))
-          }
-          targetProgressionOnReady = nil
-        }
-        currentSubPageIndex = resolvedPage
+        pendingJumpToLastPage = false
+        targetProgressionOnReady = nil
+        currentSubPageIndex = actualPage
 
         // A cross-chapter link with a fragment lands here once the target
         // chapter has laid out.
         if let webView, let anchor = parent.viewModel.pendingAnchorNavigation(for: chapterIndex) {
           scrollToAnchor(anchor.anchor, on: webView) { [weak self] found in
             guard let self, parent.viewModel.acknowledgeAnchorNavigation(anchor) else { return }
-            if !found { scrollDocument(to: 0) }
+            if !found { scrollDocument(to: 0, animated: false) }
             let requestID = navigationID
             webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
               guard let self, self.navigationID == requestID, self.parent.viewModel.navigationID == requestID else {
@@ -542,7 +464,8 @@
         token: token,
         requiresFullExtent: targetProgressionOnReady != nil
           || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex),
-        waitForStableLayout: false
+        waitForStableLayout: false,
+        targetProgression: targetProgressionOnReady
       )
 
       webView.evaluateJavaScript(js, completionHandler: nil)

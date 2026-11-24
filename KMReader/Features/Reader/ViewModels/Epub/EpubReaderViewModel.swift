@@ -899,9 +899,12 @@
       guard let href = readingOrder[chapterIndex].href else { return }
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
       pageCountCache[cacheKey] = normalizedCount
-      if progressionNavigation?.chapterIndex == chapterIndex, let page = resolvedProgressionPage() {
-        targetChapterIndex = chapterIndex
-        targetPageIndex = page
+      if progressionNavigation?.chapterIndex == chapterIndex {
+        progressionNavigation?.measuredPageCount = normalizedCount
+        if let page = resolvedProgressionPage() {
+          targetChapterIndex = chapterIndex
+          targetPageIndex = page
+        }
       }
     }
 
@@ -996,9 +999,6 @@
       )
       targetChapterIndex = chapterIndex
       targetPageIndex = resolvedProgressionPage() ?? 0
-      if let page = resolvedProgressionPage(), currentChapterIndex == chapterIndex, currentPageIndex == page {
-        _ = finishProgressionNavigationIfLanded()
-      }
     }
 
     private func resolvedProgressionPage() -> Int? {
@@ -1015,7 +1015,9 @@
     private func finishProgressionNavigationIfLanded() -> Bool {
       guard let navigation = progressionNavigation else { return true }
       guard currentChapterIndex == navigation.chapterIndex,
-        let page = resolvedProgressionPage(), currentPageIndex == page
+        !failedChapterIndexes.contains(navigation.chapterIndex),
+        let pageCount = navigation.measuredPageCount,
+        currentPageIndex == navigation.pageIndex(pageCount: pageCount)
       else {
         if let page = resolvedProgressionPage() {
           targetChapterIndex = navigation.chapterIndex
@@ -1166,16 +1168,31 @@
       return Double(overallIndex + 1) / Double(totalPages)
     }
 
-    /// Seeks to a total-progression fraction (quick progress slider),
-    /// mirroring how totalProgression maps locations to fractions.
+    var totalSeekFraction: Double? {
+      guard let location = pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex) else {
+        return nil
+      }
+      if hasFullTextWeights {
+        return totalProgression(
+          location: location,
+          chapterProgress: Double(location.pageIndex) / Double(max(1, location.pageCount))
+        )
+      }
+      let totalPages = totalPageCount()
+      guard totalPages > 0 else { return nil }
+      return Double(pageOffsetBeforeChapter(location.chapterIndex) + location.pageIndex) / Double(totalPages)
+    }
+
+    /// Seeks to the page-start fraction exposed by totalSeekFraction.
     func seek(toTotalFraction fraction: Double) {
       let target = min(max(fraction, 0), 1)
+      guard target != totalSeekFraction else { return }
       if hasFullTextWeights, totalTextWeight > 0 {
         let targetWeight = target * Double(totalTextWeight)
         var accumulated = 0.0
         for idx in 0..<readingOrder.count {
           let weight = Double(chapterTextWeights[idx] ?? 0)
-          if accumulated + weight >= targetWeight || idx == readingOrder.count - 1 {
+          if accumulated + weight > targetWeight || idx == readingOrder.count - 1 {
             let within = weight > 0 ? min(max((targetWeight - accumulated) / weight, 0), 1) : 0
             navigateToProgression(chapterIndex: idx, progression: within)
             return

@@ -992,7 +992,9 @@
         if let currentLocation = viewModel.currentLocation,
           let totalProgression = currentLocation.totalProgression
         {
-          quickProgressSlider(baseline: totalProgression)
+          if let seekFraction = viewModel.totalSeekFraction {
+            quickProgressSlider(baseline: seekFraction)
+          }
 
           Button {
             showingChapterSheet = true

@@ -810,74 +810,9 @@
       lastKnownDocumentScrollTop = clampedOffset
       let offset = Double(clampedOffset)
       let duration = animated && animateTapTurns ? 0.3 : 0
-      let js = """
-          (function() {
-            var top = \(offset);
-            var duration = \(duration);
-            var root = document.documentElement;
-            var body = document.body;
-            var scrolling = document.scrollingElement || root || body;
-            var getCurrentTop = function() {
-              return Math.max(
-                0,
-                window.scrollY
-                || (scrolling && scrolling.scrollTop)
-                || (root && root.scrollTop)
-                || (body && body.scrollTop)
-                || 0
-              );
-            };
-            var setTop = function(value) {
-              window.scrollTo(0, value);
-              if (scrolling) { scrolling.scrollTop = value; }
-              if (root) { root.scrollTop = value; }
-              if (body) { body.scrollTop = value; }
-            };
-            var finish = function() {
-              if (window.__kmreaderPostMetrics) {
-                window.requestAnimationFrame(function() {
-                  window.__kmreaderPostMetrics('scroll');
-                });
-              }
-            };
-            if (window.__kmreaderScrollAnimationFrame) {
-              window.cancelAnimationFrame(window.__kmreaderScrollAnimationFrame);
-              window.__kmreaderScrollAnimationFrame = null;
-            }
-            if (!(duration > 0)) {
-              setTop(top);
-              finish();
-              return true;
-            }
-            var startTop = getCurrentTop();
-            var distance = top - startTop;
-            if (Math.abs(distance) < 0.5) {
-              setTop(top);
-              finish();
-              return true;
-            }
-            var startTime = null;
-            var easeOutCubic = function(progress) {
-              return 1 - Math.pow(1 - progress, 3);
-            };
-            var step = function(timestamp) {
-              if (startTime === null) {
-                startTime = timestamp;
-              }
-              var progress = Math.min(1, (timestamp - startTime) / (duration * 1000));
-              var eased = easeOutCubic(progress);
-              setTop(startTop + (distance * eased));
-              if (progress < 1) {
-                window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
-                return;
-              }
-              window.__kmreaderScrollAnimationFrame = null;
-              finish();
-            };
-            window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
-            return true;
-          })();
-        """
+      let js = WebPubPagedJavaScriptBuilder.makeScrollDocumentScript(
+        targetOffset: offset, duration: duration, token: readyToken
+      )
 
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -900,7 +835,8 @@
         preferLastPage: preferLastPage,
         token: token,
         requiresFullExtent: targetProgressionOnReady != nil || requiresFullExtentProvider?(chapterIndex) == true,
-        waitForStableLayout: true
+        waitForStableLayout: true,
+        targetProgression: targetProgressionOnReady
       )
 
       webView.evaluateJavaScript(js, completionHandler: nil)
@@ -933,32 +869,10 @@
         renderedNavigationID = paginationNavigationID
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
-
-          let shouldJumpToLastPage = pendingJumpToLastPage
-          if shouldJumpToLastPage {
-            actualPage = max(0, normalizedTotal - 1)
-            scrollToPage(actualPage, animated: false)
-            pendingJumpToLastPage = false
-          }
-
-          if !shouldJumpToLastPage,
-            let progression = targetProgressionOnReady
-          {
-            let targetIndex = max(
-              0,
-              min(normalizedTotal - 1, Int(floor(Double(normalizedTotal) * progression)))
-            )
-            if targetIndex != actualPage {
-              actualPage = targetIndex
-              scrollToPage(targetIndex, animated: false)
-            }
-            targetProgressionOnReady = nil
-          }
-
-          if currentSubPageIndex != actualPage {
-            currentSubPageIndex = actualPage
-          }
+          let actualPage = max(0, min(normalizedTotal - 1, body["currentPage"] as? Int ?? currentSubPageIndex))
+          pendingJumpToLastPage = false
+          targetProgressionOnReady = nil
+          currentSubPageIndex = actualPage
 
           // Land on a pending in-book anchor (cross-chapter link) now that
           // the document is laid out.

@@ -585,12 +585,88 @@
       """
     }
 
+    static func makeScrollDocumentScript(targetOffset: Double, duration: Double, token: Int) -> String {
+      """
+      (function() {
+        var token = \(token);
+        var isCurrent = function() { return window.__kmreaderScrollGeneration === token; };
+        if (!isCurrent()) { return false; }
+        var top = \(targetOffset);
+        var duration = \(duration);
+        var root = document.documentElement;
+        var body = document.body;
+        var scrolling = document.scrollingElement || root || body;
+        var getCurrentTop = function() {
+          return Math.max(
+            0,
+            window.scrollY
+            || (scrolling && scrolling.scrollTop)
+            || (root && root.scrollTop)
+            || (body && body.scrollTop)
+            || 0
+          );
+        };
+        var setTop = function(value) {
+          window.scrollTo(0, value);
+          if (scrolling) { scrolling.scrollTop = value; }
+          if (root) { root.scrollTop = value; }
+          if (body) { body.scrollTop = value; }
+        };
+        var finish = function() {
+          if (window.__kmreaderPostMetrics) {
+            window.requestAnimationFrame(function() {
+              if (isCurrent()) { window.__kmreaderPostMetrics('scroll'); }
+            });
+          }
+        };
+        if (window.__kmreaderScrollAnimationFrame) {
+          window.cancelAnimationFrame(window.__kmreaderScrollAnimationFrame);
+          window.__kmreaderScrollAnimationFrame = null;
+        }
+        if (!(duration > 0)) {
+          setTop(top);
+          finish();
+          return true;
+        }
+        var startTop = getCurrentTop();
+        var distance = top - startTop;
+        if (Math.abs(distance) < 0.5) {
+          setTop(top);
+          finish();
+          return true;
+        }
+        var startTime = null;
+        var easeOutCubic = function(progress) {
+          return 1 - Math.pow(1 - progress, 3);
+        };
+        var step = function(timestamp) {
+          if (!isCurrent()) { return; }
+          if (startTime === null) {
+            startTime = timestamp;
+          }
+          var progress = Math.min(1, (timestamp - startTime) / (duration * 1000));
+          var eased = easeOutCubic(progress);
+          setTop(startTop + (distance * eased));
+          if (progress < 1) {
+            window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
+            return;
+          }
+          window.__kmreaderScrollAnimationFrame = null;
+          finish();
+        };
+        window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
+        return true;
+      })();
+      """
+    }
+
     static func makeScrolledPaginationScript(
       targetPageIndex: Int,
       preferLastPage: Bool,
       token: Int,
       requiresFullExtent: Bool,
-      waitForStableLayout: Bool
+      waitForStableLayout: Bool,
+      targetProgression: Double? = nil
     ) -> String {
       let settlingScript: String
       if waitForStableLayout {
@@ -704,7 +780,8 @@
       return """
         (function() {
           var target = \(targetPageIndex);
-          var requiresFullExtent = \(requiresFullExtent ? "true" : "false");
+          var progression = \(targetProgression.map { String($0) } ?? "null");
+          var requiresFullExtent = \(requiresFullExtent || targetProgression != nil ? "true" : "false");
           var preferLast = \(preferLastPage ? "true" : "false");
           var token = \(token);
           \(WebPubPagedJavaScriptBuilder.scrolledPaginationGenerationScript)
@@ -823,7 +900,8 @@
             var total = Math.max(1, Math.ceil(currentHeight / pageHeight));
             var maxScroll = Math.max(0, currentHeight - pageHeight);
 
-            var finalTarget = Math.max(0, Math.min(total - 1, target));
+            var requested = preferLast ? total - 1 : (progression !== null ? Math.floor(total * progression) : target);
+            var finalTarget = Math.max(0, Math.min(total - 1, requested));
             var offset = scrollPageOffset(finalTarget, total, maxScroll);
 
             window.scrollTo(0, offset);
@@ -843,6 +921,10 @@
 
     static let scrolledPaginationGenerationScript = """
       window.__kmreaderScrollGeneration = token;
+      if (window.__kmreaderScrollAnimationFrame) {
+        window.cancelAnimationFrame(window.__kmreaderScrollAnimationFrame);
+        window.__kmreaderScrollAnimationFrame = null;
+      }
       var isCurrent = function() { return window.__kmreaderScrollGeneration === token; };
       """
 
