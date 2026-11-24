@@ -295,6 +295,16 @@
         controller.onLinkTap = { [weak self] url in
           self?.parent.viewModel.navigateToURL(url)
         }
+        controller.onAnchorJump = { [weak self, weak controller] originPage in
+          guard let self, let controller else { return }
+          self.parent.viewModel.pushLinkBack(
+            chapterIndex: controller.chapterIndex,
+            pageIndex: originPage
+          )
+        }
+        controller.pendingAnchorProvider = { [weak self] chapterIndex in
+          self?.parent.viewModel.consumePendingAnchor(for: chapterIndex)
+        }
         controller.loadViewIfNeeded()
         return controller
       }

@@ -106,6 +106,19 @@
           viewModel?.updateChapterPageCount(pageCount, for: chapterIndex)
         }
       }
+      vc.onLinkTap = { [weak viewModel] url in
+        viewModel?.navigateToURL(url)
+      }
+      vc.onAnchorJump = { [weak viewModel] originPage in
+        guard let viewModel = viewModel else { return }
+        viewModel.pushLinkBack(
+          chapterIndex: viewModel.currentChapterIndex,
+          pageIndex: originPage
+        )
+      }
+      vc.pendingAnchorProvider = { [weak viewModel] chapterIndex in
+        viewModel?.consumePendingAnchor(for: chapterIndex)
+      }
       context.coordinator.viewController = vc
 
       return vc

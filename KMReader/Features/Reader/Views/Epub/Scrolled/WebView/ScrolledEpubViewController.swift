@@ -58,6 +58,14 @@
     var onChapterNavigationNeeded: ((Int) -> Void)?
     var onPageDidChange: ((Int, Int) -> Void)?
     var onPageCountReady: ((Int, Int) -> Void)?
+    /// Called when an in-book link target needs view-model navigation
+    /// (cross-chapter links, images).
+    var onLinkTap: ((URL) -> Void)?
+    /// Called after a same-chapter anchor jump with the origin page, so the
+    /// view model can push the in-book link back stack.
+    var onAnchorJump: ((Int) -> Void)?
+    /// Provides a pending anchor to land on for a chapter index, if any.
+    var pendingAnchorProvider: ((Int) -> String?)?
 
     var currentChapterIndex: Int { chapterIndex }
     var currentPageIndex: Int { currentSubPageIndex }
@@ -213,6 +221,7 @@
       webView = WKWebView(frame: .zero, configuration: config)
       webView.navigationDelegate = self
       webView.scrollView.delegate = self
+      refreshDocumentStartUserScript()
       webView.scrollView.isScrollEnabled = true
       webView.scrollView.bounces = true
       webView.scrollView.alwaysBounceVertical = true
@@ -534,6 +543,7 @@
       }
 
       applyTheme()
+      refreshDocumentStartUserScript()
       if shouldReload {
         loadContentIfNeeded(force: true)
       } else if appearanceChanged {
@@ -569,8 +579,99 @@
       totalPagesInChapter = 1
       webView.alpha = 0.01
       loadingIndicator?.startAnimating()
+      refreshDocumentStartUserScript()
 
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
+    }
+
+    /// Installs the CSS/theme payload as a document-start user script so the
+    /// first paint already has the theme applied, shrinking the white flash.
+    private func refreshDocumentStartUserScript() {
+      guard isViewLoaded else { return }
+      let controller = webView.configuration.userContentController
+      controller.removeAllUserScripts()
+      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: contentCSS,
+        readiumProperties: readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: publicationLanguage,
+        readingProgression: publicationReadingProgression
+      )
+      controller.addUserScript(
+        WKUserScript(
+          source: js,
+          injectionTime: .atDocumentStart,
+          forMainFrameOnly: true
+        ))
+    }
+
+    /// Scrolls to an in-document anchor (footnote, cross-reference).
+    private func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
+      guard isContentLoaded else {
+        completion(false)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToDocumentAnchorScript(anchor: anchor)
+      webView.evaluateJavaScript(js) { result, error in
+        if error != nil {
+          completion(false)
+        } else {
+          completion((result as? Bool) ?? false)
+        }
+      }
+    }
+
+    private func isCurrentChapterURL(_ url: URL) -> Bool {
+      guard let chapterURL else { return false }
+      if url.scheme == EpubResourceScheme.scheme || url.scheme == nil {
+        return url.deletingFragment == chapterURL.deletingFragment
+      }
+      return url.standardizedFileURL.path == chapterURL.standardizedFileURL.path
+    }
+
+    func webView(
+      _ webView: WKWebView,
+      decidePolicyFor navigationAction: WKNavigationAction,
+      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+      guard navigationAction.navigationType == .linkActivated,
+        let url = navigationAction.request.url
+      else {
+        decisionHandler(.allow)
+        return
+      }
+
+      // In-book links stay inside the reader; external links are opened by
+      // the platform browser via the UI layer.
+      let isInBook =
+        url.scheme == EpubResourceScheme.scheme
+        || url.scheme == "file"
+        || url.scheme == nil
+      guard isInBook else {
+        decisionHandler(.cancel)
+        return
+      }
+
+      if let fragment = url.fragment, !fragment.isEmpty,
+        isCurrentChapterURL(url)
+      {
+        // Same-chapter anchor: land on the fragment in place and let the
+        // host push the origin onto the link back stack.
+        decisionHandler(.cancel)
+        let originPage = currentSubPageIndex
+        scrollToAnchor(fragment) { [weak self] handled in
+          guard let self else { return }
+          if handled {
+            self.onAnchorJump?(originPage)
+          } else {
+            self.onLinkTap?(url)
+          }
+        }
+        return
+      }
+
+      decisionHandler(.cancel)
+      onLinkTap?(url)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -1044,6 +1145,12 @@
 
           if currentSubPageIndex != actualPage {
             currentSubPageIndex = actualPage
+          }
+
+          // Land on a pending in-book anchor (cross-chapter link) now that
+          // the document is laid out.
+          if let anchor = pendingAnchorProvider?(chapterIndex) {
+            scrollToAnchor(anchor) { _ in }
           }
         }
 

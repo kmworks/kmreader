@@ -12,6 +12,11 @@
     private var pendingPageIndex: Int?
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
+    // Fires after a same-chapter anchor jump (footnote/cross-reference) with
+    // the page the reader came from, so a back stack can restore it.
+    var onAnchorJump: ((Int) -> Void)?
+    // Returns a pending cross-chapter anchor for this chapter, consuming it.
+    var pendingAnchorProvider: ((Int) -> String?)?
     var onPageIndexAdjusted: ((Int) -> Void)?
     var onPaginationReady: (() -> Void)?
     var onChapterLoadFailed: (() -> Void)?
@@ -355,6 +360,14 @@
     func rendererDidProducePageCount(_ pageCount: Int) {
       totalPagesInChapter = pageCount
       onPageCountReady?(pageCount)
+    }
+
+    func consumePendingAnchor() -> String? {
+      pendingAnchorProvider?(chapterIndex)
+    }
+
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
+      renderer?.scrollToAnchor(anchor, completion: completion) ?? completion(false)
     }
 
     func rendererStartLoading() {

@@ -348,17 +348,17 @@ nonisolated struct EpubThemePreferences: RawRepresentable, Equatable, Sendable {
       return ""
     }
 
+    // Only `color` is overridden here. An inherited `-webkit-text-fill-color`
+    // wins over `color` at paint time and flattens publisher-colored spans, so
+    // fill is pinned per element by the dark text rewrite script instead.
     return """
       :root[style*="--USER__textColor"] body {
         color: var(--USER__textColor) !important;
-        -webkit-text-fill-color: var(--USER__textColor) !important;
       }
 
       :root[style*="--USER__textColor"] body *:not(a) {
-        color: inherit !important;
         background-color: transparent !important;
         border-color: currentColor !important;
-        -webkit-text-fill-color: currentColor !important;
       }
 
       :root[style*="--USER__textColor"] body svg text {
@@ -369,18 +369,21 @@ nonisolated struct EpubThemePreferences: RawRepresentable, Equatable, Sendable {
       :root[style*="--USER__linkColor"] body a:link,
       :root[style*="--USER__linkColor"] body a:link * {
         color: var(--USER__linkColor) !important;
-        -webkit-text-fill-color: var(--USER__linkColor) !important;
       }
 
       :root[style*="--USER__visitedColor"] body a:visited,
       :root[style*="--USER__visitedColor"] body a:visited * {
         color: var(--USER__visitedColor) !important;
-        -webkit-text-fill-color: var(--USER__visitedColor) !important;
       }
 
       :root[style*="--USER__backgroundColor"] body,
       :root[style*="--USER__backgroundColor"] body * {
         background-color: transparent !important;
+      }
+
+      :root[style*="--USER__textColor"] body img.km-mono-img,
+      :root[style*="--USER__textColor"] body img.km-inline-img {
+        filter: invert(1) hue-rotate(180deg);
       }
 
       """

@@ -7,20 +7,25 @@
       readiumProperties: [String: String?],
       readiumPropertyKeys: [String],
       language: String?,
-      readingProgression: WebPubReadingProgression?
+      readingProgression: WebPubReadingProgression?,
+      forceVerticalLayout: Bool = false
     ) -> String {
       let readiumAssets = ReadiumCSSLoader.cssAssets(
         language: language,
-        readingProgression: readingProgression
+        readingProgression: readingProgression,
+        forceVertical: forceVerticalLayout
       )
       let readiumVariant = ReadiumCSSLoader.resolveVariantSubdirectory(
         language: language,
-        readingProgression: readingProgression
+        readingProgression: readingProgression,
+        forceVertical: forceVerticalLayout
       )
       let paginationLayout = WebPubPaginationLayout.resolve(
         language: language,
-        readingProgression: readingProgression
+        readingProgression: readingProgression,
+        forceVertical: forceVerticalLayout
       )
+      let darkThemeForeground = readiumProperties["--USER__textColor"] ?? nil
       let shouldSetDir = readiumVariant == "rtl" || (readingProgression == .rtl && readiumVariant != "cjk-vertical")
       let requestedView = readiumProperties["--USER__view"] ?? nil
       let usesTransformPagination =
@@ -81,11 +86,19 @@
             }
           });
 
+          // At document-start injection the parser may not have produced the
+          // head element yet; create it so styles apply before first paint.
+          var head = document.head;
+          if (!head) {
+            head = document.createElement('head');
+            document.documentElement.appendChild(head);
+          }
+
           var meta = document.querySelector('meta[name=viewport]');
           if (!meta) {
             meta = document.createElement('meta');
             meta.name = 'viewport';
-            document.head.appendChild(meta);
+            head.appendChild(meta);
           }
           meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 
@@ -93,7 +106,6 @@
           if (!style) {
             style = document.createElement('style');
             style.id = 'kmreader-style';
-            document.head.appendChild(style);
           }
           var hasStyles = document.querySelector("link[rel~='stylesheet'], style:not(#kmreader-style)") !== null;
           var css = atob('\(readiumBefore)') + "\\n"
@@ -102,6 +114,9 @@
             + atob('\(customCSS)') + "\\n"
             + atob('\(pagedCompatibilityCSS)');
           style.textContent = css;
+          // Re-appending moves the style to the end of head so it keeps
+          // winning the cascade when it was inserted at document start.
+          head.appendChild(style);
           var transformPagination = \(usesTransformPagination ? "true" : "false");
           var restorePageElementTransforms = function() {
             if (!document.body) { return; }
@@ -151,8 +166,131 @@
             document.body.style.transform = '';
           }
 
+          \(darkContentScript(darkThemeForeground: darkThemeForeground))
+
           return true;
         })();
+        """
+    }
+
+    // Dark-theme helpers mirrored from the Android rewriteDarkText pass and
+    // the readest image classifier. Injected with the theme CSS so they are
+    // defined before first paint; the pagination passes invoke them again
+    // once publisher styles and images have settled.
+    private static func darkContentScript(darkThemeForeground: String?) -> String {
+      let foregroundJSON = WebPubJavaScriptSupport.escapedJSONString(darkThemeForeground)
+      return """
+        var kmDarkFg = \(foregroundJSON);
+        if (kmDarkFg) {
+          window.__kmRewriteDarkText = function() {
+            if (!document.body || !window.getComputedStyle) { return; }
+            var all = document.body.querySelectorAll('*');
+            for (var i = 0; i < all.length; i++) {
+              var el = all[i];
+              var cs = window.getComputedStyle(el);
+              if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
+                if (el.tagName.toLowerCase() === 'text') {
+                  el.style.setProperty('fill', kmDarkFg, 'important');
+                  el.setAttribute('data-km-dark-pinned', 'fill');
+                }
+                continue;
+              }
+              var color = cs.color;
+              var m = /rgba?\\(\\s*(\\d+)[,\\s]+(\\d+)[,\\s]+(\\d+)/.exec(color);
+              if (!m) { continue; }
+              var maxc = Math.max(+m[1], +m[2], +m[3]);
+              var fill = cs.webkitTextFillColor || color;
+              if (maxc <= 96) {
+                el.style.setProperty('color', kmDarkFg, 'important');
+                if (fill !== kmDarkFg) {
+                  el.style.setProperty('-webkit-text-fill-color', kmDarkFg, 'important');
+                }
+                el.setAttribute('data-km-dark-pinned', 'color');
+              } else if (fill !== color) {
+                // An inherited fill wins over `color` at paint time; pin it
+                // back so publisher-colored spans survive the dark override.
+                el.style.setProperty('-webkit-text-fill-color', color, 'important');
+                el.setAttribute('data-km-dark-pinned', 'fill');
+              }
+            }
+          };
+
+          var kmClassifyOneImage = function(img) {
+            if (img.__kmClassified) { return; }
+            if (!img.complete || img.naturalWidth === 0) { return; }
+            img.__kmClassified = true;
+            try {
+              var w = img.naturalWidth;
+              var h = img.naturalHeight;
+              var scale = Math.min(1, 96 / Math.max(w, h));
+              var cw = Math.max(1, Math.round(w * scale));
+              var ch = Math.max(1, Math.round(h * scale));
+              var canvas = document.createElement('canvas');
+              canvas.width = cw;
+              canvas.height = ch;
+              var ctx = canvas.getContext('2d', { willReadFrequently: true });
+              ctx.drawImage(img, 0, 0, cw, ch);
+              var data = ctx.getImageData(0, 0, cw, ch).data;
+              var total = cw * ch;
+              var transparent = 0;
+              var opaque = 0;
+              var dark = 0;
+              for (var p = 0; p < data.length; p += 4) {
+                if (data[p + 3] < 40) { transparent++; continue; }
+                opaque++;
+                var luma = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+                if (luma < 96) { dark++; }
+              }
+              // Opaque illustrations must never be inverted.
+              if (transparent / total <= 0.3) { return; }
+              var parent = img.parentElement;
+              var text = parent ? (parent.textContent || '').replace(/\\s+/g, '') : '';
+              if (/[\\p{L}\\p{N}]/u.test(text)) {
+                // Inline glyph surrogate inside a sentence: always invert.
+                img.classList.add('km-inline-img');
+                return;
+              }
+              if (opaque > 0 && dark / opaque > 0.25) {
+                img.classList.add('km-mono-img');
+              }
+            } catch (e) {
+              // Tainted canvas or decode failure: leave the image alone.
+            }
+          };
+          window.__kmClassifyImages = function(scope) {
+            if (!document.body) { return; }
+            var root = scope || document.body;
+            var imgs = root.tagName === 'IMG' ? [root] : root.querySelectorAll('img');
+            for (var i = 0; i < imgs.length; i++) { kmClassifyOneImage(imgs[i]); }
+          };
+          document.addEventListener('load', function(event) {
+            var t = event.target;
+            if (t && t.tagName === 'IMG') { kmClassifyOneImage(t); }
+          }, true);
+          if (document.body) {
+            window.__kmRewriteDarkText();
+            window.__kmClassifyImages(document.body);
+          }
+        } else {
+          // Theme switched back to light: drop the pins the dark pass wrote.
+          window.__kmRewriteDarkText = null;
+          window.__kmClassifyImages = null;
+          if (document.body) {
+            var pinned = document.body.querySelectorAll('[data-km-dark-pinned]');
+            for (var i = 0; i < pinned.length; i++) {
+              pinned[i].style.removeProperty('color');
+              pinned[i].style.removeProperty('-webkit-text-fill-color');
+              pinned[i].style.removeProperty('fill');
+              pinned[i].removeAttribute('data-km-dark-pinned');
+            }
+            var classifiedImgs = document.body.querySelectorAll('img.km-mono-img, img.km-inline-img');
+            for (var j = 0; j < classifiedImgs.length; j++) {
+              classifiedImgs[j].classList.remove('km-mono-img');
+              classifiedImgs[j].classList.remove('km-inline-img');
+              delete classifiedImgs[j].__kmClassified;
+            }
+          }
+        }
         """
     }
 
@@ -164,12 +302,27 @@
       var imagesPending = function() {
         var imgs = document.images;
         if (!imgs) { return false; }
+        var pending = false;
         for (var i = 0; i < imgs.length; i++) {
           var img = imgs[i];
           if (img.loading === 'lazy') { img.loading = 'eager'; }
-          if (!img.complete) { return true; }
+          if (!img.complete) { pending = true; continue; }
+          // Broken images never decode; skip them instead of waiting forever.
+          if (img.naturalWidth === 0) { continue; }
+          // `complete` only means the bytes arrived; force a decode so the
+          // reveal does not paint white raster bands for a few frames.
+          if (img.decode && !img.__kmDecoded) {
+            if (!img.__kmDecodeRequested) {
+              img.__kmDecodeRequested = true;
+              (function(el) {
+                var done = function() { el.__kmDecoded = true; };
+                el.decode().then(done, done);
+              })(img);
+            }
+            pending = true;
+          }
         }
-        return false;
+        return pending;
       };
       """
 
@@ -196,10 +349,28 @@
         // mid-chapter once they load.
         \(fullExtentGuardScript)
 
+        // Manifest metadata misses books whose publisher CSS declares a
+        // vertical writing mode; probe the computed style like foliate does
+        // and let the native side re-lay out with the vertical variant.
+        var detectContentVertical = function() {
+          if (!window.getComputedStyle || !document.body) { return false; }
+          var wm = window.getComputedStyle(document.body).writingMode || '';
+          if (wm.indexOf('vertical') === 0) { return true; }
+          var first = document.body.firstElementChild;
+          if (first) {
+            var fwm = window.getComputedStyle(first).writingMode || '';
+            if (fwm.indexOf('vertical') === 0) { return true; }
+          }
+          return false;
+        };
+
         var finalize = function() {
           if (!isCurrent()) return;
           if (hasFinalized) return;
           hasFinalized = true;
+
+          if (window.__kmRewriteDarkText) { window.__kmRewriteDarkText(); }
+          if (window.__kmClassifyImages) { window.__kmClassifyImages(document.body); }
 
           var metrics = measurePagination();
           var pageWidth = metrics.pageWidth;
@@ -240,6 +411,18 @@
             if (hasFinalized) return;
 
             attempt++;
+            // Only ever escalate horizontal -> vertical; reverse layouts from
+            // RTL languages are legitimate and must not be second-guessed.
+            if (attempt === 1 && !reverseScrollLeft && detectContentVertical()) {
+              if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
+                window.webkit.messageHandlers.readerBridge.postMessage({
+                  type: 'writingModeMismatch',
+                  vertical: true,
+                  generation: generation
+                });
+              }
+              return;
+            }
             var metrics = measurePagination();
             var currentW = metrics.currentWidth;
             var pageWidth = metrics.pageWidth;
@@ -297,65 +480,132 @@
           });
         }
 
-        if (window.ResizeObserver) {
-          var stableScrollWidth = 0;
-          var stableCheckCount = 0;
-          var isPageCountLocked = false;
-          var resizeDebounceTimer = null;
+        // Late-loading images and publisher DOM mutations keep changing the
+        // content extent after the first measure, so the watchers stay alive
+        // for the chapter's lifetime instead of disconnecting once the size
+        // looks stable. Every re-measure keeps the current page index, except
+        // when the reader sits on the last page: then the end is tracked.
+        var repaginateTimer = null;
+        var repaginate = function() {
+          if (!isCurrent() || !hasFinalized) { return; }
+          var metrics = measurePagination();
+          var pageWidth = metrics.pageWidth;
+          var w = metrics.currentWidth;
+          if (pageWidth <= 0 || w <= 0) { return; }
+          var total = Math.max(1, Math.ceil(w / pageWidth));
+          if (total === lastReportedPageCount) { return; }
+          var keepIdx = Math.floor(currentLogicalOffset() / pageWidth);
+          var wasAtEnd = keepIdx >= lastReportedPageCount - 1;
+          lastReportedPageCount = total;
+          var newPage = wasAtEnd ? (total - 1) : Math.max(0, Math.min(total - 1, keepIdx));
+          scrollToLogicalOffset(pageWidth * newPage, false);
+          if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
+            window.webkit.messageHandlers.readerBridge.postMessage({
+              type: 'pageCountUpdate',
+              totalPages: total,
+              currentPage: newPage,
+              generation: generation
+            });
+          }
+          if (window.__kmRewriteDarkText) { window.__kmRewriteDarkText(); }
+          if (window.__kmClassifyImages) { window.__kmClassifyImages(document.body); }
+        };
+        var scheduleRepaginate = function() {
+          if (repaginateTimer) { clearTimeout(repaginateTimer); }
+          repaginateTimer = setTimeout(repaginate, 250);
+        };
 
+        if (window.ResizeObserver) {
           var ro = new ResizeObserver(function() {
             if (!isCurrent()) {
               ro.disconnect();
               return;
             }
-            if (isPageCountLocked) {
+            scheduleRepaginate();
+          });
+          ro.observe(document.documentElement);
+          if (document.body) { ro.observe(document.body); }
+        }
+
+        if (window.MutationObserver) {
+          var mo = new MutationObserver(function(mutations) {
+            if (!isCurrent()) {
+              mo.disconnect();
               return;
             }
-
-            if (resizeDebounceTimer) {
-              clearTimeout(resizeDebounceTimer);
-            }
-
-            resizeDebounceTimer = setTimeout(function() {
-              var metrics = measurePagination();
-              var w = metrics.currentWidth;
-              var pageWidth = metrics.pageWidth;
-
-              if (pageWidth > 0 && w > 0) {
-                if (w === stableScrollWidth) {
-                  stableCheckCount++;
-                  if (stableCheckCount >= 3) {
-                    isPageCountLocked = true;
-                    ro.disconnect();
-                    return;
-                  }
-                } else {
-                  stableCheckCount = 0;
-                  stableScrollWidth = w;
-
-                  var total = Math.max(1, Math.ceil(w / pageWidth));
-                  if (Math.abs(total - lastReportedPageCount) > 1) {
-                    lastReportedPageCount = total;
-                    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
-                      window.webkit.messageHandlers.readerBridge.postMessage({
-                        type: 'pageCountUpdate',
-                        totalPages: total,
-                        generation: generation
-                      });
-                    }
-                  }
-                }
+            for (var i = 0; i < mutations.length; i++) {
+              var t = mutations[i].target;
+              if (document.body && t && (t === document.body || document.body.contains(t))) {
+                scheduleRepaginate();
+                return;
               }
-            }, 1000);
+            }
           });
-
-          setTimeout(function() {
-            stableScrollWidth = measurePagination().currentWidth;
-            ro.observe(document.documentElement);
-          }, 1500);
+          mo.observe(document.documentElement, { childList: true, subtree: true });
         }
+
+        // A pinned body height means late images never trigger the observers
+        // above; capture-phase load events still reach us.
+        document.addEventListener('load', function(event) {
+          var t = event.target;
+          if (t && t.tagName === 'IMG') { scheduleRepaginate(); }
+        }, true);
       })();
       """
+    }
+
+    // Scrolls to an in-chapter anchor (footnote, endnote, cross-reference)
+    // and lands on the page containing it. Returns false when the anchor
+    // does not exist so the caller can fall back to the chapter start.
+    static func makeScrollToAnchorScript(
+      anchor: String,
+      paginationLayout: WebPubPaginationLayout
+    ) -> String {
+      let anchorJSON = WebPubJavaScriptSupport.escapedJSONString(anchor)
+      return """
+        (function() {
+          \(paginationRuntimeScript(paginationLayout: paginationLayout))
+          var id = \(anchorJSON);
+          var el = document.getElementById(id);
+          if (!el) {
+            try { el = document.querySelector('[name="' + id.replace(/"/g, '') + '"]'); } catch (e) { el = null; }
+          }
+          if (!el) { return false; }
+          var metrics = measurePagination();
+          var pageWidth = metrics.pageWidth;
+          if (pageWidth <= 0) { return false; }
+          var rect = el.getBoundingClientRect();
+          var logical;
+          if (reverseScrollLeft) {
+            // Transforms shift content right by the active offset; the layout
+            // position is the screen position minus that offset.
+            logical = rect.left - activeLogicalOffset;
+          } else {
+            logical = rect.left + (window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0) || 0);
+          }
+          var page = Math.max(0, Math.floor(logical / pageWidth));
+          scrollToLogicalOffset(pageWidth * page, false);
+          return true;
+        })();
+        """
+    }
+
+    /// Anchor landing for the continuous-scroll engine: the document scrolls
+    /// vertically, so the element is simply scrolled into view.
+    static func makeScrollToDocumentAnchorScript(anchor: String) -> String {
+      let anchorJSON = WebPubJavaScriptSupport.escapedJSONString(anchor)
+      return """
+        (function() {
+          var id = \(anchorJSON);
+          var el = document.getElementById(id);
+          if (!el) {
+            try { el = document.querySelector('[name="' + id.replace(/"/g, '') + '"]'); } catch (e) { el = null; }
+          }
+          if (!el) { return false; }
+          el.scrollIntoView({ block: 'start', behavior: 'instant' });
+          return true;
+        })();
+        """
     }
 
     static func makeScrollToPageScript(
@@ -494,6 +744,12 @@
             ? (paginationTransform + ' ' + authorTransform)
             : paginationTransform;
         });
+      };
+      var currentLogicalOffset = function() {
+        if (reverseScrollLeft) { return activeLogicalOffset; }
+        var root = document.documentElement;
+        var left = window.pageXOffset || (root ? root.scrollLeft : 0) || 0;
+        return Math.abs(left);
       };
       var measurePagination = function() {
         var root = document.documentElement;

@@ -33,7 +33,21 @@
     private var pendingPageIndex: Int?
     private var pendingJumpToLastPage: Bool = false
     var targetProgressionOnReady: Double?
-    private var readyToken: Int = 0
+    /// Generation counter of the latest pagination pass; stale JS callbacks
+    /// from superseded passes are ignored.
+    private var paginationGeneration: Int = 0
+    /// Set when the content's computed writing mode declared vertical
+    /// presentation while the manifest did not; never downgraded.
+    private var detectedVerticalLayout = false
+
+    /// Called when an in-book link target needs view-model navigation
+    /// (cross-chapter links, images).
+    var onLinkTap: ((URL) -> Void)?
+    /// Called after a same-chapter anchor jump with the origin page, so the
+    /// view model can push the in-book link back stack.
+    var onAnchorJump: ((Int) -> Void)?
+    /// Provides a pending anchor to land on for a chapter index, if any.
+    var pendingAnchorProvider: ((Int) -> String?)?
 
     private var bookTitle: String?
     private var chapterTitle: String?
@@ -56,7 +70,8 @@
     private var paginationLayout: WebPubPaginationLayout {
       WebPubPaginationLayout.resolve(
         language: publicationLanguage,
-        readingProgression: publicationReadingProgression
+        readingProgression: publicationReadingProgression,
+        forceVertical: detectedVerticalLayout
       )
     }
 
@@ -202,6 +217,7 @@
 
       webView = WKWebView(frame: .zero, configuration: config)
       webView.navigationDelegate = self
+      refreshDocumentStartUserScript()
       webView.scrollView.delegate = self
       webView.scrollView.isScrollEnabled = false
       webView.scrollView.bounces = true
@@ -591,6 +607,7 @@
       }
 
       applyTheme()
+      refreshDocumentStartUserScript()
       if shouldReload {
         loadContentIfNeeded(force: true)
       } else if appearanceChanged {
@@ -618,6 +635,7 @@
       isContentLoaded = false
       webView.alpha = 0.01
       loadingIndicator?.startAnimating()
+      refreshDocumentStartUserScript()
 
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
     }
@@ -708,13 +726,109 @@
     }
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
+      paginationGeneration += 1
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
         targetPageIndex: targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
-        paginationLayout: paginationLayout
+        paginationLayout: paginationLayout,
+        generation: paginationGeneration
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    /// Installs the CSS/theme payload as a document-start user script so the
+    /// first paint already has the theme applied, shrinking the white flash.
+    private func refreshDocumentStartUserScript() {
+      guard isViewLoaded else { return }
+      let controller = webView.configuration.userContentController
+      controller.removeAllUserScripts()
+      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: contentCSS,
+        readiumProperties: readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: publicationLanguage,
+        readingProgression: publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
+      )
+      controller.addUserScript(
+        WKUserScript(
+          source: js,
+          injectionTime: .atDocumentStart,
+          forMainFrameOnly: true
+        ))
+    }
+
+    /// Scrolls to an in-document anchor (footnote, cross-reference).
+    private func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
+      guard isContentLoaded else {
+        completion(false)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToAnchorScript(
+        anchor: anchor,
+        paginationLayout: paginationLayout
+      )
+      webView.evaluateJavaScript(js) { result, error in
+        if error != nil {
+          completion(false)
+        } else {
+          completion((result as? Bool) ?? false)
+        }
+      }
+    }
+
+    private func isCurrentChapterURL(_ url: URL) -> Bool {
+      guard let chapterURL else { return false }
+      if url.scheme == EpubResourceScheme.scheme || url.scheme == nil {
+        return url.deletingFragment == chapterURL.deletingFragment
+      }
+      return url.standardizedFileURL.path == chapterURL.standardizedFileURL.path
+    }
+
+    func webView(
+      _ webView: WKWebView,
+      decidePolicyFor navigationAction: WKNavigationAction,
+      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+      guard navigationAction.navigationType == .linkActivated,
+        let url = navigationAction.request.url
+      else {
+        decisionHandler(.allow)
+        return
+      }
+
+      // In-book links stay inside the reader; external links are opened by
+      // the platform browser via the UI layer.
+      let isInBook =
+        url.scheme == EpubResourceScheme.scheme
+        || url.scheme == "file"
+        || url.scheme == nil
+      guard isInBook else {
+        decisionHandler(.cancel)
+        return
+      }
+
+      if let fragment = url.fragment, !fragment.isEmpty,
+        isCurrentChapterURL(url)
+      {
+        // Same-chapter anchor: land on the fragment in place and let the
+        // host push the origin onto the link back stack.
+        decisionHandler(.cancel)
+        let originPage = currentSubPageIndex
+        scrollToAnchor(fragment) { [weak self] handled in
+          guard let self else { return }
+          if handled {
+            self.onAnchorJump?(originPage)
+          } else {
+            self.onLinkTap?(url)
+          }
+        }
+        return
+      }
+
+      decisionHandler(.cancel)
+      onLinkTap?(url)
     }
 
     func userContentController(
@@ -725,6 +839,11 @@
       guard let type = body["type"] as? String else { return }
 
       if type == "ready" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
           var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
@@ -747,12 +866,48 @@
           if currentSubPageIndex != actualPage {
             currentSubPageIndex = actualPage
           }
+
+          // Land on a pending in-book anchor (cross-chapter link) now that
+          // pagination settled.
+          if let anchor = pendingAnchorProvider?(chapterIndex) {
+            scrollToAnchor(anchor) { _ in }
+          }
         }
 
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
         onPageDidChange?(chapterIndex, currentSubPageIndex)
+      } else if type == "pageCountUpdate" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
+        guard let total = body["totalPages"] as? Int else { return }
+        let normalizedTotal = max(1, total)
+        if let currentPage = body["currentPage"] as? Int,
+          currentPage != currentSubPageIndex
+        {
+          currentSubPageIndex = min(max(0, currentPage), normalizedTotal - 1)
+        }
+        if totalPagesInChapter != normalizedTotal {
+          totalPagesInChapter = normalizedTotal
+          onPageCountReady?(chapterIndex, normalizedTotal)
+        }
+        updateOverlayLabels()
+      } else if type == "writingModeMismatch" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
+        guard let vertical = body["vertical"] as? Bool, vertical,
+          !detectedVerticalLayout
+        else { return }
+        detectedVerticalLayout = true
+        refreshDocumentStartUserScript()
+        applyPagination(scrollToPage: currentSubPageIndex)
       }
     }
 
@@ -769,7 +924,8 @@
         readiumProperties: readiumProperties,
         readiumPropertyKeys: readiumPropertyKeys,
         language: language,
-        readingProgression: readingProgression
+        readingProgression: readingProgression,
+        forceVerticalLayout: detectedVerticalLayout
       )
       webView.evaluateJavaScript(js) { _, _ in
         completion?()

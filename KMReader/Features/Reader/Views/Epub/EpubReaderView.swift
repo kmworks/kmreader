@@ -56,6 +56,9 @@
     @State private var showingDetailSheet = false
     @State private var showingQuickActions = false
     @State private var showingEndPage = false
+    /// Local preview value while the quick-progress slider is being dragged;
+    /// nil when not scrubbing.
+    @State private var progressScrub: Double?
     @State private var keyboardHelpTimer: Timer?
     @State private var showKeyboardHelp = false
 
@@ -386,9 +389,28 @@
         #endif
     }
 
+    private var endPageRelationTitle: String? {
+      if let readListContext {
+        return readListContext.name
+      }
+      return currentSeries?.metadata.title
+    }
+
+    private func openAdjacentBook(_ adjacentBook: Book) {
+      logger.debug(
+        "📖 Opening adjacent book \(adjacentBook.id) from EPUB end page, flush current progress first"
+      )
+      viewModel.flushProgress()
+      // present() closes the current reader session before opening the next book.
+      readerPresentation.present(
+        book: adjacentBook,
+        incognito: incognito,
+        readListContext: readListContext
+      )
+    }
+
     private func loadBook() async {
       viewModel.beginLoading()
-
       currentBook = book
       bookThemePreferences = nil
       activeThemePreferences = globalThemePreferences
@@ -473,6 +495,12 @@
             bookTitle: currentBook?.metadata.title,
             preferences: activeThemePreferences,
             colorScheme: readerColorScheme,
+            previousBook: viewModel.endPagePreviousBook,
+            nextBook: viewModel.endPageNextBook,
+            relationTitle: endPageRelationTitle,
+            onOpenBook: { adjacentBook in
+              openAdjacentBook(adjacentBook)
+            },
             onReturn: {
               // Hide end page first, then navigate to last page
               showingEndPage = false
@@ -491,6 +519,14 @@
               closeReader()
             }
           )
+          .onAppear {
+            Task { @MainActor in
+              await viewModel.loadEndPageAdjacentBooks(
+                bookId: currentBook?.id ?? book.id,
+                readListId: readListContext?.id
+              )
+            }
+          }
         } else {
           let showsReaderContent =
             viewModel.hasContent && !viewModel.isLoading && viewModel.errorMessage == nil
@@ -893,6 +929,26 @@
             }
           }
         }
+        .overlay(alignment: .bottomLeading) {
+          if supportsOverlayControls && shouldShowControls && viewModel.canReturnFromLink {
+            Button {
+              viewModel.returnFromLink()
+            } label: {
+              HStack {
+                Text("Return to previous position")
+                  .font(.callout)
+                Image(systemName: "arrow.uturn.backward")
+              }
+              .contentShape(Capsule())
+            }
+            .readerControlButtonStyle()
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+            .padding(.bottom, 24)
+            .padding(.leading, 12)
+            .transition(.scale(scale: 0).combined(with: .opacity))
+          }
+        }
         .iPadIgnoresSafeArea(paddingTop: 24)
         .allowsHitTesting(supportsOverlayControls && shouldShowControls)
         .sheet(isPresented: $showingChapterSheet) {
@@ -939,6 +995,8 @@
         if let currentLocation = viewModel.currentLocation,
           let totalProgression = currentLocation.totalProgression
         {
+          quickProgressSlider(baseline: totalProgression)
+
           Button {
             showingChapterSheet = true
           } label: {
@@ -998,6 +1056,36 @@
         .controlSize(.large)
       }
       .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+
+    /// Quick progress scrubber: dragging previews the target percentage, the
+    /// seek commits on release.
+    private func quickProgressSlider(baseline: Double) -> some View {
+      HStack(spacing: 8) {
+        Text(progressScrub ?? baseline, format: .percent.precision(.fractionLength(0)))
+          .font(.caption.monospacedDigit())
+          .lineLimit(1)
+          .fixedSize()
+        Slider(value: progressScrubBinding(baseline: baseline), in: 0...1) { editing in
+          if editing {
+            progressScrub = baseline
+          } else if let scrub = progressScrub {
+            progressScrub = nil
+            viewModel.seek(toTotalFraction: scrub)
+          }
+        }
+        .frame(width: 200)
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 8)
+      .background(.ultraThinMaterial, in: Capsule())
+    }
+
+    private func progressScrubBinding(baseline: Double) -> Binding<Double> {
+      Binding(
+        get: { progressScrub ?? baseline },
+        set: { newValue in progressScrub = newValue }
+      )
     }
 
     private func toggleControls() {

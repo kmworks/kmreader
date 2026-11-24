@@ -12,11 +12,13 @@ struct ReadiumCSSLoader {
 
   static func cssAssets(
     language: String?,
-    readingProgression: WebPubReadingProgression?
+    readingProgression: WebPubReadingProgression?,
+    forceVertical: Bool = false
   ) -> (before: String, defaultCSS: String, after: String) {
     let variant = resolveVariantSubdirectory(
       language: language,
-      readingProgression: readingProgression
+      readingProgression: readingProgression,
+      forceVertical: forceVertical
     )
     let cacheKey = variant ?? "default"
     if let cached = cache[cacheKey] {
@@ -42,8 +44,14 @@ struct ReadiumCSSLoader {
 
   static func resolveVariantSubdirectory(
     language: String?,
-    readingProgression: WebPubReadingProgression?
+    readingProgression: WebPubReadingProgression?,
+    forceVertical: Bool = false
   ) -> String? {
+    // Content probing found a publisher-declared vertical writing mode that
+    // the manifest metadata did not advertise.
+    if forceVertical {
+      return "cjk-vertical"
+    }
     let languageCode = normalizedLanguageCode(language)
     let isRTL = readingProgression == .rtl
     let isCJK = ["zh", "ja", "ko"].contains(languageCode ?? "")

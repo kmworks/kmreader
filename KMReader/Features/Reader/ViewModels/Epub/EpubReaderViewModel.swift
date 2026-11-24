@@ -58,6 +58,10 @@
     /// that fallback position would regress the server's progress, so all
     /// progression submissions are suppressed for the session.
     private var progressSubmissionSuppressed = false
+    /// Re-attempts the remote progression fetch with exponential backoff after
+    /// a transient failure, so the session-long suppression lifts as soon as
+    /// the server becomes reachable again.
+    private var progressionRetryTask: Task<Void, Never>?
     /// Page-based read progress from the book DTO. Komga reports page-based
     /// progress (written by KOReader/Kindle sync, paged readers, or the web UI)
     /// as an empty locator on the progression endpoint, so the page number is
@@ -181,6 +185,12 @@
       initialChapterIndex = nil
       initialProgression = nil
       progressSubmissionSuppressed = false
+      progressionRetryTask?.cancel()
+      progressionRetryTask = nil
+      linkBackStack = []
+      pendingAnchor = nil
+      endPagePreviousBook = nil
+      endPageNextBook = nil
       sessionStartPosition = nil
 
       do {
@@ -264,8 +274,9 @@
           } else if remoteFetchFailed && savedProgression == nil {
             progressSubmissionSuppressed = true
             logger.warning(
-              "⚠️ [Progress/Epub] Remote progression fetch failed and no local progression exists; suppressing progress submission for this session: book=\(bookId)"
+              "⚠️ [Progress/Epub] Remote progression fetch failed and no local progression exists; suppressing progress submission until a retry succeeds: book=\(bookId)"
             )
+            scheduleProgressionFetchRetry(bookId: bookId)
           }
         }
 
@@ -528,7 +539,35 @@
       setTarget(chapterIndex: chapterIndex, pageIndex: 0)
     }
 
+    // MARK: - End Page Adjacent Books
+
+    /// Previous/next sibling in the book's series (or read list), for the
+    /// end-page continuation cards.
+    private(set) var endPagePreviousBook: Book?
+    private(set) var endPageNextBook: Book?
+
+    func loadEndPageAdjacentBooks(bookId: String, readListId: String?) async {
+      guard let database = await DatabaseOperator.databaseIfConfigured() else {
+        endPagePreviousBook = nil
+        endPageNextBook = nil
+        return
+      }
+      let books = await database.fetchBookNavigationBooks(
+        bookId: bookId,
+        readListId: readListId,
+        instanceId: AppConfig.current.instanceId
+      )
+      guard let index = books.firstIndex(where: { $0.id == bookId }) else {
+        endPagePreviousBook = nil
+        endPageNextBook = nil
+        return
+      }
+      endPagePreviousBook = index > 0 ? books[index - 1] : nil
+      endPageNextBook = index + 1 < books.count ? books[index + 1] : nil
+    }
+
     func navigateToURL(_ url: URL) {
+      let fragment = url.fragment
       // Extract possible hrefs from the URL
       let path = url.path
       let lastComponent = url.lastPathComponent
@@ -550,10 +589,53 @@
 
       for href in possibleHrefs {
         if let chapterIndex = chapterIndexForHref(href) {
-          setTarget(chapterIndex: chapterIndex, pageIndex: 0)
+          navigateToChapterLink(chapterIndex: chapterIndex, fragment: fragment)
           return
         }
       }
+    }
+
+    private func navigateToChapterLink(chapterIndex: Int, fragment: String?) {
+      // Same-chapter anchors are scrolled in place by the WebView page
+      // renderer, which also pushes the origin onto the back stack; renderers
+      // without anchor support fall back to the chapter's first page.
+      guard chapterIndex != currentChapterIndex else {
+        setTarget(chapterIndex: chapterIndex, pageIndex: 0)
+        return
+      }
+      pushLinkBack(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
+      if let fragment, !fragment.isEmpty {
+        // Consumed by the target chapter's renderer once it paginates.
+        pendingAnchor = (chapterIndex: chapterIndex, anchor: fragment)
+      }
+      setTarget(chapterIndex: chapterIndex, pageIndex: 0)
+    }
+
+    // MARK: - In-book link back stack
+
+    /// Origin positions of in-book link jumps (footnotes, cross-references),
+    /// so the reader can return to where the link was tapped.
+    private(set) var linkBackStack: [(chapterIndex: Int, pageIndex: Int)] = []
+    private var pendingAnchor: (chapterIndex: Int, anchor: String)?
+
+    var canReturnFromLink: Bool { !linkBackStack.isEmpty }
+
+    func pushLinkBack(chapterIndex: Int, pageIndex: Int) {
+      if let last = linkBackStack.last,
+        last.chapterIndex == chapterIndex, last.pageIndex == pageIndex
+      { return }
+      linkBackStack.append((chapterIndex: chapterIndex, pageIndex: pageIndex))
+    }
+
+    func consumePendingAnchor(for chapterIndex: Int) -> String? {
+      guard let pending = pendingAnchor, pending.chapterIndex == chapterIndex else { return nil }
+      pendingAnchor = nil
+      return pending.anchor
+    }
+
+    func returnFromLink() {
+      guard let entry = linkBackStack.popLast() else { return }
+      setTarget(chapterIndex: entry.chapterIndex, pageIndex: entry.pageIndex)
     }
 
     func pageDidChange() {
@@ -984,6 +1066,40 @@
       return Double(overallIndex + 1) / Double(totalPages)
     }
 
+    /// Seeks to a total-progression fraction (quick progress slider),
+    /// mirroring how totalProgression maps locations to fractions.
+    func seek(toTotalFraction fraction: Double) {
+      let target = min(max(fraction, 0), 1)
+      if hasFullTextWeights, totalTextWeight > 0 {
+        let targetWeight = target * Double(totalTextWeight)
+        var accumulated = 0.0
+        for idx in 0..<readingOrder.count {
+          let weight = Double(chapterTextWeights[idx] ?? 0)
+          if accumulated + weight >= targetWeight || idx == readingOrder.count - 1 {
+            let within = weight > 0 ? min(max((targetWeight - accumulated) / weight, 0), 1) : 0
+            let pageCount = max(1, chapterPageCounts[idx] ?? 1)
+            let pageIndex = min(pageCount - 1, Int(within * Double(pageCount)))
+            setTarget(chapterIndex: idx, pageIndex: pageIndex)
+            return
+          }
+          accumulated += weight
+        }
+        return
+      }
+
+      let totalPages = totalPageCount()
+      guard totalPages > 0 else { return }
+      let overallIndex = min(totalPages - 1, max(0, Int((target * Double(totalPages)).rounded(.down))))
+      for idx in 0..<readingOrder.count {
+        let count = max(1, chapterPageCounts[idx] ?? 1)
+        let offset = pageOffsetBeforeChapter(idx)
+        if overallIndex < offset + count || idx == readingOrder.count - 1 {
+          setTarget(chapterIndex: idx, pageIndex: min(count - 1, overallIndex - offset))
+          return
+        }
+      }
+    }
+
     private func updateProgression(
       chapterIndex: Int,
       pageIndex: Int,
@@ -1245,6 +1361,62 @@
         )
         return false
       }
+    }
+
+    /// Retries the remote progression fetch with exponential backoff while the
+    /// session is suppressed because of a transient fetch failure. On success
+    /// the suppression lifts; a restored position is applied only while the
+    /// reader still sits at the fallback position.
+    private func scheduleProgressionFetchRetry(bookId: String) {
+      progressionRetryTask?.cancel()
+      progressionRetryTask = Task { [weak self] in
+        var delay: TimeInterval = 2
+        let maxDelay: TimeInterval = 60
+        while !Task.isCancelled {
+          try? await Task.sleep(for: .seconds(delay))
+          guard !Task.isCancelled else { return }
+          guard let self, self.bookId == bookId, self.progressSubmissionSuppressed else { return }
+          let failed = await self.syncRemoteProgressionToLocal(bookId: bookId)
+          if failed {
+            delay = min(delay * 2, maxDelay)
+            continue
+          }
+          await self.applyRetriedRemoteProgression(bookId: bookId)
+          return
+        }
+      }
+    }
+
+    private func applyRetriedRemoteProgression(bookId: String) async {
+      guard let database = await DatabaseOperator.databaseIfConfigured() else { return }
+      guard
+        let progression = await database.fetchBookEpubProgression(bookId: bookId),
+        let chapterIndex = chapterIndexForHref(progression.locator.href)
+      else {
+        // The server has no progress after all, so the fallback position is
+        // safe to upload.
+        progressSubmissionSuppressed = false
+        logger.info(
+          "✅ [Progress/Epub] Remote progression retry succeeded; no server progress exists, lifting submission suppression: book=\(bookId)"
+        )
+        return
+      }
+      // A reader who already moved past the fallback keeps their place; the
+      // session stays suppressed so that position cannot regress the server.
+      guard currentChapterIndex == 0, currentPageIndex == 0 else {
+        logger.warning(
+          "⚠️ [Progress/Epub] Remote progression retry found server progress but the reader already moved; keeping submission suppressed: book=\(bookId)"
+        )
+        return
+      }
+      progressSubmissionSuppressed = false
+      let pageCount = chapterPageCounts[chapterIndex] ?? 1
+      let progressionValue = Double(progression.locator.locations?.progression ?? 0)
+      let pageIndex = max(0, min(pageCount - 1, Int(floor(Double(pageCount) * progressionValue))))
+      logger.info(
+        "✅ [Progress/Epub] Remote progression retry restored chapter=\(chapterIndex) page=\(pageIndex), lifting submission suppression: book=\(bookId)"
+      )
+      setTarget(chapterIndex: chapterIndex, pageIndex: pageIndex)
     }
 
     /// Maps a page-based server read progress to a locator using the WebPub
