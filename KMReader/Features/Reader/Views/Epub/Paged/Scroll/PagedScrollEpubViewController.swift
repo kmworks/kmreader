@@ -63,8 +63,11 @@
     // Chapter navigation
     private var totalChapters: Int = 1
     var onChapterNavigationNeeded: ((Int) -> Void)?
-    var onPageDidChange: ((Int, Int) -> Void)?
-    var onPageCountReady: ((Int, Int) -> Void)?
+    var navigationID = UUID()
+    private var paginationNavigationID = UUID()
+    private var renderedNavigationID = UUID()
+    var onPageDidChange: ((Int, Int, UUID) -> Void)?
+    var onPageCountReady: ((Int, Int, UUID) -> Void)?
 
     var currentChapterIndex: Int { chapterIndex }
     var currentPageIndex: Int { currentSubPageIndex }
@@ -451,7 +454,7 @@
       if targetPage != currentSubPageIndex {
         currentSubPageIndex = targetPage
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
       }
     }
 
@@ -481,7 +484,7 @@
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
       updateOverlayLabels()
-      onPageDidChange?(chapterIndex, currentSubPageIndex)
+      onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
     }
 
     private func scrollToNextPage() {
@@ -501,7 +504,7 @@
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
       updateOverlayLabels()
-      onPageDidChange?(chapterIndex, currentSubPageIndex)
+      onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
     }
 
     private func applyTheme() {
@@ -539,6 +542,7 @@
       publicationReadingProgression: WebPubReadingProgression?,
       animatePageTransitions: Bool,
       chapterIndex: Int,
+      navigationID: UUID,
       targetPageIndex: Int?,
       targetProgression: Double?,
       totalChapters: Int,
@@ -572,7 +576,8 @@
         let pageIndex = max(0, targetPageIndex)
         let preferLastPage = targetPageIndex < 0
         navigationChanged =
-          pendingPageIndex != pageIndex
+          self.navigationID != navigationID
+          || pendingPageIndex != pageIndex
           || pendingJumpToLastPage != preferLastPage
           || targetProgressionOnReady != targetProgression
         pendingPageIndex = pageIndex
@@ -582,6 +587,7 @@
         navigationChanged = false
       }
 
+      self.navigationID = navigationID
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
       self.rootURL = rootURL
@@ -691,6 +697,9 @@
         loadingIndicator?.startAnimating()
       }
 
+      paginationGeneration += 1
+      let generation = paginationGeneration
+      paginationNavigationID = navigationID
       injectCSS(
         contentCSS,
         readiumProperties: readiumProperties,
@@ -698,9 +707,10 @@
         language: publicationLanguage,
         readingProgression: publicationReadingProgression
       ) { [weak self] in
-        self?.injectPaginationJS(
+        guard let self, generation == paginationGeneration else { return }
+        self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self?.pendingJumpToLastPage ?? false
+          preferLastPage: self.pendingJumpToLastPage
         )
       }
     }
@@ -734,7 +744,6 @@
     }
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
-      paginationGeneration += 1
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
         targetPageIndex: targetPageIndex,
         preferLastPage: preferLastPage,
@@ -780,7 +789,9 @@
         anchor: anchor,
         paginationLayout: paginationLayout
       )
-      webView.evaluateJavaScript(js) { result, error in
+      let requestID = navigationID
+      webView.evaluateJavaScript(js) { [weak self] result, error in
+        guard let self, self.navigationID == requestID else { return }
         if error != nil {
           completion(nil)
         } else {
@@ -837,7 +848,7 @@
           if let page {
             self.currentSubPageIndex = page
             self.updateOverlayLabels()
-            self.onPageDidChange?(self.chapterIndex, page)
+            self.onPageDidChange?(self.chapterIndex, page, self.renderedNavigationID)
             self.onAnchorJump?(originPage)
           } else {
             self.onLinkTap?(url)
@@ -856,6 +867,7 @@
     ) {
       guard let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
+      guard paginationNavigationID == navigationID else { return }
 
       if type == "ready" {
         if let generation = body["generation"] as? Int,
@@ -863,12 +875,13 @@
         {
           return
         }
+        renderedNavigationID = paginationNavigationID
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
           var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
 
           totalPagesInChapter = normalizedTotal
-          onPageCountReady?(chapterIndex, normalizedTotal)
+          onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
 
           let shouldJumpToLastPage = pendingJumpToLastPage
           if shouldJumpToLastPage {
@@ -896,7 +909,7 @@
               if resolvedPage == nil { scrollToPage(0, animated: false) }
               self.currentSubPageIndex = page
               self.updateOverlayLabels()
-              self.onPageDidChange?(self.chapterIndex, page)
+              self.onPageDidChange?(self.chapterIndex, page, self.renderedNavigationID)
             }
           }
         }
@@ -905,7 +918,7 @@
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
       } else if type == "pageCountUpdate" {
         if let generation = body["generation"] as? Int,
           generation != paginationGeneration
@@ -921,7 +934,7 @@
         }
         if totalPagesInChapter != normalizedTotal {
           totalPagesInChapter = normalizedTotal
-          onPageCountReady?(chapterIndex, normalizedTotal)
+          onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
         }
         updateOverlayLabels()
       } else if type == "writingModeMismatch" {
@@ -1030,7 +1043,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
       }
     }
 

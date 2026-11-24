@@ -83,16 +83,13 @@
           pageIndex: targetChapterIndex < viewModel.currentChapterIndex ? -1 : 0
         )
       }
-      vc.onPageDidChange = { [weak viewModel] chapterIndex, pageIndex in
-        guard let viewModel = viewModel else { return }
-        let normalizedPageIndex = max(0, pageIndex)
-        viewModel.currentChapterIndex = chapterIndex
-        viewModel.currentPageIndex = normalizedPageIndex
-        viewModel.clearNavigationTarget()
-        viewModel.pageDidChange()
+      vc.navigationID = viewModel.navigationID
+      vc.onPageDidChange = { [weak viewModel] chapterIndex, pageIndex, navigationID in
+        viewModel?.commitScrollPosition(chapterIndex: chapterIndex, pageIndex: pageIndex, navigationID: navigationID)
       }
-      vc.onPageCountReady = { [weak viewModel] chapterIndex, pageCount in
-        viewModel?.updateChapterPageCount(pageCount, for: chapterIndex)
+      vc.onPageCountReady = { [weak viewModel] chapterIndex, pageCount, navigationID in
+        guard let viewModel, viewModel.navigationID == navigationID else { return }
+        viewModel.updateChapterPageCount(pageCount, for: chapterIndex)
       }
       vc.onLinkTap = { [weak viewModel] url in
         viewModel?.navigateToURL(url)
@@ -165,6 +162,7 @@
         publicationLanguage: viewModel.publicationLanguage,
         publicationReadingProgression: viewModel.publicationReadingProgression,
         chapterIndex: chapterIndex,
+        navigationID: viewModel.navigationID,
         targetPageIndex: viewModel.targetPageIndex,
         targetProgression: viewModel.requestedProgression(for: chapterIndex),
         totalChapters: viewModel.chapterCount,

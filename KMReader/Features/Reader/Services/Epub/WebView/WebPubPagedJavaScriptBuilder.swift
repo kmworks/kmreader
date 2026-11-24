@@ -195,7 +195,7 @@
           var rewrittenElements = new WeakSet();
           window.__kmRewriteDarkText = function() {
             if (!document.body || !window.getComputedStyle) { return; }
-            var all = document.body.querySelectorAll('*');
+            var all = [document.body].concat(Array.from(document.body.querySelectorAll('*')));
             for (var i = 0; i < all.length; i++) {
               var el = all[i];
               if (rewrittenElements.has(el)) { continue; }

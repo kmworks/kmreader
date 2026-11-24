@@ -847,7 +847,8 @@
         commitLocation(
           chapterIndex: session.target.chapterIndex,
           pageIndex: session.target.controller.currentSubPageIndex,
-          notify: true
+          notify: true,
+          isInteractive: session.isInteractive
         )
       }
 
@@ -865,7 +866,7 @@
         }
       }
 
-      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
+      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool, isInteractive: Bool = false) {
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
         scheduleBacksideImageCapture(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -893,9 +894,13 @@
           }
           parent.viewModel.currentChapterIndex = chapterIndex
           parent.viewModel.currentPageIndex = pageIndex
-          parent.viewModel.clearNavigationTarget()
-          parent.viewModel.pageDidChange()
-          currentChapterController?.applyPendingAnchor()
+          if isInteractive {
+            parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
+          } else {
+            parent.viewModel.clearNavigationTarget()
+            parent.viewModel.pageDidChange()
+            currentChapterController?.applyPendingAnchor()
+          }
         }
       }
 

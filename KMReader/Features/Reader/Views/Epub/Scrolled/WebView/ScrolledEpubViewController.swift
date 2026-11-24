@@ -56,8 +56,11 @@
     // Chapter navigation
     private var totalChapters: Int = 1
     var onChapterNavigationNeeded: ((Int) -> Void)?
-    var onPageDidChange: ((Int, Int) -> Void)?
-    var onPageCountReady: ((Int, Int) -> Void)?
+    var navigationID = UUID()
+    private var paginationNavigationID = UUID()
+    private var renderedNavigationID = UUID()
+    var onPageDidChange: ((Int, Int, UUID) -> Void)?
+    var onPageCountReady: ((Int, Int, UUID) -> Void)?
     /// Called when an in-book link target needs view-model navigation
     /// (cross-chapter links, images).
     var onLinkTap: ((URL) -> Void)?
@@ -466,6 +469,7 @@
       publicationLanguage: String?,
       publicationReadingProgression: WebPubReadingProgression?,
       chapterIndex: Int,
+      navigationID: UUID,
       targetPageIndex: Int?,
       targetProgression: Double?,
       totalChapters: Int,
@@ -502,7 +506,8 @@
         let pageIndex = max(0, targetPageIndex)
         let preferLastPage = targetPageIndex < 0
         navigationChanged =
-          pendingPageIndex != pageIndex
+          self.navigationID != navigationID
+          || pendingPageIndex != pageIndex
           || pendingJumpToLastPage != preferLastPage
           || targetProgressionOnReady != targetProgression
         pendingPageIndex = pageIndex
@@ -512,6 +517,7 @@
         navigationChanged = false
       }
 
+      self.navigationID = navigationID
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
       self.rootURL = rootURL
@@ -615,7 +621,9 @@
         return
       }
       let js = WebPubPagedJavaScriptBuilder.makeScrollToDocumentAnchorScript(anchor: anchor)
-      webView.evaluateJavaScript(js) { result, error in
+      let requestID = navigationID
+      webView.evaluateJavaScript(js) { [weak self] result, error in
+        guard let self, self.navigationID == requestID else { return }
         if error != nil {
           completion(false)
         } else {
@@ -725,6 +733,7 @@
 
       readyToken += 1
       let currentReadyToken = readyToken
+      paginationNavigationID = navigationID
       injectCSS(
         contentCSS,
         readiumProperties: readiumProperties,
@@ -732,9 +741,10 @@
         language: publicationLanguage,
         readingProgression: publicationReadingProgression
       ) { [weak self] in
-        self?.injectPaginationJS(
+        guard let self, currentReadyToken == readyToken else { return }
+        self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self?.pendingJumpToLastPage ?? false,
+          preferLastPage: self.pendingJumpToLastPage,
           token: currentReadyToken
         )
       }
@@ -762,7 +772,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
       }
     }
 
@@ -1105,6 +1115,7 @@
     ) {
       guard let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
+      guard paginationNavigationID == navigationID else { return }
       if let token = body["token"] as? Int, token != readyToken {
         return
       }
@@ -1115,13 +1126,14 @@
         let normalizedTotal = max(1, total)
         if type == "ready" || normalizedTotal != totalPagesInChapter {
           totalPagesInChapter = normalizedTotal
-          onPageCountReady?(chapterIndex, normalizedTotal)
+          onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
         } else {
           totalPagesInChapter = normalizedTotal
         }
       }
 
       if type == "ready" {
+        renderedNavigationID = paginationNavigationID
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
           var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
@@ -1157,12 +1169,13 @@
             scrollToAnchor(anchor.anchor) { [weak self] found in
               guard let self, onPendingAnchorLanding?(anchor) == true else { return }
               if !found { scrollToPage(0, animated: false) }
+              let requestID = navigationID
               webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
-                guard let self else { return }
+                guard let self, navigationID == requestID else { return }
                 lastKnownDocumentScrollTop = (result as? Double) ?? 0
                 currentSubPageIndex = scrollPagination.pageIndex(at: lastKnownDocumentScrollTop)
                 updateOverlayLabels()
-                onPageDidChange?(chapterIndex, currentSubPageIndex)
+                onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
               }
             }
           }
@@ -1172,7 +1185,7 @@
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
       } else if type == "scroll" {
         let actualPage = max(
           0,
@@ -1181,7 +1194,7 @@
         if currentSubPageIndex != actualPage {
           currentSubPageIndex = actualPage
           updateOverlayLabels()
-          onPageDidChange?(chapterIndex, currentSubPageIndex)
+          onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
         }
       }
     }
@@ -1361,7 +1374,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
       }
     }
 

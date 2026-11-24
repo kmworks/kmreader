@@ -26,6 +26,7 @@
     var tableOfContents: [WebPubLink] = []
     var currentChapterIndex: Int = 0
     var currentPageIndex: Int = 0
+    private(set) var navigationID = UUID()
     private(set) var targetChapterIndex: Int?
     private(set) var targetPageIndex: Int?
     var currentLocation: WebPubLocation?
@@ -152,6 +153,7 @@
       downloadResumeTask?.cancel()
       downloadResumeTask = nil
 
+      navigationID = UUID()
       self.bookId = bookId
       isLoading = true
       errorMessage = nil
@@ -931,8 +933,27 @@
       targetPageIndex = nil
     }
 
+    func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
+      navigationID = UUID()
+      progressionNavigation = nil
+      pendingAnchor = nil
+      clearNavigationTarget()
+      currentChapterIndex = chapterIndex
+      currentPageIndex = pageIndex
+      pageDidChange()
+    }
+
+    func commitScrollPosition(chapterIndex: Int, pageIndex: Int, navigationID: UUID) {
+      guard navigationID == self.navigationID else { return }
+      currentChapterIndex = chapterIndex
+      currentPageIndex = max(0, pageIndex)
+      clearNavigationTarget()
+      pageDidChange()
+    }
+
     func navigateToPage(chapterIndex: Int, pageIndex: Int) {
       guard !readingOrder.isEmpty else { return }
+      navigationID = UUID()
       progressionNavigation = nil
       pendingAnchor = nil
       let normalizedChapterIndex = max(0, min(chapterIndex, readingOrder.count - 1))
@@ -948,6 +969,7 @@
       chapterIndex: Int, progression: Double, restoresRemoteProgress: Bool = false
     ) {
       guard readingOrder.indices.contains(chapterIndex) else { return }
+      navigationID = UUID()
       pendingAnchor = nil
       progressionNavigation = EpubProgressionNavigation(
         chapterIndex: chapterIndex,

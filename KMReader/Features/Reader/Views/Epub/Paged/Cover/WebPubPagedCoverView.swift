@@ -157,6 +157,7 @@
 
       struct SlideSession {
         let direction: SlideDirection
+        let isInteractive: Bool
         let target: TurnTarget
         let originPage: Int
         let overlay: UIView
@@ -507,7 +508,7 @@
         )
       }
 
-      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
+      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool, isInteractive: Bool = false) {
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
         guard notify else {
@@ -526,15 +527,19 @@
           }
           parent.viewModel.currentChapterIndex = chapterIndex
           parent.viewModel.currentPageIndex = pageIndex
-          parent.viewModel.clearNavigationTarget()
-          parent.viewModel.pageDidChange()
-          currentController?.applyPendingAnchor()
+          if isInteractive {
+            parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
+          } else {
+            parent.viewModel.clearNavigationTarget()
+            parent.viewModel.pageDidChange()
+            currentController?.applyPendingAnchor()
+          }
         }
       }
 
       // MARK: - Slide sessions
 
-      private func beginSlideSession(direction: SlideDirection, target: TurnTarget) -> Bool {
+      private func beginSlideSession(direction: SlideDirection, target: TurnTarget, isInteractive: Bool) -> Bool {
         guard session == nil else { return false }
         guard let container = containerViewController, let current = currentController else { return false }
         rubberOffset = 0
@@ -592,6 +597,7 @@
 
         session = SlideSession(
           direction: direction,
+          isInteractive: isInteractive,
           target: target,
           originPage: currentPageIndex,
           overlay: overlay
@@ -685,7 +691,8 @@
           commitLocation(
             chapterIndex: target.chapterIndex,
             pageIndex: target.subPageIndex,
-            notify: true
+            notify: true,
+            isInteractive: session.isInteractive
           )
         } else {
           let overlay = session.overlay
@@ -729,7 +736,7 @@
 
       func animateTransition(to target: TurnTarget) {
         let direction: SlideDirection = target.isForward ? .forward : .backward
-        guard beginSlideSession(direction: direction, target: target) else {
+        guard beginSlideSession(direction: direction, target: target, isInteractive: false) else {
           installDeck(
             around: target.host,
             chapterIndex: target.chapterIndex,
@@ -821,7 +828,7 @@
           layoutRubberband()
           return
         }
-        if beginSlideSession(direction: direction, target: target) {
+        if beginSlideSession(direction: direction, target: target, isInteractive: true) {
           let clamped = clampSessionOffset(translation.x, direction: direction, viewWidth: viewWidth)
           session?.offset = clamped
           layoutSession(offset: clamped)
