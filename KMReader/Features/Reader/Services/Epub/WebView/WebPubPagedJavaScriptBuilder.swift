@@ -585,6 +585,11 @@
       """
     }
 
+    static let scrolledPaginationGenerationScript = """
+      window.__kmreaderScrollGeneration = token;
+      var isCurrent = function() { return window.__kmreaderScrollGeneration === token; };
+      """
+
     // Mirrors EpubScrollPagination so native and document offsets round-trip.
     static let scrolledPaginationRuntimeScript = """
       var scrollPageOffset = function(index, total, maxScroll) {

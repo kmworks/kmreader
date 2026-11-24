@@ -29,6 +29,7 @@
     private var displayLists: [DisplayList] = []
     private var linkRegions: [LinkInteractionRegionSet] = []
     private var chapterLoadFailed = false
+    private var navigationID = UUID()
     private var currentChapterIndex: Int
     private var currentPageIndex: Int
     private var pendingPageCommitIndex: Int?
@@ -268,6 +269,7 @@
 
       let chapterIndex = max(
         0, min(viewModel.targetChapterIndex ?? viewModel.currentChapterIndex, viewModel.chapterCount - 1))
+      navigationID = viewModel.navigationID
       currentChapterIndex = chapterIndex
       currentPageIndex = max(0, viewModel.targetPageIndex ?? viewModel.currentPageIndex)
       restoreProgression = viewModel.requestedProgression(for: chapterIndex)
@@ -366,6 +368,7 @@
         return
       }
       guard isContentReady else { return }
+      if viewModel.targetChapterIndex == currentChapterIndex { navigationID = viewModel.navigationID }
       if chapterLoadFailed {
         viewModel.clearNavigationTarget()
         return
@@ -388,17 +391,19 @@
         direction = paginationLayout.usesReverseScrollLeft ? .forward : .reverse
       }
       pendingPageCommitIndex = pageIndex
+      let requestID = navigationID
       pageViewController.setViewControllers(
         [makePageController(at: pageIndex)],
         direction: direction,
         animated: animated
       ) { [weak self] completed in
-        guard completed else { return }
-        self?.commitPage(at: pageIndex, notify: true)
+        guard completed, let self, navigationID == requestID, viewModel.navigationID == requestID else { return }
+        commitPage(at: pageIndex, notify: true)
       }
     }
 
     private func commitPage(at pageIndex: Int, notify: Bool) {
+      guard navigationID == viewModel.navigationID else { return }
       pendingPageCommitIndex = nil
       currentPageIndex = pageIndex
       viewModel.currentChapterIndex = currentChapterIndex

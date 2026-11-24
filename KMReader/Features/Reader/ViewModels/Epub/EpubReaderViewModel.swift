@@ -934,7 +934,9 @@
     }
 
     func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
-      navigationID = UUID()
+      if progressionNavigation != nil || pendingAnchor != nil || targetChapterIndex != nil {
+        navigationID = UUID()
+      }
       progressionNavigation = nil
       pendingAnchor = nil
       clearNavigationTarget()

@@ -12,6 +12,7 @@
     private var layoutTask: Task<Void, Never>?
     private var layoutOperation: CoreTextEpubLayoutOperation?
     private var layoutGeneration = 0
+    private var layoutNavigationID = UUID()
     private var layoutSize: CGSize = .zero
     private var settleCompletions: [() -> Void] = []
     private var errorView: CoreTextChapterErrorView?
@@ -77,6 +78,7 @@
       }
 
       layoutGeneration += 1
+      layoutNavigationID = host.navigationID
       let generation = layoutGeneration
       layoutTask?.cancel()
       layoutOperation?.cancel()
@@ -159,7 +161,7 @@
       isContentLoaded = true
       showPage(at: 0)
       if previousPageIndex != 0 {
-        host.onPageIndexAdjusted?(0)
+        host.rendererDidAdjustPageIndex(0, navigationID: layoutNavigationID)
       }
       host.rendererStopLoading()
       host.onPaginationReady?()
@@ -170,7 +172,7 @@
       guard let host else { return }
       displayLists = pages
       self.linkRegions = linkRegions
-      host.rendererDidProducePageCount(pages.count)
+      host.rendererDidProducePageCount(pages.count, navigationID: layoutNavigationID)
 
       let requestedPage: Int
       if host.preferLastPageOnReady {
@@ -184,7 +186,7 @@
       host.rendererConsumePendingPageIndex()
       isContentLoaded = true
       showPage(at: pageIndex)
-      host.onPageIndexAdjusted?(pageIndex)
+      host.rendererDidAdjustPageIndex(pageIndex, navigationID: layoutNavigationID)
       host.rendererStopLoading()
       host.onPaginationReady?()
       finishSettleCompletions()
@@ -219,8 +221,13 @@
       let contentSize = displayView.bounds.size
       let shouldReload = !isContentLoaded || contentSize != layoutSize
       loadIfNeeded(force: shouldReload)
-      if isContentLoaded {
-        showPage(at: pageIndex)
+      if isContentLoaded, let host {
+        layoutNavigationID = host.navigationID
+        if errorView == nil {
+          installPages(displayLists, linkRegions: linkRegions)
+        } else {
+          showPage(at: pageIndex)
+        }
       }
     }
 

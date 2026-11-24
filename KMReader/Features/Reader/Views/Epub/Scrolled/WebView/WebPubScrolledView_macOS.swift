@@ -61,6 +61,9 @@
       )?
     private var infoOverlay: WebPubInfoOverlaySupport.AppKitOverlay?
 
+    private var navigationID: UUID
+    private var paginationNavigationID = UUID()
+    private var renderedNavigationID = UUID()
     private var chapterIndex: Int = 0
     private var currentSubPageIndex: Int = 0
     private var totalPagesInChapter: Int = 1
@@ -85,6 +88,7 @@
 
     init(parent: WebPubScrolledView) {
       self.parent = parent
+      navigationID = parent.viewModel.navigationID
       super.init()
     }
 
@@ -131,6 +135,7 @@
         || publicationReadingProgression != parent.viewModel.publicationReadingProgression
         || animateTapTurns != parent.animateTapTurns
 
+      navigationID = parent.viewModel.navigationID
       chapterIndex = selectedChapterIndex
       chapterURL = nextChapterURL
       chapterMediaType = nextChapterMediaType
@@ -178,6 +183,7 @@
     private func loadContent(in webView: WKWebView) {
       guard let chapterURL, let rootURL else { return }
       isContentLoaded = false
+      readyToken += 1
       lastKnownDocumentScrollTop = 0
       lastKnownDocumentContentHeight = 0
       lastKnownDocumentViewportHeight = 0
@@ -234,11 +240,13 @@
       guard isContentLoaded else { return }
       readyToken += 1
       let token = readyToken
+      paginationNavigationID = navigationID
       injectCSS(on: webView) { [weak self] in
-        self?.injectPaginationJS(
+        guard let self, token == readyToken else { return }
+        self.injectPaginationJS(
           on: webView,
           targetPageIndex: targetPageIndex,
-          preferLastPage: self?.pendingJumpToLastPage ?? false,
+          preferLastPage: self.pendingJumpToLastPage,
           token: token
         )
       }
@@ -365,8 +373,12 @@
         return
       }
       let js = WebPubPagedJavaScriptBuilder.makeScrollToDocumentAnchorScript(anchor: anchor)
-      webView.evaluateJavaScript(js) { result, _ in
+      let requestID = navigationID
+      webView.evaluateJavaScript(js) { [weak self] result, _ in
         Task { @MainActor in
+          guard let self, self.navigationID == requestID, self.parent.viewModel.navigationID == requestID else {
+            return
+          }
           completion((result as? Bool) ?? false)
         }
       }
@@ -428,6 +440,7 @@
     ) {
       guard let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
+      guard paginationNavigationID == navigationID, navigationID == parent.viewModel.navigationID else { return }
       if let token = body["token"] as? Int, token != readyToken {
         return
       }
@@ -437,7 +450,9 @@
       if let total = body["totalPages"] as? Int {
         let normalizedTotal = max(1, total)
         totalPagesInChapter = normalizedTotal
-        parent.viewModel.updateChapterPageCount(normalizedTotal, for: chapterIndex)
+        if navigationID == parent.viewModel.navigationID {
+          parent.viewModel.updateChapterPageCount(normalizedTotal, for: chapterIndex)
+        }
       }
 
       let actualPage = max(
@@ -446,6 +461,7 @@
       )
 
       if type == "ready" {
+        renderedNavigationID = paginationNavigationID
         var resolvedPage = actualPage
         if pendingJumpToLastPage {
           resolvedPage = max(0, totalPagesInChapter - 1)
@@ -469,8 +485,11 @@
           scrollToAnchor(anchor.anchor, on: webView) { [weak self] found in
             guard let self, parent.viewModel.acknowledgeAnchorNavigation(anchor) else { return }
             if !found { scrollDocument(to: 0) }
+            let requestID = navigationID
             webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
-              guard let self else { return }
+              guard let self, self.navigationID == requestID, self.parent.viewModel.navigationID == requestID else {
+                return
+              }
               let offset = (result as? Double) ?? 0
               currentSubPageIndex = scrollPagination.pageIndex(at: CGFloat(offset))
               updateViewModelLocation(from: currentSubPageIndex)
@@ -486,10 +505,9 @@
 
     private func updateViewModelLocation(from pageIndex: Int) {
       let normalizedPageIndex = max(0, pageIndex)
-      parent.viewModel.currentChapterIndex = chapterIndex
-      parent.viewModel.currentPageIndex = normalizedPageIndex
-      parent.viewModel.clearNavigationTarget()
-      parent.viewModel.pageDidChange()
+      parent.viewModel.commitScrollPosition(
+        chapterIndex: chapterIndex, pageIndex: normalizedPageIndex, navigationID: renderedNavigationID
+      )
       updateOverlayLabels()
     }
 
@@ -524,6 +542,7 @@
             var requiresFullExtent = \(targetProgressionOnReady != nil || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex) ? "true" : "false");
             var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
+            \(WebPubPagedJavaScriptBuilder.scrolledPaginationGenerationScript)
             var hasFinalized = false;
             \(WebPubPagedJavaScriptBuilder.scrolledPaginationRuntimeScript)
 
@@ -537,6 +556,7 @@
                 return;
               }
               window.__kmreaderPostMetrics = function(type) {
+                if (window.__kmreaderCurrentToken !== window.__kmreaderScrollGeneration) { return; }
                 var root = document.documentElement;
                 var body = document.body;
                 var scrolling = document.scrollingElement || root || body;
@@ -612,7 +632,7 @@
             };
 
             var finalize = function() {
-              if (hasFinalized) return;
+              if (!isCurrent() || hasFinalized) return;
               hasFinalized = true;
               installMetricsBridge();
 
@@ -645,7 +665,7 @@
               if (document.body) { document.body.scrollTop = offset; }
 
               setTimeout(function() {
-                if (window.__kmreaderPostMetrics) {
+                if (isCurrent() && window.__kmreaderPostMetrics) {
                   window.__kmreaderPostMetrics('ready');
                 }
               }, 60);
@@ -659,7 +679,7 @@
               clearTimeout(timeout);
               var attempt = 0;
               var poll = function() {
-                if (hasFinalized) return;
+                if (!isCurrent() || hasFinalized) return;
                 attempt++;
                 if (needsFullExtent && attempt < imageWaitMaxAttempts && imagesPending()) {
                   window.requestAnimationFrame(poll);

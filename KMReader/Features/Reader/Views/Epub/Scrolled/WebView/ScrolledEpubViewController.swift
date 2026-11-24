@@ -901,6 +901,7 @@
             var requiresFullExtent = \(targetProgressionOnReady != nil || requiresFullExtentProvider?(chapterIndex) == true ? "true" : "false");
             var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
+            \(WebPubPagedJavaScriptBuilder.scrolledPaginationGenerationScript)
             var hasFinalized = false;
             \(WebPubPagedJavaScriptBuilder.scrolledPaginationRuntimeScript)
 
@@ -914,6 +915,7 @@
                 return;
               }
               window.__kmreaderPostMetrics = function(type) {
+                if (window.__kmreaderCurrentToken !== window.__kmreaderScrollGeneration) { return; }
                 var root = document.documentElement;
                 var body = document.body;
                 var scrolling = document.scrollingElement || root || body;
@@ -989,7 +991,7 @@
             };
 
             var finalize = function() {
-              if (hasFinalized) return;
+              if (!isCurrent() || hasFinalized) return;
               hasFinalized = true;
               installMetricsBridge();
 
@@ -1023,7 +1025,7 @@
               if (document.body) { document.body.scrollTop = offset; }
 
               setTimeout(function() {
-                if (window.__kmreaderPostMetrics) {
+                if (isCurrent() && window.__kmreaderPostMetrics) {
                   window.__kmreaderPostMetrics('ready');
                 }
               }, 60);
@@ -1036,7 +1038,7 @@
               var attempt = 0;
 
               var check = function() {
-                if (hasFinalized) return;
+                if (!isCurrent() || hasFinalized) return;
 
                 attempt++;
                 var body = document.body;

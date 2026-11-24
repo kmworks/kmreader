@@ -95,22 +95,7 @@
         context.coordinator.installInitialLocation(in: pageVC)
       }
 
-      if let targetChapterIndex = viewModel.targetChapterIndex,
-        let targetPageIndex = viewModel.targetPageIndex,
-        !context.coordinator.hasActiveTurnSession,
-        !context.coordinator.isAnimating,
-        !(pageVC.transitionCoordinator?.isAnimated ?? false),
-        targetChapterIndex >= 0,
-        targetChapterIndex < viewModel.chapterCount,
-        targetChapterIndex != context.coordinator.currentChapterIndex
-          || targetPageIndex != context.coordinator.currentPageIndex
-      {
-        context.coordinator.performProgrammaticTurn(
-          chapterIndex: targetChapterIndex,
-          pageIndex: targetPageIndex,
-          in: pageVC
-        )
-      }
+      context.coordinator.navigateToPendingTarget()
 
       context.coordinator.reconfigureHosts()
     }
@@ -190,6 +175,7 @@
 
       private struct TurnSession {
         let isInteractive: Bool
+        let navigationID: UUID
         let target: TurnTarget
         let targetShell: CurlPageShellViewController
         let leafShell: CurlPageShellViewController
@@ -321,12 +307,32 @@
         return controller
       }
 
+      func navigateToPendingTarget() {
+        guard let pageVC = pageViewController else { return }
+        if let targetChapterIndex = parent.viewModel.targetChapterIndex,
+          let targetPageIndex = parent.viewModel.targetPageIndex,
+          !hasActiveTurnSession,
+          !isAnimating,
+          !(pageVC.transitionCoordinator?.isAnimated ?? false),
+          targetChapterIndex >= 0,
+          targetChapterIndex < parent.viewModel.chapterCount,
+          targetChapterIndex != currentChapterIndex
+            || targetPageIndex != currentPageIndex
+        {
+          performProgrammaticTurn(
+            chapterIndex: targetChapterIndex,
+            pageIndex: targetPageIndex,
+            in: pageVC
+          )
+        }
+      }
+
       private func wireController(_ controller: EpubPageViewController) {
         controller.onRepagination = { [weak self] in
           self?.invalidateBacksideCache()
         }
         controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
-          guard let self, let controller else { return }
+          guard let self, let controller, controller.isNavigationCurrent else { return }
           guard self.currentChapterController === controller, self.turnSession == nil else { return }
           let chapterIndex = controller.chapterIndex
           let storedCount = self.parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
@@ -352,6 +358,11 @@
         if let currentChapterController { reconfigureHost(currentChapterController) }
         if let nextChapterController { reconfigureHost(nextChapterController) }
         if let previousChapterController { reconfigureHost(previousChapterController) }
+        if !isAnimating, turnSession == nil {
+          if let currentChapterController { pageControllerFactory.prepareNavigation(on: currentChapterController) }
+          if let nextChapterController { pageControllerFactory.prepareNavigation(on: nextChapterController) }
+          if let previousChapterController { pageControllerFactory.prepareNavigation(on: previousChapterController) }
+        }
       }
 
       // MARK: - Neighbor preloading
@@ -552,6 +563,7 @@
           onReady(nil)
           return
         }
+        let requestID = parent.viewModel.navigationID
         let targetShell = CurlPageShellViewController()
         // Pre-size so the hosted web view never passes through a zero-size layout,
         // which would trigger a throwaway re-pagination.
@@ -563,6 +575,7 @@
         ) -> TurnSession {
           TurnSession(
             isInteractive: isInteractive,
+            navigationID: requestID,
             target: target,
             targetShell: targetShell,
             leafShell: leaf,
@@ -848,25 +861,32 @@
           chapterIndex: session.target.chapterIndex,
           pageIndex: session.target.controller.currentSubPageIndex,
           notify: true,
-          isInteractive: session.isInteractive
+          isInteractive: session.isInteractive,
+          navigationID: session.navigationID
         )
       }
 
       private func cancelTurnSession(_ session: TurnSession) {
         turnSession = nil
-        guard !session.target.isCrossChapter else { return }
-        guard let current = currentChapterController else {
+        let finish = {
           session.leafSnapshot?.removeFromSuperview()
+          if self.parent.viewModel.navigationID != session.navigationID {
+            self.navigateToPendingTarget()
+            self.reconfigureHosts()
+          }
+        }
+        guard !session.target.isCrossChapter, let current = currentChapterController else {
+          finish()
           return
         }
         session.leafShell.adopt(current)
-        // Keep the leaf snapshot on top until the live view has scrolled back to it.
-        current.scrollToPageIndex(session.originPage) {
-          session.leafSnapshot?.removeFromSuperview()
-        }
+        current.scrollToPageIndex(session.originPage, completion: finish)
       }
 
-      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool, isInteractive: Bool = false) {
+      func commitLocation(
+        chapterIndex: Int, pageIndex: Int, notify: Bool, isInteractive: Bool = false, navigationID: UUID? = nil
+      ) {
+        let requestID = navigationID ?? currentChapterController?.navigationID ?? parent.viewModel.navigationID
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
         scheduleBacksideImageCapture(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -888,6 +908,11 @@
           return
         }
         Task { @MainActor in
+          guard parent.viewModel.navigationID == requestID else {
+            navigateToPendingTarget()
+            reconfigureHosts()
+            return
+          }
           if let controller = currentChapterController {
             controller.preferLastPageOnReady = false
             controller.targetProgressionOnReady = nil

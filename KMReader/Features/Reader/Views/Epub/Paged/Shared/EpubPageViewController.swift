@@ -6,6 +6,36 @@
     private let renderingEngine: EpubRenderingEngine
     private var configuration: EpubChapterConfiguration
     private var renderer: EpubPageRenderer?
+    private(set) var navigationID = UUID()
+    var navigationIsCurrent: ((UUID) -> Bool)?
+
+    var isNavigationCurrent: Bool {
+      navigationIsCurrent?(navigationID) == true
+    }
+
+    func acceptsNavigation(_ navigationID: UUID) -> Bool {
+      self.navigationID == navigationID && navigationIsCurrent?(navigationID) == true
+    }
+
+    func prepareNavigation(_ navigationID: UUID, pageIndex: Int? = nil, progression: Double? = nil) {
+      guard self.navigationID != navigationID else { return }
+      self.navigationID = navigationID
+      hasPaginated = false
+      targetProgressionOnReady = progression
+      if let pageIndex {
+        preferLastPageOnReady = pageIndex < 0
+        if pageIndex >= 0 {
+          currentSubPageIndex = pageIndex
+          pendingPageIndex = pageIndex
+        }
+      }
+      if isContentLoaded { refreshDisplay() }
+    }
+
+    func rendererDidAdjustPageIndex(_ pageIndex: Int, navigationID: UUID) {
+      guard acceptsNavigation(navigationID) else { return }
+      onPageIndexAdjusted?(pageIndex)
+    }
     var currentSubPageIndex: Int
     var totalPagesInChapter: Int
     private var lastLayoutSize: CGSize = .zero
@@ -362,21 +392,25 @@
       pendingPageIndex = nil
     }
 
-    func rendererDidProducePageCount(_ pageCount: Int) {
+    func rendererDidProducePageCount(_ pageCount: Int, navigationID: UUID) {
+      guard self.navigationID == navigationID else { return }
       hasPaginated = true
       totalPagesInChapter = pageCount
-      onPageCountReady?(pageCount)
+      if acceptsNavigation(navigationID) { onPageCountReady?(pageCount) }
     }
 
     func applyPendingAnchor() {
       guard hasPaginated, let anchor = pendingAnchorProvider?(chapterIndex) else { return }
+      let requestID = navigationID
       scrollToAnchor(anchor.anchor) { [weak self] page in
-        guard let self, onPendingAnchorLanding?(anchor) == true else { return }
+        guard let self, acceptsNavigation(requestID) else { return }
         if let page {
+          guard onPendingAnchorLanding?(anchor) == true else { return }
           commitAnchorLanding(page: page, originPage: nil)
         } else {
           scrollToPageIndex(0) { [weak self] in
-            self?.commitAnchorLanding(page: 0, originPage: nil)
+            guard let self, acceptsNavigation(requestID), onPendingAnchorLanding?(anchor) == true else { return }
+            commitAnchorLanding(page: 0, originPage: nil)
           }
         }
       }
@@ -387,7 +421,7 @@
     // and curl controllers have no scroll delegate reporting programmatic
     // offsets, so the anchor script's resolved page must be committed here.
     func commitAnchorLanding(page: Int, originPage: Int?) {
-      guard page >= 0, page < totalPagesInChapter else { return }
+      guard isNavigationCurrent, page >= 0, page < totalPagesInChapter else { return }
       currentSubPageIndex = page
       onPageIndexAdjusted?(page)
       updateOverlayLabels()

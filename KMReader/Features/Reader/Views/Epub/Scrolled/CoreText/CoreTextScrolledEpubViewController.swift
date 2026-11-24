@@ -29,6 +29,7 @@
     private var layoutTask: Task<Void, Never>?
     private var layoutOperation: CoreTextEpubLayoutOperation?
     private var layoutGeneration = 0
+    private var navigationID = UUID()
     private var currentChapterIndex: Int
     private var currentPageIndex: Int
     private var restoreProgression: Double?
@@ -268,6 +269,7 @@
 
       let chapterIndex = max(
         0, min(viewModel.targetChapterIndex ?? viewModel.currentChapterIndex, viewModel.chapterCount - 1))
+      navigationID = viewModel.navigationID
       currentChapterIndex = chapterIndex
       currentPageIndex = max(0, viewModel.targetPageIndex ?? viewModel.currentPageIndex)
       restoreProgression = viewModel.requestedProgression(for: chapterIndex)
@@ -366,6 +368,7 @@
         return
       }
       guard isContentReady else { return }
+      if viewModel.targetChapterIndex == currentChapterIndex { navigationID = viewModel.navigationID }
       if errorView != nil {
         viewModel.clearNavigationTarget()
         return
@@ -399,6 +402,7 @@
     }
 
     private func updatePageFromScroll() {
+      guard navigationID == viewModel.navigationID else { return }
       let pageIndex = scrollPagination.pageIndex(at: scrollView.contentOffset.y)
       currentPageIndex = pageIndex
       viewModel.currentChapterIndex = currentChapterIndex

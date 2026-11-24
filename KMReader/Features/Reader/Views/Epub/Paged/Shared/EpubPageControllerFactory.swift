@@ -83,6 +83,10 @@
         renderingEngine: renderingEngine,
         onPageCountReady: onPageCountReady
       )
+      controller.navigationIsCurrent = { [weak viewModel] navigationID in
+        viewModel?.navigationID == navigationID
+      }
+      controller.prepareNavigation(viewModel.navigationID)
       controller.requiresFullExtentProvider = { [weak viewModel] chapterIndex in
         viewModel?.navigationRequiresFullExtent(for: chapterIndex) ?? false
       }
@@ -147,6 +151,17 @@
         configuration,
         onPageCountReady: pageCountCallback(chapterIndex: chapterIndex)
       )
+    }
+
+    func prepareNavigation(on controller: EpubPageViewController) {
+      let chapterIndex = controller.chapterIndex
+      if viewModel.targetChapterIndex == nil || viewModel.targetChapterIndex == chapterIndex {
+        controller.prepareNavigation(
+          viewModel.navigationID,
+          pageIndex: viewModel.targetChapterIndex == chapterIndex ? viewModel.targetPageIndex : nil,
+          progression: viewModel.requestedProgression(for: chapterIndex)
+        )
+      }
     }
 
     private func pageCountCallback(chapterIndex: Int) -> (Int) -> Void {

@@ -9,6 +9,7 @@
     private var webView: WKWebView!
     private let epubResourceSchemeHandler = EpubResourceSchemeHandler()
     private var paginationGeneration = 0
+    private var paginationNavigationID = UUID()
     // Set when the content probe reports a publisher-declared vertical writing
     // mode that the manifest metadata did not advertise.
     private var detectedVerticalLayout = false
@@ -121,6 +122,7 @@
       // New content loading - show indicator and keep webview active but hidden
       isContentLoaded = false
       detectedVerticalLayout = false
+      paginationGeneration += 1
       refreshDocumentStartUserScript()
       host.rendererPrepareForReload()
 
@@ -150,8 +152,11 @@
         host?.rendererStartLoading()
       }
 
+      paginationGeneration += 1
+      let generation = paginationGeneration
+      paginationNavigationID = host?.navigationID ?? UUID()
       injectCSS { [weak self] in
-        guard let self else { return }
+        guard let self, generation == paginationGeneration else { return }
         self.injectPaginationJS(
           targetPageIndex: pageIndex,
           preferLastPage: self.host?.preferLastPageOnReady ?? false
@@ -182,7 +187,6 @@
     }
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
-      paginationGeneration += 1
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
         targetPageIndex: targetPageIndex,
         preferLastPage: preferLastPage,
@@ -237,8 +241,10 @@
         anchor: anchor,
         paginationLayout: paginationLayout
       )
-      webView.evaluateJavaScript(js) { result, _ in
+      let requestID = host?.navigationID
+      webView.evaluateJavaScript(js) { [weak host] result, _ in
         Task { @MainActor in
+          guard let host, let requestID, host.acceptsNavigation(requestID) else { return }
           completion(result as? Int)
         }
       }
@@ -334,6 +340,7 @@
     ) {
       guard let host, let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
+      guard paginationNavigationID == host.navigationID else { return }
 
       if type == "ready" {
         // A superseded pagination pass must not resurrect stale counts or positions.
@@ -342,7 +349,7 @@
           let normalizedTotal = max(1, total)
           var actualPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
 
-          host.rendererDidProducePageCount(normalizedTotal)
+          host.rendererDidProducePageCount(normalizedTotal, navigationID: paginationNavigationID)
 
           // Handle target progression jump if requested (e.g. on initial book open).
           // We ignore this if preferLastPageOnReady is true, as that takes precedence.
@@ -357,7 +364,7 @@
 
           // Sync the current sub-page index with the actual page landed on by JS or progression calculation.
           host.currentSubPageIndex = actualPage
-          host.onPageIndexAdjusted?(actualPage)
+          host.rendererDidAdjustPageIndex(actualPage, navigationID: paginationNavigationID)
 
           host.preferLastPageOnReady = false
           host.updateOverlayLabels()
@@ -376,13 +383,13 @@
         if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
         let normalizedTotal = max(1, total)
         if host.totalPagesInChapter != normalizedTotal {
-          host.rendererDidProducePageCount(normalizedTotal)
+          host.rendererDidProducePageCount(normalizedTotal, navigationID: paginationNavigationID)
         }
         // The keep-page pass tracks the chapter end when the reader was on
         // the last page; adopt where it landed without re-scrolling.
         if let currentPage = body["currentPage"] as? Int, host.currentSubPageIndex != currentPage {
           host.currentSubPageIndex = currentPage
-          host.onPageIndexAdjusted?(currentPage)
+          host.rendererDidAdjustPageIndex(currentPage, navigationID: paginationNavigationID)
         }
         host.updateOverlayLabels()
       } else if type == "writingModeMismatch" {
