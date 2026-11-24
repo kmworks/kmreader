@@ -366,8 +366,21 @@
       pendingAnchorProvider?(chapterIndex)
     }
 
-    func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
-      renderer?.scrollToAnchor(anchor, completion: completion) ?? completion(false)
+    // Commits a programmatic anchor landing so the native page state, the
+    // overlay labels, and progress reporting follow the jumped-to page. Cover
+    // and curl controllers have no scroll delegate reporting programmatic
+    // offsets, so the anchor script's resolved page must be committed here.
+    func commitAnchorLanding(page: Int, originPage: Int?) {
+      currentSubPageIndex = page
+      onPageIndexAdjusted?(page)
+      updateOverlayLabels()
+      if let originPage {
+        onAnchorJump?(originPage)
+      }
+    }
+
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
+      renderer?.scrollToAnchor(anchor, completion: completion) ?? completion(nil)
     }
 
     func rendererStartLoading() {

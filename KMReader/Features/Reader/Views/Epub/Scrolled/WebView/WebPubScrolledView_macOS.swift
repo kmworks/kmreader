@@ -354,6 +354,37 @@
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
+    /// Lands on an in-chapter anchor (footnote, cross-reference). The
+    /// resulting scroll position flows back through the scroll metrics
+    /// messages, so no page commit is needed here. The completion reports
+    /// whether the anchor exists.
+    private func scrollToAnchor(
+      _ anchor: String, on webView: WKWebView, completion: @escaping (Bool) -> Void
+    ) {
+      guard isContentLoaded else {
+        completion(false)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToDocumentAnchorScript(anchor: anchor)
+      webView.evaluateJavaScript(js) { result, _ in
+        Task { @MainActor in
+          completion((result as? Bool) ?? false)
+        }
+      }
+    }
+
+    private func isCurrentChapterURL(_ url: URL) -> Bool {
+      guard let chapterURL else { return false }
+      let base = url.deletingFragment
+      if let rootURL,
+        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
+        base == chapterSchemeURL.deletingFragment
+      {
+        return true
+      }
+      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
       applyPagination(on: webView, targetPageIndex: pendingPageIndex ?? currentSubPageIndex)
@@ -371,8 +402,20 @@
         return
       }
 
-      if let chapterURL, url.deletingFragment == chapterURL.deletingFragment {
-        decisionHandler(.allow)
+      if let fragment = url.fragment, !fragment.isEmpty, isCurrentChapterURL(url) {
+        // Same-chapter anchor: land on the fragment in place instead of
+        // reloading the chapter, and push the origin onto the link back
+        // stack.
+        decisionHandler(.cancel)
+        let originPage = currentSubPageIndex
+        scrollToAnchor(fragment, on: webView) { [weak self] handled in
+          guard let self else { return }
+          if handled {
+            parent.viewModel.pushLinkBack(chapterIndex: chapterIndex, pageIndex: originPage)
+          } else {
+            parent.viewModel.navigateToURL(url)
+          }
+        }
         return
       }
 
@@ -420,6 +463,12 @@
           targetProgressionOnReady = nil
         }
         currentSubPageIndex = resolvedPage
+
+        // A cross-chapter link with a fragment lands here once the target
+        // chapter has laid out.
+        if let webView, let anchor = parent.viewModel.consumePendingAnchor(for: chapterIndex) {
+          scrollToAnchor(anchor, on: webView) { _ in }
+        }
       } else if currentSubPageIndex != actualPage {
         currentSubPageIndex = actualPage
       }

@@ -493,8 +493,9 @@
         // Late-loading images and publisher DOM mutations keep changing the
         // content extent after the first measure, so the watchers stay alive
         // for the chapter's lifetime instead of disconnecting once the size
-        // looks stable. Every re-measure keeps the current page index, except
-        // when the reader sits on the last page: then the end is tracked.
+        // looks stable. Every re-measure preserves the current page index;
+        // following the end is reserved for explicit last-page navigation at
+        // pagination-ready time, so ordinary growth cannot skip unread pages.
         var repaginateTimer = null;
         var repaginate = function() {
           if (!isCurrent() || !hasFinalized) { return; }
@@ -506,9 +507,8 @@
           var total = Math.max(1, Math.ceil(w / pageWidth - 0.002));
           if (total === lastReportedPageCount) { return; }
           var keepIdx = Math.floor(currentLogicalOffset() / pageWidth);
-          var wasAtEnd = keepIdx >= lastReportedPageCount - 1;
           lastReportedPageCount = total;
-          var newPage = wasAtEnd ? (total - 1) : Math.max(0, Math.min(total - 1, keepIdx));
+          var newPage = Math.max(0, Math.min(total - 1, keepIdx));
           scrollToLogicalOffset(pageWidth * newPage, false);
           if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
             window.webkit.messageHandlers.readerBridge.postMessage({
@@ -566,8 +566,9 @@
     }
 
     // Scrolls to an in-chapter anchor (footnote, endnote, cross-reference)
-    // and lands on the page containing it. Returns false when the anchor
-    // does not exist so the caller can fall back to the chapter start.
+    // and lands on the page containing it. Returns the resolved page index,
+    // or -1 when the anchor does not exist so the caller can fall back to the
+    // chapter start.
     static func makeScrollToAnchorScript(
       anchor: String,
       paginationLayout: WebPubPaginationLayout
@@ -581,22 +582,25 @@
           if (!el) {
             try { el = document.querySelector('[name="' + id.replace(/"/g, '') + '"]'); } catch (e) { el = null; }
           }
-          if (!el) { return false; }
+          if (!el) { return -1; }
           var metrics = measurePagination();
           var pageWidth = metrics.pageWidth;
-          if (pageWidth <= 0) { return false; }
+          if (pageWidth <= 0) { return -1; }
           var rect = el.getBoundingClientRect();
           var logical;
           if (reverseScrollLeft) {
-            // Transforms shift content right by the active offset; the layout
-            // position is the screen position minus that offset.
-            logical = rect.left - activeLogicalOffset;
+            // Later columns lie left of the right-hand origin (negative
+            // physical x once the transform shift is removed), so the logical
+            // distance is measured back from the active offset.
+            logical = currentLogicalOffset() - rect.left;
           } else {
             logical = rect.left + (window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0) || 0);
           }
           var page = Math.max(0, Math.floor(logical / pageWidth));
+          var maxPage = Math.max(0, Math.round(metrics.maxScroll / pageWidth));
+          if (page > maxPage) { page = maxPage; }
           scrollToLogicalOffset(pageWidth * page, false);
-          return true;
+          return page;
         })();
         """
     }

@@ -30,4 +30,5 @@ struct ReaderCommandState: Equatable {
   var supportsContinuousScrollToggle: Bool = false
   var supportsMangaTranslation: Bool = false
   var mangaTranslationEnabled: Bool = false
+  var canReturnFromLink: Bool = false
 }

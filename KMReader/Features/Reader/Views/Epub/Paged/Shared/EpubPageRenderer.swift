@@ -16,14 +16,14 @@
     func applyPagination(scrollToPage pageIndex: Int)
     func scrollToPage(_ pageIndex: Int, completion: (() -> Void)?)
     func scrollToPageAndSettle(_ pageIndex: Int, completion: @escaping () -> Void)
-    func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void)
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void)
     func handleLinkTap(at point: CGPoint, in hostView: UIView) -> Bool
     func prepareForSnapshot()
   }
 
   extension EpubPageRenderer {
-    func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
-      completion(false)
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
+      completion(nil)
     }
   }
 #endif

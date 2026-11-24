@@ -223,9 +223,12 @@
       }
     }
 
-    func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
+    // Jumps to an in-chapter anchor (footnote, endnote, cross-reference) and
+    // lands on the page containing it. The completion reports the resolved
+    // page index, or nil when the anchor does not exist.
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
       guard isContentLoaded else {
-        completion(false)
+        completion(nil)
         return
       }
       let js = WebPubPagedJavaScriptBuilder.makeScrollToAnchorScript(
@@ -234,7 +237,7 @@
       )
       webView.evaluateJavaScript(js) { result, _ in
         Task { @MainActor in
-          completion((result as? Bool) ?? false)
+          completion(result as? Int)
         }
       }
     }
@@ -284,10 +287,14 @@
           // place; a full navigation would land on page 0 of the chapter.
           if let fragment = url.fragment, !fragment.isEmpty, isCurrentChapterURL(url) {
             let originPage = host?.currentSubPageIndex ?? 0
-            scrollToAnchor(fragment) { [weak host] found in
+            scrollToAnchor(fragment) { [weak host] page in
               guard let host else { return }
-              if found {
-                host.onAnchorJump?(originPage)
+              // Commit the resolved page so native navigation and progress
+              // reporting follow the jumped-to page; cover and curl
+              // controllers never see a scroll event for this programmatic
+              // move.
+              if let page {
+                host.commitAnchorLanding(page: page, originPage: originPage)
               } else {
                 host.onLinkTap?(url)
               }
@@ -360,9 +367,13 @@
         host.rendererStopLoading()
         webView.alpha = 1
         // A cross-chapter link with a fragment lands here: jump from page 0
-        // to the anchor once the target chapter has paginated.
+        // to the anchor once the target chapter has paginated, and commit the
+        // resolved page so progress does not stick to the chapter start.
         if let anchor = host.consumePendingAnchor() {
-          scrollToAnchor(anchor) { _ in }
+          scrollToAnchor(anchor) { [weak host] page in
+            guard let host, let page else { return }
+            host.commitAnchorLanding(page: page, originPage: nil)
+          }
         }
         host.onPaginationReady?()
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {

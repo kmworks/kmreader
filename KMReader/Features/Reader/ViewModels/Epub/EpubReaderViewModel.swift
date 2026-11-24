@@ -62,6 +62,17 @@
     /// a transient failure, so the session-long suppression lifts as soon as
     /// the server becomes reachable again.
     private var progressionRetryTask: Task<Void, Never>?
+    /// One-shot chapter progressions resolved by the target chapter's
+    /// controller once it has paginated, mirroring the initial-restore path.
+    /// Used when the cached page count cannot be trusted (the chapter has not
+    /// been measured this session), so the fraction survives until a measured
+    /// page count exists.
+    private var pendingChapterProgressions: [Int: Double] = [:]
+    /// Set when a queued progression carries a remote-progression retry
+    /// restore; submission suppression lifts only once the target chapter's
+    /// controller picks the progression up, never before the trusted position
+    /// has been handed off.
+    private var pendingRetryRestorationChapter: Int?
     /// Page-based read progress from the book DTO. Komga reports page-based
     /// progress (written by KOReader/Kindle sync, paged readers, or the web UI)
     /// as an empty locator on the progression endpoint, so the page number is
@@ -184,6 +195,8 @@
       textLengthTask = nil
       initialChapterIndex = nil
       initialProgression = nil
+      pendingChapterProgressions = [:]
+      pendingRetryRestorationChapter = nil
       progressSubmissionSuppressed = false
       progressionRetryTask?.cancel()
       progressionRetryTask = nil
@@ -854,6 +867,19 @@
     }
 
     func initialProgression(for chapterIndex: Int) -> Double? {
+      // Queued chapter progressions (slider seek into an unmeasured chapter,
+      // remote-progression retry restore) resolve with the measured page count
+      // when the target chapter's controller paginates.
+      if let progression = pendingChapterProgressions.removeValue(forKey: chapterIndex) {
+        if pendingRetryRestorationChapter == chapterIndex {
+          pendingRetryRestorationChapter = nil
+          // The controller now owns the restore and applies the progression on
+          // the upcoming pagination-ready; no progress report can fire before
+          // that handoff, so submission can resume.
+          progressSubmissionSuppressed = false
+        }
+        return progression
+      }
       // One-shot: the saved-position jump belongs to the controller that opens
       // the book. Later controllers for the same chapter (e.g. neighbor
       // preloads) must not inherit it.
@@ -929,6 +955,32 @@
       )
       targetChapterIndex = normalizedChapterIndex
       targetPageIndex = normalizedPageIndex
+    }
+
+    /// Targets a chapter by intra-chapter progression fraction instead of a
+    /// page index. The fraction is queued and resolved with the measured page
+    /// count when the target chapter paginates (via initialProgression), so
+    /// seeks into unmeasured chapters do not collapse onto their placeholder
+    /// first page. Returns true when the progression was queued for the
+    /// chapter's pagination-ready, false when it resolved immediately against
+    /// the current chapter's measured count.
+    @discardableResult
+    private func setTarget(chapterIndex: Int, progression: Double) -> Bool {
+      guard !readingOrder.isEmpty else { return false }
+      let normalizedChapterIndex = max(0, min(chapterIndex, readingOrder.count - 1))
+      let clampedProgression = min(max(progression, 0), 1)
+      // The current chapter is already paginated, and same-chapter targets are
+      // never re-read from the queue, so resolve directly.
+      if normalizedChapterIndex == currentChapterIndex {
+        let pageCount = chapterPageCount(at: normalizedChapterIndex) ?? 1
+        let pageIndex = max(
+          0, min(pageCount - 1, Int((Double(pageCount) * clampedProgression).rounded(.down))))
+        setTarget(chapterIndex: normalizedChapterIndex, pageIndex: pageIndex)
+        return false
+      }
+      pendingChapterProgressions[normalizedChapterIndex] = clampedProgression
+      setTarget(chapterIndex: normalizedChapterIndex, pageIndex: 0)
+      return true
     }
 
     private func normalizeCurrentPosition(adjustPageCount: Bool = true) {
@@ -1077,9 +1129,14 @@
           let weight = Double(chapterTextWeights[idx] ?? 0)
           if accumulated + weight >= targetWeight || idx == readingOrder.count - 1 {
             let within = weight > 0 ? min(max((targetWeight - accumulated) / weight, 0), 1) : 0
-            let pageCount = max(1, chapterPageCounts[idx] ?? 1)
-            let pageIndex = min(pageCount - 1, Int(within * Double(pageCount)))
-            setTarget(chapterIndex: idx, pageIndex: pageIndex)
+            if let pageCount = chapterPageCounts[idx] {
+              let pageIndex = min(pageCount - 1, Int(within * Double(pageCount)))
+              setTarget(chapterIndex: idx, pageIndex: pageIndex)
+            } else {
+              // Unmeasured chapter: carry the fraction to its first pagination
+              // instead of resolving against the placeholder page count of 1.
+              setTarget(chapterIndex: idx, progression: within)
+            }
             return
           }
           accumulated += weight
@@ -1409,14 +1466,26 @@
         )
         return
       }
-      progressSubmissionSuppressed = false
-      let pageCount = chapterPageCounts[chapterIndex] ?? 1
       let progressionValue = Double(progression.locator.locations?.progression ?? 0)
-      let pageIndex = max(0, min(pageCount - 1, Int(floor(Double(pageCount) * progressionValue))))
-      logger.info(
-        "✅ [Progress/Epub] Remote progression retry restored chapter=\(chapterIndex) page=\(pageIndex), lifting submission suppression: book=\(bookId)"
-      )
-      setTarget(chapterIndex: chapterIndex, pageIndex: pageIndex)
+      // Carry the fraction through the pagination-ready restoration path: the
+      // target chapter may never have been paginated this session, so its
+      // cached page count can still be the placeholder 1 and resolving a page
+      // here would collapse an 80% progression onto page 0.
+      let queued = setTarget(chapterIndex: chapterIndex, progression: progressionValue)
+      if queued {
+        // Suppression lifts when the target chapter's controller picks the
+        // progression up in initialProgression(for:) — after the trusted
+        // position has been handed off, not before.
+        pendingRetryRestorationChapter = chapterIndex
+        logger.info(
+          "✅ [Progress/Epub] Remote progression retry restoring chapter=\(chapterIndex) progression=\(progressionValue); suppression lifts once the target chapter paginates: book=\(bookId)"
+        )
+      } else {
+        progressSubmissionSuppressed = false
+        logger.info(
+          "✅ [Progress/Epub] Remote progression retry restored chapter=\(chapterIndex) progression=\(progressionValue), lifting submission suppression: book=\(bookId)"
+        )
+      }
     }
 
     /// Maps a page-based server read progress to a locator using the WebPub

@@ -234,7 +234,9 @@ struct MainApp: App {
           .disabled(!state.isActive)
         }
 
-        if state.hasTableOfContents || state.supportsPageJump || state.supportsSearch {
+        if state.hasTableOfContents || state.supportsPageJump || state.supportsSearch
+          || state.canReturnFromLink
+        {
           Divider()
         }
 
@@ -257,6 +259,13 @@ struct MainApp: App {
             readerPresentation.showSearchFromCommand()
           }
           .disabled(!state.isActive || !state.canSearch)
+        }
+
+        if state.canReturnFromLink {
+          Button(String(localized: "Return to previous position")) {
+            readerPresentation.returnFromLinkFromCommand()
+          }
+          .disabled(!state.isActive)
         }
 
         if state.supportsReadingDirectionSelection

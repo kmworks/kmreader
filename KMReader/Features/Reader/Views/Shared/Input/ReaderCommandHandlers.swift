@@ -19,4 +19,7 @@ struct ReaderCommandHandlers {
   let toggleContinuousScroll: () -> Void
   let toggleMangaTranslation: () -> Void
   let showMangaTranslationSettings: () -> Void
+  // EPUB-only: returns to the position a footnote/cross-reference link jump
+  // started from. Readers without link jumps leave the default no-op.
+  let returnFromLink: () -> Void = {}
 }

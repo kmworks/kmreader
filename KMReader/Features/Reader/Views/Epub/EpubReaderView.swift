@@ -1196,7 +1196,8 @@
           supportsReadingDirectionSelection: false,
           supportsPageLayoutSelection: false,
           supportsDualPageOptions: false,
-          supportsSplitWidePageMode: false
+          supportsSplitWidePageMode: false,
+          canReturnFromLink: viewModel.canReturnFromLink
         )
       }
     #endif
@@ -1250,7 +1251,10 @@
             setSplitWidePageMode: { _ in },
             toggleContinuousScroll: {},
             toggleMangaTranslation: {},
-            showMangaTranslationSettings: {}
+            showMangaTranslationSettings: {},
+            returnFromLink: {
+              viewModel.returnFromLink()
+            }
           )
         )
       }

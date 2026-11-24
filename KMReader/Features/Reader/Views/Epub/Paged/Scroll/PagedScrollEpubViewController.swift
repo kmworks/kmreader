@@ -764,10 +764,12 @@
         ))
     }
 
-    /// Scrolls to an in-document anchor (footnote, cross-reference).
-    private func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
+    /// Scrolls to an in-document anchor (footnote, cross-reference) and
+    /// lands on the page containing it. The completion reports the resolved
+    /// page index, or nil when the anchor does not exist.
+    private func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
       guard isContentLoaded else {
-        completion(false)
+        completion(nil)
         return
       }
       let js = WebPubPagedJavaScriptBuilder.makeScrollToAnchorScript(
@@ -776,19 +778,23 @@
       )
       webView.evaluateJavaScript(js) { result, error in
         if error != nil {
-          completion(false)
+          completion(nil)
         } else {
-          completion((result as? Bool) ?? false)
+          completion(result as? Int)
         }
       }
     }
 
     private func isCurrentChapterURL(_ url: URL) -> Bool {
       guard let chapterURL else { return false }
-      if url.scheme == EpubResourceScheme.scheme || url.scheme == nil {
-        return url.deletingFragment == chapterURL.deletingFragment
+      let base = url.deletingFragment
+      if let rootURL,
+        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
+        base == chapterSchemeURL.deletingFragment
+      {
+        return true
       }
-      return url.standardizedFileURL.path == chapterURL.standardizedFileURL.path
+      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
     }
 
     func webView(
@@ -817,13 +823,17 @@
       if let fragment = url.fragment, !fragment.isEmpty,
         isCurrentChapterURL(url)
       {
-        // Same-chapter anchor: land on the fragment in place and let the
-        // host push the origin onto the link back stack.
+        // Same-chapter anchor: land on the fragment in place, commit the
+        // resolved page so overlay labels and progress follow the jump, and
+        // let the host push the origin onto the link back stack.
         decisionHandler(.cancel)
         let originPage = currentSubPageIndex
-        scrollToAnchor(fragment) { [weak self] handled in
+        scrollToAnchor(fragment) { [weak self] page in
           guard let self else { return }
-          if handled {
+          if let page {
+            self.currentSubPageIndex = page
+            self.updateOverlayLabels()
+            self.onPageDidChange?(self.chapterIndex, page)
             self.onAnchorJump?(originPage)
           } else {
             self.onLinkTap?(url)
@@ -873,9 +883,15 @@
           }
 
           // Land on a pending in-book anchor (cross-chapter link) now that
-          // pagination settled.
+          // pagination settled, and commit the resolved page so progress does
+          // not stick to the chapter start.
           if let anchor = pendingAnchorProvider?(chapterIndex) {
-            scrollToAnchor(anchor) { _ in }
+            scrollToAnchor(anchor) { [weak self] page in
+              guard let self, let page else { return }
+              self.currentSubPageIndex = page
+              self.updateOverlayLabels()
+              self.onPageDidChange?(self.chapterIndex, page)
+            }
           }
         }
 

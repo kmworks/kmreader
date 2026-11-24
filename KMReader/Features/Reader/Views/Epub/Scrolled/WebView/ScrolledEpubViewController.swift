@@ -623,10 +623,14 @@
 
     private func isCurrentChapterURL(_ url: URL) -> Bool {
       guard let chapterURL else { return false }
-      if url.scheme == EpubResourceScheme.scheme || url.scheme == nil {
-        return url.deletingFragment == chapterURL.deletingFragment
+      let base = url.deletingFragment
+      if let rootURL,
+        let chapterSchemeURL = EpubResourceScheme.url(for: chapterURL, rootURL: rootURL),
+        base == chapterSchemeURL.deletingFragment
+      {
+        return true
       }
-      return url.standardizedFileURL.path == chapterURL.standardizedFileURL.path
+      return base.standardizedFileURL.path == chapterURL.standardizedFileURL.path
     }
 
     func webView(
