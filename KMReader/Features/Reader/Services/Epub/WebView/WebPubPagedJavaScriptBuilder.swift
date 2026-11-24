@@ -267,10 +267,19 @@
             var t = event.target;
             if (t && t.tagName === 'IMG') { kmClassifyOneImage(t); }
           }, true);
-          if (document.body) {
+          var kmRunDarkPass = function() {
             window.__kmRewriteDarkText();
             window.__kmClassifyImages(document.body);
+          };
+          // Document-start injection runs before <body> exists, and the
+          // scrolled engine never re-invokes these functions; both passes are
+          // idempotent, so schedule the initial run around document readiness.
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', kmRunDarkPass, { once: true });
+          } else if (document.body) {
+            kmRunDarkPass();
           }
+          window.addEventListener('load', kmRunDarkPass, { once: true });
         } else {
           // Theme switched back to light: drop the pins the dark pass wrote.
           window.__kmRewriteDarkText = null;
