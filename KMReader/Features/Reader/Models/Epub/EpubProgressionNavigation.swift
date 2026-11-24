@@ -3,7 +3,6 @@
     let chapterIndex: Int
     let progression: Double
     let restoresRemoteProgress: Bool
-    var measuredPageCount: Int?
 
     func pageIndex(pageCount: Int) -> Int {
       max(0, min(pageCount - 1, Int((Double(pageCount) * progression).rounded(.down))))

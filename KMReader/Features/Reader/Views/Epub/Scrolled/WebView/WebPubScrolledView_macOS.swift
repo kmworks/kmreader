@@ -427,9 +427,11 @@
 
     private func updateViewModelLocation(from pageIndex: Int) {
       let normalizedPageIndex = max(0, pageIndex)
-      parent.viewModel.commitScrollPosition(
-        chapterIndex: chapterIndex, pageIndex: normalizedPageIndex, navigationID: renderedNavigationID
-      )
+      parent.viewModel.commitPosition(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: normalizedPageIndex,
+          pageCount: totalPagesInChapter, navigationID: renderedNavigationID
+        ))
       updateOverlayLabels()
     }
 

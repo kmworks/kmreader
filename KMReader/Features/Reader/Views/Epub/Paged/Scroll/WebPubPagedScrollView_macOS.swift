@@ -288,9 +288,11 @@
 
     private func commitPage(_ pageIndex: Int) {
       currentSubPageIndex = max(0, pageIndex)
-      parent.viewModel.commitScrollPosition(
-        chapterIndex: chapterIndex, pageIndex: currentSubPageIndex, navigationID: renderedNavigationID
-      )
+      parent.viewModel.commitPosition(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          pageCount: totalPagesInChapter, navigationID: renderedNavigationID
+        ))
       updateOverlayLabels()
     }
 

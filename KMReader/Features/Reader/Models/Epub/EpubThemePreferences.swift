@@ -381,8 +381,7 @@ nonisolated struct EpubThemePreferences: RawRepresentable, Equatable, Sendable {
         background-color: transparent !important;
       }
 
-      :root[style*="--USER__textColor"] body img.km-mono-img,
-      :root[style*="--USER__textColor"] body img.km-inline-img {
+      :root[style*="--USER__textColor"] body img.km-invert-img {
         filter: invert(1) hue-rotate(180deg);
       }
 

@@ -661,7 +661,7 @@
     }
 
     func pageDidChange() {
-      guard pendingAnchor == nil, finishProgressionNavigationIfLanded() else { return }
+      guard pendingAnchor == nil, progressionNavigation == nil else { return }
       let chapterIndex = currentChapterIndex
       let pageIndex = currentPageIndex
       updateLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -899,12 +899,9 @@
       guard let href = readingOrder[chapterIndex].href else { return }
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
       pageCountCache[cacheKey] = normalizedCount
-      if progressionNavigation?.chapterIndex == chapterIndex {
-        progressionNavigation?.measuredPageCount = normalizedCount
-        if let page = resolvedProgressionPage() {
-          targetChapterIndex = chapterIndex
-          targetPageIndex = page
-        }
+      if progressionNavigation?.chapterIndex == chapterIndex, let page = resolvedProgressionPage() {
+        targetChapterIndex = chapterIndex
+        targetPageIndex = page
       }
     }
 
@@ -964,11 +961,17 @@
       pageDidChange()
     }
 
-    func commitScrollPosition(chapterIndex: Int, pageIndex: Int, navigationID: UUID) {
-      guard navigationID == self.navigationID else { return }
-      currentChapterIndex = chapterIndex
-      currentPageIndex = max(0, pageIndex)
+    func commitPosition(_ landing: EpubPageLanding) {
+      guard landing.navigationID == navigationID,
+        readingOrder.indices.contains(landing.chapterIndex), landing.pageCount > 0
+      else { return }
+      if !failedChapterIndexes.contains(landing.chapterIndex) {
+        updateChapterPageCount(landing.pageCount, for: landing.chapterIndex)
+      }
+      currentChapterIndex = landing.chapterIndex
+      currentPageIndex = max(0, min(landing.pageIndex, landing.pageCount - 1))
       clearNavigationTarget()
+      guard finishProgressionNavigationIfLanded(pageCount: landing.pageCount) else { return }
       pageDidChange()
     }
 
@@ -1012,11 +1015,10 @@
       return navigation.pageIndex(pageCount: count)
     }
 
-    private func finishProgressionNavigationIfLanded() -> Bool {
+    private func finishProgressionNavigationIfLanded(pageCount: Int) -> Bool {
       guard let navigation = progressionNavigation else { return true }
       guard currentChapterIndex == navigation.chapterIndex,
         !failedChapterIndexes.contains(navigation.chapterIndex),
-        let pageCount = navigation.measuredPageCount,
         currentPageIndex == navigation.pageIndex(pageCount: pageCount)
       else {
         if let page = resolvedProgressionPage() {
@@ -1464,6 +1466,7 @@
 
     private func scheduleProgressionFetchRetry(bookId: String, instanceId: String) {
       progressionRetryTask?.cancel()
+      let restorationNavigationID = navigationID
       progressionRetryTask = Task { [weak self] in
         var delay: TimeInterval = 2
         while !Task.isCancelled {
@@ -1477,13 +1480,13 @@
             delay = min(delay * 2, 60)
             continue
           }
-          self.applyRetriedRemoteProgression(result)
+          self.applyRetriedRemoteProgression(result, navigationID: restorationNavigationID)
           return
         }
       }
     }
 
-    private func applyRetriedRemoteProgression(_ result: EpubProgressionSyncResult) {
+    private func applyRetriedRemoteProgression(_ result: EpubProgressionSyncResult, navigationID: UUID) {
       switch result {
       case .missing:
         progressSubmissionSuppressed = false
@@ -1492,7 +1495,7 @@
           logger.warning("Remote EPUB progression retry has an unknown chapter; keeping submission suppressed")
           return
         }
-        guard currentChapterIndex == 0, currentPageIndex == 0 else {
+        guard self.navigationID == navigationID, currentChapterIndex == 0, currentPageIndex == 0 else {
           logger.warning("Remote EPUB progression retry completed after navigation; keeping submission suppressed")
           return
         }

@@ -405,10 +405,11 @@
       guard navigationID == viewModel.navigationID else { return }
       let pageIndex = scrollPagination.pageIndex(at: scrollView.contentOffset.y)
       currentPageIndex = pageIndex
-      viewModel.currentChapterIndex = currentChapterIndex
-      viewModel.currentPageIndex = pageIndex
-      viewModel.clearNavigationTarget()
-      viewModel.pageDidChange()
+      viewModel.commitPosition(
+        EpubPageLanding(
+          chapterIndex: currentChapterIndex, pageIndex: pageIndex,
+          pageCount: currentPageCount, navigationID: navigationID
+        ))
       updateOverlayLabels()
     }
 

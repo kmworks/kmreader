@@ -66,7 +66,7 @@
     var navigationID = UUID()
     private var paginationNavigationID = UUID()
     private var renderedNavigationID = UUID()
-    var onPageDidChange: ((Int, Int, UUID) -> Void)?
+    var onPageDidChange: ((EpubPageLanding) -> Void)?
     var onPageCountReady: ((Int, Int, UUID) -> Void)?
 
     var currentChapterIndex: Int { chapterIndex }
@@ -454,7 +454,7 @@
       if targetPage != currentSubPageIndex {
         currentSubPageIndex = targetPage
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+        reportCurrentPosition()
       }
     }
 
@@ -484,7 +484,7 @@
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
       updateOverlayLabels()
-      onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+      reportCurrentPosition()
     }
 
     private func scrollToNextPage() {
@@ -504,7 +504,7 @@
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
       updateOverlayLabels()
-      onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+      reportCurrentPosition()
     }
 
     private func applyTheme() {
@@ -777,6 +777,14 @@
         ))
     }
 
+    private func reportCurrentPosition() {
+      onPageDidChange?(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          pageCount: totalPagesInChapter, navigationID: renderedNavigationID
+        ))
+    }
+
     /// Scrolls to an in-document anchor (footnote, cross-reference) and
     /// lands on the page containing it. The completion reports the resolved
     /// page index, or nil when the anchor does not exist.
@@ -848,7 +856,7 @@
           if let page {
             self.currentSubPageIndex = page
             self.updateOverlayLabels()
-            self.onPageDidChange?(self.chapterIndex, page, self.renderedNavigationID)
+            self.reportCurrentPosition()
             self.onAnchorJump?(originPage)
           } else {
             self.onLinkTap?(url)
@@ -909,7 +917,7 @@
               if resolvedPage == nil { scrollToPage(0, animated: false) }
               self.currentSubPageIndex = page
               self.updateOverlayLabels()
-              self.onPageDidChange?(self.chapterIndex, page, self.renderedNavigationID)
+              self.reportCurrentPosition()
             }
           }
         }
@@ -918,7 +926,7 @@
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
-        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+        reportCurrentPosition()
       } else if type == "pageCountUpdate" {
         if let generation = body["generation"] as? Int,
           generation != paginationGeneration
@@ -1043,7 +1051,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+        reportCurrentPosition()
       }
     }
 

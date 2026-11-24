@@ -59,7 +59,7 @@
     var navigationID = UUID()
     private var paginationNavigationID = UUID()
     private var renderedNavigationID = UUID()
-    var onPageDidChange: ((Int, Int, UUID) -> Void)?
+    var onPageDidChange: ((EpubPageLanding) -> Void)?
     var onPageCountReady: ((Int, Int, UUID) -> Void)?
     /// Called when an in-book link target needs view-model navigation
     /// (cross-chapter links, images).
@@ -614,6 +614,14 @@
         ))
     }
 
+    private func reportCurrentPosition() {
+      onPageDidChange?(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          pageCount: totalPagesInChapter, navigationID: renderedNavigationID
+        ))
+    }
+
     /// Scrolls to an in-document anchor (footnote, cross-reference).
     private func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
       guard isContentLoaded else {
@@ -772,7 +780,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+        reportCurrentPosition()
       }
     }
 
@@ -886,7 +894,7 @@
                 lastKnownDocumentScrollTop = (result as? Double) ?? 0
                 currentSubPageIndex = scrollPagination.pageIndex(at: lastKnownDocumentScrollTop)
                 updateOverlayLabels()
-                onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+                reportCurrentPosition()
               }
             }
           }
@@ -896,7 +904,7 @@
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
-        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+        reportCurrentPosition()
       } else if type == "scroll" {
         let actualPage = max(
           0,
@@ -905,7 +913,7 @@
         if currentSubPageIndex != actualPage {
           currentSubPageIndex = actualPage
           updateOverlayLabels()
-          onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+          reportCurrentPosition()
         }
       }
     }
@@ -1085,7 +1093,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex, renderedNavigationID)
+        reportCurrentPosition()
       }
     }
 

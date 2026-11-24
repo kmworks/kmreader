@@ -204,7 +204,6 @@
               if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
                 if (el.tagName.toLowerCase() === 'text') {
                   pin(el, 'fill', kmDarkFg);
-                  el.setAttribute('data-km-dark-pinned', 'fill');
                 }
                 continue;
               }
@@ -218,12 +217,10 @@
                 if (fill !== kmDarkFg) {
                   pin(el, '-webkit-text-fill-color', kmDarkFg);
                 }
-                el.setAttribute('data-km-dark-pinned', 'color');
               } else if (fill !== color) {
                 // An inherited fill wins over `color` at paint time; pin it
                 // back so publisher-colored spans survive the dark override.
                 pin(el, '-webkit-text-fill-color', color);
-                el.setAttribute('data-km-dark-pinned', 'fill');
               }
             }
           };
@@ -256,16 +253,7 @@
               }
               // Opaque illustrations must never be inverted.
               if (transparent / total <= 0.3 || opaque === 0 || dark / opaque <= 0.25) { return; }
-              var parent = img.parentElement;
-              var text = parent ? (parent.textContent || '').replace(/\\s+/g, '') : '';
-              if (/[\\p{L}\\p{N}]/u.test(text)) {
-                // Dark inline glyph surrogate inside a sentence.
-                img.classList.add('km-inline-img');
-                return;
-              }
-              if (opaque > 0 && dark / opaque > 0.25) {
-                img.classList.add('km-mono-img');
-              }
+              img.classList.add('km-invert-img');
             } catch (e) {
               // Tainted canvas or decode failure: leave the image alone.
             }
@@ -304,11 +292,10 @@
               } else {
                 saved.el.style.removeProperty(saved.property);
               }
-              saved.el.removeAttribute('data-km-dark-pinned');
             });
             if (document.body) {
               document.body.querySelectorAll('img').forEach(function(img) {
-                img.classList.remove('km-mono-img', 'km-inline-img');
+                img.classList.remove('km-invert-img');
                 delete img.__kmClassified;
               });
             }
@@ -321,8 +308,7 @@
         """
     }
 
-    // Shared by every pagination script (this builder and both scrolled views'
-    // inline scripts) so the guard and its wait cap cannot drift apart.
+    // Shared by paged and continuous pagination so image waiting cannot drift.
     static let fullExtentGuardScript = """
       var needsFullExtent = preferLast || target > 0 || requiresFullExtent;
       var imageWaitMaxAttempts = 600;
@@ -1026,7 +1012,12 @@
       await new Promise(function(resolve) {
         requestAnimationFrame(function() { requestAnimationFrame(resolve); });
       });
-      return true;
+      var metrics = measurePagination();
+      var total = Math.max(1, Math.ceil(metrics.currentWidth / metrics.pageWidth - 0.002));
+      return {
+        totalPages: total,
+        currentPage: Math.max(0, Math.min(total - 1, Math.round(currentLogicalOffset() / metrics.pageWidth)))
+      };
       """
     }
 

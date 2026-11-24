@@ -406,11 +406,12 @@
       guard navigationID == viewModel.navigationID else { return }
       pendingPageCommitIndex = nil
       currentPageIndex = pageIndex
-      viewModel.currentChapterIndex = currentChapterIndex
-      viewModel.currentPageIndex = pageIndex
-      viewModel.clearNavigationTarget()
       if notify {
-        viewModel.pageDidChange()
+        viewModel.commitPosition(
+          EpubPageLanding(
+            chapterIndex: currentChapterIndex, pageIndex: pageIndex,
+            pageCount: max(1, displayLists.count), navigationID: navigationID
+          ))
       }
       updateOverlayLabels()
     }

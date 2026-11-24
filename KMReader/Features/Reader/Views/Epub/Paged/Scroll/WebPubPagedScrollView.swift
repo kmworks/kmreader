@@ -82,8 +82,8 @@
         )
       }
       vc.navigationID = viewModel.navigationID
-      vc.onPageDidChange = { [weak viewModel] chapterIndex, pageIndex, navigationID in
-        viewModel?.commitScrollPosition(chapterIndex: chapterIndex, pageIndex: pageIndex, navigationID: navigationID)
+      vc.onPageDidChange = { [weak viewModel] landing in
+        viewModel?.commitPosition(landing)
       }
       vc.onPageCountReady = { [weak viewModel] chapterIndex, pageCount, navigationID in
         guard let viewModel, viewModel.navigationID == navigationID else { return }

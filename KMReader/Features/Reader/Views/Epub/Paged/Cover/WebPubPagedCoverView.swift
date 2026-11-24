@@ -294,18 +294,13 @@
           guard let self, let controller, controller.isNavigationCurrent else { return }
           guard self.currentController === controller, self.session == nil else { return }
           let chapterIndex = controller.chapterIndex
-          let storedCount = self.parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
-          let effectiveCount = max(storedCount, controller.totalPagesInChapter)
-          let normalizedPageIndex = max(0, min(pageIndex, effectiveCount - 1))
-          if effectiveCount != storedCount {
-            self.parent.viewModel.updateChapterPageCount(effectiveCount, for: chapterIndex)
-          }
-          self.parent.viewModel.currentChapterIndex = chapterIndex
-          self.parent.viewModel.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.clearNavigationTarget()
           self.currentChapterIndex = chapterIndex
-          self.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.pageDidChange()
+          self.currentPageIndex = pageIndex
+          self.parent.viewModel.commitPosition(
+            EpubPageLanding(
+              chapterIndex: chapterIndex, pageIndex: pageIndex,
+              pageCount: controller.totalPagesInChapter, navigationID: controller.navigationID
+            ))
         }
       }
 
@@ -543,14 +538,15 @@
             controller.preferLastPageOnReady = false
             controller.targetProgressionOnReady = nil
           }
-          parent.viewModel.currentChapterIndex = chapterIndex
-          parent.viewModel.currentPageIndex = pageIndex
           if isInteractive {
             parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
-          } else {
-            parent.viewModel.clearNavigationTarget()
-            parent.viewModel.pageDidChange()
-            currentController?.applyPendingAnchor()
+          } else if let controller = currentController, controller.hasPaginated {
+            parent.viewModel.commitPosition(
+              EpubPageLanding(
+                chapterIndex: chapterIndex, pageIndex: pageIndex,
+                pageCount: controller.totalPagesInChapter, navigationID: requestID
+              ))
+            controller.applyPendingAnchor()
           }
         }
       }
