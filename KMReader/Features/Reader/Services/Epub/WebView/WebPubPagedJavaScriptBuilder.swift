@@ -375,7 +375,8 @@
           var metrics = measurePagination();
           var pageWidth = metrics.pageWidth;
           var currentWidth = metrics.currentWidth;
-          var total = Math.max(1, Math.ceil(currentWidth / pageWidth));
+          // Tolerate scrollWidth integer rounding against the fractional pitch.
+          var total = Math.max(1, Math.ceil(currentWidth / pageWidth - 0.002));
           var finalTarget = preferLast ? (total - 1) : Math.max(0, Math.min(total - 1, target));
 
           scrollToLogicalOffset(pageWidth * finalTarget, false);
@@ -492,7 +493,8 @@
           var pageWidth = metrics.pageWidth;
           var w = metrics.currentWidth;
           if (pageWidth <= 0 || w <= 0) { return; }
-          var total = Math.max(1, Math.ceil(w / pageWidth));
+          // Tolerate scrollWidth integer rounding against the fractional pitch.
+          var total = Math.max(1, Math.ceil(w / pageWidth - 0.002));
           if (total === lastReportedPageCount) { return; }
           var keepIdx = Math.floor(currentLogicalOffset() / pageWidth);
           var wasAtEnd = keepIdx >= lastReportedPageCount - 1;
@@ -746,7 +748,16 @@
         });
       };
       var currentLogicalOffset = function() {
-        if (reverseScrollLeft) { return activeLogicalOffset; }
+        if (reverseScrollLeft) {
+          // Native page turns run standalone scripts that only persist the
+          // offset on <body>; the closure variable is stale afterwards.
+          var body = document.body;
+          if (body && body.hasAttribute('data-kmreader-logical-offset')) {
+            var stored = parseFloat(body.getAttribute('data-kmreader-logical-offset') || '0');
+            if (!isNaN(stored)) { return stored; }
+          }
+          return activeLogicalOffset;
+        }
         var root = document.documentElement;
         var left = window.pageXOffset || (root ? root.scrollLeft : 0) || 0;
         return Math.abs(left);
@@ -762,7 +773,12 @@
           unwrapLegacyPaginationStrip();
           restorePageElementTransforms();
         }
-        var pageWidth = (root && root.clientWidth) || window.innerWidth;
+        // CSS column pitch is `100vw`, which resolves to the fractional
+        // viewport width; clientWidth/innerWidth are integers and would drift
+        // by up to 1px per page on fractional-width layouts.
+        var pageWidth = (root && root.getBoundingClientRect ? root.getBoundingClientRect().width : 0)
+          || (root && root.clientWidth)
+          || window.innerWidth;
         if (!pageWidth || pageWidth <= 0) { pageWidth = 1; }
         var currentWidth = Math.max(
           root ? (root.scrollWidth || 0) : 0,

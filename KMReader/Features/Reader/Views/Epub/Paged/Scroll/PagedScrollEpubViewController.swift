@@ -412,14 +412,19 @@
 
       if rawOffset < -chapterOverscrollThreshold {
         if chapterIndex > 0 {
+          // Snap back to the current page while the previous chapter loads;
+          // programmatic offsets never rubber-band with scrolling disabled.
+          scrollToPage(currentSubPageIndex, animated: true)
           onChapterNavigationNeeded?(chapterIndex - 1)
           return
         }
       } else if rawOffset > maxOffset + chapterOverscrollThreshold {
         if chapterIndex < totalChapters - 1 {
+          scrollToPage(currentSubPageIndex, animated: true)
           onChapterNavigationNeeded?(chapterIndex + 1)
           return
         }
+        scrollToPage(currentSubPageIndex, animated: true)
         onEndReached?()
         return
       }
