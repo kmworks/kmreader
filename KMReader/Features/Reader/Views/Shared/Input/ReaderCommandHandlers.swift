@@ -21,5 +21,43 @@ struct ReaderCommandHandlers {
   let showMangaTranslationSettings: () -> Void
   // EPUB-only: returns to the position a footnote/cross-reference link jump
   // started from. Readers without link jumps leave the default no-op.
-  let returnFromLink: () -> Void = {}
+  let returnFromLink: () -> Void
+
+  init(
+    showReaderSettings: @escaping () -> Void,
+    showBookDetails: @escaping () -> Void,
+    showTableOfContents: @escaping () -> Void,
+    showPageJump: @escaping () -> Void,
+    showSearch: @escaping () -> Void,
+    showBookNavigation: @escaping () -> Void,
+    setReadingDirection: @escaping (ReadingDirection) -> Void,
+    setPageLayout: @escaping (PageLayout) -> Void,
+    toggleSoloCoverPage: @escaping () -> Void,
+    toggleSoloPage: @escaping (ReaderPageID) -> Void,
+    sharePage: @escaping (ReaderPageID) -> Void,
+    setRotation: @escaping (ReaderRotation) -> Void,
+    setSplitWidePageMode: @escaping (SplitWidePageMode) -> Void,
+    toggleContinuousScroll: @escaping () -> Void,
+    toggleMangaTranslation: @escaping () -> Void,
+    showMangaTranslationSettings: @escaping () -> Void,
+    returnFromLink: @escaping () -> Void = {}
+  ) {
+    self.showReaderSettings = showReaderSettings
+    self.showBookDetails = showBookDetails
+    self.showTableOfContents = showTableOfContents
+    self.showPageJump = showPageJump
+    self.showSearch = showSearch
+    self.showBookNavigation = showBookNavigation
+    self.setReadingDirection = setReadingDirection
+    self.setPageLayout = setPageLayout
+    self.toggleSoloCoverPage = toggleSoloCoverPage
+    self.toggleSoloPage = toggleSoloPage
+    self.sharePage = sharePage
+    self.setRotation = setRotation
+    self.setSplitWidePageMode = setSplitWidePageMode
+    self.toggleContinuousScroll = toggleContinuousScroll
+    self.toggleMangaTranslation = toggleMangaTranslation
+    self.showMangaTranslationSettings = showMangaTranslationSettings
+    self.returnFromLink = returnFromLink
+  }
 }
