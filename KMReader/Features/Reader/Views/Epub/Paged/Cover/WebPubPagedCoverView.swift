@@ -257,7 +257,13 @@
         else { return nil }
         wireController(controller)
         controller.onLinkTap = { [weak self] url in
-          self?.parent.viewModel.navigateToURL(url)
+          guard let self else { return }
+          switch parent.renderingEngine {
+          case .webView:
+            parent.viewModel.navigateToURL(url)
+          case .coreText:
+            parent.viewModel.navigateToChapter(containing: url)
+          }
         }
         controller.onAnchorJump = { [weak self, weak controller] originPage in
           guard let self, let controller else { return }
@@ -290,8 +296,7 @@
           }
           self.parent.viewModel.currentChapterIndex = chapterIndex
           self.parent.viewModel.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.targetChapterIndex = nil
-          self.parent.viewModel.targetPageIndex = nil
+          self.parent.viewModel.clearNavigationTarget()
           self.currentChapterIndex = chapterIndex
           self.currentPageIndex = normalizedPageIndex
           self.parent.viewModel.pageDidChange()
@@ -521,8 +526,7 @@
           }
           parent.viewModel.currentChapterIndex = chapterIndex
           parent.viewModel.currentPageIndex = pageIndex
-          parent.viewModel.targetChapterIndex = nil
-          parent.viewModel.targetPageIndex = nil
+          parent.viewModel.clearNavigationTarget()
           parent.viewModel.pageDidChange()
           currentController?.applyPendingAnchor()
         }

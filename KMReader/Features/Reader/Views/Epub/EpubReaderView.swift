@@ -510,8 +510,7 @@
                 // Small delay to ensure view hierarchy is updated
                 try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1 seconds
                 if let lastPosition = viewModel.lastPagePosition() {
-                  viewModel.targetChapterIndex = lastPosition.chapterIndex
-                  viewModel.targetPageIndex = lastPosition.pageIndex
+                  viewModel.navigateToPage(chapterIndex: lastPosition.chapterIndex, pageIndex: lastPosition.pageIndex)
                 }
               }
             },

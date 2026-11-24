@@ -253,6 +253,7 @@
         let targetPageIndex = parent.viewModel.targetPageIndex,
         targetChapterIndex == chapterIndex
       {
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: chapterIndex)
         pendingPageIndex = max(0, targetPageIndex)
         pendingJumpToLastPage = targetPageIndex < 0
       } else {
@@ -265,7 +266,7 @@
       updateOverlayLabels()
 
       if shouldReload {
-        targetProgressionOnReady = parent.viewModel.initialProgression(for: requestedChapterIndex)
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: requestedChapterIndex)
         loadContent(in: webView)
         return
       }
@@ -319,7 +320,7 @@
       if request.shouldReload {
         pendingPageIndex = max(0, request.rawPageIndex)
         pendingJumpToLastPage = request.rawPageIndex < 0
-        targetProgressionOnReady = parent.viewModel.initialProgression(for: request.chapterIndex)
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: request.chapterIndex)
         loadContent(in: webView)
         return
       }
@@ -631,8 +632,7 @@
       updateProgressDisplay(for: currentSubPageIndex)
       parent.viewModel.currentChapterIndex = chapterIndex
       parent.viewModel.currentPageIndex = currentSubPageIndex
-      parent.viewModel.targetChapterIndex = nil
-      parent.viewModel.targetPageIndex = nil
+      parent.viewModel.clearNavigationTarget()
       parent.viewModel.pageDidChange()
       updateOverlayLabels()
     }

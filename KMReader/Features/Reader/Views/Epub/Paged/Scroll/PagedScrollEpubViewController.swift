@@ -504,23 +504,6 @@
       onPageDidChange?(chapterIndex, currentSubPageIndex)
     }
 
-    func navigateToPage(chapterIndex: Int, subPageIndex: Int, jumpToLastPage: Bool = false) {
-      // If navigating to a different chapter, reload the content
-      if chapterIndex != self.chapterIndex {
-        self.chapterIndex = chapterIndex
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        loadContentIfNeeded(force: true)
-      } else {
-        // Same chapter - always wait for ready message to ensure correct page count
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        if isContentLoaded {
-          applyPagination(scrollToPage: subPageIndex)
-        }
-      }
-    }
-
     private func applyTheme() {
       view.backgroundColor = theme.uiColorBackground
       containerView?.backgroundColor = .clear
@@ -556,6 +539,8 @@
       publicationReadingProgression: WebPubReadingProgression?,
       animatePageTransitions: Bool,
       chapterIndex: Int,
+      targetPageIndex: Int?,
+      targetProgression: Double?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -581,6 +566,21 @@
         || labelTopOffset != self.labelTopOffset
         || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
+
+      let navigationChanged: Bool
+      if let targetPageIndex {
+        let pageIndex = max(0, targetPageIndex)
+        let preferLastPage = targetPageIndex < 0
+        navigationChanged =
+          pendingPageIndex != pageIndex
+          || pendingJumpToLastPage != preferLastPage
+          || targetProgressionOnReady != targetProgression
+        pendingPageIndex = pageIndex
+        pendingJumpToLastPage = preferLastPage
+        targetProgressionOnReady = targetProgression
+      } else {
+        navigationChanged = false
+      }
 
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
@@ -617,8 +617,8 @@
       refreshDocumentStartUserScript()
       if shouldReload {
         loadContentIfNeeded(force: true)
-      } else if appearanceChanged {
-        applyPagination(scrollToPage: currentSubPageIndex)
+      } else if appearanceChanged || navigationChanged {
+        applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
       }
     }
 
@@ -652,7 +652,6 @@
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
       applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
-      pendingPageIndex = nil
     }
 
     override func viewDidLayoutSubviews() {
@@ -902,6 +901,7 @@
           }
         }
 
+        pendingPageIndex = nil
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1

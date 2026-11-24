@@ -38,7 +38,7 @@
     private var isContentLoaded = false
     private var pendingPageIndex: Int?
     private var pendingJumpToLastPage: Bool = false
-    private var targetProgressionOnReady: Double?
+    var targetProgressionOnReady: Double?
     private var readyToken: Int = 0
     private var lastKnownDocumentScrollTop: CGFloat = 0
     private var lastKnownDocumentContentHeight: CGFloat = 0
@@ -428,23 +428,6 @@
       scrollToOffset(targetOffset)
     }
 
-    func navigateToPage(chapterIndex: Int, subPageIndex: Int, jumpToLastPage: Bool = false) {
-      // If navigating to a different chapter, reload the content
-      if chapterIndex != self.chapterIndex {
-        self.chapterIndex = chapterIndex
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        loadContentIfNeeded(force: true)
-      } else {
-        // Same chapter - always wait for ready message to ensure correct page count
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        if isContentLoaded {
-          applyPagination(scrollToPage: subPageIndex)
-        }
-      }
-    }
-
     private func applyTheme() {
       view.backgroundColor = theme.uiColorBackground
       containerView?.backgroundColor = .clear
@@ -483,6 +466,8 @@
       publicationLanguage: String?,
       publicationReadingProgression: WebPubReadingProgression?,
       chapterIndex: Int,
+      targetPageIndex: Int?,
+      targetProgression: Double?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -511,6 +496,21 @@
         || labelTopOffset != self.labelTopOffset
         || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
+
+      let navigationChanged: Bool
+      if let targetPageIndex {
+        let pageIndex = max(0, targetPageIndex)
+        let preferLastPage = targetPageIndex < 0
+        navigationChanged =
+          pendingPageIndex != pageIndex
+          || pendingJumpToLastPage != preferLastPage
+          || targetProgressionOnReady != targetProgression
+        pendingPageIndex = pageIndex
+        pendingJumpToLastPage = preferLastPage
+        targetProgressionOnReady = targetProgression
+      } else {
+        navigationChanged = false
+      }
 
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
@@ -548,8 +548,8 @@
       refreshDocumentStartUserScript()
       if shouldReload {
         loadContentIfNeeded(force: true)
-      } else if appearanceChanged {
-        applyPagination(scrollToPage: currentSubPageIndex)
+      } else if appearanceChanged || navigationChanged {
+        applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
       }
     }
 
@@ -575,6 +575,7 @@
       }
 
       isContentLoaded = false
+      readyToken += 1
       lastKnownDocumentScrollTop = 0
       lastKnownDocumentContentHeight = 0
       lastKnownDocumentViewportHeight = 0
@@ -683,7 +684,6 @@
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
       applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
-      pendingPageIndex = nil
     }
 
     override func viewDidLayoutSubviews() {
@@ -742,12 +742,7 @@
 
     private func scrollToPage(_ pageIndex: Int, animated: Bool = true) {
       guard isContentLoaded else { return }
-      let pageHeight = effectiveViewportHeight
-      guard pageHeight > 0 else { return }
-
-      let contentHeight = effectiveContentHeight
-      let maxOffset = max(0, contentHeight - pageHeight)
-      let targetOffset = min(pageHeight * CGFloat(pageIndex), maxOffset)
+      let targetOffset = scrollPagination.offset(for: pageIndex)
 
       scrollDocument(to: targetOffset, animated: animated)
     }
@@ -762,13 +757,17 @@
 
       scrollDocument(to: clampedOffset, animated: animated)
 
-      let newPageIndex = Int(round(clampedOffset / pageHeight))
+      let newPageIndex = scrollPagination.pageIndex(at: clampedOffset)
       let clampedIndex = max(0, min(totalPagesInChapter - 1, newPageIndex))
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
         onPageDidChange?(chapterIndex, currentSubPageIndex)
       }
+    }
+
+    private var scrollPagination: EpubScrollPagination {
+      EpubScrollPagination(contentHeight: effectiveContentHeight, viewportHeight: effectiveViewportHeight)
     }
 
     private var effectiveViewportHeight: CGFloat {
@@ -893,6 +892,7 @@
             var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
             var hasFinalized = false;
+            \(WebPubPagedJavaScriptBuilder.scrolledPaginationRuntimeScript)
 
             // Offsets past the first page depend on the full content extent;
             // finalizing while images are still in flight measures a short
@@ -937,10 +937,7 @@
                   )
                 );
                 var total = Math.max(1, Math.ceil(contentHeight / viewportHeight));
-                var currentPage = Math.max(
-                  0,
-                  Math.min(total - 1, Math.round(scrollTop / viewportHeight))
-                );
+                var currentPage = scrollPageIndex(scrollTop, total, maxScroll);
 
                 if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
                   window.webkit.messageHandlers.readerBridge.postMessage({
@@ -1009,7 +1006,7 @@
               var maxScroll = Math.max(0, currentHeight - pageHeight);
 
               var finalTarget = Math.max(0, Math.min(total - 1, target));
-              var offset = Math.min(pageHeight * finalTarget, maxScroll);
+              var offset = scrollPageOffset(finalTarget, total, maxScroll);
 
               window.scrollTo(0, offset);
               if (document.documentElement) { document.documentElement.scrollTop = offset; }
@@ -1116,7 +1113,7 @@
 
       if let total = body["totalPages"] as? Int {
         let normalizedTotal = max(1, total)
-        if normalizedTotal != totalPagesInChapter {
+        if type == "ready" || normalizedTotal != totalPagesInChapter {
           totalPagesInChapter = normalizedTotal
           onPageCountReady?(chapterIndex, normalizedTotal)
         } else {
@@ -1163,8 +1160,7 @@
               webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
                 guard let self else { return }
                 lastKnownDocumentScrollTop = (result as? Double) ?? 0
-                currentSubPageIndex = max(
-                  0, min(totalPagesInChapter - 1, Int(round(lastKnownDocumentScrollTop / effectiveViewportHeight))))
+                currentSubPageIndex = scrollPagination.pageIndex(at: lastKnownDocumentScrollTop)
                 updateOverlayLabels()
                 onPageDidChange?(chapterIndex, currentSubPageIndex)
               }
@@ -1172,6 +1168,7 @@
           }
         }
 
+        pendingPageIndex = nil
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
@@ -1358,7 +1355,7 @@
         lastKnownDocumentViewportHeight > 0
         ? lastKnownDocumentScrollTop
         : webView.scrollView.contentOffset.y
-      let newPageIndex = Int(round(scrollOffset / pageHeight))
+      let newPageIndex = scrollPagination.pageIndex(at: scrollOffset)
       let clampedIndex = max(0, min(totalPagesInChapter - 1, newPageIndex))
 
       if clampedIndex != currentSubPageIndex {

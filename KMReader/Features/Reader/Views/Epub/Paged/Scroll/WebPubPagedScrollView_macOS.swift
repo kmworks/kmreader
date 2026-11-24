@@ -156,6 +156,7 @@
         let targetPageIndex = parent.viewModel.targetPageIndex,
         targetChapterIndex == chapterIndex
       {
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: chapterIndex)
         pendingPageIndex = max(0, targetPageIndex)
         pendingJumpToLastPage = targetPageIndex < 0
       } else {
@@ -169,7 +170,7 @@
       updateOverlayLabels()
 
       if shouldReload {
-        targetProgressionOnReady = parent.viewModel.initialProgression(for: selectedChapterIndex)
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: selectedChapterIndex)
         loadContent(in: webView)
         return
       }
@@ -258,8 +259,7 @@
         return
       }
       if chapterIndex > 0 {
-        parent.viewModel.targetChapterIndex = chapterIndex - 1
-        parent.viewModel.targetPageIndex = -1
+        parent.viewModel.navigateToPage(chapterIndex: chapterIndex - 1, pageIndex: -1)
       }
     }
 
@@ -271,8 +271,7 @@
         return
       }
       if chapterIndex < max(0, parent.viewModel.chapterCount - 1) {
-        parent.viewModel.targetChapterIndex = chapterIndex + 1
-        parent.viewModel.targetPageIndex = 0
+        parent.viewModel.navigateToPage(chapterIndex: chapterIndex + 1, pageIndex: 0)
       } else {
         parent.onEndReached()
       }
@@ -282,8 +281,7 @@
       currentSubPageIndex = max(0, pageIndex)
       parent.viewModel.currentChapterIndex = chapterIndex
       parent.viewModel.currentPageIndex = currentSubPageIndex
-      parent.viewModel.targetChapterIndex = nil
-      parent.viewModel.targetPageIndex = nil
+      parent.viewModel.clearNavigationTarget()
       parent.viewModel.pageDidChange()
       updateOverlayLabels()
     }

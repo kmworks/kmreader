@@ -52,7 +52,7 @@
         location: location,
         chapterProgress: chapterProgress
       )
-      let initialProgression = viewModel.initialProgression(for: chapterIndex)
+      let initialProgression = viewModel.requestedProgression(for: chapterIndex)
 
       let configuration = EpubChapterConfiguration(
         preferences: preferences,

@@ -585,6 +585,18 @@
       """
     }
 
+    // Mirrors EpubScrollPagination so native and document offsets round-trip.
+    static let scrolledPaginationRuntimeScript = """
+      var scrollPageOffset = function(index, total, maxScroll) {
+        if (total <= 1) { return 0; }
+        return maxScroll * Math.max(0, Math.min(total - 1, index)) / (total - 1);
+      };
+      var scrollPageIndex = function(offset, total, maxScroll) {
+        if (maxScroll <= 0) { return 0; }
+        return Math.round(Math.max(0, Math.min(1, offset / maxScroll)) * (total - 1));
+      };
+      """
+
     // Scrolls to an in-chapter anchor (footnote, endnote, cross-reference)
     // and lands on the page containing it. Returns the resolved page index,
     // or null when the anchor does not exist so the caller can fall back to the

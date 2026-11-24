@@ -149,6 +149,7 @@
         let targetPageIndex = parent.viewModel.targetPageIndex,
         targetChapterIndex == chapterIndex
       {
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: chapterIndex)
         pendingPageIndex = max(0, targetPageIndex)
         pendingJumpToLastPage = targetPageIndex < 0
       } else {
@@ -156,7 +157,7 @@
       }
 
       if shouldReload {
-        targetProgressionOnReady = parent.viewModel.initialProgression(for: selectedChapterIndex)
+        targetProgressionOnReady = parent.viewModel.requestedProgression(for: selectedChapterIndex)
         loadContent(in: webView)
         return
       }
@@ -250,8 +251,7 @@
       let currentOffset = lastKnownDocumentScrollTop
       if currentOffset <= 1 {
         if chapterIndex > 0 {
-          parent.viewModel.targetChapterIndex = chapterIndex - 1
-          parent.viewModel.targetPageIndex = -1
+          parent.viewModel.navigateToPage(chapterIndex: chapterIndex - 1, pageIndex: -1)
         }
         return
       }
@@ -266,8 +266,7 @@
       let currentOffset = lastKnownDocumentScrollTop
       if currentOffset >= maxOffset - 1 {
         if chapterIndex < max(0, parent.viewModel.chapterCount - 1) {
-          parent.viewModel.targetChapterIndex = chapterIndex + 1
-          parent.viewModel.targetPageIndex = 0
+          parent.viewModel.navigateToPage(chapterIndex: chapterIndex + 1, pageIndex: 0)
         } else {
           parent.onEndReached()
         }
@@ -450,7 +449,7 @@
         var resolvedPage = actualPage
         if pendingJumpToLastPage {
           resolvedPage = max(0, totalPagesInChapter - 1)
-          scrollDocument(to: effectiveViewportHeight * CGFloat(resolvedPage))
+          scrollDocument(to: scrollPagination.offset(for: resolvedPage))
           pendingJumpToLastPage = false
         } else if let progression = targetProgressionOnReady {
           resolvedPage = max(
@@ -458,7 +457,7 @@
             min(totalPagesInChapter - 1, Int(floor(Double(totalPagesInChapter) * progression)))
           )
           if resolvedPage != actualPage {
-            scrollDocument(to: effectiveViewportHeight * CGFloat(resolvedPage))
+            scrollDocument(to: scrollPagination.offset(for: resolvedPage))
           }
           targetProgressionOnReady = nil
         }
@@ -473,7 +472,7 @@
             webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
               guard let self else { return }
               let offset = (result as? Double) ?? 0
-              currentSubPageIndex = max(0, min(totalPagesInChapter - 1, Int(offset / effectiveViewportHeight)))
+              currentSubPageIndex = scrollPagination.pageIndex(at: CGFloat(offset))
               updateViewModelLocation(from: currentSubPageIndex)
             }
           }
@@ -489,8 +488,7 @@
       let normalizedPageIndex = max(0, pageIndex)
       parent.viewModel.currentChapterIndex = chapterIndex
       parent.viewModel.currentPageIndex = normalizedPageIndex
-      parent.viewModel.targetChapterIndex = nil
-      parent.viewModel.targetPageIndex = nil
+      parent.viewModel.clearNavigationTarget()
       parent.viewModel.pageDidChange()
       updateOverlayLabels()
     }
@@ -505,6 +503,10 @@
       if let scrollTop = body["scrollTop"] as? Double, scrollTop >= 0 {
         lastKnownDocumentScrollTop = CGFloat(scrollTop)
       }
+    }
+
+    private var scrollPagination: EpubScrollPagination {
+      EpubScrollPagination(contentHeight: effectiveContentHeight, viewportHeight: effectiveViewportHeight)
     }
 
     private var effectiveViewportHeight: CGFloat {
@@ -523,6 +525,7 @@
             var preferLast = \(preferLastPage ? "true" : "false");
             var token = \(token);
             var hasFinalized = false;
+            \(WebPubPagedJavaScriptBuilder.scrolledPaginationRuntimeScript)
 
             // Offsets past the first page depend on the full content extent;
             // finalizing while images are still in flight measures a short
@@ -567,10 +570,7 @@
                   )
                 );
                 var total = Math.max(1, Math.ceil(contentHeight / viewportHeight));
-                var currentPage = Math.max(
-                  0,
-                  Math.min(total - 1, Math.round(scrollTop / viewportHeight))
-                );
+                var currentPage = scrollPageIndex(scrollTop, total, maxScroll);
 
                 if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
                   window.webkit.messageHandlers.readerBridge.postMessage({
@@ -638,7 +638,7 @@
               var total = Math.max(1, Math.ceil(currentHeight / pageHeight));
               var maxScroll = Math.max(0, currentHeight - pageHeight);
               var finalTarget = Math.max(0, Math.min(total - 1, target));
-              var offset = Math.min(pageHeight * finalTarget, maxScroll);
+              var offset = scrollPageOffset(finalTarget, total, maxScroll);
 
               window.scrollTo(0, offset);
               if (document.documentElement) { document.documentElement.scrollTop = offset; }

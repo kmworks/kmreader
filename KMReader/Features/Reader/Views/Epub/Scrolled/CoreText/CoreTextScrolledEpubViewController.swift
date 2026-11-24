@@ -270,7 +270,7 @@
         0, min(viewModel.targetChapterIndex ?? viewModel.currentChapterIndex, viewModel.chapterCount - 1))
       currentChapterIndex = chapterIndex
       currentPageIndex = max(0, viewModel.targetPageIndex ?? viewModel.currentPageIndex)
-      restoreProgression = viewModel.initialProgression(for: chapterIndex)
+      restoreProgression = viewModel.requestedProgression(for: chapterIndex)
       if restoreProgression == nil && preservePosition && viewModel.targetPageIndex == nil {
         let pageCount = viewModel.chapterPageCount(at: chapterIndex) ?? 0
         if pageCount > 0 {
@@ -336,6 +336,10 @@
       let requestedPage: Int
       if viewModel.targetPageIndex == -1 {
         requestedPage = pageCount - 1
+      } else if let progression = viewModel.requestedProgression(for: currentChapterIndex) {
+        requestedPage = Int(floor(Double(pageCount) * progression))
+      } else if let targetPage = viewModel.targetPageIndex {
+        requestedPage = targetPage
       } else if let progression = restoreProgression {
         requestedPage = Int(floor(Double(pageCount) * progression))
       } else {
@@ -347,20 +351,23 @@
       showContent()
     }
 
+    private var scrollPagination: EpubScrollPagination {
+      EpubScrollPagination(contentHeight: document?.contentSize.height ?? 0, viewportHeight: viewportHeight)
+    }
+
     private var currentPageCount: Int {
-      max(1, Int(ceil(max(1, document?.contentSize.height ?? 1) / viewportHeight)))
+      scrollPagination.pageCount
     }
 
     private func navigateToTargetIfNeeded() {
-      guard isContentReady else { return }
       let targetChapter = viewModel.targetChapterIndex ?? currentChapterIndex
       if targetChapter != currentChapterIndex {
         reloadChapter(preservePosition: true)
         return
       }
+      guard isContentReady else { return }
       if errorView != nil {
-        viewModel.targetChapterIndex = nil
-        viewModel.targetPageIndex = nil
+        viewModel.clearNavigationTarget()
         return
       }
       guard document != nil, let targetPage = viewModel.targetPageIndex else { return }
@@ -368,14 +375,12 @@
       if pageIndex != currentPageIndex {
         scrollToPage(at: pageIndex, animated: animateTapTurns)
       } else {
-        viewModel.targetChapterIndex = nil
-        viewModel.targetPageIndex = nil
+        updatePageFromScroll()
       }
     }
 
     private func scrollToPage(at pageIndex: Int, animated: Bool) {
-      let clampedIndex = max(0, min(currentPageCount - 1, pageIndex))
-      let targetOffset = min(maximumOffset, viewportHeight * CGFloat(clampedIndex))
+      let targetOffset = scrollPagination.offset(for: pageIndex)
       scrollToOffset(targetOffset, animated: animated)
     }
 
@@ -394,12 +399,11 @@
     }
 
     private func updatePageFromScroll() {
-      let pageIndex = max(0, min(currentPageCount - 1, Int(round(scrollView.contentOffset.y / viewportHeight))))
+      let pageIndex = scrollPagination.pageIndex(at: scrollView.contentOffset.y)
       currentPageIndex = pageIndex
       viewModel.currentChapterIndex = currentChapterIndex
       viewModel.currentPageIndex = pageIndex
-      viewModel.targetChapterIndex = nil
-      viewModel.targetPageIndex = nil
+      viewModel.clearNavigationTarget()
       viewModel.pageDidChange()
       updateOverlayLabels()
     }
@@ -433,7 +437,7 @@
         let chapterURL = viewModel.chapterURL(at: currentChapterIndex),
         let url = URL(string: region.href, relativeTo: chapterURL)
       {
-        viewModel.navigateToURL(url)
+        viewModel.navigateToChapter(containing: url)
         return
       }
 
@@ -478,8 +482,7 @@
         }
         return
       }
-      viewModel.targetChapterIndex = targetChapter
-      viewModel.targetPageIndex = offset > 0 ? 0 : -1
+      viewModel.navigateToPage(chapterIndex: targetChapter, pageIndex: offset > 0 ? 0 : -1)
       reloadChapter(preservePosition: true)
     }
 
