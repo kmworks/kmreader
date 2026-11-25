@@ -7,12 +7,12 @@ import Foundation
 
 enum SeriesSortField: String, CaseIterable, Sendable {
   case name = "metadata.titleSort"
-  case dateAdded = "created"
-  case dateUpdated = "lastModified"
-  case dateRead = "fileLastModified"
+  case dateAdded = "createdDate"
+  case dateUpdated = "lastModifiedDate"
+  case dateRead = "readDate"
   case releaseDate = "booksMetadata.releaseDate"
   case downloadDate = "downloadAt"
-  case folderName = "metadata.title"
+  case folderName = "name"
   case booksCount = "booksCount"
   case random = "random"
 
@@ -41,4 +41,5 @@ enum SeriesSortField: String, CaseIterable, Sendable {
   var supportsDirection: Bool {
     self != .random
   }
+
 }
