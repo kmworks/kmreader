@@ -64,13 +64,14 @@
       func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+        preferences: WKWebpagePreferences,
+        decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy, WKWebpagePreferences) -> Void
       ) {
         guard navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url else {
-          decisionHandler(.allow)
+          decisionHandler(.allow, preferences)
           return
         }
-        decisionHandler(.cancel)
+        decisionHandler(.cancel, preferences)
         if url.scheme == EpubResourceScheme.scheme {
           onOpenLink(url)
         }

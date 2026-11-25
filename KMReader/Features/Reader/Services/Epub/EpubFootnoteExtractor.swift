@@ -54,13 +54,13 @@ nonisolated enum EpubFootnoteExtractor {
 
   private static func element(withIdentifier identifier: String, in document: Document) -> Element? {
     if let elements = try? document.select("[id]") {
-      for element in elements where (try? element.attr("id")) == identifier {
-        return element
+      for element in elements {
+        if (try? element.attr("id")) == identifier { return element }
       }
     }
     if let anchors = try? document.select("a[name]") {
-      for anchor in anchors where (try? anchor.attr("name")) == identifier {
-        return anchor
+      for anchor in anchors {
+        if (try? anchor.attr("name")) == identifier { return anchor }
       }
     }
     return nil
@@ -200,9 +200,15 @@ nonisolated enum EpubFootnoteExtractor {
     // MARK: Traversal
 
     private func renderChildren(of element: Element) {
-      for node in element.childNodes() {
+      for node in childNodes(of: element) {
         render(node: node)
       }
+    }
+
+    private func childNodes(of element: Element) -> [Node] {
+      let count = element.childNodeSize()
+      guard count > 0 else { return [] }
+      return (0..<count).map { element.childNode($0) }
     }
 
     private func render(node: Node) {
@@ -300,7 +306,8 @@ nonisolated enum EpubFootnoteExtractor {
     }
 
     private func renderTable(_ element: Element) {
-      for row in element.children() where row.tagName().lowercased() == "tr" {
+      guard let rows = try? element.select("tr") else { return }
+      for row in rows {
         var cells: [String] = []
         for cell in row.children() {
           let text = ((try? cell.text()) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -316,7 +323,7 @@ nonisolated enum EpubFootnoteExtractor {
     private func renderRuby(_ element: Element) {
       var base = ""
       var annotation = ""
-      for child in element.childNodes() {
+      for child in childNodes(of: element) {
         if let textNode = child as? TextNode {
           base += textNode.getWholeText()
           continue

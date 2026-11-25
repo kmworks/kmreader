@@ -97,7 +97,7 @@
     private var footer: some View {
       VStack(spacing: 0) {
         Divider()
-          .overlay(theme.textColor.opacity(0.08))
+          .overlay { theme.textColor.opacity(0.08) }
         Button(action: onOpenFullNote) {
           Text("Open Full Note")
             .font(.footnote.weight(.semibold))
