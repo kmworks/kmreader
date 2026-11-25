@@ -23,6 +23,15 @@
     private let estimatedFooterHeight: CGFloat = 44
 
     var body: some View {
+      #if os(macOS)
+        popup
+          .onExitCommand(perform: onDismiss)
+      #else
+        popup
+      #endif
+    }
+
+    private var popup: some View {
       GeometryReader { geometry in
         let width = min(max(geometry.size.width - horizontalInset * 2, 0), maximumWidth)
         let maximumHeight = min(max(geometry.size.height * 0.5, 160), 420)
@@ -37,6 +46,8 @@
             .padding(.bottom, 24)
         }
       }
+      .accessibilityAddTraits(.isModal)
+      .accessibilityAction(.escape, onDismiss)
       .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
 

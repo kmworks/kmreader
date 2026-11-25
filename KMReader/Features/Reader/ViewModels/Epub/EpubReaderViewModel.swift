@@ -580,11 +580,6 @@
       beginFootnoteProbe(chapterIndex: chapterIndex, fragment: fragment)
     }
 
-    func navigateToChapter(containing url: URL) {
-      guard let chapterIndex = chapterIndex(for: url) else { return }
-      navigateToChapterLink(chapterIndex: chapterIndex, fragment: nil)
-    }
-
     private func chapterIndex(for url: URL) -> Int? {
       guard let rootURL = resourceRootURL else { return nil }
       let url = url.absoluteURL
