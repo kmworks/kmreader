@@ -884,6 +884,28 @@
     @ViewBuilder
     private var controlsOverlay: some View {
       Color.clear
+        .overlay(alignment: .topLeading) {
+          if supportsOverlayControls && shouldShowControls && !incognito {
+            Button {
+              HapticFeedback.selectionChanged()
+              Task { await viewModel.toggleBookmark() }
+            } label: {
+              Image(systemName: AppIcon.bookmark)
+                .symbolVariant(viewModel.isCurrentPositionBookmarked ? .fill : .none)
+                .contentTransition(.symbolEffect(.replace, options: .nonRepeating))
+                .contentShape(Circle())
+            }
+            .controlSize(.extraLarge)
+            .buttonBorderShape(.circle)
+            .readerControlButtonStyle()
+            .padding(.top, 24)
+            .padding(.leading, 12)
+            .accessibilityLabel(
+              viewModel.isCurrentPositionBookmarked ? Text("Remove Bookmark") : Text("Add Bookmark")
+            )
+            .transition(.scale(scale: 0).combined(with: .opacity))
+          }
+        }
         .overlay(alignment: .topTrailing) {
           if supportsOverlayControls && shouldShowControls {
             Button {
@@ -952,9 +974,18 @@
           EpubTocSheetView(
             chapters: viewModel.tableOfContents,
             currentLink: currentChapterLink,
+            bookmarks: viewModel.bookmarks,
+            currentBookmarkID: viewModel.currentBookmark?.id,
             goToChapter: { link in
               showingChapterSheet = false
               viewModel.goToChapter(link: link)
+            },
+            goToBookmark: { bookmark in
+              showingChapterSheet = false
+              viewModel.goToBookmark(bookmark)
+            },
+            deleteBookmark: { bookmark in
+              Task { await viewModel.deleteBookmark(bookmark) }
             }
           )
         }

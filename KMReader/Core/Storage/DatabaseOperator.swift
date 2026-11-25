@@ -149,6 +149,11 @@ actor DatabaseOperator {
     var record = record
     try record.save(db)
   }
+
+  func save(_ record: EpubBookmark, db: Database) throws {
+    var record = record
+    try record.save(db)
+  }
 }
 
 extension DatabaseOperator {

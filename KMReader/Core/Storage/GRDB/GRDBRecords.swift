@@ -271,3 +271,19 @@ nonisolated extension EpubThemePreset: FetchableRecord, MutablePersistableRecord
     case updatedAt = "updated_at"
   }
 }
+
+nonisolated extension EpubBookmark: FetchableRecord, MutablePersistableRecord {
+  nonisolated static let databaseTableName = "epub_bookmarks"
+
+  enum CodingKeys: String, CodingKey {
+    case id
+    case instanceId = "instance_id"
+    case bookId = "book_id"
+    case chapterIndex = "chapter_index"
+    case chapterHref = "chapter_href"
+    case chapterFraction = "chapter_fraction"
+    case totalProgression = "total_progression"
+    case chapterTitle = "chapter_title"
+    case createdAt = "created_at"
+  }
+}

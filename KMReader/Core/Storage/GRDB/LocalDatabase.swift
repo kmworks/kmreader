@@ -137,6 +137,26 @@ nonisolated enum LocalDatabase {
       }
     }
 
+    migrator.registerMigration("00014_add_epub_bookmarks") { db in
+      try db.create(table: "epub_bookmarks") { table in
+        table.column("id", .text).notNull()
+        table.column("instance_id", .text).notNull()
+        table.column("book_id", .text).notNull()
+        table.column("chapter_index", .integer).notNull()
+        table.column("chapter_href", .text).notNull()
+        table.column("chapter_fraction", .double).notNull()
+        table.column("total_progression", .double).notNull()
+        table.column("chapter_title", .text)
+        table.column("created_at", .datetime).notNull()
+        table.primaryKey(["id"], onConflict: .replace)
+      }
+      try db.create(
+        index: "idx_epub_bookmarks_book",
+        on: "epub_bookmarks",
+        columns: ["instance_id", "book_id"]
+      )
+    }
+
     try migrator.migrate(writer)
   }
 
