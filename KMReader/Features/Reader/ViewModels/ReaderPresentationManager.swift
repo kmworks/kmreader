@@ -341,6 +341,10 @@ final class ReaderPresentationManager {
     func showMangaTranslationSettingsFromCommand() {
       readerCommandHandlers?.showMangaTranslationSettings()
     }
+
+    func returnFromLinkFromCommand() {
+      readerCommandHandlers?.returnFromLink()
+    }
   #endif
 
   private func finishSession(

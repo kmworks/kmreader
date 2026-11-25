@@ -11,7 +11,7 @@
     private var linkRegions: [LinkInteractionRegionSet] = []
     private var layoutTask: Task<Void, Never>?
     private var layoutOperation: CoreTextEpubLayoutOperation?
-    private var layoutGeneration = 0
+    private(set) var layoutGeneration = 0
     private var layoutSize: CGSize = .zero
     private var settleCompletions: [() -> Void] = []
     private var errorView: CoreTextChapterErrorView?
@@ -86,7 +86,7 @@
       displayLists = []
       linkRegions = []
       isContentLoaded = false
-      host.rendererPrepareForReload()
+      host.rendererWillPaginate()
       displayView.displayList = nil
       errorView?.removeFromSuperview()
       errorView = nil
@@ -151,18 +151,10 @@
         errorView.bottomAnchor.constraint(equalTo: displayView.bottomAnchor),
       ])
       self.errorView = errorView
-      host.rendererDidProducePageCount(1)
-      host.onChapterLoadFailed?()
-
-      let previousPageIndex = host.currentSubPageIndex
-      host.rendererConsumePendingPageIndex()
       isContentLoaded = true
       showPage(at: 0)
-      if previousPageIndex != 0 {
-        host.onPageIndexAdjusted?(0)
-      }
+      host.rendererDidFail()
       host.rendererStopLoading()
-      host.onPaginationReady?()
       finishSettleCompletions()
     }
 
@@ -170,26 +162,9 @@
       guard let host else { return }
       displayLists = pages
       self.linkRegions = linkRegions
-      host.rendererDidProducePageCount(pages.count)
-
-      let previousPageIndex = host.currentSubPageIndex
-      let requestedPage: Int
-      if host.preferLastPageOnReady {
-        requestedPage = pages.count - 1
-      } else if let progression = host.targetProgressionOnReady {
-        requestedPage = Int(floor(Double(pages.count) * progression))
-      } else {
-        requestedPage = host.rendererPendingOrCurrentPageIndex()
-      }
-      let pageIndex = max(0, min(pages.count - 1, requestedPage))
-      host.rendererConsumePendingPageIndex()
       isContentLoaded = true
-      showPage(at: pageIndex)
-      if previousPageIndex != pageIndex {
-        host.onPageIndexAdjusted?(pageIndex)
-      }
+      host.rendererDidFinishPagination(pages.count)
       host.rendererStopLoading()
-      host.onPaginationReady?()
       finishSettleCompletions()
     }
 
@@ -217,13 +192,26 @@
       }
     }
 
+    func prepareNavigation() {
+      guard isContentLoaded, let host else { return }
+      if errorView != nil {
+        host.rendererDidFail()
+      } else {
+        host.rendererDidFinishPagination(displayLists.count)
+      }
+    }
+
     func applyPagination(scrollToPage pageIndex: Int) {
       guard configuration.chapterURL != nil, configuration.rootURL != nil else { return }
       let contentSize = displayView.bounds.size
       let shouldReload = !isContentLoaded || contentSize != layoutSize
       loadIfNeeded(force: shouldReload)
       if isContentLoaded {
-        showPage(at: pageIndex)
+        if errorView == nil {
+          installPages(displayLists, linkRegions: linkRegions)
+        } else {
+          showPage(at: pageIndex)
+        }
       }
     }
 

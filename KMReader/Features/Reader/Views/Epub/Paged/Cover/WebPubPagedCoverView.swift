@@ -80,44 +80,7 @@
         )
       }
 
-      if let targetChapterIndex = viewModel.targetChapterIndex,
-        let targetPageIndex = viewModel.targetPageIndex,
-        !context.coordinator.isAnimating,
-        context.coordinator.session == nil,
-        targetChapterIndex >= 0,
-        targetChapterIndex < viewModel.chapterCount,
-        targetChapterIndex != context.coordinator.currentChapterIndex
-          || targetPageIndex != context.coordinator.currentPageIndex
-      {
-        let pageCount = viewModel.chapterPageCount(at: targetChapterIndex) ?? 1
-        let isLastPageRequest = targetPageIndex < 0
-        let normalizedPageIndex =
-          isLastPageRequest
-          ? max(0, pageCount - 1)
-          : max(0, min(targetPageIndex, pageCount - 1))
-
-        if let target = context.coordinator.prepareTurnTarget(
-          chapterIndex: targetChapterIndex,
-          subPageIndex: normalizedPageIndex,
-          preferLastPageOnReady: isLastPageRequest
-        ) {
-          let shouldAnimate = context.coordinator.hasCompletedInitialUpdate && animateTapTurns
-          if shouldAnimate {
-            context.coordinator.animateTransition(to: target)
-          } else {
-            context.coordinator.installDeck(
-              around: target.host,
-              chapterIndex: target.chapterIndex,
-              subPageIndex: target.subPageIndex
-            )
-            context.coordinator.commitLocation(
-              chapterIndex: target.chapterIndex,
-              pageIndex: target.subPageIndex,
-              notify: true
-            )
-          }
-        }
-      }
+      context.coordinator.navigateToPendingTarget()
 
       context.coordinator.reconfigureHosts()
     }
@@ -157,6 +120,8 @@
 
       struct SlideSession {
         let direction: SlideDirection
+        let isInteractive: Bool
+        let navigationID: UUID
         let target: TurnTarget
         let originPage: Int
         let overlay: UIView
@@ -257,30 +222,74 @@
         else { return nil }
         wireController(controller)
         controller.onLinkTap = { [weak self] url in
-          self?.parent.viewModel.navigateToURL(url)
+          guard let self else { return }
+          switch parent.renderingEngine {
+          case .webView:
+            parent.viewModel.navigateToURL(url)
+          case .coreText:
+            parent.viewModel.navigateToChapter(containing: url)
+          }
+        }
+        controller.pendingAnchorProvider = { [weak self, weak controller] chapterIndex in
+          guard let self, let controller, self.currentController === controller, self.session == nil else { return nil }
+          return self.parent.viewModel.pendingAnchorNavigation(for: chapterIndex)
         }
         controller.loadViewIfNeeded()
         return controller
       }
 
+      func navigateToPendingTarget() {
+        if let targetChapterIndex = parent.viewModel.targetChapterIndex,
+          let targetPageIndex = parent.viewModel.targetPageIndex,
+          !isAnimating,
+          session == nil,
+          targetChapterIndex >= 0,
+          targetChapterIndex < parent.viewModel.chapterCount,
+          targetChapterIndex != currentChapterIndex
+            || targetPageIndex != currentPageIndex
+        {
+          let pageCount = parent.viewModel.chapterPageCount(at: targetChapterIndex) ?? 1
+          let isLastPageRequest = targetPageIndex < 0
+          let normalizedPageIndex =
+            isLastPageRequest
+            ? max(0, pageCount - 1)
+            : max(0, min(targetPageIndex, pageCount - 1))
+
+          if let target = prepareTurnTarget(
+            chapterIndex: targetChapterIndex,
+            subPageIndex: normalizedPageIndex,
+            preferLastPageOnReady: isLastPageRequest
+          ) {
+            let shouldAnimate =
+              hasCompletedInitialUpdate && parent.animateTapTurns
+              && parent.viewModel.navigationRequest?.destination.requiresFullExtent != true
+            if shouldAnimate {
+              animateTransition(to: target)
+            } else {
+              installDeck(
+                around: target.host,
+                chapterIndex: target.chapterIndex,
+                subPageIndex: target.subPageIndex
+              )
+              commitLocation(
+                chapterIndex: target.chapterIndex,
+                pageIndex: target.subPageIndex,
+                notify: true
+              )
+            }
+          }
+        }
+      }
+
       private func wireController(_ controller: EpubPageViewController) {
-        controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
-          guard let self, let controller else { return }
+        controller.onPositionSettled = { [weak self, weak controller] landing in
+          guard let self, let controller, controller.isNavigationCurrent else { return }
           guard self.currentController === controller, self.session == nil else { return }
           let chapterIndex = controller.chapterIndex
-          let storedCount = self.parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
-          let effectiveCount = max(storedCount, controller.totalPagesInChapter)
-          let normalizedPageIndex = max(0, min(pageIndex, effectiveCount - 1))
-          if effectiveCount != storedCount {
-            self.parent.viewModel.updateChapterPageCount(effectiveCount, for: chapterIndex)
-          }
-          self.parent.viewModel.currentChapterIndex = chapterIndex
-          self.parent.viewModel.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.targetChapterIndex = nil
-          self.parent.viewModel.targetPageIndex = nil
+          let pageIndex = landing.pageIndex
           self.currentChapterIndex = chapterIndex
-          self.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.pageDidChange()
+          self.currentPageIndex = pageIndex
+          self.parent.viewModel.commitPosition(landing)
         }
       }
 
@@ -292,6 +301,11 @@
         if let currentController { reconfigureHost(currentController) }
         if let nextController { reconfigureHost(nextController) }
         if let previousController { reconfigureHost(previousController) }
+        if !isAnimating, session == nil {
+          if let currentController { pageControllerFactory.prepareNavigation(on: currentController) }
+          if let nextController { pageControllerFactory.prepareNavigation(on: nextController) }
+          if let previousController { pageControllerFactory.prepareNavigation(on: previousController) }
+        }
       }
 
       // MARK: - Deck management
@@ -317,7 +331,9 @@
         controller.view.frame = container.view.bounds
         controller.view.isHidden = false
         controller.view.layer.zPosition = 1
-        if controller.currentSubPageIndex != subPageIndex, controller.targetProgressionOnReady == nil {
+        if controller.currentSubPageIndex != subPageIndex,
+          parent.viewModel.navigationRequest?.destination.requiresFullExtent != true
+        {
           controller.scrollToPageIndex(subPageIndex)
         }
 
@@ -476,7 +492,10 @@
               preferLastPageOnReady: preferLastPageOnReady
             )
         else { return nil }
-        if host.currentSubPageIndex != subPageIndex, !preferLastPageOnReady {
+        if parent.viewModel.navigationRequest?.chapterIndex != chapterIndex {
+          host.prepareInteractiveDestination(preferLastPageOnReady ? .lastPage : .page(subPageIndex))
+        }
+        if host.currentSubPageIndex != subPageIndex, !host.destination.requiresFullExtent {
           host.scrollToPageIndex(subPageIndex)
         }
         return TurnTarget(
@@ -488,7 +507,10 @@
         )
       }
 
-      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
+      func commitLocation(
+        chapterIndex: Int, pageIndex: Int, notify: Bool, isInteractive: Bool = false, navigationID: UUID? = nil
+      ) {
+        let requestID = navigationID ?? currentController?.navigationID ?? parent.viewModel.navigationID
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
         guard notify else {
@@ -501,21 +523,28 @@
           return
         }
         Task { @MainActor in
-          if let controller = currentController {
-            controller.preferLastPageOnReady = false
-            controller.targetProgressionOnReady = nil
+          guard parent.viewModel.navigationID == requestID else {
+            navigateToPendingTarget()
+            reconfigureHosts()
+            return
           }
-          parent.viewModel.currentChapterIndex = chapterIndex
-          parent.viewModel.currentPageIndex = pageIndex
-          parent.viewModel.targetChapterIndex = nil
-          parent.viewModel.targetPageIndex = nil
-          parent.viewModel.pageDidChange()
+          if isInteractive {
+            currentController?.finishInteractiveNavigation()
+            parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
+          } else if let controller = currentController, controller.layout.pageCount != nil {
+            parent.viewModel.commitPosition(
+              EpubPageLanding(
+                chapterIndex: chapterIndex, pageIndex: controller.currentSubPageIndex,
+                layout: controller.layout, navigationID: requestID
+              ))
+            controller.applyPendingAnchor()
+          }
         }
       }
 
       // MARK: - Slide sessions
 
-      private func beginSlideSession(direction: SlideDirection, target: TurnTarget) -> Bool {
+      private func beginSlideSession(direction: SlideDirection, target: TurnTarget, isInteractive: Bool) -> Bool {
         guard session == nil else { return false }
         guard let container = containerViewController, let current = currentController else { return false }
         rubberOffset = 0
@@ -550,7 +579,7 @@
             current.view.isHidden = true
             current.view.layer.zPosition = 0
           } else {
-            if current.targetProgressionOnReady == nil {
+            if isInteractive || parent.viewModel.navigationRequest?.destination.requiresFullExtent != true {
               current.scrollToPageIndex(target.subPageIndex)
             }
           }
@@ -573,6 +602,8 @@
 
         session = SlideSession(
           direction: direction,
+          isInteractive: isInteractive,
+          navigationID: parent.viewModel.navigationID,
           target: target,
           originPage: currentPageIndex,
           overlay: overlay
@@ -666,9 +697,13 @@
           commitLocation(
             chapterIndex: target.chapterIndex,
             pageIndex: target.subPageIndex,
-            notify: true
+            notify: true,
+            isInteractive: session.isInteractive,
+            navigationID: session.navigationID
           )
         } else {
+          self.session = nil
+          isAnimating = false
           let overlay = session.overlay
           let resetPresentation = {
             if let current = self.currentController {
@@ -678,14 +713,10 @@
               self.updateShadow(for: current.view, isElevated: true, offset: 0)
             }
             overlay.removeFromSuperview()
-          }
-          if target.isCrossChapter {
-            resetPresentation()
-          } else if let current = currentController {
-            // The live view still shows the target page; restore it only after the scroll-back lands.
-            current.scrollToPageIndex(session.originPage, completion: resetPresentation)
-          } else {
-            resetPresentation()
+            if self.parent.viewModel.navigationID != session.navigationID {
+              self.navigateToPendingTarget()
+              self.reconfigureHosts()
+            }
           }
           if target.isCrossChapter {
             if target.host === nextController || target.host === previousController {
@@ -695,8 +726,14 @@
               removeChildController(target.host, from: container)
             }
           }
-          self.session = nil
-          isAnimating = false
+          if target.isCrossChapter {
+            resetPresentation()
+          } else if let current = currentController {
+            // The live view still shows the target page; restore it only after the scroll-back lands.
+            current.scrollToPageIndex(session.originPage, completion: resetPresentation)
+          } else {
+            resetPresentation()
+          }
         }
       }
 
@@ -710,7 +747,7 @@
 
       func animateTransition(to target: TurnTarget) {
         let direction: SlideDirection = target.isForward ? .forward : .backward
-        guard beginSlideSession(direction: direction, target: target) else {
+        guard beginSlideSession(direction: direction, target: target, isInteractive: false) else {
           installDeck(
             around: target.host,
             chapterIndex: target.chapterIndex,
@@ -802,7 +839,7 @@
           layoutRubberband()
           return
         }
-        if beginSlideSession(direction: direction, target: target) {
+        if beginSlideSession(direction: direction, target: target, isInteractive: true) {
           let clamped = clampSessionOffset(translation.x, direction: direction, viewWidth: viewWidth)
           session?.offset = clamped
           layoutSession(offset: clamped)

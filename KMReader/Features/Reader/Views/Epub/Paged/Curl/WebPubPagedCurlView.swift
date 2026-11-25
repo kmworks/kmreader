@@ -95,22 +95,7 @@
         context.coordinator.installInitialLocation(in: pageVC)
       }
 
-      if let targetChapterIndex = viewModel.targetChapterIndex,
-        let targetPageIndex = viewModel.targetPageIndex,
-        !context.coordinator.hasActiveTurnSession,
-        !context.coordinator.isAnimating,
-        !(pageVC.transitionCoordinator?.isAnimated ?? false),
-        targetChapterIndex >= 0,
-        targetChapterIndex < viewModel.chapterCount,
-        targetChapterIndex != context.coordinator.currentChapterIndex
-          || targetPageIndex != context.coordinator.currentPageIndex
-      {
-        context.coordinator.performProgrammaticTurn(
-          chapterIndex: targetChapterIndex,
-          pageIndex: targetPageIndex,
-          in: pageVC
-        )
-      }
+      context.coordinator.navigateToPendingTarget()
 
       context.coordinator.reconfigureHosts()
     }
@@ -190,6 +175,7 @@
 
       private struct TurnSession {
         let isInteractive: Bool
+        let navigationID: UUID
         let target: TurnTarget
         let targetShell: CurlPageShellViewController
         let leafShell: CurlPageShellViewController
@@ -293,33 +279,56 @@
         else { return nil }
         wireController(controller)
         controller.onLinkTap = { [weak self] url in
-          self?.parent.viewModel.navigateToURL(url)
+          guard let self else { return }
+          switch parent.renderingEngine {
+          case .webView:
+            parent.viewModel.navigateToURL(url)
+          case .coreText:
+            parent.viewModel.navigateToChapter(containing: url)
+          }
+        }
+        controller.pendingAnchorProvider = { [weak self, weak controller] chapterIndex in
+          guard let self, let controller, self.currentChapterController === controller, self.turnSession == nil else {
+            return nil
+          }
+          return self.parent.viewModel.pendingAnchorNavigation(for: chapterIndex)
         }
         controller.loadViewIfNeeded()
         return controller
+      }
+
+      func navigateToPendingTarget() {
+        guard let pageVC = pageViewController else { return }
+        if let targetChapterIndex = parent.viewModel.targetChapterIndex,
+          let targetPageIndex = parent.viewModel.targetPageIndex,
+          !hasActiveTurnSession,
+          !isAnimating,
+          !(pageVC.transitionCoordinator?.isAnimated ?? false),
+          targetChapterIndex >= 0,
+          targetChapterIndex < parent.viewModel.chapterCount,
+          targetChapterIndex != currentChapterIndex
+            || targetPageIndex != currentPageIndex
+        {
+          performProgrammaticTurn(
+            chapterIndex: targetChapterIndex,
+            pageIndex: targetPageIndex,
+            in: pageVC
+          )
+        }
       }
 
       private func wireController(_ controller: EpubPageViewController) {
         controller.onRepagination = { [weak self] in
           self?.invalidateBacksideCache()
         }
-        controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
-          guard let self, let controller else { return }
+        controller.onPositionSettled = { [weak self, weak controller] landing in
+          guard let self, let controller, controller.isNavigationCurrent else { return }
           guard self.currentChapterController === controller, self.turnSession == nil else { return }
           let chapterIndex = controller.chapterIndex
-          let storedCount = self.parent.viewModel.chapterPageCount(at: chapterIndex) ?? 1
-          let effectiveCount = max(storedCount, controller.totalPagesInChapter)
-          let normalizedPageIndex = max(0, min(pageIndex, effectiveCount - 1))
-          if effectiveCount != storedCount {
-            self.parent.viewModel.updateChapterPageCount(effectiveCount, for: chapterIndex)
-          }
-          self.parent.viewModel.currentChapterIndex = chapterIndex
-          self.parent.viewModel.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.targetChapterIndex = nil
-          self.parent.viewModel.targetPageIndex = nil
+          let pageIndex = landing.pageIndex
           self.currentChapterIndex = chapterIndex
-          self.currentPageIndex = normalizedPageIndex
-          self.parent.viewModel.pageDidChange()
+          self.currentPageIndex = pageIndex
+          self.parent.viewModel.commitPosition(landing)
         }
       }
 
@@ -331,6 +340,11 @@
         if let currentChapterController { reconfigureHost(currentChapterController) }
         if let nextChapterController { reconfigureHost(nextChapterController) }
         if let previousChapterController { reconfigureHost(previousChapterController) }
+        if !isAnimating, turnSession == nil {
+          if let currentChapterController { pageControllerFactory.prepareNavigation(on: currentChapterController) }
+          if let nextChapterController { pageControllerFactory.prepareNavigation(on: nextChapterController) }
+          if let previousChapterController { pageControllerFactory.prepareNavigation(on: previousChapterController) }
+        }
       }
 
       // MARK: - Neighbor preloading
@@ -497,21 +511,11 @@
               preferLastPageOnReady: preferLastPageOnReady
             )
         else { return nil }
-        // An explicit turn supersedes restoration anchors retained by a reused chapter.
-        host.targetProgressionOnReady = nil
-        var resolvedSubPageIndex = subPageIndex
-        if preferLastPageOnReady {
-          if host.isContentLoaded {
-            resolvedSubPageIndex = max(0, host.totalPagesInChapter - 1)
-            host.preferLastPageOnReady = false
-            host.scrollToPageIndex(resolvedSubPageIndex)
-          } else {
-            host.preferLastPageOnReady = true
-          }
-        } else {
-          host.preferLastPageOnReady = false
-          host.scrollToPageIndex(subPageIndex)
+        if parent.viewModel.navigationRequest?.chapterIndex != chapterIndex {
+          host.prepareInteractiveDestination(preferLastPageOnReady ? .lastPage : .page(subPageIndex))
         }
+        let resolvedSubPageIndex = host.destination.pageIndex(pageCount: host.totalPagesInChapter)
+        if !host.destination.requiresFullExtent { host.scrollToPageIndex(resolvedSubPageIndex) }
         return TurnTarget(
           controller: host,
           chapterIndex: chapterIndex,
@@ -531,6 +535,7 @@
           onReady(nil)
           return
         }
+        let requestID = parent.viewModel.navigationID
         let targetShell = CurlPageShellViewController()
         // Pre-size so the hosted web view never passes through a zero-size layout,
         // which would trigger a throwaway re-pagination.
@@ -542,6 +547,7 @@
         ) -> TurnSession {
           TurnSession(
             isInteractive: isInteractive,
+            navigationID: requestID,
             target: target,
             targetShell: targetShell,
             leafShell: leaf,
@@ -720,7 +726,9 @@
           )
         else { return }
 
-        let shouldAnimate = hasCompletedInitialUpdate && parent.animateTapTurns
+        let shouldAnimate =
+          hasCompletedInitialUpdate && parent.animateTapTurns
+          && parent.viewModel.navigationRequest?.destination.requiresFullExtent != true
         if shouldAnimate {
           isAnimating = true
           makeTurnSession(
@@ -794,7 +802,7 @@
           )
           refreshNeighbors(reusing: detached)
         } else {
-          if target.controller.targetProgressionOnReady == nil {
+          if parent.viewModel.navigationRequest?.destination.requiresFullExtent != true {
             target.controller.scrollToPageIndex(target.subPageIndex)
           }
           refreshNeighbors()
@@ -826,25 +834,33 @@
         commitLocation(
           chapterIndex: session.target.chapterIndex,
           pageIndex: session.target.controller.currentSubPageIndex,
-          notify: true
+          notify: true,
+          isInteractive: session.isInteractive,
+          navigationID: session.navigationID
         )
       }
 
       private func cancelTurnSession(_ session: TurnSession) {
         turnSession = nil
-        guard !session.target.isCrossChapter else { return }
-        guard let current = currentChapterController else {
+        let finish = {
           session.leafSnapshot?.removeFromSuperview()
+          if self.parent.viewModel.navigationID != session.navigationID {
+            self.navigateToPendingTarget()
+            self.reconfigureHosts()
+          }
+        }
+        guard !session.target.isCrossChapter, let current = currentChapterController else {
+          finish()
           return
         }
         session.leafShell.adopt(current)
-        // Keep the leaf snapshot on top until the live view has scrolled back to it.
-        current.scrollToPageIndex(session.originPage) {
-          session.leafSnapshot?.removeFromSuperview()
-        }
+        current.scrollToPageIndex(session.originPage, completion: finish)
       }
 
-      func commitLocation(chapterIndex: Int, pageIndex: Int, notify: Bool) {
+      func commitLocation(
+        chapterIndex: Int, pageIndex: Int, notify: Bool, isInteractive: Bool = false, navigationID: UUID? = nil
+      ) {
+        let requestID = navigationID ?? currentChapterController?.navigationID ?? parent.viewModel.navigationID
         currentChapterIndex = chapterIndex
         currentPageIndex = pageIndex
         scheduleBacksideImageCapture(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -855,27 +871,25 @@
           if parent.viewModel.currentPageIndex != pageIndex {
             parent.viewModel.currentPageIndex = pageIndex
           }
-          // An install that lands on the pending target fulfills it. Leaving
-          // it set would fire a spurious turn back here once the restored
-          // page jump moves the coordinator past it.
-          if parent.viewModel.targetChapterIndex == chapterIndex,
-            parent.viewModel.targetPageIndex == pageIndex
-          {
-            parent.viewModel.targetChapterIndex = nil
-            parent.viewModel.targetPageIndex = nil
-          }
           return
         }
         Task { @MainActor in
-          if let controller = currentChapterController {
-            controller.preferLastPageOnReady = false
-            controller.targetProgressionOnReady = nil
+          guard parent.viewModel.navigationID == requestID else {
+            navigateToPendingTarget()
+            reconfigureHosts()
+            return
           }
-          parent.viewModel.currentChapterIndex = chapterIndex
-          parent.viewModel.currentPageIndex = pageIndex
-          parent.viewModel.targetChapterIndex = nil
-          parent.viewModel.targetPageIndex = nil
-          parent.viewModel.pageDidChange()
+          if isInteractive {
+            currentChapterController?.finishInteractiveNavigation()
+            parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
+          } else if let controller = currentChapterController, controller.layout.pageCount != nil {
+            parent.viewModel.commitPosition(
+              EpubPageLanding(
+                chapterIndex: chapterIndex, pageIndex: controller.currentSubPageIndex,
+                layout: controller.layout, navigationID: requestID
+              ))
+            controller.applyPendingAnchor()
+          }
         }
       }
 

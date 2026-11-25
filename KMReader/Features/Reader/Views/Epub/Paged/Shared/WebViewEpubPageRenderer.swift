@@ -8,7 +8,10 @@
     private var configuration: EpubChapterConfiguration
     private var webView: WKWebView!
     private let epubResourceSchemeHandler = EpubResourceSchemeHandler()
-    private var paginationGeneration = 0
+    private(set) var layoutGeneration = 0
+    // Set when the content probe reports a publisher-declared vertical writing
+    // mode that the manifest metadata did not advertise.
+    private var detectedVerticalLayout = false
     private(set) var isContentLoaded = false
 
     var contentView: UIView { webView }
@@ -36,6 +39,7 @@
       config.userContentController = controller
 
       webView = WKWebView(frame: .zero, configuration: config)
+      refreshDocumentStartUserScript()
       webView.navigationDelegate = self
       webView.scrollView.isScrollEnabled = false
       webView.scrollView.bounces = false
@@ -63,7 +67,29 @@
           rootURL: configuration.rootURL,
           mediaTypesByRelativePath: configuration.mediaTypesByRelativePath
         )
+        // The document-start script snapshots the theme; keep it current so
+        // the next chapter load paints with the right styles immediately.
+        refreshDocumentStartUserScript()
       }
+    }
+
+    // Applies the theme CSS at document start (instead of waiting for the
+    // didFinish evaluateJavaScript round-trip) to shorten the first-chapter
+    // white window. The didFinish injection stays as the idempotent fallback.
+    private func refreshDocumentStartUserScript() {
+      guard let controller = webView?.configuration.userContentController else { return }
+      controller.removeAllUserScripts()
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: configuration.contentCSS,
+        readiumProperties: configuration.readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: configuration.publicationLanguage,
+        readingProgression: configuration.publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
+      )
+      controller.addUserScript(
+        WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+      )
     }
 
     func applyTheme(_ theme: ReaderTheme) {
@@ -94,7 +120,10 @@
 
       // New content loading - show indicator and keep webview active but hidden
       isContentLoaded = false
-      host.rendererPrepareForReload()
+      detectedVerticalLayout = false
+      layoutGeneration += 1
+      refreshDocumentStartUserScript()
+      host.rendererWillPaginate()
 
       // Use a near-zero alpha instead of exactly 0.
       // WebKit sometimes throttles layout/JS execution for elements with alpha=0.
@@ -110,6 +139,22 @@
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
     }
 
+    func prepareNavigation() {
+      guard isContentLoaded, let host else { return }
+      if host.destination.requiresFullExtent
+        || host.requiresFullExtentProvider?(host.chapterIndex) == true
+      {
+        host.rendererWillPaginate()
+        layoutGeneration += 1
+        injectPaginationJS(
+          targetPageIndex: host.rendererPendingOrCurrentPageIndex(),
+          preferLastPage: host.destination == .lastPage
+        )
+      } else if host.hasPaginated {
+        host.rendererDidFinishPagination(host.totalPagesInChapter)
+      }
+    }
+
     func applyPagination(scrollToPage pageIndex: Int) {
       guard isContentLoaded else { return }
       let size = webView.bounds.size
@@ -122,11 +167,14 @@
         host?.rendererStartLoading()
       }
 
+      host?.rendererWillPaginate()
+      layoutGeneration += 1
+      let generation = layoutGeneration
       injectCSS { [weak self] in
-        guard let self else { return }
+        guard let self, generation == layoutGeneration else { return }
         self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self.host?.preferLastPageOnReady ?? false
+          preferLastPage: self.host?.destination == .lastPage
         )
       }
     }
@@ -134,17 +182,19 @@
     private var paginationLayout: WebPubPaginationLayout {
       WebPubPaginationLayout.resolve(
         language: configuration.publicationLanguage,
-        readingProgression: configuration.publicationReadingProgression
+        readingProgression: configuration.publicationReadingProgression,
+        forceVertical: detectedVerticalLayout
       )
     }
 
     private func injectCSS(completion: (() -> Void)? = nil) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: configuration.contentCSS,
         readiumProperties: configuration.readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
         language: configuration.publicationLanguage,
-        readingProgression: configuration.publicationReadingProgression
+        readingProgression: configuration.publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
       )
       webView.evaluateJavaScript(js) { _, _ in
         completion?()
@@ -152,13 +202,15 @@
     }
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
-      paginationGeneration += 1
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
         targetPageIndex: targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
-        generation: paginationGeneration
+        generation: layoutGeneration,
+        requiresFullExtent: host?.destination.requiresFullExtent == true
+          || host?.requiresFullExtentProvider?(configuration.chapterIndex) == true,
+        targetProgression: host?.destination.progression
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -193,6 +245,27 @@
       }
     }
 
+    // Jumps to an in-chapter anchor (footnote, endnote, cross-reference) and
+    // lands on the page containing it. The completion reports the resolved
+    // page index, or nil when the anchor does not exist.
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
+      guard isContentLoaded else {
+        completion(nil)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToAnchorScript(
+        anchor: anchor,
+        paginationLayout: paginationLayout
+      )
+      let requestID = host?.navigationID
+      webView.evaluateJavaScript(js) { [weak host] result, _ in
+        Task { @MainActor in
+          guard let host, let requestID, host.acceptsNavigation(requestID) else { return }
+          completion(result as? Int)
+        }
+      }
+    }
+
     func handleLinkTap(at point: CGPoint, in hostView: UIView) -> Bool {
       false
     }
@@ -203,7 +276,6 @@
       guard let host else { return }
       isContentLoaded = true
       applyPagination(scrollToPage: host.rendererPendingOrCurrentPageIndex())
-      host.rendererConsumePendingPageIndex()
       // Visibility is handled in userContentController when pagination is ready
     }
 
@@ -229,8 +301,11 @@
 
       // Handle link clicks
       if navigationAction.navigationType == .linkActivated {
-        // Check if this is an internal link (same book navigation)
-        if url.scheme == "file" {
+        let isInBookLink =
+          url.scheme == EpubResourceScheme.scheme
+          || url.scheme == "file"
+          || url.scheme == nil
+        if isInBookLink {
           host?.onLinkTap?(url)
           decisionHandler(.cancel, preferences)
           return
@@ -252,46 +327,26 @@
 
       if type == "ready" {
         // A superseded pagination pass must not resurrect stale counts or positions.
-        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          var actualPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
-
-          host.rendererDidProducePageCount(normalizedTotal)
-
-          // Handle target progression jump if requested (e.g. on initial book open).
-          // We ignore this if preferLastPageOnReady is true, as that takes precedence.
-          if let progression = host.targetProgressionOnReady, !host.preferLastPageOnReady {
-            let targetIndex = max(0, min(normalizedTotal - 1, Int(floor(Double(normalizedTotal) * progression))))
-            if targetIndex != actualPage {
-              actualPage = targetIndex
-              scrollToPage(targetIndex, completion: nil)
-            }
-            host.targetProgressionOnReady = nil
-          }
-
-          // Sync the current sub-page index with the actual page landed on by JS or progression calculation.
-          if host.currentSubPageIndex != actualPage {
-            host.currentSubPageIndex = actualPage
-            host.onPageIndexAdjusted?(actualPage)
-          }
-
-          host.preferLastPageOnReady = false
-          host.updateOverlayLabels()
+          host.rendererStopLoading()
+          webView.alpha = 1
+          host.rendererDidFinishPagination(normalizedTotal)
         }
-
-        // Stop the loading indicator and finally show the WebView content.
-        host.rendererStopLoading()
-        webView.alpha = 1
-        host.onPaginationReady?()
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
-        // Handle incremental layout updates from ResizeObserver
-        if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+        // Handle incremental layout updates from the extent watchers
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         let normalizedTotal = max(1, total)
-        if host.totalPagesInChapter != normalizedTotal {
-          host.rendererDidProducePageCount(normalizedTotal)
-          host.updateOverlayLabels()
-        }
+        host.rendererDidFinishPagination(normalizedTotal)
+      } else if type == "writingModeMismatch" {
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
+        // The content probe found publisher-declared vertical writing that
+        // the manifest missed; re-lay out once with the vertical variant.
+        guard !detectedVerticalLayout else { return }
+        detectedVerticalLayout = true
+        refreshDocumentStartUserScript()
+        applyPagination(scrollToPage: host.currentSubPageIndex)
       }
     }
   }

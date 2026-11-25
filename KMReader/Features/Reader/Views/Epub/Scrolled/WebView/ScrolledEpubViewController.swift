@@ -36,9 +36,7 @@
     private var mediaTypesByRelativePath: [String: String]
     private var lastLayoutSize: CGSize = .zero
     private var isContentLoaded = false
-    private var pendingPageIndex: Int?
-    private var pendingJumpToLastPage: Bool = false
-    private var targetProgressionOnReady: Double?
+    private var pendingDestination: EpubNavigationDestination?
     private var readyToken: Int = 0
     private var lastKnownDocumentScrollTop: CGFloat = 0
     private var lastKnownDocumentContentHeight: CGFloat = 0
@@ -56,8 +54,16 @@
     // Chapter navigation
     private var totalChapters: Int = 1
     var onChapterNavigationNeeded: ((Int) -> Void)?
-    var onPageDidChange: ((Int, Int) -> Void)?
-    var onPageCountReady: ((Int, Int) -> Void)?
+    var navigationID = UUID()
+    private var paginationNavigationID = UUID()
+    private var renderedNavigationID = UUID()
+    var onPageDidChange: ((EpubPageLanding) -> Void)?
+    var onPageCountReady: ((Int, Int, UUID) -> Void)?
+    /// Registers in-book links before asynchronous navigation begins.
+    var onLinkTap: ((URL) -> Void)?
+    /// Exposes the current link command without consuming it.
+    var requiresFullExtentProvider: ((Int) -> Bool)?
+    var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
 
     var currentChapterIndex: Int { chapterIndex }
     var currentPageIndex: Int { currentSubPageIndex }
@@ -108,7 +114,7 @@
       publicationReadingProgression: WebPubReadingProgression?,
       chapterIndex: Int,
       initialSubPageIndex: Int,
-      targetProgressionOnReady: Double?,
+      destination: EpubNavigationDestination?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -133,7 +139,7 @@
       self.publicationReadingProgression = publicationReadingProgression
       self.chapterIndex = chapterIndex
       self.currentSubPageIndex = max(0, initialSubPageIndex)
-      self.targetProgressionOnReady = targetProgressionOnReady
+      self.pendingDestination = destination
       self.totalChapters = totalChapters
       self.bookTitle = bookTitle
       self.chapterTitle = chapterTitle
@@ -213,6 +219,7 @@
       webView = WKWebView(frame: .zero, configuration: config)
       webView.navigationDelegate = self
       webView.scrollView.delegate = self
+      refreshDocumentStartUserScript()
       webView.scrollView.isScrollEnabled = true
       webView.scrollView.bounces = true
       webView.scrollView.alwaysBounceVertical = true
@@ -417,23 +424,6 @@
       scrollToOffset(targetOffset)
     }
 
-    func navigateToPage(chapterIndex: Int, subPageIndex: Int, jumpToLastPage: Bool = false) {
-      // If navigating to a different chapter, reload the content
-      if chapterIndex != self.chapterIndex {
-        self.chapterIndex = chapterIndex
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        loadContentIfNeeded(force: true)
-      } else {
-        // Same chapter - always wait for ready message to ensure correct page count
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        if isContentLoaded {
-          applyPagination(scrollToPage: subPageIndex)
-        }
-      }
-    }
-
     private func applyTheme() {
       view.backgroundColor = theme.uiColorBackground
       containerView?.backgroundColor = .clear
@@ -472,6 +462,8 @@
       publicationLanguage: String?,
       publicationReadingProgression: WebPubReadingProgression?,
       chapterIndex: Int,
+      navigationID: UUID,
+      navigationRequest: EpubNavigationRequest?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -501,6 +493,12 @@
         || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
 
+      let navigationChanged = navigationRequest != nil && self.navigationID != navigationID
+      if navigationChanged || shouldReload || appearanceChanged {
+        pendingDestination = navigationRequest?.destination ?? .page(currentSubPageIndex)
+      }
+
+      self.navigationID = navigationID
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
       self.rootURL = rootURL
@@ -534,10 +532,12 @@
       }
 
       applyTheme()
+      refreshDocumentStartUserScript()
       if shouldReload {
         loadContentIfNeeded(force: true)
-      } else if appearanceChanged {
-        applyPagination(scrollToPage: currentSubPageIndex)
+      } else if appearanceChanged || navigationChanged {
+        applyPagination(
+          scrollToPage: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
       }
     }
 
@@ -563,20 +563,97 @@
       }
 
       isContentLoaded = false
+      readyToken += 1
       lastKnownDocumentScrollTop = 0
       lastKnownDocumentContentHeight = 0
       lastKnownDocumentViewportHeight = 0
       totalPagesInChapter = 1
       webView.alpha = 0.01
       loadingIndicator?.startAnimating()
+      refreshDocumentStartUserScript()
 
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
     }
 
+    /// Installs the CSS/theme payload as a document-start user script so the
+    /// first paint already has the theme applied, shrinking the white flash.
+    private func refreshDocumentStartUserScript() {
+      guard isViewLoaded else { return }
+      let controller = webView.configuration.userContentController
+      controller.removeAllUserScripts()
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: contentCSS,
+        readiumProperties: readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: publicationLanguage,
+        readingProgression: publicationReadingProgression
+      )
+      controller.addUserScript(
+        WKUserScript(
+          source: js,
+          injectionTime: .atDocumentStart,
+          forMainFrameOnly: true
+        ))
+    }
+
+    private func reportCurrentPosition(resolvedAnchor: String? = nil) {
+      onPageDidChange?(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          layout: .content(pageCount: totalPagesInChapter), navigationID: renderedNavigationID,
+          resolvedAnchor: resolvedAnchor
+        ))
+    }
+
+    /// Scrolls to an in-document anchor (footnote, cross-reference).
+    private func scrollToAnchor(_ anchor: String, completion: @escaping (Bool) -> Void) {
+      guard isContentLoaded else {
+        completion(false)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToDocumentAnchorScript(anchor: anchor)
+      let requestID = navigationID
+      webView.evaluateJavaScript(js) { [weak self] result, error in
+        guard let self, self.navigationID == requestID else { return }
+        if error != nil {
+          completion(false)
+        } else {
+          completion((result as? Bool) ?? false)
+        }
+      }
+    }
+
+    func webView(
+      _ webView: WKWebView,
+      decidePolicyFor navigationAction: WKNavigationAction,
+      decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+    ) {
+      guard navigationAction.navigationType == .linkActivated,
+        let url = navigationAction.request.url
+      else {
+        decisionHandler(.allow)
+        return
+      }
+
+      // In-book links stay inside the reader; external links are opened by
+      // the platform browser via the UI layer.
+      let isInBook =
+        url.scheme == EpubResourceScheme.scheme
+        || url.scheme == "file"
+        || url.scheme == nil
+      guard isInBook else {
+        decisionHandler(.cancel)
+        return
+      }
+
+      decisionHandler(.cancel)
+      onLinkTap?(url)
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
-      applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
-      pendingPageIndex = nil
+      applyPagination(
+        scrollToPage: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
     }
 
     override func viewDidLayoutSubviews() {
@@ -618,6 +695,7 @@
 
       readyToken += 1
       let currentReadyToken = readyToken
+      paginationNavigationID = navigationID
       injectCSS(
         contentCSS,
         readiumProperties: readiumProperties,
@@ -625,9 +703,10 @@
         language: publicationLanguage,
         readingProgression: publicationReadingProgression
       ) { [weak self] in
-        self?.injectPaginationJS(
+        guard let self, currentReadyToken == readyToken else { return }
+        self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self?.pendingJumpToLastPage ?? false,
+          preferLastPage: self.pendingDestination == .lastPage,
           token: currentReadyToken
         )
       }
@@ -635,12 +714,7 @@
 
     private func scrollToPage(_ pageIndex: Int, animated: Bool = true) {
       guard isContentLoaded else { return }
-      let pageHeight = effectiveViewportHeight
-      guard pageHeight > 0 else { return }
-
-      let contentHeight = effectiveContentHeight
-      let maxOffset = max(0, contentHeight - pageHeight)
-      let targetOffset = min(pageHeight * CGFloat(pageIndex), maxOffset)
+      let targetOffset = scrollPagination.offset(for: pageIndex)
 
       scrollDocument(to: targetOffset, animated: animated)
     }
@@ -655,13 +729,17 @@
 
       scrollDocument(to: clampedOffset, animated: animated)
 
-      let newPageIndex = Int(round(clampedOffset / pageHeight))
+      let newPageIndex = scrollPagination.pageIndex(at: clampedOffset)
       let clampedIndex = max(0, min(totalPagesInChapter - 1, newPageIndex))
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        reportCurrentPosition()
       }
+    }
+
+    private var scrollPagination: EpubScrollPagination {
+      EpubScrollPagination(contentHeight: effectiveContentHeight, viewportHeight: effectiveViewportHeight)
     }
 
     private var effectiveViewportHeight: CGFloat {
@@ -694,74 +772,9 @@
       lastKnownDocumentScrollTop = clampedOffset
       let offset = Double(clampedOffset)
       let duration = animated && animateTapTurns ? 0.3 : 0
-      let js = """
-          (function() {
-            var top = \(offset);
-            var duration = \(duration);
-            var root = document.documentElement;
-            var body = document.body;
-            var scrolling = document.scrollingElement || root || body;
-            var getCurrentTop = function() {
-              return Math.max(
-                0,
-                window.scrollY
-                || (scrolling && scrolling.scrollTop)
-                || (root && root.scrollTop)
-                || (body && body.scrollTop)
-                || 0
-              );
-            };
-            var setTop = function(value) {
-              window.scrollTo(0, value);
-              if (scrolling) { scrolling.scrollTop = value; }
-              if (root) { root.scrollTop = value; }
-              if (body) { body.scrollTop = value; }
-            };
-            var finish = function() {
-              if (window.__kmreaderPostMetrics) {
-                window.requestAnimationFrame(function() {
-                  window.__kmreaderPostMetrics('scroll');
-                });
-              }
-            };
-            if (window.__kmreaderScrollAnimationFrame) {
-              window.cancelAnimationFrame(window.__kmreaderScrollAnimationFrame);
-              window.__kmreaderScrollAnimationFrame = null;
-            }
-            if (!(duration > 0)) {
-              setTop(top);
-              finish();
-              return true;
-            }
-            var startTop = getCurrentTop();
-            var distance = top - startTop;
-            if (Math.abs(distance) < 0.5) {
-              setTop(top);
-              finish();
-              return true;
-            }
-            var startTime = null;
-            var easeOutCubic = function(progress) {
-              return 1 - Math.pow(1 - progress, 3);
-            };
-            var step = function(timestamp) {
-              if (startTime === null) {
-                startTime = timestamp;
-              }
-              var progress = Math.min(1, (timestamp - startTime) / (duration * 1000));
-              var eased = easeOutCubic(progress);
-              setTop(startTop + (distance * eased));
-              if (progress < 1) {
-                window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
-                return;
-              }
-              window.__kmreaderScrollAnimationFrame = null;
-              finish();
-            };
-            window.__kmreaderScrollAnimationFrame = window.requestAnimationFrame(step);
-            return true;
-          })();
-        """
+      let js = WebPubPagedJavaScriptBuilder.makeScrollDocumentScript(
+        targetOffset: offset, duration: duration, token: readyToken
+      )
 
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -779,217 +792,14 @@
     }
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool, token: Int) {
-      let js = """
-          (function() {
-            var target = \(targetPageIndex);
-            var preferLast = \(preferLastPage ? "true" : "false");
-            var token = \(token);
-            var hasFinalized = false;
-
-            // Offsets past the first page depend on the full content extent;
-            // finalizing while images are still in flight measures a short
-            // document and lands mid-chapter once they load.
-            \(WebPubPagedJavaScriptBuilder.fullExtentGuardScript)
-            var installMetricsBridge = function() {
-              window.__kmreaderCurrentToken = token;
-              if (window.__kmreaderPostMetrics) {
-                return;
-              }
-              window.__kmreaderPostMetrics = function(type) {
-                var root = document.documentElement;
-                var body = document.body;
-                var scrolling = document.scrollingElement || root || body;
-                var viewportHeight =
-                  (window.visualViewport && window.visualViewport.height)
-                  || window.innerHeight
-                  || (root && root.clientHeight)
-                  || 1;
-                if (!viewportHeight || viewportHeight <= 0) { viewportHeight = 1; }
-
-                var bodyRectHeight = body ? Math.ceil(body.getBoundingClientRect().height) : 0;
-                var rootRectHeight = root ? Math.ceil(root.getBoundingClientRect().height) : 0;
-                var contentHeight = Math.max(
-                  scrolling ? (scrolling.scrollHeight || 0) : 0,
-                  root ? (root.scrollHeight || 0) : 0,
-                  body ? (body.scrollHeight || 0) : 0,
-                  bodyRectHeight,
-                  rootRectHeight,
-                  viewportHeight
-                );
-                var maxScroll = Math.max(0, contentHeight - viewportHeight);
-                var scrollTop = Math.max(
-                  0,
-                  Math.min(
-                    maxScroll,
-                    window.scrollY
-                    || (scrolling && scrolling.scrollTop)
-                    || (root && root.scrollTop)
-                    || (body && body.scrollTop)
-                    || 0
-                  )
-                );
-                var total = Math.max(1, Math.ceil(contentHeight / viewportHeight));
-                var currentPage = Math.max(
-                  0,
-                  Math.min(total - 1, Math.round(scrollTop / viewportHeight))
-                );
-
-                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
-                  window.webkit.messageHandlers.readerBridge.postMessage({
-                    type: type,
-                    token: window.__kmreaderCurrentToken || 0,
-                    totalPages: total,
-                    currentPage: currentPage,
-                    scrollTop: scrollTop,
-                    contentHeight: contentHeight,
-                    viewportHeight: viewportHeight
-                  });
-                }
-              };
-
-              if (window.__kmreaderScrollMetricsInstalled) {
-                return;
-              }
-              window.__kmreaderScrollMetricsInstalled = true;
-              var scheduled = false;
-              var scheduleMetrics = function(type) {
-                if (scheduled) { return; }
-                scheduled = true;
-                window.requestAnimationFrame(function() {
-                  scheduled = false;
-                  window.__kmreaderPostMetrics(type || 'scroll');
-                });
-              };
-              window.addEventListener('scroll', function() {
-                scheduleMetrics('scroll');
-              }, { passive: true });
-              window.addEventListener('resize', function() {
-                scheduleMetrics('scroll');
-              });
-              if (window.visualViewport) {
-                window.visualViewport.addEventListener('resize', function() {
-                  scheduleMetrics('scroll');
-                }, { passive: true });
-              }
-            };
-
-            var finalize = function() {
-              if (hasFinalized) return;
-              hasFinalized = true;
-              installMetricsBridge();
-
-              var root = document.documentElement;
-              var body = document.body;
-              var scrolling = document.scrollingElement || root || body;
-              var pageHeight =
-                (window.visualViewport && window.visualViewport.height)
-                || window.innerHeight
-                || root.clientHeight;
-              if (!pageHeight || pageHeight <= 0) { pageHeight = 1; }
-
-              var bodyRectHeight = body ? Math.ceil(body.getBoundingClientRect().height) : 0;
-              var rootRectHeight = root ? Math.ceil(root.getBoundingClientRect().height) : 0;
-              var currentHeight = Math.max(
-                scrolling ? (scrolling.scrollHeight || 0) : 0,
-                root ? (root.scrollHeight || 0) : 0,
-                body ? (body.scrollHeight || 0) : 0,
-                bodyRectHeight,
-                rootRectHeight,
-                pageHeight
-              );
-              var total = Math.max(1, Math.ceil(currentHeight / pageHeight));
-              var maxScroll = Math.max(0, currentHeight - pageHeight);
-
-              var finalTarget = Math.max(0, Math.min(total - 1, target));
-              var offset = Math.min(pageHeight * finalTarget, maxScroll);
-
-              window.scrollTo(0, offset);
-              if (document.documentElement) { document.documentElement.scrollTop = offset; }
-              if (document.body) { document.body.scrollTop = offset; }
-
-              setTimeout(function() {
-                if (window.__kmreaderPostMetrics) {
-                  window.__kmreaderPostMetrics('ready');
-                }
-              }, 60);
-            };
-
-            var startLayoutCheck = function() {
-              var root = document.documentElement;
-              var lastH = root.scrollHeight || document.body.scrollHeight;
-              var stableCount = 0;
-              var attempt = 0;
-
-              var check = function() {
-                if (hasFinalized) return;
-
-                attempt++;
-                var body = document.body;
-                var scrolling = document.scrollingElement || root || body;
-                var bodyRectHeight = body ? Math.ceil(body.getBoundingClientRect().height) : 0;
-                var rootRectHeight = root ? Math.ceil(root.getBoundingClientRect().height) : 0;
-                var currentH = Math.max(
-                  scrolling ? (scrolling.scrollHeight || 0) : 0,
-                  root ? (root.scrollHeight || 0) : 0,
-                  body ? (body.scrollHeight || 0) : 0,
-                  bodyRectHeight,
-                  rootRectHeight,
-                  0
-                );
-                var pageHeight =
-                  (window.visualViewport && window.visualViewport.height)
-                  || window.innerHeight
-                  || root.clientHeight;
-                if (!pageHeight || pageHeight <= 0) { pageHeight = 1; }
-
-                if (currentH === lastH && currentH > 0) {
-                  stableCount++;
-                } else {
-                  stableCount = 0;
-                  lastH = currentH;
-                }
-
-                var isProbablyReady = (stableCount >= 4);
-                if (needsFullExtent && currentH <= pageHeight && attempt < 40) {
-                  isProbablyReady = false;
-                }
-
-                var waitingForImages = needsFullExtent && attempt < imageWaitMaxAttempts && imagesPending();
-                if ((isProbablyReady || attempt >= 60) && !waitingForImages) {
-                  finalize();
-                } else {
-                  window.requestAnimationFrame(check);
-                }
-              };
-              window.requestAnimationFrame(check);
-            };
-
-            var globalTimeout = setTimeout(function() {
-              finalize();
-            }, 10000);
-
-            var loadStarted = false;
-            var startOnce = function() {
-              if (loadStarted) return;
-              loadStarted = true;
-              clearTimeout(globalTimeout);
-              startLayoutCheck();
-            };
-
-            if (document.readyState === 'complete') {
-              startOnce();
-            } else {
-              if (document.readyState === 'interactive' || document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                  setTimeout(startOnce, 500);
-                });
-              }
-              window.addEventListener('load', function() {
-                startOnce();
-              });
-            }
-          })();
-        """
+      let js = WebPubPagedJavaScriptBuilder.makeScrolledPaginationScript(
+        targetPageIndex: targetPageIndex,
+        preferLastPage: preferLastPage,
+        token: token,
+        requiresFullExtent: pendingDestination?.progression != nil || requiresFullExtentProvider?(chapterIndex) == true,
+        waitForStableLayout: true,
+        targetProgression: pendingDestination?.progression
+      )
 
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -1000,6 +810,7 @@
     ) {
       guard let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
+      guard paginationNavigationID == navigationID else { return }
       if let token = body["token"] as? Int, token != readyToken {
         return
       }
@@ -1008,49 +819,45 @@
 
       if let total = body["totalPages"] as? Int {
         let normalizedTotal = max(1, total)
-        if normalizedTotal != totalPagesInChapter {
+        if type == "ready" || normalizedTotal != totalPagesInChapter {
           totalPagesInChapter = normalizedTotal
-          onPageCountReady?(chapterIndex, normalizedTotal)
+          onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
         } else {
           totalPagesInChapter = normalizedTotal
         }
       }
 
       if type == "ready" {
+        renderedNavigationID = paginationNavigationID
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
+          let actualPage = max(0, min(normalizedTotal - 1, body["currentPage"] as? Int ?? currentSubPageIndex))
 
-          let shouldJumpToLastPage = pendingJumpToLastPage
-          if shouldJumpToLastPage {
-            actualPage = max(0, normalizedTotal - 1)
-            scrollToPage(actualPage, animated: false)
-            pendingJumpToLastPage = false
-          }
+          currentSubPageIndex = actualPage
 
-          if !shouldJumpToLastPage,
-            let progression = targetProgressionOnReady
-          {
-            let targetIndex = max(
-              0,
-              min(normalizedTotal - 1, Int(floor(Double(normalizedTotal) * progression)))
-            )
-            if targetIndex != actualPage {
-              actualPage = targetIndex
-              scrollToPage(targetIndex, animated: false)
+          // Land on a pending in-book anchor (cross-chapter link) now that
+          // the document is laid out.
+          if let anchor = pendingAnchorProvider?(chapterIndex) {
+            scrollToAnchor(anchor.anchor) { [weak self] found in
+              guard let self, navigationID == anchor.id else { return }
+              if !found { scrollToPage(0, animated: false) }
+              let requestID = navigationID
+              webView.evaluateJavaScript("window.scrollY") { [weak self] result, _ in
+                guard let self, navigationID == requestID else { return }
+                lastKnownDocumentScrollTop = (result as? Double) ?? 0
+                currentSubPageIndex = scrollPagination.pageIndex(at: lastKnownDocumentScrollTop)
+                updateOverlayLabels()
+                reportCurrentPosition(resolvedAnchor: anchor.anchor)
+              }
             }
-            targetProgressionOnReady = nil
-          }
-
-          if currentSubPageIndex != actualPage {
-            currentSubPageIndex = actualPage
           }
         }
 
+        pendingDestination = nil
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        reportCurrentPosition()
       } else if type == "scroll" {
         let actualPage = max(
           0,
@@ -1059,7 +866,7 @@
         if currentSubPageIndex != actualPage {
           currentSubPageIndex = actualPage
           updateOverlayLabels()
-          onPageDidChange?(chapterIndex, currentSubPageIndex)
+          reportCurrentPosition()
         }
       }
     }
@@ -1072,7 +879,7 @@
       readingProgression: WebPubReadingProgression?,
       completion: (() -> Void)? = nil
     ) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: css,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: readiumPropertyKeys,
@@ -1233,13 +1040,13 @@
         lastKnownDocumentViewportHeight > 0
         ? lastKnownDocumentScrollTop
         : webView.scrollView.contentOffset.y
-      let newPageIndex = Int(round(scrollOffset / pageHeight))
+      let newPageIndex = scrollPagination.pageIndex(at: scrollOffset)
       let clampedIndex = max(0, min(totalPagesInChapter - 1, newPageIndex))
 
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        reportCurrentPosition()
       }
     }
 

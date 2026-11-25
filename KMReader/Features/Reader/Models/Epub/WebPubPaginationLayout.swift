@@ -7,8 +7,13 @@
 
     static func resolve(
       language: String?,
-      readingProgression: WebPubReadingProgression?
+      readingProgression: WebPubReadingProgression?,
+      forceVertical: Bool = false
     ) -> WebPubPaginationLayout {
+      if forceVertical {
+        return .reverseHorizontal
+      }
+
       if readingProgression == .rtl {
         return .reverseHorizontal
       }

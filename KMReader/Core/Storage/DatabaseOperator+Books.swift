@@ -699,8 +699,12 @@ extension DatabaseOperator {
   }
 
   func fetchBookEpubProgression(bookId: String) async -> R2Progression? {
+    await fetchBookEpubProgression(bookId: bookId, instanceId: AppConfig.current.instanceId)
+  }
+
+  func fetchBookEpubProgression(bookId: String, instanceId: String) async -> R2Progression? {
     let raw = try? read { db in
-      try fetchBookRecord(db: db, id: bookId)?.epubProgressionRaw
+      try fetchBookRecord(db: db, id: bookId, instanceId: instanceId)?.epubProgressionRaw
     }
     switch await decodeStoredEpubProgressionState(raw ?? nil) {
     case .available(let progression):
@@ -711,8 +715,13 @@ extension DatabaseOperator {
   }
 
   func updateBookEpubProgression(bookId: String, progression: R2Progression?) async {
+    await updateBookEpubProgression(
+      bookId: bookId, instanceId: AppConfig.current.instanceId, progression: progression)
+  }
+
+  func updateBookEpubProgression(bookId: String, instanceId: String, progression: R2Progression?) async {
     let raw = await encodeEpubProgressionRecord(progression: progression)
-    updateBookRecord(bookId: bookId) { book in
+    updateBookRecord(bookId: bookId, instanceId: instanceId) { book in
       book.epubProgressionRaw = raw
     }
   }

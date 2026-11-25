@@ -6,22 +6,62 @@
     private let renderingEngine: EpubRenderingEngine
     private var configuration: EpubChapterConfiguration
     private var renderer: EpubPageRenderer?
+    private(set) var navigationID = UUID()
+    var navigationIsCurrent: ((UUID) -> Bool)?
+
+    var isNavigationCurrent: Bool {
+      navigationIsCurrent?(navigationID) == true
+    }
+
+    func acceptsNavigation(_ navigationID: UUID) -> Bool {
+      self.navigationID == navigationID && navigationIsCurrent?(navigationID) == true
+    }
+
+    private(set) var destination: EpubNavigationDestination
+
+    func prepareNavigation(_ request: EpubNavigationRequest) {
+      guard navigationID != request.id else { return }
+      navigationID = request.id
+      destination = request.destination
+      renderer?.prepareNavigation()
+    }
+
+    func prepareInteractiveDestination(_ destination: EpubNavigationDestination) {
+      self.destination = destination
+    }
+
+    func finishInteractiveNavigation() {
+      guard layout.pageCount != nil else { return }
+      destination = .page(currentSubPageIndex)
+    }
+
+    private func reportLanding(resolvedAnchor: String? = nil) {
+      guard isNavigationCurrent, layout.pageCount != nil else { return }
+      onPositionSettled?(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          layout: layout, navigationID: navigationID, resolvedAnchor: resolvedAnchor
+        ))
+    }
     var currentSubPageIndex: Int
     var totalPagesInChapter: Int
     private var lastLayoutSize: CGSize = .zero
-    private var pendingPageIndex: Int?
     private var onPageCountReady: ((Int) -> Void)?
     var onLinkTap: ((URL) -> Void)?
-    var onPageIndexAdjusted: ((Int) -> Void)?
+    // The view model retains a link command until the resolved landing is acknowledged.
+    var requiresFullExtentProvider: ((Int) -> Bool)?
+    var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
+    var onPositionSettled: ((EpubPageLanding) -> Void)?
     var onPaginationReady: (() -> Void)?
     var onChapterLoadFailed: (() -> Void)?
     // Fires when pagination re-runs on changed geometry (appearance or viewport
     // size), so page-index-keyed snapshots cached by the coordinator go stale.
     var onRepagination: (() -> Void)?
-    var preferLastPageOnReady = false
-    var targetProgressionOnReady: Double?
 
     var chapterIndex: Int { configuration.chapterIndex }
+    private(set) var layout: EpubPageLayout = .loading
+    var hasPaginated: Bool { layout.isContent }
+
     var isContentLoaded: Bool { renderer?.isContentLoaded ?? false }
 
     private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
@@ -39,6 +79,7 @@
       onPageCountReady: ((Int) -> Void)?
     ) {
       self.configuration = configuration
+      self.destination = .page(configuration.subPageIndex)
       self.renderingEngine = renderingEngine
       self.currentSubPageIndex = configuration.subPageIndex
       self.totalPagesInChapter = configuration.totalPages
@@ -135,9 +176,6 @@
       }
 
       self.configuration = configuration
-      if targetProgressionOnReady == nil && !preferLastPageOnReady {
-        currentSubPageIndex = configuration.subPageIndex
-      }
       totalPagesInChapter = configuration.totalPages
       self.onPageCountReady = onPageCountReady
       renderer?.configure(configuration)
@@ -152,13 +190,11 @@
       applyTheme()
       if shouldReload || (appearanceChanged && renderer?.reloadsOnAppearanceChange == true) {
         loadContentIfNeeded(force: true)
-      } else if appearanceChanged || preferLastPageOnReady {
+      } else if appearanceChanged {
         applyPagination(scrollToPage: currentSubPageIndex)
       } else {
         if isContentLoaded {
           scrollToPage(currentSubPageIndex)
-        } else {
-          pendingPageIndex = currentSubPageIndex
         }
       }
     }
@@ -314,11 +350,11 @@
     }
 
     func scrollToPageIndex(_ pageIndex: Int, completion: (() -> Void)? = nil) {
+      rendererSetPendingPageIndex(pageIndex)
       currentSubPageIndex = pageIndex
       if isContentLoaded {
         scrollToPage(pageIndex, completion: completion)
       } else {
-        pendingPageIndex = pageIndex
         completion?()
       }
       updateOverlayLabels()
@@ -327,6 +363,7 @@
     // Unlike scrollToPageIndex, the completion fires only after the target page has
     // painted, so transitions that sample the live view can start safely.
     func scrollToPageIndexAndSettle(_ pageIndex: Int, completion: @escaping () -> Void) {
+      rendererSetPendingPageIndex(pageIndex)
       currentSubPageIndex = pageIndex
       updateOverlayLabels()
       renderer?.scrollToPageAndSettle(pageIndex, completion: completion)
@@ -336,25 +373,75 @@
       renderer?.handleLinkTap(at: point, in: view) ?? false
     }
 
-    func rendererPrepareForReload() {
-      pendingPageIndex = currentSubPageIndex
+    func rendererWillPaginate() {
+      layout = .loading
     }
 
     func rendererPendingOrCurrentPageIndex() -> Int {
-      pendingPageIndex ?? currentSubPageIndex
+      destination.estimatedPageIndex(pageCount: totalPagesInChapter)
     }
 
     func rendererSetPendingPageIndex(_ pageIndex: Int) {
-      pendingPageIndex = pageIndex
+      if !destination.requiresFullExtent { destination = .page(pageIndex) }
     }
 
-    func rendererConsumePendingPageIndex() {
-      pendingPageIndex = nil
+    func rendererDidFail() {
+      layout = .failed
+      totalPagesInChapter = 1
+      currentSubPageIndex = 0
+      onChapterLoadFailed?()
+      reportLanding()
+      updateOverlayLabels()
+      onPaginationReady?()
     }
 
-    func rendererDidProducePageCount(_ pageCount: Int) {
-      totalPagesInChapter = pageCount
-      onPageCountReady?(pageCount)
+    func rendererDidFinishPagination(_ pageCount: Int) {
+      guard let renderer else { return }
+      let requestID = navigationID
+      let generation = renderer.layoutGeneration
+      layout = .content(pageCount: max(1, pageCount))
+      totalPagesInChapter = max(1, pageCount)
+      if isNavigationCurrent { onPageCountReady?(totalPagesInChapter) }
+      let pageIndex = destination.pageIndex(pageCount: totalPagesInChapter)
+      renderer.scrollToPageAndSettle(pageIndex) { [weak self] in
+        guard let self, self.navigationID == requestID,
+          self.renderer?.layoutGeneration == generation
+        else { return }
+        self.currentSubPageIndex = pageIndex
+        self.reportLanding()
+        self.updateOverlayLabels()
+        self.applyPendingAnchor()
+        self.onPaginationReady?()
+      }
+    }
+
+    func applyPendingAnchor() {
+      guard hasPaginated, let anchor = pendingAnchorProvider?(chapterIndex), anchor.id == navigationID else { return }
+      let requestID = navigationID
+      let generation = renderer?.layoutGeneration
+      scrollToAnchor(anchor.anchor) { [weak self] page in
+        guard let self, acceptsNavigation(requestID), renderer?.layoutGeneration == generation else { return }
+        if let page {
+          commitAnchorLanding(page: page, anchor: anchor.anchor)
+        } else {
+          scrollToPageIndex(0) { [weak self] in
+            guard let self, acceptsNavigation(requestID), renderer?.layoutGeneration == generation else { return }
+            commitAnchorLanding(page: 0, anchor: anchor.anchor)
+          }
+        }
+      }
+    }
+
+    private func commitAnchorLanding(page: Int, anchor: String) {
+      guard isNavigationCurrent, page >= 0, page < totalPagesInChapter else { return }
+      currentSubPageIndex = page
+      destination = .page(page)
+      reportLanding(resolvedAnchor: anchor)
+      updateOverlayLabels()
+    }
+
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
+      renderer?.scrollToAnchor(anchor, completion: completion) ?? completion(nil)
     }
 
     func rendererStartLoading() {

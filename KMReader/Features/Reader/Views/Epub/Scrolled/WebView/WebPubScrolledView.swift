@@ -29,7 +29,6 @@
       let chapterIndex = viewModel.currentChapterIndex
       let pageIndex = viewModel.currentPageIndex
       let currentLocation = viewModel.pageLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
-      let initialProgression = viewModel.initialProgression(for: chapterIndex)
 
       let theme = preferences.resolvedTheme(for: colorScheme)
       let fontPath = preferences.fontFamily.fontName.flatMap { CustomFontStore.shared.getFontPath(for: $0) }
@@ -56,7 +55,7 @@
         publicationReadingProgression: viewModel.publicationReadingProgression,
         chapterIndex: chapterIndex,
         initialSubPageIndex: pageIndex,
-        targetProgressionOnReady: initialProgression,
+        destination: viewModel.navigationRequest?.destination,
         totalChapters: viewModel.chapterCount,
         bookTitle: bookTitle,
         chapterTitle: currentLocation?.title,
@@ -78,36 +77,29 @@
       vc.onChapterNavigationNeeded = { [weak viewModel] targetChapterIndex in
         guard let viewModel = viewModel else { return }
 
-        // Determine if we're going forward or backward
-        let currentChapterIndex = viewModel.currentChapterIndex
-        let isGoingBackward = targetChapterIndex < currentChapterIndex
+        viewModel.navigateToPage(
+          chapterIndex: targetChapterIndex,
+          pageIndex: targetChapterIndex < viewModel.currentChapterIndex ? -1 : 0
+        )
+      }
+      vc.navigationID = viewModel.navigationID
+      vc.onPageDidChange = { [weak viewModel] landing in
+        viewModel?.commitPosition(landing)
+      }
+      vc.onPageCountReady = { [weak viewModel] chapterIndex, pageCount, navigationID in
+        guard let viewModel, viewModel.navigationID == navigationID else { return }
+        viewModel.updateChapterPageCount(pageCount, for: chapterIndex)
+      }
+      vc.onLinkTap = { [weak viewModel] url in
+        viewModel?.navigateToURL(url)
+      }
+      vc.requiresFullExtentProvider = { [weak viewModel] chapterIndex in
+        viewModel?.navigationRequiresFullExtent(for: chapterIndex) ?? false
+      }
+      vc.pendingAnchorProvider = { [weak viewModel] chapterIndex in
+        viewModel?.pendingAnchorNavigation(for: chapterIndex)
+      }
 
-        if isGoingBackward {
-          // Going to previous chapter - jump to last page
-          viewModel.targetChapterIndex = targetChapterIndex
-          viewModel.targetPageIndex = -1
-        } else {
-          // Going to next chapter - jump to first page
-          viewModel.targetChapterIndex = targetChapterIndex
-          viewModel.targetPageIndex = 0
-        }
-      }
-      vc.onPageDidChange = { [weak viewModel] chapterIndex, pageIndex in
-        guard let viewModel = viewModel else { return }
-        let normalizedPageIndex = max(0, pageIndex)
-        viewModel.currentChapterIndex = chapterIndex
-        viewModel.currentPageIndex = normalizedPageIndex
-        let pageCount = viewModel.chapterPageCount(at: chapterIndex) ?? 1
-        if normalizedPageIndex >= pageCount {
-          viewModel.updateChapterPageCount(normalizedPageIndex + 1, for: chapterIndex)
-        }
-        viewModel.pageDidChange()
-      }
-      vc.onPageCountReady = { [weak viewModel] chapterIndex, pageCount in
-        Task { @MainActor in
-          viewModel?.updateChapterPageCount(pageCount, for: chapterIndex)
-        }
-      }
       context.coordinator.viewController = vc
 
       return vc
@@ -117,62 +109,10 @@
       context.coordinator.parent = self
       uiViewController.onEndReached = onEndReached
 
-      // Handle TOC navigation via targetPageIndex
-      if let targetChapterIndex = viewModel.targetChapterIndex,
-        let targetPageIndex = viewModel.targetPageIndex,
-        targetChapterIndex >= 0,
-        targetChapterIndex < viewModel.chapterCount
-      {
-        let uiChapterIndex = uiViewController.currentChapterIndex
-        let uiPageIndex = uiViewController.currentPageIndex
-        let pageCount = viewModel.chapterPageCount(at: targetChapterIndex) ?? 1
-        let isLastPageRequest = targetPageIndex < 0
-        let normalizedPageIndex =
-          isLastPageRequest
-          ? max(0, pageCount - 1)
-          : max(0, min(targetPageIndex, pageCount - 1))
-        let shouldNavigate =
-          targetChapterIndex != uiChapterIndex
-          || normalizedPageIndex != uiPageIndex
-
-        if shouldNavigate {
-          // Check if this is a jump to the last page of a chapter (backward navigation)
-          let isGoingBackward = targetChapterIndex < uiChapterIndex
-          let isLastPageOfChapter = isLastPageRequest || normalizedPageIndex == max(0, pageCount - 1)
-
-          // Navigate to target chapter and page
-          uiViewController.navigateToPage(
-            chapterIndex: targetChapterIndex,
-            subPageIndex: normalizedPageIndex,
-            jumpToLastPage: isGoingBackward && isLastPageOfChapter
-          )
-
-          // Clear targetPageIndex and update current page
-          Task { @MainActor in
-            viewModel.currentChapterIndex = targetChapterIndex
-            viewModel.currentPageIndex = normalizedPageIndex
-            viewModel.targetChapterIndex = nil
-            viewModel.targetPageIndex = nil
-            viewModel.pageDidChange()
-          }
-          return
-        }
-
-        Task { @MainActor in
-          if viewModel.currentChapterIndex != targetChapterIndex
-            || viewModel.currentPageIndex != normalizedPageIndex
-          {
-            viewModel.currentChapterIndex = targetChapterIndex
-            viewModel.currentPageIndex = normalizedPageIndex
-            viewModel.pageDidChange()
-          }
-          viewModel.targetChapterIndex = nil
-          viewModel.targetPageIndex = nil
-        }
-      }
-
-      let chapterIndex = viewModel.currentChapterIndex
-      let pageIndex = viewModel.currentPageIndex
+      let chapterIndex = viewModel.targetChapterIndex ?? uiViewController.currentChapterIndex
+      let pageIndex =
+        chapterIndex == viewModel.currentChapterIndex
+        ? viewModel.currentPageIndex : uiViewController.currentPageIndex
       let currentLocation = viewModel.pageLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
 
       let containerInsets = viewModel.containerInsetsForLabels().uiEdgeInsets
@@ -212,6 +152,8 @@
         publicationLanguage: viewModel.publicationLanguage,
         publicationReadingProgression: viewModel.publicationReadingProgression,
         chapterIndex: chapterIndex,
+        navigationID: viewModel.navigationID,
+        navigationRequest: viewModel.navigationRequest,
         totalChapters: viewModel.chapterCount,
         bookTitle: bookTitle,
         chapterTitle: currentLocation?.title,

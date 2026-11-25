@@ -52,7 +52,6 @@
         location: location,
         chapterProgress: chapterProgress
       )
-      let initialProgression = viewModel.initialProgression(for: chapterIndex)
 
       let configuration = EpubChapterConfiguration(
         preferences: preferences,
@@ -83,12 +82,21 @@
         renderingEngine: renderingEngine,
         onPageCountReady: onPageCountReady
       )
-      controller.preferLastPageOnReady = preferLastPageOnReady
-      controller.targetProgressionOnReady = initialProgression
+      controller.navigationIsCurrent = { [weak viewModel] navigationID in
+        viewModel?.navigationID == navigationID
+      }
+      controller.prepareNavigation(
+        viewModel.navigationRequest.flatMap { $0.chapterIndex == chapterIndex ? $0 : nil }
+          ?? EpubNavigationRequest(
+            id: viewModel.navigationID, chapterIndex: chapterIndex,
+            destination: preferLastPageOnReady ? .lastPage : .page(subPageIndex)
+          )
+      )
+      controller.requiresFullExtentProvider = { [weak viewModel] chapterIndex in
+        viewModel?.navigationRequiresFullExtent(for: chapterIndex) ?? false
+      }
       controller.onChapterLoadFailed = { [weak viewModel] in
-        Task { @MainActor in
-          viewModel?.markChapterLoadFailed(chapterIndex)
-        }
+        viewModel?.markChapterLoadFailed(chapterIndex)
       }
       return controller
     }
@@ -148,12 +156,23 @@
       )
     }
 
+    func prepareNavigation(on controller: EpubPageViewController) {
+      let chapterIndex = controller.chapterIndex
+      if viewModel.targetChapterIndex == nil || viewModel.targetChapterIndex == chapterIndex {
+        controller.prepareNavigation(
+          viewModel.navigationRequest
+            ?? EpubNavigationRequest(
+              id: viewModel.navigationID, chapterIndex: chapterIndex,
+              destination: .page(controller.currentSubPageIndex)
+            )
+        )
+      }
+    }
+
     private func pageCountCallback(chapterIndex: Int) -> (Int) -> Void {
       let chapterIndexForCallback = chapterIndex
       return { [weak viewModel] pageCount in
-        Task { @MainActor in
-          viewModel?.updateChapterPageCount(pageCount, for: chapterIndexForCallback)
-        }
+        viewModel?.updateChapterPageCount(pageCount, for: chapterIndexForCallback)
       }
     }
   }

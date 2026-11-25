@@ -30,10 +30,19 @@
     private var mediaTypesByRelativePath: [String: String]
     private var lastLayoutSize: CGSize = .zero
     private var isContentLoaded = false
-    private var pendingPageIndex: Int?
-    private var pendingJumpToLastPage: Bool = false
-    var targetProgressionOnReady: Double?
-    private var readyToken: Int = 0
+    private var pendingDestination: EpubNavigationDestination?
+    /// Generation counter of the latest pagination pass; stale JS callbacks
+    /// from superseded passes are ignored.
+    private var paginationGeneration: Int = 0
+    /// Set when the content's computed writing mode declared vertical
+    /// presentation while the manifest did not; never downgraded.
+    private var detectedVerticalLayout = false
+
+    /// Registers in-book links before asynchronous navigation begins.
+    var onLinkTap: ((URL) -> Void)?
+    /// Exposes the current link command without consuming it.
+    var requiresFullExtentProvider: ((Int) -> Bool)?
+    var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
 
     private var bookTitle: String?
     private var chapterTitle: String?
@@ -47,8 +56,11 @@
     // Chapter navigation
     private var totalChapters: Int = 1
     var onChapterNavigationNeeded: ((Int) -> Void)?
-    var onPageDidChange: ((Int, Int) -> Void)?
-    var onPageCountReady: ((Int, Int) -> Void)?
+    var navigationID = UUID()
+    private var paginationNavigationID = UUID()
+    private var renderedNavigationID = UUID()
+    var onPageDidChange: ((EpubPageLanding) -> Void)?
+    var onPageCountReady: ((Int, Int, UUID) -> Void)?
 
     var currentChapterIndex: Int { chapterIndex }
     var currentPageIndex: Int { currentSubPageIndex }
@@ -56,7 +68,8 @@
     private var paginationLayout: WebPubPaginationLayout {
       WebPubPaginationLayout.resolve(
         language: publicationLanguage,
-        readingProgression: publicationReadingProgression
+        readingProgression: publicationReadingProgression,
+        forceVertical: detectedVerticalLayout
       )
     }
 
@@ -99,7 +112,7 @@
       animatePageTransitions: Bool,
       chapterIndex: Int,
       initialSubPageIndex: Int,
-      targetProgressionOnReady: Double?,
+      destination: EpubNavigationDestination?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -123,7 +136,7 @@
       self.animatePageTransitions = animatePageTransitions
       self.chapterIndex = chapterIndex
       self.currentSubPageIndex = max(0, initialSubPageIndex)
-      self.targetProgressionOnReady = targetProgressionOnReady
+      self.pendingDestination = destination
       self.totalChapters = totalChapters
       self.bookTitle = bookTitle
       self.chapterTitle = chapterTitle
@@ -202,6 +215,7 @@
 
       webView = WKWebView(frame: .zero, configuration: config)
       webView.navigationDelegate = self
+      refreshDocumentStartUserScript()
       webView.scrollView.delegate = self
       webView.scrollView.isScrollEnabled = false
       webView.scrollView.bounces = true
@@ -396,14 +410,19 @@
 
       if rawOffset < -chapterOverscrollThreshold {
         if chapterIndex > 0 {
+          // Snap back to the current page while the previous chapter loads;
+          // programmatic offsets never rubber-band with scrolling disabled.
+          scrollToPage(currentSubPageIndex, animated: true)
           onChapterNavigationNeeded?(chapterIndex - 1)
           return
         }
       } else if rawOffset > maxOffset + chapterOverscrollThreshold {
         if chapterIndex < totalChapters - 1 {
+          scrollToPage(currentSubPageIndex, animated: true)
           onChapterNavigationNeeded?(chapterIndex + 1)
           return
         }
+        scrollToPage(currentSubPageIndex, animated: true)
         onEndReached?()
         return
       }
@@ -428,7 +447,7 @@
       if targetPage != currentSubPageIndex {
         currentSubPageIndex = targetPage
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        reportCurrentPosition()
       }
     }
 
@@ -458,7 +477,7 @@
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
       updateOverlayLabels()
-      onPageDidChange?(chapterIndex, currentSubPageIndex)
+      reportCurrentPosition()
     }
 
     private func scrollToNextPage() {
@@ -478,24 +497,7 @@
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
       updateOverlayLabels()
-      onPageDidChange?(chapterIndex, currentSubPageIndex)
-    }
-
-    func navigateToPage(chapterIndex: Int, subPageIndex: Int, jumpToLastPage: Bool = false) {
-      // If navigating to a different chapter, reload the content
-      if chapterIndex != self.chapterIndex {
-        self.chapterIndex = chapterIndex
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        loadContentIfNeeded(force: true)
-      } else {
-        // Same chapter - always wait for ready message to ensure correct page count
-        self.pendingPageIndex = subPageIndex
-        self.pendingJumpToLastPage = jumpToLastPage
-        if isContentLoaded {
-          applyPagination(scrollToPage: subPageIndex)
-        }
-      }
+      reportCurrentPosition()
     }
 
     private func applyTheme() {
@@ -533,6 +535,8 @@
       publicationReadingProgression: WebPubReadingProgression?,
       animatePageTransitions: Bool,
       chapterIndex: Int,
+      navigationID: UUID,
+      navigationRequest: EpubNavigationRequest?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -559,6 +563,12 @@
         || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
 
+      let navigationChanged = navigationRequest != nil && self.navigationID != navigationID
+      if navigationChanged || shouldReload || appearanceChanged {
+        pendingDestination = navigationRequest?.destination ?? .page(currentSubPageIndex)
+      }
+
+      self.navigationID = navigationID
       self.chapterURL = chapterURL
       self.chapterMediaType = chapterMediaType
       self.rootURL = rootURL
@@ -591,10 +601,12 @@
       }
 
       applyTheme()
+      refreshDocumentStartUserScript()
       if shouldReload {
         loadContentIfNeeded(force: true)
-      } else if appearanceChanged {
-        applyPagination(scrollToPage: currentSubPageIndex)
+      } else if appearanceChanged || navigationChanged {
+        applyPagination(
+          scrollToPage: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
       }
     }
 
@@ -616,16 +628,19 @@
       }
 
       isContentLoaded = false
+      detectedVerticalLayout = false
+      paginationGeneration += 1
       webView.alpha = 0.01
       loadingIndicator?.startAnimating()
+      refreshDocumentStartUserScript()
 
       webView.loadEPUBDocument(url: chapterURL, rootURL: rootURL)
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
-      applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
-      pendingPageIndex = nil
+      applyPagination(
+        scrollToPage: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
     }
 
     override func viewDidLayoutSubviews() {
@@ -665,6 +680,9 @@
         loadingIndicator?.startAnimating()
       }
 
+      paginationGeneration += 1
+      let generation = paginationGeneration
+      paginationNavigationID = navigationID
       injectCSS(
         contentCSS,
         readiumProperties: readiumProperties,
@@ -672,9 +690,10 @@
         language: publicationLanguage,
         readingProgression: publicationReadingProgression
       ) { [weak self] in
-        self?.injectPaginationJS(
+        guard let self, generation == paginationGeneration else { return }
+        self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self?.pendingJumpToLastPage ?? false
+          preferLastPage: self.pendingDestination == .lastPage
         )
       }
     }
@@ -709,12 +728,96 @@
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
-        targetPageIndex: targetPageIndex,
+        targetPageIndex: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
-        paginationLayout: paginationLayout
+        paginationLayout: paginationLayout,
+        generation: paginationGeneration,
+        requiresFullExtent: pendingDestination?.progression != nil || requiresFullExtentProvider?(chapterIndex) == true,
+        targetProgression: pendingDestination?.progression
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    /// Installs the CSS/theme payload as a document-start user script so the
+    /// first paint already has the theme applied, shrinking the white flash.
+    private func refreshDocumentStartUserScript() {
+      guard isViewLoaded else { return }
+      let controller = webView.configuration.userContentController
+      controller.removeAllUserScripts()
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: contentCSS,
+        readiumProperties: readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: publicationLanguage,
+        readingProgression: publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
+      )
+      controller.addUserScript(
+        WKUserScript(
+          source: js,
+          injectionTime: .atDocumentStart,
+          forMainFrameOnly: true
+        ))
+    }
+
+    private func reportCurrentPosition(resolvedAnchor: String? = nil) {
+      onPageDidChange?(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          layout: .content(pageCount: totalPagesInChapter), navigationID: renderedNavigationID,
+          resolvedAnchor: resolvedAnchor
+        ))
+    }
+
+    /// Scrolls to an in-document anchor (footnote, cross-reference) and
+    /// lands on the page containing it. The completion reports the resolved
+    /// page index, or nil when the anchor does not exist.
+    private func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
+      guard isContentLoaded else {
+        completion(nil)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToAnchorScript(
+        anchor: anchor,
+        paginationLayout: paginationLayout
+      )
+      let requestID = navigationID
+      webView.evaluateJavaScript(js) { [weak self] result, error in
+        guard let self, self.navigationID == requestID else { return }
+        if error != nil {
+          completion(nil)
+        } else {
+          completion(result as? Int)
+        }
+      }
+    }
+
+    func webView(
+      _ webView: WKWebView,
+      decidePolicyFor navigationAction: WKNavigationAction,
+      decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
+    ) {
+      guard navigationAction.navigationType == .linkActivated,
+        let url = navigationAction.request.url
+      else {
+        decisionHandler(.allow)
+        return
+      }
+
+      // In-book links stay inside the reader; external links are opened by
+      // the platform browser via the UI layer.
+      let isInBook =
+        url.scheme == EpubResourceScheme.scheme
+        || url.scheme == "file"
+        || url.scheme == nil
+      guard isInBook else {
+        decisionHandler(.cancel)
+        return
+      }
+
+      decisionHandler(.cancel)
+      onLinkTap?(url)
     }
 
     func userContentController(
@@ -723,36 +826,76 @@
     ) {
       guard let body = message.body as? [String: Any] else { return }
       guard let type = body["type"] as? String else { return }
+      guard paginationNavigationID == navigationID else { return }
 
       if type == "ready" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
+        renderedNavigationID = paginationNavigationID
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
+          let actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
 
           totalPagesInChapter = normalizedTotal
-          onPageCountReady?(chapterIndex, normalizedTotal)
-
-          let shouldJumpToLastPage = pendingJumpToLastPage
-          if shouldJumpToLastPage {
-            pendingJumpToLastPage = false
-          } else if let progression = targetProgressionOnReady {
-            let targetIndex = max(0, min(normalizedTotal - 1, Int(floor(Double(normalizedTotal) * progression))))
-            if targetIndex != actualPage {
-              actualPage = targetIndex
-              scrollToPage(targetIndex, animated: false)
-            }
-            targetProgressionOnReady = nil
-          }
+          onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
 
           if currentSubPageIndex != actualPage {
             currentSubPageIndex = actualPage
           }
+
+          // Land on a pending in-book anchor (cross-chapter link) now that
+          // pagination settled, and commit the resolved page so progress does
+          // not stick to the chapter start.
+          if let anchor = pendingAnchorProvider?(chapterIndex) {
+            scrollToAnchor(anchor.anchor) { [weak self] resolvedPage in
+              guard let self, navigationID == anchor.id else { return }
+              let page = resolvedPage ?? 0
+              if resolvedPage == nil { scrollToPage(0, animated: false) }
+              self.currentSubPageIndex = page
+              self.updateOverlayLabels()
+              self.reportCurrentPosition(resolvedAnchor: anchor.anchor)
+            }
+          }
         }
 
+        pendingDestination = nil
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        reportCurrentPosition()
+      } else if type == "pageCountUpdate" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
+        guard let total = body["totalPages"] as? Int else { return }
+        let normalizedTotal = max(1, total)
+        if let currentPage = body["currentPage"] as? Int,
+          currentPage != currentSubPageIndex
+        {
+          currentSubPageIndex = min(max(0, currentPage), normalizedTotal - 1)
+        }
+        if totalPagesInChapter != normalizedTotal {
+          totalPagesInChapter = normalizedTotal
+          onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
+        }
+        updateOverlayLabels()
+      } else if type == "writingModeMismatch" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
+        guard let vertical = body["vertical"] as? Bool, vertical,
+          !detectedVerticalLayout
+        else { return }
+        detectedVerticalLayout = true
+        refreshDocumentStartUserScript()
+        applyPagination(scrollToPage: currentSubPageIndex)
       }
     }
 
@@ -764,12 +907,13 @@
       readingProgression: WebPubReadingProgression?,
       completion: (() -> Void)? = nil
     ) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: css,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: readiumPropertyKeys,
         language: language,
-        readingProgression: readingProgression
+        readingProgression: readingProgression,
+        forceVerticalLayout: detectedVerticalLayout
       )
       webView.evaluateJavaScript(js) { _, _ in
         completion?()
@@ -846,7 +990,7 @@
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
         updateOverlayLabels()
-        onPageDidChange?(chapterIndex, currentSubPageIndex)
+        reportCurrentPosition()
       }
     }
 

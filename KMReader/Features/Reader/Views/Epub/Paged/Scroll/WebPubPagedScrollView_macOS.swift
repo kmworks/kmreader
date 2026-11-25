@@ -63,6 +63,9 @@
       )?
     private var infoOverlay: WebPubInfoOverlaySupport.AppKitOverlay?
 
+    private var navigationID: UUID
+    private var paginationNavigationID = UUID()
+    private var renderedNavigationID = UUID()
     private var chapterIndex: Int = 0
     private var currentSubPageIndex: Int = 0
     private var totalPagesInChapter: Int = 1
@@ -73,10 +76,10 @@
     private var readiumProperties: [String: String?] = [:]
     private var publicationLanguage: String?
     private var publicationReadingProgression: WebPubReadingProgression?
+    private var paginationGeneration = 0
+    private var detectedVerticalLayout = false
     private var isContentLoaded = false
-    private var pendingPageIndex: Int?
-    private var pendingJumpToLastPage: Bool = false
-    private var targetProgressionOnReady: Double?
+    private var pendingDestination: EpubNavigationDestination?
     private var chapterTitle: String?
     private var totalProgression: Double?
     private var isAwaitingPaginationReady = false
@@ -85,12 +88,14 @@
     private var paginationLayout: WebPubPaginationLayout {
       WebPubPaginationLayout.resolve(
         language: publicationLanguage,
-        readingProgression: publicationReadingProgression
+        readingProgression: publicationReadingProgression,
+        forceVertical: detectedVerticalLayout
       )
     }
 
     init(parent: WebPubPagedScrollView) {
       self.parent = parent
+      navigationID = parent.viewModel.navigationID
       super.init()
     }
 
@@ -103,6 +108,9 @@
     func update(from parent: WebPubPagedScrollView) {
       self.parent = parent
       guard let webView else { return }
+      let navigationChanged =
+        parent.viewModel.navigationRequest != nil
+        && navigationID != parent.viewModel.navigationID
 
       let selectedChapterIndex = parent.viewModel.targetChapterIndex ?? parent.viewModel.currentChapterIndex
       let selectedPageIndex = parent.viewModel.targetPageIndex ?? parent.viewModel.currentPageIndex
@@ -135,6 +143,7 @@
         || publicationLanguage != parent.viewModel.publicationLanguage
         || publicationReadingProgression != parent.viewModel.publicationReadingProgression
 
+      navigationID = parent.viewModel.navigationID
       chapterIndex = selectedChapterIndex
       chapterURL = nextChapterURL
       chapterMediaType = nextChapterMediaType
@@ -149,15 +158,7 @@
       }
       animatePageTransitions = parent.animatePageTransitions
 
-      if let targetChapterIndex = parent.viewModel.targetChapterIndex,
-        let targetPageIndex = parent.viewModel.targetPageIndex,
-        targetChapterIndex == chapterIndex
-      {
-        pendingPageIndex = max(0, targetPageIndex)
-        pendingJumpToLastPage = targetPageIndex < 0
-      } else {
-        pendingPageIndex = max(0, selectedPageIndex)
-      }
+      pendingDestination = parent.viewModel.navigationRequest?.destination ?? .page(max(0, selectedPageIndex))
 
       rootView?.layer?.backgroundColor = NSColor(hex: theme.backgroundColorHex)?.cgColor
       webView.layer?.backgroundColor = NSColor(hex: theme.backgroundColorHex)?.cgColor
@@ -166,12 +167,11 @@
       updateOverlayLabels()
 
       if shouldReload {
-        targetProgressionOnReady = parent.viewModel.initialProgression(for: selectedChapterIndex)
         loadContent(in: webView)
         return
       }
 
-      if appearanceChanged || parent.viewModel.targetChapterIndex != nil || parent.viewModel.targetPageIndex != nil {
+      if appearanceChanged || navigationChanged {
         applyPagination(on: webView, targetPageIndex: max(0, selectedPageIndex))
       }
     }
@@ -179,6 +179,9 @@
     private func loadContent(in webView: WKWebView) {
       guard let chapterURL, let rootURL else { return }
       isContentLoaded = false
+      paginationGeneration += 1
+      detectedVerticalLayout = false
+      refreshDocumentStartUserScript(on: webView)
       totalPagesInChapter = 1
       isAwaitingPaginationReady = true
       webView.alphaValue = 0.01
@@ -235,11 +238,15 @@
       if isAwaitingPaginationReady, webView.alphaValue > 0.1 {
         webView.alphaValue = 0.01
       }
+      paginationGeneration += 1
+      let generation = paginationGeneration
+      paginationNavigationID = navigationID
       injectCSS(on: webView) { [weak self] in
-        self?.injectPaginationJS(
+        guard let self, generation == paginationGeneration else { return }
+        self.injectPaginationJS(
           on: webView,
           targetPageIndex: targetPageIndex,
-          preferLastPage: self?.pendingJumpToLastPage ?? false
+          preferLastPage: self.pendingDestination == .lastPage
         )
       }
     }
@@ -252,8 +259,7 @@
         return
       }
       if chapterIndex > 0 {
-        parent.viewModel.targetChapterIndex = chapterIndex - 1
-        parent.viewModel.targetPageIndex = -1
+        parent.viewModel.navigateToPage(chapterIndex: chapterIndex - 1, pageIndex: -1)
       }
     }
 
@@ -265,20 +271,20 @@
         return
       }
       if chapterIndex < max(0, parent.viewModel.chapterCount - 1) {
-        parent.viewModel.targetChapterIndex = chapterIndex + 1
-        parent.viewModel.targetPageIndex = 0
+        parent.viewModel.navigateToPage(chapterIndex: chapterIndex + 1, pageIndex: 0)
       } else {
         parent.onEndReached()
       }
     }
 
-    private func commitPage(_ pageIndex: Int) {
+    private func commitPage(_ pageIndex: Int, resolvedAnchor: String? = nil) {
       currentSubPageIndex = max(0, pageIndex)
-      parent.viewModel.currentChapterIndex = chapterIndex
-      parent.viewModel.currentPageIndex = currentSubPageIndex
-      parent.viewModel.targetChapterIndex = nil
-      parent.viewModel.targetPageIndex = nil
-      parent.viewModel.pageDidChange()
+      parent.viewModel.commitPosition(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
+          layout: .content(pageCount: totalPagesInChapter), navigationID: renderedNavigationID,
+          resolvedAnchor: resolvedAnchor
+        ))
       updateOverlayLabels()
     }
 
@@ -292,10 +298,35 @@
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
+    /// Lands on an in-chapter anchor (footnote, cross-reference) and reports
+    /// the resolved page index, or nil when the anchor does not exist.
+    private func scrollToAnchor(
+      _ anchor: String, on webView: WKWebView, completion: @escaping (Int?) -> Void
+    ) {
+      guard isContentLoaded else {
+        completion(nil)
+        return
+      }
+      let js = WebPubPagedJavaScriptBuilder.makeScrollToAnchorScript(
+        anchor: anchor,
+        paginationLayout: paginationLayout
+      )
+      let requestID = navigationID
+      webView.evaluateJavaScript(js) { [weak self] result, _ in
+        Task { @MainActor in
+          guard let self, self.navigationID == requestID, self.parent.viewModel.navigationID == requestID else {
+            return
+          }
+          completion(result as? Int)
+        }
+      }
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
-      applyPagination(on: webView, targetPageIndex: pendingPageIndex ?? currentSubPageIndex)
-      pendingPageIndex = nil
+      applyPagination(
+        on: webView,
+        targetPageIndex: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
     }
 
     func webView(
@@ -310,11 +341,6 @@
         return
       }
 
-      if let chapterURL, url.deletingFragment == chapterURL.deletingFragment {
-        decisionHandler(.allow)
-        return
-      }
-
       parent.viewModel.navigateToURL(url)
       decisionHandler(.cancel)
     }
@@ -324,34 +350,48 @@
       didReceive message: WKScriptMessage
     ) {
       guard let body = message.body as? [String: Any],
-        let type = body["type"] as? String,
-        type == "ready"
+        let type = body["type"] as? String
       else { return }
+      guard paginationNavigationID == navigationID, navigationID == parent.viewModel.navigationID else { return }
+      if let generation = body["generation"] as? Int, generation != paginationGeneration { return }
+      if type == "writingModeMismatch" {
+        guard !detectedVerticalLayout, let webView else { return }
+        detectedVerticalLayout = true
+        applyPagination(on: webView, targetPageIndex: currentSubPageIndex)
+        return
+      }
+      guard type == "ready" || type == "pageCountUpdate" else { return }
+      renderedNavigationID = paginationNavigationID
 
       if let total = body["totalPages"] as? Int {
         totalPagesInChapter = max(1, total)
-        parent.viewModel.updateChapterPageCount(totalPagesInChapter, for: chapterIndex)
-      }
-
-      var actualPage = max(0, body["currentPage"] as? Int ?? currentSubPageIndex)
-
-      if pendingJumpToLastPage {
-        pendingJumpToLastPage = false
-      } else if let progression = targetProgressionOnReady {
-        let targetIndex = max(
-          0,
-          min(totalPagesInChapter - 1, Int(floor(Double(totalPagesInChapter) * progression)))
-        )
-        if targetIndex != actualPage {
-          actualPage = targetIndex
-          scrollToPage(targetIndex, animated: false)
+        if navigationID == parent.viewModel.navigationID {
+          parent.viewModel.updateChapterPageCount(totalPagesInChapter, for: chapterIndex)
         }
-        targetProgressionOnReady = nil
       }
 
+      let actualPage = max(0, body["currentPage"] as? Int ?? currentSubPageIndex)
+
+      if type == "pageCountUpdate" {
+        commitPage(min(actualPage, totalPagesInChapter - 1))
+        return
+      }
+
+      pendingDestination = nil
       isAwaitingPaginationReady = false
       webView?.alphaValue = 1
       commitPage(actualPage)
+
+      // A cross-chapter link with a fragment lands here once the target
+      // chapter has paginated.
+      if let webView, let anchor = parent.viewModel.pendingAnchorNavigation(for: chapterIndex) {
+        scrollToAnchor(anchor.anchor, on: webView) { [weak self] resolvedPage in
+          guard let self, navigationID == anchor.id, parent.viewModel.navigationID == anchor.id else { return }
+          let page = resolvedPage ?? 0
+          if resolvedPage == nil { scrollToPage(0, animated: false) }
+          commitPage(page, resolvedAnchor: anchor.anchor)
+        }
+      }
     }
 
     private func injectPaginationJS(
@@ -360,21 +400,40 @@
       preferLastPage: Bool
     ) {
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
-        targetPageIndex: targetPageIndex,
+        targetPageIndex: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
-        paginationLayout: paginationLayout
+        paginationLayout: paginationLayout,
+        generation: paginationGeneration,
+        requiresFullExtent: pendingDestination?.progression != nil
+          || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex),
+        targetProgression: pendingDestination?.progression
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
-    private func injectCSS(on webView: WKWebView, completion: (() -> Void)? = nil) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+    private func refreshDocumentStartUserScript(on webView: WKWebView) {
+      let controller = webView.configuration.userContentController
+      controller.removeAllUserScripts()
+      let script = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: contentCSS,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
         language: publicationLanguage,
-        readingProgression: publicationReadingProgression
+        readingProgression: publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
+      )
+      controller.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+    }
+
+    private func injectCSS(on webView: WKWebView, completion: (() -> Void)? = nil) {
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
+        contentCSS: contentCSS,
+        readiumProperties: readiumProperties,
+        readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
+        language: publicationLanguage,
+        readingProgression: publicationReadingProgression,
+        forceVerticalLayout: detectedVerticalLayout
       )
       webView.evaluateJavaScript(js) { _, _ in
         completion?()

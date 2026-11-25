@@ -26,8 +26,15 @@
     var tableOfContents: [WebPubLink] = []
     var currentChapterIndex: Int = 0
     var currentPageIndex: Int = 0
-    var targetChapterIndex: Int?
-    var targetPageIndex: Int?
+    private(set) var navigationID = UUID()
+    private(set) var navigationRequest: EpubNavigationRequest?
+
+    var targetChapterIndex: Int? { navigationRequest?.chapterIndex }
+    var targetPageIndex: Int? {
+      guard let request = navigationRequest else { return nil }
+      if request.destination == .lastPage { return -1 }
+      return request.destination.estimatedPageIndex(pageCount: chapterPageCounts[request.chapterIndex] ?? 1)
+    }
     var currentLocation: WebPubLocation?
     var resourceRootURL: URL?
     var mediaTypesByRelativePath: [String: String] = [:]
@@ -51,13 +58,15 @@
     private var maxProgressionByHref: [String: Float] = [:]
     private var positionsLoadTask: Task<[String: Float], Never>?
     private var textLengthTask: Task<Void, Never>?
-    private var initialChapterIndex: Int?
-    private var initialProgression: Double?
     /// When the remote progression fetch fails transiently and there is no local
     /// progression to restore from, the reader falls back to page 0. Submitting
     /// that fallback position would regress the server's progress, so all
     /// progression submissions are suppressed for the session.
     private var progressSubmissionSuppressed = false
+    /// Re-attempts the remote progression fetch with exponential backoff after
+    /// a transient failure, so the session-long suppression lifts as soon as
+    /// the server becomes reachable again.
+    private var progressionRetryTask: Task<Void, Never>?
     /// Page-based read progress from the book DTO. Komga reports page-based
     /// progress (written by KOReader/Kindle sync, paged readers, or the web UI)
     /// as an empty locator on the progression endpoint, so the page number is
@@ -149,6 +158,7 @@
       downloadResumeTask?.cancel()
       downloadResumeTask = nil
 
+      navigationID = UUID()
       self.bookId = bookId
       isLoading = true
       errorMessage = nil
@@ -159,8 +169,7 @@
       tableOfContents = []
       currentChapterIndex = 0
       currentPageIndex = 0
-      targetChapterIndex = nil
-      targetPageIndex = nil
+      navigationRequest = nil
       currentLocation = nil
       resourceRootURL = nil
       mediaTypesByRelativePath = [:]
@@ -178,9 +187,12 @@
       positionsLoadTask = nil
       textLengthTask?.cancel()
       textLengthTask = nil
-      initialChapterIndex = nil
-      initialProgression = nil
       progressSubmissionSuppressed = false
+      progressionRetryTask?.cancel()
+      progressionRetryTask = nil
+      linkBackStack = []
+      endPagePreviousBook = nil
+      endPageNextBook = nil
       sessionStartPosition = nil
 
       do {
@@ -234,10 +246,24 @@
         var savedProgression: R2Progression?
         if shouldResumeFromProgression, !incognito {
           var remoteFetchFailed = false
-          if !AppConfig.isOffline {
-            remoteFetchFailed = await syncRemoteProgressionToLocal(bookId: bookId)
+          var remoteProgressUnavailable = false
+          if AppConfig.isOffline {
+            savedProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId)
+          } else {
+            let result = await syncRemoteProgressionToLocal(bookId: bookId, instanceId: instanceId)
+            switch result {
+            case .available(let progression):
+              savedProgression = progression
+            case .missing:
+              break
+            case .retryableFailure(let localProgression):
+              savedProgression = localProgression
+              remoteFetchFailed = true
+            case .unavailable:
+              remoteProgressUnavailable = true
+            }
           }
-          savedProgression = await database.fetchBookEpubProgression(bookId: bookId)
+          guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return }
 
           if savedProgression == nil,
             let fallbackPage = fallbackPageNumber,
@@ -264,8 +290,11 @@
           } else if remoteFetchFailed && savedProgression == nil {
             progressSubmissionSuppressed = true
             logger.warning(
-              "⚠️ [Progress/Epub] Remote progression fetch failed and no local progression exists; suppressing progress submission for this session: book=\(bookId)"
+              "⚠️ [Progress/Epub] Remote progression fetch failed and no local progression exists; suppressing progress submission until a retry succeeds: book=\(bookId)"
             )
+            scheduleProgressionFetchRetry(bookId: bookId, instanceId: instanceId)
+          } else if remoteProgressUnavailable && savedProgression == nil {
+            progressSubmissionSuppressed = true
           }
         }
 
@@ -275,8 +304,10 @@
           )
           if let chapterIndex = chapterIndexForHref(savedProgression.locator.href) {
             logger.debug("Matched progression to chapterIndex=\(chapterIndex)")
-            initialChapterIndex = chapterIndex
-            initialProgression = Double(savedProgression.locator.locations?.progression ?? 0)
+            navigationRequest = EpubNavigationRequest(
+              id: navigationID, chapterIndex: chapterIndex,
+              destination: .fraction(min(max(Double(savedProgression.locator.locations?.progression ?? 0), 0), 1))
+            )
           } else {
             logger.debug("Failed to match progression href to any chapter in readingOrder")
           }
@@ -285,22 +316,16 @@
         refreshChapterPageCounts(keepingCurrent: false)
         refreshChapterTextWeights()
 
-        if let chapterIndex = initialChapterIndex,
-          chapterIndex >= 0,
-          chapterIndex < readingOrder.count
-        {
+        if let navigation = navigationRequest {
+          let chapterIndex = navigation.chapterIndex
           let pageCount = chapterPageCounts[chapterIndex] ?? 1
-          let progression = initialProgression ?? 0
-          let pageIndex = max(0, min(pageCount - 1, Int(floor(Double(pageCount) * progression))))
+          let pageIndex = navigation.destination.pageIndex(pageCount: pageCount)
           currentChapterIndex = chapterIndex
           currentPageIndex = pageIndex
-          targetChapterIndex = chapterIndex
-          targetPageIndex = pageIndex
         } else if !readingOrder.isEmpty {
           currentChapterIndex = 0
           currentPageIndex = 0
-          targetChapterIndex = 0
-          targetPageIndex = 0
+          navigationRequest = EpubNavigationRequest(id: navigationID, chapterIndex: 0, destination: .page(0))
         }
 
         updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
@@ -506,57 +531,116 @@
       guard !readingOrder.isEmpty else { return }
       let pageCount = chapterPageCount(at: currentChapterIndex) ?? 1
       if currentPageIndex + 1 < pageCount {
-        setTarget(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex + 1)
+        navigateToPage(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex + 1)
       } else if currentChapterIndex + 1 < chapterCount {
-        setTarget(chapterIndex: currentChapterIndex + 1, pageIndex: 0)
+        navigateToPage(chapterIndex: currentChapterIndex + 1, pageIndex: 0)
       }
     }
 
     func goToPreviousPage() {
       guard !readingOrder.isEmpty else { return }
       if currentPageIndex > 0 {
-        setTarget(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex - 1)
+        navigateToPage(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex - 1)
       } else if currentChapterIndex > 0 {
         let previousChapterIndex = currentChapterIndex - 1
-        targetChapterIndex = previousChapterIndex
-        targetPageIndex = -1
+        navigateToPage(chapterIndex: previousChapterIndex, pageIndex: -1)
       }
     }
 
     func goToChapter(link: WebPubLink) {
       guard let href = link.href, let chapterIndex = chapterIndexForHref(href) else { return }
-      setTarget(chapterIndex: chapterIndex, pageIndex: 0)
+      navigateToPage(chapterIndex: chapterIndex, pageIndex: 0)
+    }
+
+    // MARK: - End Page Adjacent Books
+
+    /// Previous/next sibling in the book's series (or read list), for the
+    /// end-page continuation cards.
+    private(set) var endPagePreviousBook: Book?
+    private(set) var endPageNextBook: Book?
+
+    func loadEndPageAdjacentBooks(bookId: String, readListId: String?) async {
+      let instanceId = AppConfig.current.instanceId
+      let books = await ReaderContentService().resolveAdjacentBooks(for: bookId, readListId: readListId)
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return }
+      endPagePreviousBook = books.previous
+      endPageNextBook = books.next
     }
 
     func navigateToURL(_ url: URL) {
-      // Extract possible hrefs from the URL
-      let path = url.path
-      let lastComponent = url.lastPathComponent
+      guard let chapterIndex = chapterIndex(for: url) else { return }
+      navigateToChapterLink(chapterIndex: chapterIndex, fragment: url.fragment)
+    }
 
-      // Split path into components and try matching progressively longer paths from the end
-      let pathComponents = path.split(separator: "/").map(String.init)
-      var possibleHrefs: [String] = [lastComponent]
+    func navigateToChapter(containing url: URL) {
+      guard let chapterIndex = chapterIndex(for: url) else { return }
+      navigateToChapterLink(chapterIndex: chapterIndex, fragment: nil)
+    }
 
-      // Build paths from the end (e.g., "chapter1.xhtml", "OEBPS/chapter1.xhtml", "content/OEBPS/chapter1.xhtml")
-      for i in (0..<pathComponents.count).reversed() {
-        let subPath = pathComponents[i...].joined(separator: "/")
-        if !possibleHrefs.contains(subPath) {
-          possibleHrefs.append(subPath)
-        }
+    private func chapterIndex(for url: URL) -> Int? {
+      guard let rootURL = resourceRootURL else { return nil }
+      let url = url.absoluteURL
+      let resourceURL: URL?
+      if url.isFileURL {
+        resourceURL = EpubResourceScheme.url(for: url, rootURL: rootURL)
+      } else if let path = EpubResourceScheme.relativePath(from: url) {
+        resourceURL = EpubResourceScheme.url(forRelativePath: path)
+      } else {
+        return nil
       }
+      guard let resourceURL else { return nil }
+      return chapterURLCache.first { _, chapterURL in
+        EpubResourceScheme.url(for: chapterURL, rootURL: rootURL) == resourceURL
+      }?.key
+    }
 
-      // Also try the full path
-      possibleHrefs.append(path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
-
-      for href in possibleHrefs {
-        if let chapterIndex = chapterIndexForHref(href) {
-          setTarget(chapterIndex: chapterIndex, pageIndex: 0)
-          return
-        }
+    private func navigateToChapterLink(chapterIndex: Int, fragment: String?) {
+      if chapterIndex == currentChapterIndex, fragment == nil || fragment?.isEmpty == true {
+        navigateToPage(chapterIndex: chapterIndex, pageIndex: 0)
+        return
       }
+      pushLinkBack(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
+      requestNavigation(
+        chapterIndex: chapterIndex,
+        destination: fragment.flatMap { $0.isEmpty ? nil : .fragment($0) } ?? .page(0)
+      )
+    }
+
+    // MARK: - In-book link back stack
+
+    /// Origin positions of in-book link jumps (footnotes, cross-references),
+    /// so the reader can return to where the link was tapped.
+    private(set) var linkBackStack: [(chapterIndex: Int, pageIndex: Int)] = []
+
+    var canReturnFromLink: Bool { !linkBackStack.isEmpty }
+
+    func pushLinkBack(chapterIndex: Int, pageIndex: Int) {
+      if let last = linkBackStack.last,
+        last.chapterIndex == chapterIndex, last.pageIndex == pageIndex
+      {
+        return
+      }
+      linkBackStack.append((chapterIndex: chapterIndex, pageIndex: pageIndex))
+    }
+
+    func navigationRequiresFullExtent(for chapterIndex: Int) -> Bool {
+      navigationRequest?.chapterIndex == chapterIndex && navigationRequest?.destination.requiresFullExtent == true
+    }
+
+    func pendingAnchorNavigation(for chapterIndex: Int) -> EpubAnchorNavigation? {
+      guard let request = navigationRequest, request.chapterIndex == chapterIndex,
+        case .fragment(let anchor) = request.destination
+      else { return nil }
+      return EpubAnchorNavigation(id: request.id, chapterIndex: chapterIndex, anchor: anchor)
+    }
+
+    func returnFromLink() {
+      guard let entry = linkBackStack.popLast() else { return }
+      navigateToPage(chapterIndex: entry.chapterIndex, pageIndex: entry.pageIndex)
     }
 
     func pageDidChange() {
+      guard navigationRequest == nil else { return }
       let chapterIndex = currentChapterIndex
       let pageIndex = currentPageIndex
       updateLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -615,6 +699,7 @@
     }
 
     func flushProgress() {
+      guard navigationRequest == nil else { return }
       let chapterIndex = currentChapterIndex
       let pageIndex = currentPageIndex
       updateLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -771,14 +856,11 @@
       viewportSize.width > 0 && viewportSize.height > 0 ? viewportSize : nil
     }
 
-    func initialProgression(for chapterIndex: Int) -> Double? {
-      // One-shot: the saved-position jump belongs to the controller that opens
-      // the book. Later controllers for the same chapter (e.g. neighbor
-      // preloads) must not inherit it.
-      guard initialChapterIndex == chapterIndex, let progression = initialProgression else { return nil }
-      initialChapterIndex = nil
-      initialProgression = nil
-      return progression
+    func requestedProgression(for chapterIndex: Int) -> Double? {
+      guard let request = navigationRequest, request.chapterIndex == chapterIndex,
+        case .fraction(let value) = request.destination
+      else { return nil }
+      return value
     }
 
     func updateChapterPageCount(_ pageCount: Int, for chapterIndex: Int) {
@@ -786,12 +868,10 @@
       // A produced page count means the chapter laid out successfully.
       failedChapterIndexes.remove(chapterIndex)
       let normalizedCount = max(1, pageCount)
-      if chapterPageCounts[chapterIndex] == normalizedCount { return }
 
       chapterPageCounts[chapterIndex] = normalizedCount
 
       normalizeCurrentPosition(adjustPageCount: false)
-      normalizeTargetPosition(adjustPageCount: false)
       updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
 
       // Store in memory cache only (no file persistence)
@@ -799,11 +879,14 @@
       guard let href = readingOrder[chapterIndex].href else { return }
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
       pageCountCache[cacheKey] = normalizedCount
+
     }
 
     func markChapterLoadFailed(_ chapterIndex: Int) {
-      updateChapterPageCount(1, for: chapterIndex)
+      chapterPageCounts[chapterIndex] = 1
       failedChapterIndexes.insert(chapterIndex)
+      normalizeCurrentPosition(adjustPageCount: false)
+      updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
     }
 
     var labelTopOffset: CGFloat {
@@ -835,18 +918,70 @@
       )
     }
 
-    // MARK: - Private Methods
+    // MARK: - Navigation
 
-    private func setTarget(chapterIndex: Int, pageIndex: Int) {
+    func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
+      if navigationRequest != nil { navigationID = UUID() }
+      navigationRequest = nil
+      currentChapterIndex = chapterIndex
+      currentPageIndex = pageIndex
+      pageDidChange()
+    }
+
+    func commitPosition(_ landing: EpubPageLanding) {
+      guard landing.navigationID == navigationID,
+        readingOrder.indices.contains(landing.chapterIndex), let pageCount = landing.layout.pageCount
+      else { return }
+      if landing.layout.isContent {
+        updateChapterPageCount(pageCount, for: landing.chapterIndex)
+      } else {
+        markChapterLoadFailed(landing.chapterIndex)
+      }
+      if let request = navigationRequest {
+        guard request.chapterIndex == landing.chapterIndex else { return }
+        if landing.layout.isContent {
+          switch request.destination {
+          case .fragment(let anchor):
+            guard landing.resolvedAnchor == anchor else { return }
+          default:
+            guard landing.pageIndex == request.destination.pageIndex(pageCount: pageCount) else { return }
+          }
+          if request.restoresRemoteProgress {
+            progressSubmissionSuppressed = false
+            sessionStartPosition = (landing.chapterIndex, landing.pageIndex)
+          }
+        }
+        navigationRequest = nil
+      }
+      currentChapterIndex = landing.chapterIndex
+      currentPageIndex = max(0, min(landing.pageIndex, pageCount - 1))
+      pageDidChange()
+    }
+
+    func navigateToPage(chapterIndex: Int, pageIndex: Int) {
       guard !readingOrder.isEmpty else { return }
-      let normalizedChapterIndex = max(0, min(chapterIndex, readingOrder.count - 1))
-      let normalizedPageIndex = normalizedPageIndex(
-        pageIndex,
-        chapterIndex: normalizedChapterIndex,
-        adjustPageCount: true
+      let chapter = max(0, min(chapterIndex, readingOrder.count - 1))
+      requestNavigation(chapterIndex: chapter, destination: pageIndex < 0 ? .lastPage : .page(max(0, pageIndex)))
+    }
+
+    private func navigateToProgression(
+      chapterIndex: Int, progression: Double, restoresRemoteProgress: Bool = false
+    ) {
+      requestNavigation(
+        chapterIndex: chapterIndex, destination: .fraction(min(max(progression, 0), 1)),
+        restoresRemoteProgress: restoresRemoteProgress
       )
-      targetChapterIndex = normalizedChapterIndex
-      targetPageIndex = normalizedPageIndex
+    }
+
+    private func requestNavigation(
+      chapterIndex: Int, destination: EpubNavigationDestination, restoresRemoteProgress: Bool = false
+    ) {
+      guard readingOrder.indices.contains(chapterIndex) else { return }
+      navigationID = UUID()
+      navigationRequest = EpubNavigationRequest(
+        id: navigationID, chapterIndex: chapterIndex, destination: destination,
+        restoresRemoteProgress: restoresRemoteProgress
+      )
     }
 
     private func normalizeCurrentPosition(adjustPageCount: Bool = true) {
@@ -863,28 +998,6 @@
       )
       currentChapterIndex = chapterIndex
       currentPageIndex = pageIndex
-    }
-
-    private func normalizeTargetPosition(adjustPageCount: Bool = true) {
-      guard let targetChapterIndex, let targetPageIndex else { return }
-      guard !readingOrder.isEmpty else {
-        self.targetChapterIndex = nil
-        self.targetPageIndex = nil
-        return
-      }
-      let chapterIndex = max(0, min(targetChapterIndex, readingOrder.count - 1))
-      if targetPageIndex < 0 {
-        self.targetChapterIndex = chapterIndex
-        self.targetPageIndex = -1
-        return
-      }
-      let pageIndex = normalizedPageIndex(
-        targetPageIndex,
-        chapterIndex: chapterIndex,
-        adjustPageCount: adjustPageCount
-      )
-      self.targetChapterIndex = chapterIndex
-      self.targetPageIndex = pageIndex
     }
 
     private func normalizedPageIndex(
@@ -984,13 +1097,60 @@
       return Double(overallIndex + 1) / Double(totalPages)
     }
 
+    var totalSeekFraction: Double? {
+      guard let location = pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex) else {
+        return nil
+      }
+      if hasFullTextWeights {
+        return totalProgression(
+          location: location,
+          chapterProgress: Double(location.pageIndex) / Double(max(1, location.pageCount))
+        )
+      }
+      let totalPages = totalPageCount()
+      guard totalPages > 0 else { return nil }
+      return Double(pageOffsetBeforeChapter(location.chapterIndex) + location.pageIndex) / Double(totalPages)
+    }
+
+    /// Seeks to the page-start fraction exposed by totalSeekFraction.
+    func seek(toTotalFraction fraction: Double) {
+      let target = min(max(fraction, 0), 1)
+      guard target != totalSeekFraction else { return }
+      if hasFullTextWeights, totalTextWeight > 0 {
+        let targetWeight = target * Double(totalTextWeight)
+        var accumulated = 0.0
+        for idx in 0..<readingOrder.count {
+          let weight = Double(chapterTextWeights[idx] ?? 0)
+          if accumulated + weight > targetWeight || idx == readingOrder.count - 1 {
+            let within = weight > 0 ? min(max((targetWeight - accumulated) / weight, 0), 1) : 0
+            navigateToProgression(chapterIndex: idx, progression: within)
+            return
+          }
+          accumulated += weight
+        }
+        return
+      }
+
+      let totalPages = totalPageCount()
+      guard totalPages > 0 else { return }
+      let overallIndex = min(totalPages - 1, max(0, Int((target * Double(totalPages)).rounded(.down))))
+      for idx in 0..<readingOrder.count {
+        let count = max(1, chapterPageCounts[idx] ?? 1)
+        let offset = pageOffsetBeforeChapter(idx)
+        if overallIndex < offset + count || idx == readingOrder.count - 1 {
+          navigateToPage(chapterIndex: idx, pageIndex: min(count - 1, overallIndex - offset))
+          return
+        }
+      }
+    }
+
     private func updateProgression(
       chapterIndex: Int,
       pageIndex: Int,
       chapterProgressOverride: Double? = nil,
       totalProgressOverride: Double? = nil
     ) async {
-      guard !progressSubmissionSuppressed else {
+      guard !progressSubmissionSuppressed, navigationRequest == nil else {
         logger.warning(
           "⏭️ [Progress/Epub] Submission suppressed: position was not restored from a trusted source this session, book=\(bookId)"
         )
@@ -1083,7 +1243,6 @@
       }
       if keepingCurrent {
         normalizeCurrentPosition()
-        normalizeTargetPosition()
       }
       updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
     }
@@ -1191,59 +1350,88 @@
       return readingOrder.firstIndex { Self.normalizedHref($0.href ?? "") == normalized }
     }
 
-    /// Syncs the remote progression into local storage. Returns `true` when the
-    /// fetch failed transiently, meaning the server-side position is unknown.
-    private func syncRemoteProgressionToLocal(bookId: String) async -> Bool {
-      guard let database = await DatabaseOperator.databaseIfConfigured() else { return true }
-
+    private func syncRemoteProgressionToLocal(bookId: String, instanceId: String) async -> EpubProgressionSyncResult {
+      guard let database = await DatabaseOperator.databaseIfConfigured() else { return .unavailable }
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+        return .unavailable
+      }
+      await ProgressSyncService.shared.syncPendingProgress(instanceId: instanceId)
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+        return .unavailable
+      }
       let remoteState = await BookService.fetchRemoteWebPubProgression(bookId: bookId)
+      guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+        return .unavailable
+      }
 
       switch remoteState {
       case .available(let progression):
-        await database.updateBookEpubProgression(
-          bookId: bookId,
-          progression: progression
-        )
-        logger.debug(
-          "Synced remote EPUB progression to local storage: href=\(progression.locator.href), progression=\(progression.locator.locations?.progression ?? 0)"
-        )
-        return false
+        await database.updateBookEpubProgression(bookId: bookId, instanceId: instanceId, progression: progression)
+        return .available(progression)
       case .missing:
-        // A bare GET must never destroy a locally saved position: a busy or
-        // misbehaving server can answer with a missing-shaped response, and
-        // wiping local state here makes the reader reopen at page 0 and then
-        // upload that regressed position back to the server. Only record
-        // "missing" when there is no local progression to lose.
-        if await database.fetchBookEpubProgression(bookId: bookId) == nil {
-          await database.updateBookEpubProgression(
-            bookId: bookId,
-            progression: nil
-          )
-          logger.debug("Synced remote EPUB progression to local storage: missing progression")
-        } else {
-          logger.warning(
-            "⚠️ Remote EPUB progression reported missing but a local progression exists; keeping local position for book \(bookId)"
-          )
+        // A remote missing response must never erase a saved local position.
+        let localProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId)
+        guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
+          return .unavailable
         }
-        return false
+        if let localProgression { return .available(localProgression) }
+        await database.updateBookEpubProgression(bookId: bookId, instanceId: instanceId, progression: nil)
+        return .missing
       case .retryableFailure(let error):
-        logger.warning(
-          "Failed to fetch remote EPUB progression for book \(bookId): \(error.localizedDescription)"
-        )
-        return true
+        logger.warning("Failed to fetch remote EPUB progression for book \(bookId): \(error.localizedDescription)")
+        let localProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId)
+        return .retryableFailure(localProgression: localProgression)
       case .invalidPayload(let error):
-        // Same rule as .missing: never downgrade a local available progression
-        // on an unparseable or non-retryable response.
-        if await database.fetchBookEpubProgression(bookId: bookId) == nil {
-          await database.updateBookEpubProgression(
-            bookId: bookId,
-            progression: nil
-          )
+        logger.warning("Ignoring invalid remote EPUB progression for book \(bookId): \(error.localizedDescription)")
+        if let localProgression = await database.fetchBookEpubProgression(bookId: bookId, instanceId: instanceId) {
+          return .available(localProgression)
         }
-        logger.warning(
-          "Ignoring non-retryable remote EPUB progression payload for book \(bookId): \(error.localizedDescription)"
+        return .unavailable
+      }
+    }
+
+    private func scheduleProgressionFetchRetry(bookId: String, instanceId: String) {
+      progressionRetryTask?.cancel()
+      let restorationNavigationID = navigationID
+      progressionRetryTask = Task { [weak self] in
+        var delay: TimeInterval = 2
+        while !Task.isCancelled {
+          try? await Task.sleep(for: .seconds(delay))
+          guard !Task.isCancelled, let self, self.bookId == bookId,
+            AppConfig.current.instanceId == instanceId, self.progressSubmissionSuppressed
+          else { return }
+          let result = await self.syncRemoteProgressionToLocal(bookId: bookId, instanceId: instanceId)
+          guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return }
+          if case .retryableFailure = result {
+            delay = min(delay * 2, 60)
+            continue
+          }
+          self.applyRetriedRemoteProgression(result, navigationID: restorationNavigationID)
+          return
+        }
+      }
+    }
+
+    private func applyRetriedRemoteProgression(_ result: EpubProgressionSyncResult, navigationID: UUID) {
+      switch result {
+      case .missing:
+        progressSubmissionSuppressed = false
+      case .available(let progression):
+        guard let chapterIndex = chapterIndexForHref(progression.locator.href) else {
+          logger.warning("Remote EPUB progression retry has an unknown chapter; keeping submission suppressed")
+          return
+        }
+        guard self.navigationID == navigationID, currentChapterIndex == 0, currentPageIndex == 0 else {
+          logger.warning("Remote EPUB progression retry completed after navigation; keeping submission suppressed")
+          return
+        }
+        navigateToProgression(
+          chapterIndex: chapterIndex,
+          progression: Double(progression.locator.locations?.progression ?? 0),
+          restoresRemoteProgress: true
         )
-        return false
+      case .retryableFailure, .unavailable:
+        break
       }
     }
 

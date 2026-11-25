@@ -5,6 +5,7 @@
   protocol EpubPageRenderer: AnyObject {
     var contentView: UIView { get }
     var isContentLoaded: Bool { get }
+    var layoutGeneration: Int { get }
     var refreshesWhenAppearingWithSameGeometry: Bool { get }
     var reloadsOnAppearanceChange: Bool { get }
     var forcesReloadWhenEnsured: Bool { get }
@@ -13,10 +14,18 @@
     func configure(_ configuration: EpubChapterConfiguration)
     func applyTheme(_ theme: ReaderTheme)
     func loadIfNeeded(force: Bool)
+    func prepareNavigation()
     func applyPagination(scrollToPage pageIndex: Int)
     func scrollToPage(_ pageIndex: Int, completion: (() -> Void)?)
     func scrollToPageAndSettle(_ pageIndex: Int, completion: @escaping () -> Void)
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void)
     func handleLinkTap(at point: CGPoint, in hostView: UIView) -> Bool
     func prepareForSnapshot()
+  }
+
+  extension EpubPageRenderer {
+    func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {
+      completion(nil)
+    }
   }
 #endif
