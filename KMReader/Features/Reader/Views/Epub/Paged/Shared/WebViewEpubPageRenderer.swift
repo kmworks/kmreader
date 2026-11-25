@@ -8,6 +8,7 @@
     private var configuration: EpubChapterConfiguration
     private var webView: WKWebView!
     private let epubResourceSchemeHandler = EpubResourceSchemeHandler()
+    private let linkTouchArm = WebPubLinkTouchArm()
     private(set) var layoutGeneration = 0
     // Set when the content probe reports a publisher-declared vertical writing
     // mode that the manifest metadata did not advertise.
@@ -267,7 +268,9 @@
     }
 
     func handleLinkTap(at point: CGPoint, in hostView: UIView) -> Bool {
-      false
+      // WebKit activates the link itself; the only thing to suppress is the
+      // tap-zone action the host runs for the same touch.
+      linkTouchArm.consume()
     }
 
     func prepareForSnapshot() {}
@@ -347,6 +350,9 @@
         detectedVerticalLayout = true
         refreshDocumentStartUserScript()
         applyPagination(scrollToPage: host.currentSubPageIndex)
+      } else if type == "linkTouch" {
+        if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
+        linkTouchArm.arm()
       }
     }
   }

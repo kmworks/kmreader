@@ -69,6 +69,7 @@
     var currentPageIndex: Int { currentSubPageIndex }
 
     private let epubResourceSchemeHandler = EpubResourceSchemeHandler()
+    private let linkTouchArm = WebPubLinkTouchArm()
 
     private var containerView: UIView?
     private var containerConstraints:
@@ -353,6 +354,10 @@
     }
 
     @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
+      // A touch that landed on a link was already reported by the page JS;
+      // skip the tap zone so a link tap cannot also scroll or toggle chrome.
+      if linkTouchArm.consume() { return }
+
       let location = recognizer.location(in: view)
       let size = view.bounds.size
       guard size.width > 0, size.height > 0 else { return }
@@ -812,6 +817,11 @@
       guard let type = body["type"] as? String else { return }
       guard paginationNavigationID == navigationID else { return }
       if let token = body["token"] as? Int, token != readyToken {
+        return
+      }
+
+      if type == "linkTouch" {
+        linkTouchArm.arm()
         return
       }
 

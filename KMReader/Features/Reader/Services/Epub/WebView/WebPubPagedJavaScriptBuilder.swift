@@ -263,6 +263,31 @@
           var t = event.target;
           if (t && t.tagName === 'IMG') { scheduleRepaginate(); }
         }, true);
+
+        // WebKit activates in-chapter links itself, but the same touch also
+        // reaches the host's tap gesture, which would then run a tap-zone
+        // action for a link tap. Report the touch so native code can consume
+        // the gesture instead of turning the page.
+        if (!window.__kmreaderLinkTouchInstalled) {
+          window.__kmreaderLinkTouchInstalled = true;
+          var lastLinkTouchAt = 0;
+          document.addEventListener('touchstart', function(event) {
+            var node = event.target;
+            if (!node || !node.closest) { return; }
+            var link = node.closest('a[href]');
+            if (!link) { return; }
+            var now = Date.now();
+            if (now - lastLinkTouchAt < 80) { return; }
+            lastLinkTouchAt = now;
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
+              window.webkit.messageHandlers.readerBridge.postMessage({
+                type: 'linkTouch',
+                href: link.getAttribute('href') || '',
+                generation: window.__kmreaderPaginationGeneration
+              });
+            }
+          }, true);
+        }
       })();
       """
     }
@@ -554,6 +579,31 @@
               }, { passive: true });
             }
           };
+
+          // WebKit activates in-chapter links itself, but the same touch also
+          // reaches the host's tap gesture, which would then run a tap-zone
+          // action for a link tap. Report the touch so native code can consume
+          // the gesture instead of scrolling to another page.
+          if (!window.__kmreaderScrolledLinkTouchInstalled) {
+            window.__kmreaderScrolledLinkTouchInstalled = true;
+            var lastLinkTouchAt = 0;
+            document.addEventListener('touchstart', function(event) {
+              var node = event.target;
+              if (!node || !node.closest) { return; }
+              var link = node.closest('a[href]');
+              if (!link) { return; }
+              var now = Date.now();
+              if (now - lastLinkTouchAt < 80) { return; }
+              lastLinkTouchAt = now;
+              if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.readerBridge) {
+                window.webkit.messageHandlers.readerBridge.postMessage({
+                  type: 'linkTouch',
+                  href: link.getAttribute('href') || '',
+                  token: window.__kmreaderScrollGeneration
+                });
+              }
+            }, true);
+          }
 
           var finalize = function() {
             if (!isCurrent() || hasFinalized) return;

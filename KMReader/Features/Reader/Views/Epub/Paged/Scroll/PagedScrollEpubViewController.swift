@@ -74,6 +74,7 @@
     }
 
     private let epubResourceSchemeHandler = EpubResourceSchemeHandler()
+    private let linkTouchArm = WebPubLinkTouchArm()
 
     private var containerView: UIView?
     private var containerConstraints:
@@ -301,6 +302,10 @@
     }
 
     @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
+      // A touch that landed on a link was already reported by the page JS;
+      // skip the tap zone so a link tap cannot also turn the page.
+      if linkTouchArm.consume() { return }
+
       let location = recognizer.location(in: view)
       let size = view.bounds.size
       guard size.width > 0, size.height > 0 else { return }
@@ -884,6 +889,13 @@
           onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
         }
         updateOverlayLabels()
+      } else if type == "linkTouch" {
+        if let generation = body["generation"] as? Int,
+          generation != paginationGeneration
+        {
+          return
+        }
+        linkTouchArm.arm()
       } else if type == "writingModeMismatch" {
         if let generation = body["generation"] as? Int,
           generation != paginationGeneration
