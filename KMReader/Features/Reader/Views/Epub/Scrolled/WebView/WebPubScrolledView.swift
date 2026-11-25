@@ -29,7 +29,6 @@
       let chapterIndex = viewModel.currentChapterIndex
       let pageIndex = viewModel.currentPageIndex
       let currentLocation = viewModel.pageLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
-      let initialProgression = viewModel.requestedProgression(for: chapterIndex)
 
       let theme = preferences.resolvedTheme(for: colorScheme)
       let fontPath = preferences.fontFamily.fontName.flatMap { CustomFontStore.shared.getFontPath(for: $0) }
@@ -56,7 +55,7 @@
         publicationReadingProgression: viewModel.publicationReadingProgression,
         chapterIndex: chapterIndex,
         initialSubPageIndex: pageIndex,
-        targetProgressionOnReady: initialProgression,
+        destination: viewModel.navigationRequest?.destination,
         totalChapters: viewModel.chapterCount,
         bookTitle: bookTitle,
         chapterTitle: currentLocation?.title,
@@ -100,9 +99,7 @@
       vc.pendingAnchorProvider = { [weak viewModel] chapterIndex in
         viewModel?.pendingAnchorNavigation(for: chapterIndex)
       }
-      vc.onPendingAnchorLanding = { [weak viewModel] navigation in
-        viewModel?.acknowledgeAnchorNavigation(navigation) ?? false
-      }
+
       context.coordinator.viewController = vc
 
       return vc
@@ -156,8 +153,7 @@
         publicationReadingProgression: viewModel.publicationReadingProgression,
         chapterIndex: chapterIndex,
         navigationID: viewModel.navigationID,
-        targetPageIndex: viewModel.targetPageIndex,
-        targetProgression: viewModel.requestedProgression(for: chapterIndex),
+        navigationRequest: viewModel.navigationRequest,
         totalChapters: viewModel.chapterCount,
         bookTitle: bookTitle,
         chapterTitle: currentLocation?.title,

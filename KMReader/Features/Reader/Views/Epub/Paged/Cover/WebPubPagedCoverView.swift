@@ -234,9 +234,6 @@
           guard let self, let controller, self.currentController === controller, self.session == nil else { return nil }
           return self.parent.viewModel.pendingAnchorNavigation(for: chapterIndex)
         }
-        controller.onPendingAnchorLanding = { [weak self] navigation in
-          self?.parent.viewModel.acknowledgeAnchorNavigation(navigation) ?? false
-        }
         controller.loadViewIfNeeded()
         return controller
       }
@@ -263,7 +260,9 @@
             subPageIndex: normalizedPageIndex,
             preferLastPageOnReady: isLastPageRequest
           ) {
-            let shouldAnimate = hasCompletedInitialUpdate && parent.animateTapTurns
+            let shouldAnimate =
+              hasCompletedInitialUpdate && parent.animateTapTurns
+              && parent.viewModel.navigationRequest?.destination.requiresFullExtent != true
             if shouldAnimate {
               animateTransition(to: target)
             } else {
@@ -283,17 +282,14 @@
       }
 
       private func wireController(_ controller: EpubPageViewController) {
-        controller.onPageIndexAdjusted = { [weak self, weak controller] pageIndex in
+        controller.onPositionSettled = { [weak self, weak controller] landing in
           guard let self, let controller, controller.isNavigationCurrent else { return }
           guard self.currentController === controller, self.session == nil else { return }
           let chapterIndex = controller.chapterIndex
+          let pageIndex = landing.pageIndex
           self.currentChapterIndex = chapterIndex
           self.currentPageIndex = pageIndex
-          self.parent.viewModel.commitPosition(
-            EpubPageLanding(
-              chapterIndex: chapterIndex, pageIndex: pageIndex,
-              pageCount: controller.totalPagesInChapter, navigationID: controller.navigationID
-            ))
+          self.parent.viewModel.commitPosition(landing)
         }
       }
 
@@ -335,7 +331,9 @@
         controller.view.frame = container.view.bounds
         controller.view.isHidden = false
         controller.view.layer.zPosition = 1
-        if controller.currentSubPageIndex != subPageIndex, controller.targetProgressionOnReady == nil {
+        if controller.currentSubPageIndex != subPageIndex,
+          parent.viewModel.navigationRequest?.destination.requiresFullExtent != true
+        {
           controller.scrollToPageIndex(subPageIndex)
         }
 
@@ -494,7 +492,10 @@
               preferLastPageOnReady: preferLastPageOnReady
             )
         else { return nil }
-        if host.currentSubPageIndex != subPageIndex, !preferLastPageOnReady {
+        if parent.viewModel.navigationRequest?.chapterIndex != chapterIndex {
+          host.prepareInteractiveDestination(preferLastPageOnReady ? .lastPage : .page(subPageIndex))
+        }
+        if host.currentSubPageIndex != subPageIndex, !host.destination.requiresFullExtent {
           host.scrollToPageIndex(subPageIndex)
         }
         return TurnTarget(
@@ -527,17 +528,14 @@
             reconfigureHosts()
             return
           }
-          if let controller = currentController, controller.hasPaginated {
-            controller.preferLastPageOnReady = false
-            controller.targetProgressionOnReady = nil
-          }
           if isInteractive {
+            currentController?.finishInteractiveNavigation()
             parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
-          } else if let controller = currentController, controller.hasPaginated {
+          } else if let controller = currentController, controller.layout.pageCount != nil {
             parent.viewModel.commitPosition(
               EpubPageLanding(
-                chapterIndex: chapterIndex, pageIndex: pageIndex,
-                pageCount: controller.totalPagesInChapter, navigationID: requestID
+                chapterIndex: chapterIndex, pageIndex: controller.currentSubPageIndex,
+                layout: controller.layout, navigationID: requestID
               ))
             controller.applyPendingAnchor()
           }
@@ -581,7 +579,7 @@
             current.view.isHidden = true
             current.view.layer.zPosition = 0
           } else {
-            if current.targetProgressionOnReady == nil {
+            if isInteractive || parent.viewModel.navigationRequest?.destination.requiresFullExtent != true {
               current.scrollToPageIndex(target.subPageIndex)
             }
           }

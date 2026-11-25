@@ -151,18 +151,10 @@
         errorView.bottomAnchor.constraint(equalTo: displayView.bottomAnchor),
       ])
       self.errorView = errorView
-      host.totalPagesInChapter = 1
-      host.onChapterLoadFailed?()
-
-      let previousPageIndex = host.currentSubPageIndex
-      host.rendererConsumePendingPageIndex()
       isContentLoaded = true
       showPage(at: 0)
-      if previousPageIndex != 0 {
-        host.rendererDidAdjustPageIndex(0, navigationID: host.navigationID)
-      }
+      host.rendererDidFail()
       host.rendererStopLoading()
-      host.onPaginationReady?()
       finishSettleCompletions()
     }
 
@@ -171,7 +163,7 @@
       displayLists = pages
       self.linkRegions = linkRegions
       isContentLoaded = true
-      host.rendererDidFinishPagination(pages.count, currentPageIndex: host.currentSubPageIndex)
+      host.rendererDidFinishPagination(pages.count)
       host.rendererStopLoading()
       finishSettleCompletions()
     }
@@ -201,8 +193,12 @@
     }
 
     func prepareNavigation() {
-      guard isContentLoaded, errorView == nil, let host else { return }
-      host.rendererDidFinishPagination(displayLists.count, currentPageIndex: host.currentSubPageIndex)
+      guard isContentLoaded, let host else { return }
+      if errorView != nil {
+        host.rendererDidFail()
+      } else {
+        host.rendererDidFinishPagination(displayLists.count)
+      }
     }
 
     func applyPagination(scrollToPage pageIndex: Int) {

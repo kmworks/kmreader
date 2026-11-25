@@ -79,7 +79,7 @@
     private func refreshDocumentStartUserScript() {
       guard let controller = webView?.configuration.userContentController else { return }
       controller.removeAllUserScripts()
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: configuration.contentCSS,
         readiumProperties: configuration.readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
@@ -141,17 +141,17 @@
 
     func prepareNavigation() {
       guard isContentLoaded, let host else { return }
-      if host.preferLastPageOnReady || host.targetProgressionOnReady != nil
+      if host.destination.requiresFullExtent
         || host.requiresFullExtentProvider?(host.chapterIndex) == true
       {
         host.rendererWillPaginate()
         layoutGeneration += 1
         injectPaginationJS(
           targetPageIndex: host.rendererPendingOrCurrentPageIndex(),
-          preferLastPage: host.preferLastPageOnReady
+          preferLastPage: host.destination == .lastPage
         )
       } else if host.hasPaginated {
-        host.rendererDidFinishPagination(host.totalPagesInChapter, currentPageIndex: host.currentSubPageIndex)
+        host.rendererDidFinishPagination(host.totalPagesInChapter)
       }
     }
 
@@ -174,7 +174,7 @@
         guard let self, generation == layoutGeneration else { return }
         self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self.host?.preferLastPageOnReady ?? false
+          preferLastPage: self.host?.destination == .lastPage
         )
       }
     }
@@ -188,7 +188,7 @@
     }
 
     private func injectCSS(completion: (() -> Void)? = nil) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: configuration.contentCSS,
         readiumProperties: configuration.readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
@@ -208,8 +208,9 @@
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
         generation: layoutGeneration,
-        requiresFullExtent: host?.targetProgressionOnReady != nil
-          || host?.requiresFullExtentProvider?(configuration.chapterIndex) == true
+        requiresFullExtent: host?.destination.requiresFullExtent == true
+          || host?.requiresFullExtentProvider?(configuration.chapterIndex) == true,
+        targetProgression: host?.destination.progression
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -329,19 +330,15 @@
         if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          let actualPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
           host.rendererStopLoading()
           webView.alpha = 1
-          host.rendererDidFinishPagination(normalizedTotal, currentPageIndex: actualPage)
-          host.targetProgressionOnReady = nil
-          host.preferLastPageOnReady = false
+          host.rendererDidFinishPagination(normalizedTotal)
         }
       } else if type == "pageCountUpdate", let total = body["totalPages"] as? Int {
         // Handle incremental layout updates from the extent watchers
         if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         let normalizedTotal = max(1, total)
-        let currentPage = body["currentPage"] as? Int ?? host.currentSubPageIndex
-        host.rendererDidFinishPagination(normalizedTotal, currentPageIndex: currentPage)
+        host.rendererDidFinishPagination(normalizedTotal)
       } else if type == "writingModeMismatch" {
         if let generation = body["generation"] as? Int, generation != layoutGeneration { return }
         // The content probe found publisher-declared vertical writing that

@@ -117,9 +117,7 @@
     private var paginationGeneration = 0
     private var detectedVerticalLayout = false
     private var isContentLoaded = false
-    private var pendingPageIndex: Int?
-    private var pendingJumpToLastPage: Bool = false
-    private var targetProgressionOnReady: Double?
+    private var pendingDestination: EpubNavigationDestination?
     private var chapterTitle: String?
     private var totalProgression: Double?
     private var isAwaitingPaginationReady = false
@@ -152,6 +150,9 @@
     func update(from parent: WebPubPagedCoverView) {
       self.parent = parent
       guard let webView else { return }
+      let navigationChanged =
+        parent.viewModel.navigationRequest != nil
+        && navigationID != parent.viewModel.navigationID
 
       let requestedChapterIndex = parent.viewModel.targetChapterIndex ?? parent.viewModel.currentChapterIndex
       let requestedRawPageIndex = parent.viewModel.targetPageIndex ?? parent.viewModel.currentPageIndex
@@ -159,7 +160,7 @@
       let requestedPageIndex =
         requestedRawPageIndex < 0
         ? max(0, requestedPageCount - 1)
-        : max(0, min(requestedRawPageIndex, requestedPageCount - 1))
+        : max(0, requestedRawPageIndex)
 
       let requestedLocation = parent.viewModel.pageLocation(
         chapterIndex: requestedChapterIndex,
@@ -200,11 +201,11 @@
         return
       }
 
-      let hasPendingNavigation =
-        parent.viewModel.targetChapterIndex != nil || parent.viewModel.targetPageIndex != nil
+      let hasPendingNavigation = navigationChanged
       let shouldAnimateNavigation =
         hasPendingNavigation
         && parent.animateTapTurns
+        && parent.viewModel.navigationRequest?.destination.requiresFullExtent != true
         && isContentLoaded
         && (requestedChapterIndex != chapterIndex || requestedPageIndex != currentSubPageIndex)
 
@@ -256,24 +257,13 @@
         }
       )
 
-      if let targetChapterIndex = parent.viewModel.targetChapterIndex,
-        let targetPageIndex = parent.viewModel.targetPageIndex,
-        targetChapterIndex == chapterIndex
-      {
-        targetProgressionOnReady = parent.viewModel.requestedProgression(for: chapterIndex)
-        pendingPageIndex = max(0, targetPageIndex)
-        pendingJumpToLastPage = targetPageIndex < 0
-      } else {
-        pendingPageIndex = requestedPageIndex
-        pendingJumpToLastPage = false
-      }
+      pendingDestination = parent.viewModel.navigationRequest?.destination ?? .page(max(0, requestedPageIndex))
 
       applyTheme(theme)
       applyContentInsets()
       updateOverlayLabels()
 
       if shouldReload {
-        targetProgressionOnReady = parent.viewModel.requestedProgression(for: requestedChapterIndex)
         loadContent(in: webView)
         return
       }
@@ -326,16 +316,12 @@
       }
 
       if request.shouldReload {
-        pendingPageIndex = max(0, request.rawPageIndex)
-        pendingJumpToLastPage = request.rawPageIndex < 0
-        targetProgressionOnReady = parent.viewModel.requestedProgression(for: request.chapterIndex)
+        pendingDestination = request.rawPageIndex < 0 ? .lastPage : .page(request.pageIndex)
         loadContent(in: webView)
         return
       }
 
-      pendingPageIndex = request.pageIndex
-      pendingJumpToLastPage = request.rawPageIndex < 0
-      targetProgressionOnReady = parent.viewModel.requestedProgression(for: request.chapterIndex)
+      pendingDestination = request.rawPageIndex < 0 ? .lastPage : .page(request.pageIndex)
 
       applyNavigation(on: webView, targetPageIndex: request.pageIndex, appearanceChanged: request.appearanceChanged)
     }
@@ -617,7 +603,7 @@
 
     private func applyNavigation(on webView: WKWebView, targetPageIndex: Int, appearanceChanged: Bool) {
       guard isContentLoaded else { return }
-      if appearanceChanged || isAwaitingPaginationReady || pendingJumpToLastPage
+      if appearanceChanged || isAwaitingPaginationReady || pendingDestination == .lastPage
         || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex)
       {
         applyPagination(on: webView, targetPageIndex: targetPageIndex)
@@ -641,7 +627,7 @@
           self.totalPagesInChapter = max(1, total)
           self.paginationNavigationID = requestID
           self.renderedNavigationID = requestID
-          self.pendingPageIndex = nil
+          self.pendingDestination = nil
           if requestID == self.parent.viewModel.navigationID {
             self.parent.viewModel.updateChapterPageCount(self.totalPagesInChapter, for: self.chapterIndex)
           }
@@ -668,18 +654,19 @@
         self.injectPaginationJS(
           on: webView,
           targetPageIndex: targetPageIndex,
-          preferLastPage: self.pendingJumpToLastPage
+          preferLastPage: self.pendingDestination == .lastPage
         )
       }
     }
 
-    private func commitPage(_ pageIndex: Int) {
+    private func commitPage(_ pageIndex: Int, resolvedAnchor: String? = nil) {
       currentSubPageIndex = max(0, pageIndex)
       updateProgressDisplay(for: currentSubPageIndex)
       parent.viewModel.commitPosition(
         EpubPageLanding(
           chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
-          pageCount: totalPagesInChapter, navigationID: renderedNavigationID
+          layout: .content(pageCount: totalPagesInChapter), navigationID: renderedNavigationID,
+          resolvedAnchor: resolvedAnchor
         ))
       updateOverlayLabels()
     }
@@ -720,8 +707,9 @@
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
-      applyPagination(on: webView, targetPageIndex: pendingPageIndex ?? currentSubPageIndex)
-      pendingPageIndex = nil
+      applyPagination(
+        on: webView,
+        targetPageIndex: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
     }
 
     func webView(
@@ -765,27 +753,14 @@
         }
       }
 
-      var actualPage = max(0, body["currentPage"] as? Int ?? currentSubPageIndex)
+      let actualPage = max(0, body["currentPage"] as? Int ?? currentSubPageIndex)
 
       if type == "pageCountUpdate" {
         commitPage(min(actualPage, totalPagesInChapter - 1))
         return
       }
 
-      if pendingJumpToLastPage {
-        pendingJumpToLastPage = false
-      } else if let progression = targetProgressionOnReady {
-        let targetIndex = max(
-          0,
-          min(totalPagesInChapter - 1, Int(floor(Double(totalPagesInChapter) * progression)))
-        )
-        if targetIndex != actualPage {
-          actualPage = targetIndex
-          scrollToPage(targetIndex, animated: false)
-        }
-        targetProgressionOnReady = nil
-      }
-
+      pendingDestination = nil
       isAwaitingPaginationReady = false
       webView?.alphaValue = 1
       updateProgressDisplay(for: actualPage)
@@ -800,10 +775,10 @@
       // Fragment navigation lands after the target chapter has paginated.
       if let webView, let anchor = parent.viewModel.pendingAnchorNavigation(for: chapterIndex) {
         scrollToAnchor(anchor.anchor, on: webView) { [weak self] resolvedPage in
-          guard let self, parent.viewModel.acknowledgeAnchorNavigation(anchor) else { return }
+          guard let self, navigationID == anchor.id, parent.viewModel.navigationID == anchor.id else { return }
           let page = resolvedPage ?? 0
           if resolvedPage == nil { scrollToPage(0, animated: false) }
-          commitPage(page)
+          commitPage(page, resolvedAnchor: anchor.anchor)
         }
       }
     }
@@ -814,13 +789,14 @@
       preferLastPage: Bool
     ) {
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
-        targetPageIndex: targetPageIndex,
+        targetPageIndex: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
         generation: paginationGeneration,
-        requiresFullExtent: targetProgressionOnReady != nil
-          || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex)
+        requiresFullExtent: pendingDestination?.progression != nil
+          || parent.viewModel.navigationRequiresFullExtent(for: chapterIndex),
+        targetProgression: pendingDestination?.progression
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -828,7 +804,7 @@
     private func refreshDocumentStartUserScript(on webView: WKWebView) {
       let controller = webView.configuration.userContentController
       controller.removeAllUserScripts()
-      let script = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let script = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: contentCSS,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
@@ -840,7 +816,7 @@
     }
 
     private func injectCSS(on webView: WKWebView, completion: (() -> Void)? = nil) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: contentCSS,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,

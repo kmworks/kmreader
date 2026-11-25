@@ -370,7 +370,7 @@
       guard isContentReady else { return }
       if viewModel.targetChapterIndex == currentChapterIndex { navigationID = viewModel.navigationID }
       if errorView != nil {
-        viewModel.clearNavigationTarget()
+        updatePageFromScroll()
         return
       }
       guard document != nil, let targetPage = viewModel.targetPageIndex else { return }
@@ -408,7 +408,7 @@
       viewModel.commitPosition(
         EpubPageLanding(
           chapterIndex: currentChapterIndex, pageIndex: pageIndex,
-          pageCount: currentPageCount, navigationID: navigationID
+          layout: errorView != nil ? .failed : .content(pageCount: currentPageCount), navigationID: navigationID
         ))
       updateOverlayLabels()
     }

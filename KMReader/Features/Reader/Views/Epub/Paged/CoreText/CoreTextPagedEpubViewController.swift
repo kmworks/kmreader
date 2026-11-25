@@ -370,7 +370,7 @@
       guard isContentReady else { return }
       if viewModel.targetChapterIndex == currentChapterIndex { navigationID = viewModel.navigationID }
       if chapterLoadFailed {
-        viewModel.clearNavigationTarget()
+        commitPage(at: 0, notify: true)
         return
       }
       guard !displayLists.isEmpty, let targetPage = viewModel.targetPageIndex else { return }
@@ -410,7 +410,8 @@
         viewModel.commitPosition(
           EpubPageLanding(
             chapterIndex: currentChapterIndex, pageIndex: pageIndex,
-            pageCount: max(1, displayLists.count), navigationID: navigationID
+            layout: chapterLoadFailed ? .failed : .content(pageCount: max(1, displayLists.count)),
+            navigationID: navigationID
           ))
       }
       updateOverlayLabels()

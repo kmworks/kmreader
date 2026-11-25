@@ -30,9 +30,7 @@
     private var mediaTypesByRelativePath: [String: String]
     private var lastLayoutSize: CGSize = .zero
     private var isContentLoaded = false
-    private var pendingPageIndex: Int?
-    private var pendingJumpToLastPage: Bool = false
-    var targetProgressionOnReady: Double?
+    private var pendingDestination: EpubNavigationDestination?
     /// Generation counter of the latest pagination pass; stale JS callbacks
     /// from superseded passes are ignored.
     private var paginationGeneration: Int = 0
@@ -45,7 +43,6 @@
     /// Exposes the current link command without consuming it.
     var requiresFullExtentProvider: ((Int) -> Bool)?
     var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
-    var onPendingAnchorLanding: ((EpubAnchorNavigation) -> Bool)?
 
     private var bookTitle: String?
     private var chapterTitle: String?
@@ -115,7 +112,7 @@
       animatePageTransitions: Bool,
       chapterIndex: Int,
       initialSubPageIndex: Int,
-      targetProgressionOnReady: Double?,
+      destination: EpubNavigationDestination?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -139,7 +136,7 @@
       self.animatePageTransitions = animatePageTransitions
       self.chapterIndex = chapterIndex
       self.currentSubPageIndex = max(0, initialSubPageIndex)
-      self.targetProgressionOnReady = targetProgressionOnReady
+      self.pendingDestination = destination
       self.totalChapters = totalChapters
       self.bookTitle = bookTitle
       self.chapterTitle = chapterTitle
@@ -539,8 +536,7 @@
       animatePageTransitions: Bool,
       chapterIndex: Int,
       navigationID: UUID,
-      targetPageIndex: Int?,
-      targetProgression: Double?,
+      navigationRequest: EpubNavigationRequest?,
       totalChapters: Int,
       bookTitle: String?,
       chapterTitle: String?,
@@ -567,20 +563,9 @@
         || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
 
-      let navigationChanged: Bool
-      if let targetPageIndex {
-        let pageIndex = max(0, targetPageIndex)
-        let preferLastPage = targetPageIndex < 0
-        navigationChanged =
-          self.navigationID != navigationID
-          || pendingPageIndex != pageIndex
-          || pendingJumpToLastPage != preferLastPage
-          || targetProgressionOnReady != targetProgression
-        pendingPageIndex = pageIndex
-        pendingJumpToLastPage = preferLastPage
-        targetProgressionOnReady = targetProgression
-      } else {
-        navigationChanged = false
+      let navigationChanged = navigationRequest != nil && self.navigationID != navigationID
+      if navigationChanged || shouldReload || appearanceChanged {
+        pendingDestination = navigationRequest?.destination ?? .page(currentSubPageIndex)
       }
 
       self.navigationID = navigationID
@@ -620,7 +605,8 @@
       if shouldReload {
         loadContentIfNeeded(force: true)
       } else if appearanceChanged || navigationChanged {
-        applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
+        applyPagination(
+          scrollToPage: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
       }
     }
 
@@ -653,7 +639,8 @@
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       isContentLoaded = true
-      applyPagination(scrollToPage: pendingPageIndex ?? currentSubPageIndex)
+      applyPagination(
+        scrollToPage: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? currentSubPageIndex)
     }
 
     override func viewDidLayoutSubviews() {
@@ -706,7 +693,7 @@
         guard let self, generation == paginationGeneration else { return }
         self.injectPaginationJS(
           targetPageIndex: pageIndex,
-          preferLastPage: self.pendingJumpToLastPage
+          preferLastPage: self.pendingDestination == .lastPage
         )
       }
     }
@@ -741,12 +728,13 @@
 
     private func injectPaginationJS(targetPageIndex: Int, preferLastPage: Bool) {
       let js = WebPubPagedJavaScriptBuilder.makePaginationScript(
-        targetPageIndex: targetPageIndex,
+        targetPageIndex: pendingDestination?.estimatedPageIndex(pageCount: totalPagesInChapter) ?? targetPageIndex,
         preferLastPage: preferLastPage,
         waitForLoadEvents: true,
         paginationLayout: paginationLayout,
         generation: paginationGeneration,
-        requiresFullExtent: targetProgressionOnReady != nil || requiresFullExtentProvider?(chapterIndex) == true
+        requiresFullExtent: pendingDestination?.progression != nil || requiresFullExtentProvider?(chapterIndex) == true,
+        targetProgression: pendingDestination?.progression
       )
       webView.evaluateJavaScript(js, completionHandler: nil)
     }
@@ -757,7 +745,7 @@
       guard isViewLoaded else { return }
       let controller = webView.configuration.userContentController
       controller.removeAllUserScripts()
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: contentCSS,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: EpubThemePreferences.readiumPropertyKeys,
@@ -773,11 +761,12 @@
         ))
     }
 
-    private func reportCurrentPosition() {
+    private func reportCurrentPosition(resolvedAnchor: String? = nil) {
       onPageDidChange?(
         EpubPageLanding(
           chapterIndex: chapterIndex, pageIndex: currentSubPageIndex,
-          pageCount: totalPagesInChapter, navigationID: renderedNavigationID
+          layout: .content(pageCount: totalPagesInChapter), navigationID: renderedNavigationID,
+          resolvedAnchor: resolvedAnchor
         ))
     }
 
@@ -848,22 +837,10 @@
         renderedNavigationID = paginationNavigationID
         if let total = body["totalPages"] as? Int {
           let normalizedTotal = max(1, total)
-          var actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
+          let actualPage = body["currentPage"] as? Int ?? currentSubPageIndex
 
           totalPagesInChapter = normalizedTotal
           onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
-
-          let shouldJumpToLastPage = pendingJumpToLastPage
-          if shouldJumpToLastPage {
-            pendingJumpToLastPage = false
-          } else if let progression = targetProgressionOnReady {
-            let targetIndex = max(0, min(normalizedTotal - 1, Int(floor(Double(normalizedTotal) * progression))))
-            if targetIndex != actualPage {
-              actualPage = targetIndex
-              scrollToPage(targetIndex, animated: false)
-            }
-            targetProgressionOnReady = nil
-          }
 
           if currentSubPageIndex != actualPage {
             currentSubPageIndex = actualPage
@@ -874,17 +851,17 @@
           // not stick to the chapter start.
           if let anchor = pendingAnchorProvider?(chapterIndex) {
             scrollToAnchor(anchor.anchor) { [weak self] resolvedPage in
-              guard let self, onPendingAnchorLanding?(anchor) == true else { return }
+              guard let self, navigationID == anchor.id else { return }
               let page = resolvedPage ?? 0
               if resolvedPage == nil { scrollToPage(0, animated: false) }
               self.currentSubPageIndex = page
               self.updateOverlayLabels()
-              self.reportCurrentPosition()
+              self.reportCurrentPosition(resolvedAnchor: anchor.anchor)
             }
           }
         }
 
-        pendingPageIndex = nil
+        pendingDestination = nil
         updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
@@ -930,7 +907,7 @@
       readingProgression: WebPubReadingProgression?,
       completion: (() -> Void)? = nil
     ) {
-      let js = WebPubPagedJavaScriptBuilder.makeInjectCSSScript(
+      let js = WebPubThemeJavaScriptBuilder.makeInjectCSSScript(
         contentCSS: css,
         readiumProperties: readiumProperties,
         readiumPropertyKeys: readiumPropertyKeys,

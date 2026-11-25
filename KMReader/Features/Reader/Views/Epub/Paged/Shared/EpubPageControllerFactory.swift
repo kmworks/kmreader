@@ -52,7 +52,6 @@
         location: location,
         chapterProgress: chapterProgress
       )
-      let initialProgression = viewModel.requestedProgression(for: chapterIndex)
 
       let configuration = EpubChapterConfiguration(
         preferences: preferences,
@@ -86,12 +85,16 @@
       controller.navigationIsCurrent = { [weak viewModel] navigationID in
         viewModel?.navigationID == navigationID
       }
-      controller.prepareNavigation(viewModel.navigationID)
+      controller.prepareNavigation(
+        viewModel.navigationRequest.flatMap { $0.chapterIndex == chapterIndex ? $0 : nil }
+          ?? EpubNavigationRequest(
+            id: viewModel.navigationID, chapterIndex: chapterIndex,
+            destination: preferLastPageOnReady ? .lastPage : .page(subPageIndex)
+          )
+      )
       controller.requiresFullExtentProvider = { [weak viewModel] chapterIndex in
         viewModel?.navigationRequiresFullExtent(for: chapterIndex) ?? false
       }
-      controller.preferLastPageOnReady = preferLastPageOnReady
-      controller.targetProgressionOnReady = initialProgression
       controller.onChapterLoadFailed = { [weak viewModel] in
         viewModel?.markChapterLoadFailed(chapterIndex)
       }
@@ -157,9 +160,11 @@
       let chapterIndex = controller.chapterIndex
       if viewModel.targetChapterIndex == nil || viewModel.targetChapterIndex == chapterIndex {
         controller.prepareNavigation(
-          viewModel.navigationID,
-          pageIndex: viewModel.targetChapterIndex == chapterIndex ? viewModel.targetPageIndex : nil,
-          progression: viewModel.requestedProgression(for: chapterIndex)
+          viewModel.navigationRequest
+            ?? EpubNavigationRequest(
+              id: viewModel.navigationID, chapterIndex: chapterIndex,
+              destination: .page(controller.currentSubPageIndex)
+            )
         )
       }
     }

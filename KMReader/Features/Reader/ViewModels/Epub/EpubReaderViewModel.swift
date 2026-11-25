@@ -27,8 +27,14 @@
     var currentChapterIndex: Int = 0
     var currentPageIndex: Int = 0
     private(set) var navigationID = UUID()
-    private(set) var targetChapterIndex: Int?
-    private(set) var targetPageIndex: Int?
+    private(set) var navigationRequest: EpubNavigationRequest?
+
+    var targetChapterIndex: Int? { navigationRequest?.chapterIndex }
+    var targetPageIndex: Int? {
+      guard let request = navigationRequest else { return nil }
+      if request.destination == .lastPage { return -1 }
+      return request.destination.estimatedPageIndex(pageCount: chapterPageCounts[request.chapterIndex] ?? 1)
+    }
     var currentLocation: WebPubLocation?
     var resourceRootURL: URL?
     var mediaTypesByRelativePath: [String: String] = [:]
@@ -61,7 +67,6 @@
     /// a transient failure, so the session-long suppression lifts as soon as
     /// the server becomes reachable again.
     private var progressionRetryTask: Task<Void, Never>?
-    private var progressionNavigation: EpubProgressionNavigation?
     /// Page-based read progress from the book DTO. Komga reports page-based
     /// progress (written by KOReader/Kindle sync, paged readers, or the web UI)
     /// as an empty locator on the progression endpoint, so the page number is
@@ -164,8 +169,7 @@
       tableOfContents = []
       currentChapterIndex = 0
       currentPageIndex = 0
-      targetChapterIndex = nil
-      targetPageIndex = nil
+      navigationRequest = nil
       currentLocation = nil
       resourceRootURL = nil
       mediaTypesByRelativePath = [:]
@@ -183,12 +187,10 @@
       positionsLoadTask = nil
       textLengthTask?.cancel()
       textLengthTask = nil
-      progressionNavigation = nil
       progressSubmissionSuppressed = false
       progressionRetryTask?.cancel()
       progressionRetryTask = nil
       linkBackStack = []
-      pendingAnchor = nil
       endPagePreviousBook = nil
       endPageNextBook = nil
       sessionStartPosition = nil
@@ -302,10 +304,9 @@
           )
           if let chapterIndex = chapterIndexForHref(savedProgression.locator.href) {
             logger.debug("Matched progression to chapterIndex=\(chapterIndex)")
-            progressionNavigation = EpubProgressionNavigation(
-              chapterIndex: chapterIndex,
-              progression: min(max(Double(savedProgression.locator.locations?.progression ?? 0), 0), 1),
-              restoresRemoteProgress: false
+            navigationRequest = EpubNavigationRequest(
+              id: navigationID, chapterIndex: chapterIndex,
+              destination: .fraction(min(max(Double(savedProgression.locator.locations?.progression ?? 0), 0), 1))
             )
           } else {
             logger.debug("Failed to match progression href to any chapter in readingOrder")
@@ -315,19 +316,16 @@
         refreshChapterPageCounts(keepingCurrent: false)
         refreshChapterTextWeights()
 
-        if let navigation = progressionNavigation {
+        if let navigation = navigationRequest {
           let chapterIndex = navigation.chapterIndex
           let pageCount = chapterPageCounts[chapterIndex] ?? 1
-          let pageIndex = navigation.pageIndex(pageCount: pageCount)
+          let pageIndex = navigation.destination.pageIndex(pageCount: pageCount)
           currentChapterIndex = chapterIndex
           currentPageIndex = pageIndex
-          targetChapterIndex = chapterIndex
-          targetPageIndex = pageIndex
         } else if !readingOrder.isEmpty {
           currentChapterIndex = 0
           currentPageIndex = 0
-          targetChapterIndex = 0
-          targetPageIndex = 0
+          navigationRequest = EpubNavigationRequest(id: navigationID, chapterIndex: 0, destination: .page(0))
         }
 
         updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
@@ -580,31 +578,20 @@
     }
 
     private func chapterIndex(for url: URL) -> Int? {
-      // Extract possible hrefs from the URL
-      let path = url.path
-      let lastComponent = url.lastPathComponent
-
-      // Split path into components and try matching progressively longer paths from the end
-      let pathComponents = path.split(separator: "/").map(String.init)
-      var possibleHrefs: [String] = [lastComponent]
-
-      // Build paths from the end (e.g., "chapter1.xhtml", "OEBPS/chapter1.xhtml", "content/OEBPS/chapter1.xhtml")
-      for i in (0..<pathComponents.count).reversed() {
-        let subPath = pathComponents[i...].joined(separator: "/")
-        if !possibleHrefs.contains(subPath) {
-          possibleHrefs.append(subPath)
-        }
+      guard let rootURL = resourceRootURL else { return nil }
+      let url = url.absoluteURL
+      let resourceURL: URL?
+      if url.isFileURL {
+        resourceURL = EpubResourceScheme.url(for: url, rootURL: rootURL)
+      } else if let path = EpubResourceScheme.relativePath(from: url) {
+        resourceURL = EpubResourceScheme.url(forRelativePath: path)
+      } else {
+        return nil
       }
-
-      // Also try the full path
-      possibleHrefs.append(path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
-
-      for href in possibleHrefs {
-        if let chapterIndex = chapterIndexForHref(href) {
-          return chapterIndex
-        }
-      }
-      return nil
+      guard let resourceURL else { return nil }
+      return chapterURLCache.first { _, chapterURL in
+        EpubResourceScheme.url(for: chapterURL, rootURL: rootURL) == resourceURL
+      }?.key
     }
 
     private func navigateToChapterLink(chapterIndex: Int, fragment: String?) {
@@ -613,10 +600,10 @@
         return
       }
       pushLinkBack(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
-      navigateToPage(chapterIndex: chapterIndex, pageIndex: 0)
-      if let fragment, !fragment.isEmpty {
-        pendingAnchor = EpubAnchorNavigation(chapterIndex: chapterIndex, anchor: fragment)
-      }
+      requestNavigation(
+        chapterIndex: chapterIndex,
+        destination: fragment.flatMap { $0.isEmpty ? nil : .fragment($0) } ?? .page(0)
+      )
     }
 
     // MARK: - In-book link back stack
@@ -624,7 +611,6 @@
     /// Origin positions of in-book link jumps (footnotes, cross-references),
     /// so the reader can return to where the link was tapped.
     private(set) var linkBackStack: [(chapterIndex: Int, pageIndex: Int)] = []
-    private var pendingAnchor: EpubAnchorNavigation?
 
     var canReturnFromLink: Bool { !linkBackStack.isEmpty }
 
@@ -638,18 +624,14 @@
     }
 
     func navigationRequiresFullExtent(for chapterIndex: Int) -> Bool {
-      progressionNavigation?.chapterIndex == chapterIndex || pendingAnchor?.chapterIndex == chapterIndex
+      navigationRequest?.chapterIndex == chapterIndex && navigationRequest?.destination.requiresFullExtent == true
     }
 
     func pendingAnchorNavigation(for chapterIndex: Int) -> EpubAnchorNavigation? {
-      guard pendingAnchor?.chapterIndex == chapterIndex else { return nil }
-      return pendingAnchor
-    }
-
-    func acknowledgeAnchorNavigation(_ navigation: EpubAnchorNavigation) -> Bool {
-      guard pendingAnchor == navigation else { return false }
-      pendingAnchor = nil
-      return true
+      guard let request = navigationRequest, request.chapterIndex == chapterIndex,
+        case .fragment(let anchor) = request.destination
+      else { return nil }
+      return EpubAnchorNavigation(id: request.id, chapterIndex: chapterIndex, anchor: anchor)
     }
 
     func returnFromLink() {
@@ -658,7 +640,7 @@
     }
 
     func pageDidChange() {
-      guard pendingAnchor == nil, progressionNavigation == nil else { return }
+      guard navigationRequest == nil else { return }
       let chapterIndex = currentChapterIndex
       let pageIndex = currentPageIndex
       updateLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -717,7 +699,7 @@
     }
 
     func flushProgress() {
-      guard progressionNavigation == nil, pendingAnchor == nil else { return }
+      guard navigationRequest == nil else { return }
       let chapterIndex = currentChapterIndex
       let pageIndex = currentPageIndex
       updateLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
@@ -875,8 +857,10 @@
     }
 
     func requestedProgression(for chapterIndex: Int) -> Double? {
-      guard let navigation = progressionNavigation, navigation.chapterIndex == chapterIndex else { return nil }
-      return navigation.progression
+      guard let request = navigationRequest, request.chapterIndex == chapterIndex,
+        case .fraction(let value) = request.destination
+      else { return nil }
+      return value
     }
 
     func updateChapterPageCount(_ pageCount: Int, for chapterIndex: Int) {
@@ -888,7 +872,6 @@
       chapterPageCounts[chapterIndex] = normalizedCount
 
       normalizeCurrentPosition(adjustPageCount: false)
-      normalizeTargetPosition(adjustPageCount: false)
       updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
 
       // Store in memory cache only (no file persistence)
@@ -896,17 +879,13 @@
       guard let href = readingOrder[chapterIndex].href else { return }
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
       pageCountCache[cacheKey] = normalizedCount
-      if progressionNavigation?.chapterIndex == chapterIndex, let page = resolvedProgressionPage() {
-        targetChapterIndex = chapterIndex
-        targetPageIndex = page
-      }
+
     }
 
     func markChapterLoadFailed(_ chapterIndex: Int) {
       chapterPageCounts[chapterIndex] = 1
       failedChapterIndexes.insert(chapterIndex)
       normalizeCurrentPosition(adjustPageCount: false)
-      normalizeTargetPosition(adjustPageCount: false)
       updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
     }
 
@@ -941,18 +920,9 @@
 
     // MARK: - Navigation
 
-    func clearNavigationTarget() {
-      targetChapterIndex = nil
-      targetPageIndex = nil
-    }
-
     func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
-      if progressionNavigation != nil || pendingAnchor != nil || targetChapterIndex != nil {
-        navigationID = UUID()
-      }
-      progressionNavigation = nil
-      pendingAnchor = nil
-      clearNavigationTarget()
+      if navigationRequest != nil { navigationID = UUID() }
+      navigationRequest = nil
       currentChapterIndex = chapterIndex
       currentPageIndex = pageIndex
       pageDidChange()
@@ -960,76 +930,58 @@
 
     func commitPosition(_ landing: EpubPageLanding) {
       guard landing.navigationID == navigationID,
-        readingOrder.indices.contains(landing.chapterIndex), landing.pageCount > 0
+        readingOrder.indices.contains(landing.chapterIndex), let pageCount = landing.layout.pageCount
       else { return }
-      if !failedChapterIndexes.contains(landing.chapterIndex) {
-        updateChapterPageCount(landing.pageCount, for: landing.chapterIndex)
+      if landing.layout.isContent {
+        updateChapterPageCount(pageCount, for: landing.chapterIndex)
+      } else {
+        markChapterLoadFailed(landing.chapterIndex)
+      }
+      if let request = navigationRequest {
+        guard request.chapterIndex == landing.chapterIndex else { return }
+        if landing.layout.isContent {
+          switch request.destination {
+          case .fragment(let anchor):
+            guard landing.resolvedAnchor == anchor else { return }
+          default:
+            guard landing.pageIndex == request.destination.pageIndex(pageCount: pageCount) else { return }
+          }
+          if request.restoresRemoteProgress {
+            progressSubmissionSuppressed = false
+            sessionStartPosition = (landing.chapterIndex, landing.pageIndex)
+          }
+        }
+        navigationRequest = nil
       }
       currentChapterIndex = landing.chapterIndex
-      currentPageIndex = max(0, min(landing.pageIndex, landing.pageCount - 1))
-      clearNavigationTarget()
-      guard finishProgressionNavigationIfLanded(pageCount: landing.pageCount) else { return }
+      currentPageIndex = max(0, min(landing.pageIndex, pageCount - 1))
       pageDidChange()
     }
 
     func navigateToPage(chapterIndex: Int, pageIndex: Int) {
       guard !readingOrder.isEmpty else { return }
-      navigationID = UUID()
-      progressionNavigation = nil
-      pendingAnchor = nil
-      let normalizedChapterIndex = max(0, min(chapterIndex, readingOrder.count - 1))
-      let normalizedPageIndex =
-        pageIndex < 0
-        ? -1
-        : normalizedPageIndex(pageIndex, chapterIndex: normalizedChapterIndex, adjustPageCount: true)
-      targetChapterIndex = normalizedChapterIndex
-      targetPageIndex = normalizedPageIndex
+      let chapter = max(0, min(chapterIndex, readingOrder.count - 1))
+      requestNavigation(chapterIndex: chapter, destination: pageIndex < 0 ? .lastPage : .page(max(0, pageIndex)))
     }
 
     private func navigateToProgression(
       chapterIndex: Int, progression: Double, restoresRemoteProgress: Bool = false
     ) {
-      guard readingOrder.indices.contains(chapterIndex) else { return }
-      navigationID = UUID()
-      pendingAnchor = nil
-      progressionNavigation = EpubProgressionNavigation(
-        chapterIndex: chapterIndex,
-        progression: min(max(progression, 0), 1),
+      requestNavigation(
+        chapterIndex: chapterIndex, destination: .fraction(min(max(progression, 0), 1)),
         restoresRemoteProgress: restoresRemoteProgress
       )
-      targetChapterIndex = chapterIndex
-      targetPageIndex = resolvedProgressionPage() ?? 0
     }
 
-    private func resolvedProgressionPage() -> Int? {
-      guard let navigation = progressionNavigation,
-        !failedChapterIndexes.contains(navigation.chapterIndex),
-        let href = readingOrder[navigation.chapterIndex].href
-      else { return nil }
-      let viewport = viewportSize.width > 0 ? viewportSize : Self.defaultViewportSize
-      let key = pageCountCacheKey(for: href, viewport: viewport)
-      guard let count = pageCountCache[key] else { return nil }
-      return navigation.pageIndex(pageCount: count)
-    }
-
-    private func finishProgressionNavigationIfLanded(pageCount: Int) -> Bool {
-      guard let navigation = progressionNavigation else { return true }
-      guard currentChapterIndex == navigation.chapterIndex,
-        !failedChapterIndexes.contains(navigation.chapterIndex),
-        currentPageIndex == navigation.pageIndex(pageCount: pageCount)
-      else {
-        if let page = resolvedProgressionPage() {
-          targetChapterIndex = navigation.chapterIndex
-          targetPageIndex = page
-        }
-        return false
-      }
-      progressionNavigation = nil
-      if navigation.restoresRemoteProgress {
-        progressSubmissionSuppressed = false
-        sessionStartPosition = (currentChapterIndex, currentPageIndex)
-      }
-      return true
+    private func requestNavigation(
+      chapterIndex: Int, destination: EpubNavigationDestination, restoresRemoteProgress: Bool = false
+    ) {
+      guard readingOrder.indices.contains(chapterIndex) else { return }
+      navigationID = UUID()
+      navigationRequest = EpubNavigationRequest(
+        id: navigationID, chapterIndex: chapterIndex, destination: destination,
+        restoresRemoteProgress: restoresRemoteProgress
+      )
     }
 
     private func normalizeCurrentPosition(adjustPageCount: Bool = true) {
@@ -1046,28 +998,6 @@
       )
       currentChapterIndex = chapterIndex
       currentPageIndex = pageIndex
-    }
-
-    private func normalizeTargetPosition(adjustPageCount: Bool = true) {
-      guard let targetChapterIndex, let targetPageIndex else { return }
-      guard !readingOrder.isEmpty else {
-        self.targetChapterIndex = nil
-        self.targetPageIndex = nil
-        return
-      }
-      let chapterIndex = max(0, min(targetChapterIndex, readingOrder.count - 1))
-      if targetPageIndex < 0 {
-        self.targetChapterIndex = chapterIndex
-        self.targetPageIndex = -1
-        return
-      }
-      let pageIndex = normalizedPageIndex(
-        targetPageIndex,
-        chapterIndex: chapterIndex,
-        adjustPageCount: adjustPageCount
-      )
-      self.targetChapterIndex = chapterIndex
-      self.targetPageIndex = pageIndex
     }
 
     private func normalizedPageIndex(
@@ -1220,7 +1150,7 @@
       chapterProgressOverride: Double? = nil,
       totalProgressOverride: Double? = nil
     ) async {
-      guard !progressSubmissionSuppressed, progressionNavigation == nil, pendingAnchor == nil else {
+      guard !progressSubmissionSuppressed, navigationRequest == nil else {
         logger.warning(
           "⏭️ [Progress/Epub] Submission suppressed: position was not restored from a trusted source this session, book=\(bookId)"
         )
@@ -1313,7 +1243,6 @@
       }
       if keepingCurrent {
         normalizeCurrentPosition()
-        normalizeTargetPosition()
       }
       updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
     }
