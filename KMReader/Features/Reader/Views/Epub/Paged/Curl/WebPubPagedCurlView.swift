@@ -873,9 +873,11 @@
             reconfigureHosts()
             return
           }
-          if isInteractive {
-            currentChapterController?.finishInteractiveNavigation()
-            parent.viewModel.commitInteractiveNavigation(chapterIndex: chapterIndex, pageIndex: pageIndex)
+          if isInteractive, let controller = currentChapterController {
+            controller.finishInteractiveNavigation()
+            parent.viewModel.commitInteractiveNavigation(
+              chapterIndex: chapterIndex, pageIndex: pageIndex, layout: controller.layout
+            )
           } else if let controller = currentChapterController, controller.layout.pageCount != nil {
             parent.viewModel.commitPosition(
               EpubPageLanding(

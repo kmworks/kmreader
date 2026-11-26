@@ -38,6 +38,7 @@ nonisolated enum AppIcon {
   static let pageJump = "arrow.right.to.line"
   static let mangaTranslation = "translate"
   static let gestureDisabled = "hand.tap"
+  static let bookmark = "bookmark"
 
   // MARK: - Connectivity
 

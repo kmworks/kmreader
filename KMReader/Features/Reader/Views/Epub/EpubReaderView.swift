@@ -895,7 +895,7 @@
     @ViewBuilder
     private var controlsOverlay: some View {
       Color.clear
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .topLeading) {
           if supportsOverlayControls && shouldShowControls {
             Button {
               closeReader()
@@ -907,8 +907,52 @@
             .buttonBorderShape(.circle)
             .readerControlButtonStyle()
             .padding(.top, 24)
-            .padding(.trailing, 12)
+            .padding(.leading, 12)
+            .accessibilityLabel(Text("Close"))
             .transition(.scale(scale: 0).combined(with: .opacity))
+          }
+        }
+        .overlay(alignment: .topTrailing) {
+          if supportsOverlayControls && shouldShowControls {
+            if incognito {
+              // Incognito reading keeps no bookmarks, so this slot carries the privacy marker
+              // instead. It has no action, but it must still swallow the tap: the disc sits in
+              // the page-turn zone, and letting the tap through would turn the page.
+              Button {
+              } label: {
+                Image(systemName: "eye.slash")
+                  .opacity(0.6)
+                  .contentShape(Circle())
+              }
+              .controlSize(.extraLarge)
+              .buttonBorderShape(.circle)
+              .readerControlButtonStyle()
+              .padding(.top, 24)
+              .padding(.trailing, 12)
+              .accessibilityLabel(Text("Incognito Reading"))
+              .accessibilityRemoveTraits(.isButton)
+              .transition(.scale(scale: 0).combined(with: .opacity))
+            } else {
+              Button {
+                HapticFeedback.selectionChanged()
+                Task { await viewModel.toggleBookmark() }
+              } label: {
+                Image(systemName: AppIcon.bookmark)
+                  .symbolVariant(viewModel.isCurrentPositionBookmarked ? .fill : .none)
+                  .contentTransition(.symbolEffect(.replace, options: .nonRepeating))
+                  .contentShape(Circle())
+              }
+              .controlSize(.extraLarge)
+              .buttonBorderShape(.circle)
+              .readerControlButtonStyle()
+              .padding(.top, 24)
+              .padding(.trailing, 12)
+              .disabled(!viewModel.canToggleBookmark)
+              .accessibilityLabel(
+                viewModel.isCurrentPositionBookmarked ? Text("Remove Bookmark") : Text("Add Bookmark")
+              )
+              .transition(.scale(scale: 0).combined(with: .opacity))
+            }
           }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -963,9 +1007,18 @@
           EpubTocSheetView(
             chapters: viewModel.tableOfContents,
             currentLink: currentChapterLink,
+            bookmarks: viewModel.bookmarks,
+            currentBookmarkID: viewModel.currentBookmark?.id,
             goToChapter: { link in
               showingChapterSheet = false
               viewModel.goToChapter(link: link)
+            },
+            goToBookmark: { bookmark in
+              showingChapterSheet = false
+              viewModel.goToBookmark(bookmark)
+            },
+            deleteBookmark: { bookmark in
+              Task { await viewModel.deleteBookmark(bookmark) }
             }
           )
         }
@@ -1207,7 +1260,10 @@
           supportsPageLayoutSelection: false,
           supportsDualPageOptions: false,
           supportsSplitWidePageMode: false,
-          canReturnFromLink: viewModel.canReturnFromLink
+          canReturnFromLink: viewModel.canReturnFromLink,
+          supportsBookmarks: !incognito,
+          canToggleBookmark: viewModel.canToggleBookmark,
+          isCurrentPositionBookmarked: viewModel.isCurrentPositionBookmarked
         )
       }
     #endif
@@ -1264,6 +1320,9 @@
             showMangaTranslationSettings: {},
             returnFromLink: {
               viewModel.returnFromLink()
+            },
+            toggleBookmark: {
+              Task { await viewModel.toggleBookmark() }
             }
           )
         )

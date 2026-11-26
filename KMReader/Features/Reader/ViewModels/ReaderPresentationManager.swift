@@ -342,6 +342,10 @@ final class ReaderPresentationManager {
       readerCommandHandlers?.showMangaTranslationSettings()
     }
 
+    func toggleBookmarkFromCommand() {
+      readerCommandHandlers?.toggleBookmark()
+    }
+
     func returnFromLinkFromCommand() {
       readerCommandHandlers?.returnFromLink()
     }

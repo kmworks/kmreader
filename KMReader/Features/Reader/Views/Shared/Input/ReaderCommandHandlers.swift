@@ -22,6 +22,7 @@ struct ReaderCommandHandlers {
   // EPUB-only: returns to the position a footnote/cross-reference link jump
   // started from. Readers without link jumps leave the default no-op.
   let returnFromLink: () -> Void
+  let toggleBookmark: () -> Void
 
   init(
     showReaderSettings: @escaping () -> Void,
@@ -40,7 +41,8 @@ struct ReaderCommandHandlers {
     toggleContinuousScroll: @escaping () -> Void,
     toggleMangaTranslation: @escaping () -> Void,
     showMangaTranslationSettings: @escaping () -> Void,
-    returnFromLink: @escaping () -> Void = {}
+    returnFromLink: @escaping () -> Void = {},
+    toggleBookmark: @escaping () -> Void = {}
   ) {
     self.showReaderSettings = showReaderSettings
     self.showBookDetails = showBookDetails
@@ -59,5 +61,6 @@ struct ReaderCommandHandlers {
     self.toggleMangaTranslation = toggleMangaTranslation
     self.showMangaTranslationSettings = showMangaTranslationSettings
     self.returnFromLink = returnFromLink
+    self.toggleBookmark = toggleBookmark
   }
 }
