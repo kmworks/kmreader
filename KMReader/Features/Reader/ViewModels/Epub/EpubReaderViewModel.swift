@@ -37,6 +37,7 @@
     }
     var currentLocation: WebPubLocation?
     private(set) var bookmarks: [EpubBookmark] = []
+    private var committedContentLocation: WebPubPageLocation?
     var resourceRootURL: URL?
     var mediaTypesByRelativePath: [String: String] = [:]
     var publicationLanguage: String?
@@ -193,6 +194,7 @@
       progressionRetryTask = nil
       linkBackStack = []
       bookmarks = []
+      committedContentLocation = nil
       footnoteProbeToken = nil
       footnote = nil
       endPagePreviousBook = nil
@@ -248,10 +250,11 @@
         try await cacheChapterURLs()
 
         if !incognito {
-          bookmarks = (try? await database.fetchEpubBookmarks(instanceId: instanceId, bookId: bookId)) ?? []
+          let stored = (try? await database.fetchEpubBookmarks(instanceId: instanceId, bookId: bookId)) ?? []
           guard !Task.isCancelled, self.bookId == bookId, AppConfig.current.instanceId == instanceId else {
             return
           }
+          bookmarks = stored
         }
 
         var savedProgression: R2Progression?
@@ -653,21 +656,21 @@
 
     // MARK: - Bookmarks
 
-    /// Fraction of the current chapter covered by the page being read. The
-    /// value sits at the page centre so a restore through
-    /// `EpubNavigationDestination.fraction`, which rounds down, cannot land on
-    /// the previous page.
-    private var currentChapterFraction: Double? {
-      guard let location = pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex),
-        location.pageCount > 0
+    // Retain the accepted layout's count: pagination caches can contain estimates
+    // or change before the new position has landed.
+    private var bookmarkLocation: WebPubPageLocation? {
+      guard !incognito, !isLoading, errorMessage == nil, navigationRequest == nil,
+        !failedChapterIndexes.contains(currentChapterIndex),
+        let location = committedContentLocation,
+        location.chapterIndex == currentChapterIndex, location.pageIndex == currentPageIndex
       else { return nil }
-      return (Double(location.pageIndex) + 0.5) / Double(location.pageCount)
+      return location
     }
 
+    var canToggleBookmark: Bool { bookmarkLocation != nil }
+
     var currentBookmark: EpubBookmark? {
-      guard let location = pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex) else {
-        return nil
-      }
+      guard let location = bookmarkLocation else { return nil }
       return bookmarks.first {
         bookmarkChapterIndex($0) == currentChapterIndex
           && $0.pageIndex(pageCount: location.pageCount) == location.pageIndex
@@ -677,16 +680,18 @@
     var isCurrentPositionBookmarked: Bool { currentBookmark != nil }
 
     func toggleBookmark() async {
-      guard !incognito else { return }
-      guard let database = await DatabaseOperator.databaseIfConfigured() else { return }
+      guard let location = bookmarkLocation else { return }
+      let bookId = self.bookId
       let instanceId = AppConfig.current.instanceId
+      guard let database = await DatabaseOperator.databaseIfConfigured(),
+        self.bookId == bookId, AppConfig.current.instanceId == instanceId,
+        bookmarkLocation == location
+      else { return }
       if let existing = currentBookmark {
         await removeBookmark(existing, database: database, instanceId: instanceId)
         return
       }
-      guard let location = pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex),
-        let fraction = currentChapterFraction
-      else { return }
+      let fraction = (Double(location.pageIndex) + 0.5) / Double(location.pageCount)
       let pageStartFraction = Double(location.pageIndex) / Double(location.pageCount)
       let bookmark = EpubBookmark(
         instanceId: instanceId,
@@ -739,16 +744,18 @@
         try await database.deleteEpubBookmark(id: bookmark.id)
       } catch {
         logger.error("Failed to delete EPUB bookmark: \(error)")
-        await reloadBookmarks(database: database, instanceId: instanceId)
+        await reloadBookmarks(database: database, instanceId: instanceId, bookId: bookmark.bookId)
       }
     }
 
     /// Resynchronises the in-memory list after a failed write.
-    private func reloadBookmarks(database: DatabaseOperator, instanceId: String) async {
-      guard !incognito, let stored = try? await database.fetchEpubBookmarks(
-        instanceId: instanceId,
-        bookId: bookId
-      ) else { return }
+    private func reloadBookmarks(database: DatabaseOperator, instanceId: String, bookId: String) async {
+      guard !incognito,
+        let stored = try? await database.fetchEpubBookmarks(
+          instanceId: instanceId,
+          bookId: bookId
+        )
+      else { return }
       guard self.bookId == bookId, AppConfig.current.instanceId == instanceId else { return }
       bookmarks = stored
     }
@@ -1128,13 +1135,15 @@
 
     // MARK: - Navigation
 
-    func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
+    func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int, layout: EpubPageLayout) {
+      guard layout.pageCount != nil else { return }
       dismissFootnote()
       if navigationRequest != nil { navigationID = UUID() }
       navigationRequest = nil
-      currentChapterIndex = chapterIndex
-      currentPageIndex = pageIndex
-      pageDidChange()
+      commitPosition(
+        EpubPageLanding(
+          chapterIndex: chapterIndex, pageIndex: pageIndex, layout: layout, navigationID: navigationID
+        ))
     }
 
     func commitPosition(_ landing: EpubPageLanding) {
@@ -1170,6 +1179,9 @@
       }
       currentChapterIndex = landing.chapterIndex
       currentPageIndex = pageIndex
+      committedContentLocation =
+        landing.layout.isContent
+        ? pageLocation(chapterIndex: landing.chapterIndex, pageIndex: pageIndex) : nil
       pageDidChange()
     }
 

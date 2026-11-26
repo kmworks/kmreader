@@ -235,7 +235,7 @@ struct MainApp: App {
         }
 
         if state.hasTableOfContents || state.supportsPageJump || state.supportsSearch
-          || state.canReturnFromLink
+          || state.canReturnFromLink || state.supportsBookmarks
         {
           Divider()
         }
@@ -245,6 +245,19 @@ struct MainApp: App {
             readerPresentation.showTableOfContentsFromCommand()
           }
           .disabled(!state.isActive)
+        }
+
+        if state.supportsBookmarks {
+          Button {
+            readerPresentation.toggleBookmarkFromCommand()
+          } label: {
+            if state.isCurrentPositionBookmarked {
+              Text("Remove Bookmark")
+            } else {
+              Text("Add Bookmark")
+            }
+          }
+          .disabled(!state.isActive || !state.canToggleBookmark)
         }
 
         if state.supportsPageJump {

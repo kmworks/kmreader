@@ -918,7 +918,8 @@
               // Incognito reading keeps no bookmarks, so this slot carries the privacy marker
               // instead. It has no action, but it must still swallow the tap: the disc sits in
               // the page-turn zone, and letting the tap through would turn the page.
-              Button {} label: {
+              Button {
+              } label: {
                 Image(systemName: "eye.slash")
                   .opacity(0.6)
                   .contentShape(Circle())
@@ -946,6 +947,7 @@
               .readerControlButtonStyle()
               .padding(.top, 24)
               .padding(.trailing, 12)
+              .disabled(!viewModel.canToggleBookmark)
               .accessibilityLabel(
                 viewModel.isCurrentPositionBookmarked ? Text("Remove Bookmark") : Text("Add Bookmark")
               )
@@ -1258,7 +1260,10 @@
           supportsPageLayoutSelection: false,
           supportsDualPageOptions: false,
           supportsSplitWidePageMode: false,
-          canReturnFromLink: viewModel.canReturnFromLink
+          canReturnFromLink: viewModel.canReturnFromLink,
+          supportsBookmarks: !incognito,
+          canToggleBookmark: viewModel.canToggleBookmark,
+          isCurrentPositionBookmarked: viewModel.isCurrentPositionBookmarked
         )
       }
     #endif
@@ -1315,6 +1320,9 @@
             showMangaTranslationSettings: {},
             returnFromLink: {
               viewModel.returnFromLink()
+            },
+            toggleBookmark: {
+              Task { await viewModel.toggleBookmark() }
             }
           )
         )
