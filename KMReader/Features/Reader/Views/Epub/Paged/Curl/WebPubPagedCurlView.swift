@@ -55,7 +55,7 @@
       }
 
       // Custom tap/long-press handling with TapZoneHelper
-      let tapRecognizer = UITapGestureRecognizer(
+      let tapRecognizer = WebPubTapGestureRecognizer(
         target: context.coordinator,
         action: #selector(Coordinator.handleTap(_:))
       )
@@ -279,13 +279,7 @@
         else { return nil }
         wireController(controller)
         controller.onLinkTap = { [weak self] url in
-          guard let self else { return }
-          switch parent.renderingEngine {
-          case .webView:
-            parent.viewModel.navigateToURL(url)
-          case .coreText:
-            parent.viewModel.navigateToChapter(containing: url)
-          }
+          self?.parent.viewModel.navigateToURL(url)
         }
         controller.pendingAnchorProvider = { [weak self, weak controller] chapterIndex in
           guard let self, let controller, self.currentChapterController === controller, self.turnSession == nil else {
@@ -1006,7 +1000,7 @@
 
       // MARK: - Tap Handling
 
-      @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+      @objc func handleTap(_ recognizer: WebPubTapGestureRecognizer) {
         guard !isAnimating else { return }
         if let current = currentChapterController,
           current.handleLinkTap(at: recognizer.location(in: current.view))
@@ -1028,17 +1022,20 @@
           readingDirection: tapReadingDirection()
         )
 
-        switch action {
-        case .previous:
-          parent.viewModel.goToPreviousPage()
-        case .next:
-          if isAtLastPage() {
-            parent.onEndReached()
-          } else {
-            parent.viewModel.goToNextPage()
+        recognizer.performIfNotLink { [weak self] in
+          guard let self else { return }
+          switch action {
+          case .previous:
+            self.parent.viewModel.goToPreviousPage()
+          case .next:
+            if self.isAtLastPage() {
+              self.parent.onEndReached()
+            } else {
+              self.parent.viewModel.goToNextPage()
+            }
+          case .toggleControls:
+            self.parent.onCenterTap()
           }
-        case .toggleControls:
-          parent.onCenterTap()
         }
       }
 

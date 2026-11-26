@@ -351,7 +351,11 @@
       } else {
         requestedPage = currentPageIndex
       }
-      let pageIndex = max(0, min(pageCount - 1, requestedPage))
+      // A claimed fragment request lands on the chapter's first page: Core Text
+      // cannot place the anchor, and preserving a relative position would report
+      // a page the note is not on.
+      let hasPendingAnchor = viewModel.pendingAnchorNavigation(for: currentChapterIndex) != nil
+      let pageIndex = hasPendingAnchor ? 0 : max(0, min(pageCount - 1, requestedPage))
       currentPageIndex = pageIndex
       restoreProgression = nil
       pageViewController.dataSource = self
@@ -407,11 +411,12 @@
       pendingPageCommitIndex = nil
       currentPageIndex = pageIndex
       if notify {
+        let resolvedAnchor = pageIndex == 0 ? viewModel.pendingAnchorNavigation(for: currentChapterIndex)?.anchor : nil
         viewModel.commitPosition(
           EpubPageLanding(
             chapterIndex: currentChapterIndex, pageIndex: pageIndex,
             layout: chapterLoadFailed ? .failed : .content(pageCount: max(1, displayLists.count)),
-            navigationID: navigationID
+            navigationID: navigationID, resolvedAnchor: resolvedAnchor
           ))
       }
       updateOverlayLabels()
@@ -456,7 +461,7 @@
         let chapterURL = viewModel.chapterURL(at: currentChapterIndex),
         let url = URL(string: region.href, relativeTo: chapterURL)
       {
-        viewModel.navigateToChapter(containing: url)
+        viewModel.navigateToURL(url)
         return
       }
 

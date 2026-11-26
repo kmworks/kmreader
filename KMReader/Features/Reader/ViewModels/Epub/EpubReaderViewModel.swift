@@ -193,6 +193,8 @@
       progressionRetryTask = nil
       linkBackStack = []
       bookmarks = []
+      footnoteProbeToken = nil
+      footnote = nil
       endPagePreviousBook = nil
       endPageNextBook = nil
       sessionStartPosition = nil
@@ -578,12 +580,13 @@
 
     func navigateToURL(_ url: URL) {
       guard let chapterIndex = chapterIndex(for: url) else { return }
-      navigateToChapterLink(chapterIndex: chapterIndex, fragment: url.fragment)
-    }
-
-    func navigateToChapter(containing url: URL) {
-      guard let chapterIndex = chapterIndex(for: url) else { return }
-      navigateToChapterLink(chapterIndex: chapterIndex, fragment: nil)
+      guard let fragment = url.fragment, !fragment.isEmpty else {
+        navigateToChapterLink(chapterIndex: chapterIndex, fragment: nil)
+        return
+      }
+      // A fragment link may point at a footnote; whether it does can only be
+      // read from the target document, so navigation waits for that probe.
+      beginFootnoteProbe(chapterIndex: chapterIndex, fragment: fragment)
     }
 
     private func chapterIndex(for url: URL) -> Int? {
@@ -761,6 +764,87 @@
         return index
       }
       return chapterIndexForHref(bookmark.chapterHref)
+    }
+
+    // MARK: - Footnotes
+
+    /// Note preview for the reference the reader just tapped, when the link
+    /// target turned out to be a footnote or endnote.
+    private(set) var footnote: EpubFootnote?
+
+    /// Identifies the newest probe, so a probe that finishes late cannot
+    /// override the preview or the jump a newer tap already produced.
+    private var footnoteProbeToken: UUID?
+
+    func dismissFootnote() {
+      footnoteProbeToken = nil
+      footnote = nil
+    }
+
+    /// Follows a link inside a note, closing the preview first.
+    func followFootnoteLink(_ url: URL) {
+      dismissFootnote()
+      navigateToURL(url)
+    }
+
+    /// Jumps to the note itself, for previews that had to truncate their body.
+    func revealFootnote(_ footnote: EpubFootnote) {
+      guard let url = URL(string: footnote.href), let chapterIndex = chapterIndex(for: url) else {
+        dismissFootnote()
+        return
+      }
+      dismissFootnote()
+      navigateToChapterLink(chapterIndex: chapterIndex, fragment: footnote.fragment)
+    }
+
+    private func beginFootnoteProbe(chapterIndex: Int, fragment: String) {
+      guard let chapterURL = chapterURLCache[chapterIndex], let resourceRootURL else {
+        navigateToChapterLink(chapterIndex: chapterIndex, fragment: fragment)
+        return
+      }
+      let token = UUID()
+      footnoteProbeToken = token
+      footnote = nil
+
+      let documentResourceURL = EpubResourceScheme.url(for: chapterURL, rootURL: resourceRootURL) ?? chapterURL
+      let bookId = self.bookId
+      let instanceId = AppConfig.current.instanceId
+
+      Task { [weak self] in
+        let note = await Self.loadFootnote(
+          documentFileURL: chapterURL,
+          documentResourceURL: documentResourceURL,
+          rootURL: resourceRootURL,
+          fragment: fragment
+        )
+        guard let self, !Task.isCancelled, self.bookId == bookId,
+          AppConfig.current.instanceId == instanceId, self.footnoteProbeToken == token
+        else {
+          return
+        }
+        self.footnoteProbeToken = nil
+        if let note, note.isRenderable {
+          self.footnote = note
+        } else {
+          self.navigateToChapterLink(chapterIndex: chapterIndex, fragment: fragment)
+        }
+      }
+    }
+
+    nonisolated private static func loadFootnote(
+      documentFileURL: URL,
+      documentResourceURL: URL,
+      rootURL: URL,
+      fragment: String
+    ) async -> EpubFootnote? {
+      await Task.detached(priority: .userInitiated) {
+        EpubFootnoteExtractor.footnote(
+          documentFileURL: documentFileURL,
+          documentResourceURL: documentResourceURL,
+          rootURL: rootURL,
+          fragment: fragment
+        )
+      }.value
     }
 
     func pageDidChange() {
@@ -1045,6 +1129,7 @@
     // MARK: - Navigation
 
     func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
+      dismissFootnote()
       if navigationRequest != nil { navigationID = UUID() }
       navigationRequest = nil
       currentChapterIndex = chapterIndex
@@ -1077,8 +1162,14 @@
         }
         navigationRequest = nil
       }
+      let pageIndex = max(0, min(landing.pageIndex, pageCount - 1))
+      if landing.chapterIndex != currentChapterIndex || pageIndex != currentPageIndex {
+        dismissFootnote()
+      } else {
+        footnote = nil
+      }
       currentChapterIndex = landing.chapterIndex
-      currentPageIndex = max(0, min(landing.pageIndex, pageCount - 1))
+      currentPageIndex = pageIndex
       pageDidChange()
     }
 
@@ -1101,6 +1192,7 @@
       chapterIndex: Int, destination: EpubNavigationDestination, restoresRemoteProgress: Bool = false
     ) {
       guard readingOrder.indices.contains(chapterIndex) else { return }
+      dismissFootnote()
       navigationID = UUID()
       navigationRequest = EpubNavigationRequest(
         id: navigationID, chapterIndex: chapterIndex, destination: destination,
