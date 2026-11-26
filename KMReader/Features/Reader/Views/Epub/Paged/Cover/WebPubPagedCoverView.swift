@@ -222,13 +222,7 @@
         else { return nil }
         wireController(controller)
         controller.onLinkTap = { [weak self] url in
-          guard let self else { return }
-          switch parent.renderingEngine {
-          case .webView:
-            parent.viewModel.navigateToURL(url)
-          case .coreText:
-            parent.viewModel.navigateToChapter(containing: url)
-          }
+          self?.parent.viewModel.navigateToURL(url)
         }
         controller.pendingAnchorProvider = { [weak self, weak controller] chapterIndex in
           guard let self, let controller, self.currentController === controller, self.session == nil else { return nil }

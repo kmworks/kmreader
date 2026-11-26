@@ -476,8 +476,19 @@
 
           controlsOverlay
 
+          if let footnote = viewModel.footnote {
+            EpubFootnotePopupView(
+              footnote: footnote,
+              theme: readerTheme,
+              onOpenLink: { url in viewModel.followFootnoteLink(url) },
+              onOpenFullNote: { viewModel.revealFootnote(footnote) },
+              onDismiss: { viewModel.dismissFootnote() }
+            )
+          }
+
           keyboardHelpOverlay
         }
+        .animation(.appCurve(0.24), value: viewModel.footnote)
         .onAppear {
           viewModel.updateViewport(size: geometry.size)
         }
@@ -1261,7 +1272,11 @@
 
     private func handleKeyboardEvent(_ event: ReaderKeyboardEvent) -> Bool {
       if event.matches(.escape) {
-        closeReader()
+        if viewModel.footnote != nil {
+          viewModel.dismissFootnote()
+        } else {
+          closeReader()
+        }
         return true
       }
 
