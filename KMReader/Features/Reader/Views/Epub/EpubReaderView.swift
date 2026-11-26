@@ -1272,7 +1272,11 @@
 
     private func handleKeyboardEvent(_ event: ReaderKeyboardEvent) -> Bool {
       if event.matches(.escape) {
-        closeReader()
+        if viewModel.footnote != nil {
+          viewModel.dismissFootnote()
+        } else {
+          closeReader()
+        }
         return true
       }
 

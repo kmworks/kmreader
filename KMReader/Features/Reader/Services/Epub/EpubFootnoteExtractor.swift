@@ -30,7 +30,7 @@ nonisolated enum EpubFootnoteExtractor {
       let data = try? Data(contentsOf: documentFileURL),
       let markup = decode(data),
       let document = try? SwiftSoup.parse(markup, documentResourceURL.absoluteString),
-      let target = element(withIdentifier: fragment, in: document),
+      let target = element(withIdentifier: fragment.removingPercentEncoding ?? fragment, in: document),
       let container = noteContainer(startingAt: target)
     else { return nil }
 
@@ -341,7 +341,10 @@ nonisolated enum EpubFootnoteExtractor {
         return
       }
       let src = ((try? element.absUrl("src")) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-      guard let inlined = inlineImageDataURL(src) else { return }
+      guard let inlined = inlineImageDataURL(src) else {
+        truncated = true
+        return
+      }
       let alt = ((try? element.attr("alt")) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
       let markup = "<img src=\"\(inlined)\" alt=\"\(EpubFootnoteExtractor.escapeAttribute(alt))\">"
       guard inlineBytes + markup.count <= EpubFootnoteExtractor.maxInlineBytes else {

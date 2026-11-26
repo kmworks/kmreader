@@ -23,12 +23,7 @@
     private let estimatedFooterHeight: CGFloat = 44
 
     var body: some View {
-      #if os(macOS)
-        popup
-          .onExitCommand(perform: onDismiss)
-      #else
-        popup
-      #endif
+      popup
     }
 
     private var popup: some View {
