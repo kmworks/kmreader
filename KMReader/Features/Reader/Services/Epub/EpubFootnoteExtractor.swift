@@ -38,7 +38,8 @@ nonisolated enum EpubFootnoteExtractor {
     let body = sanitizer.render(container: container)
     let text = ((try? container.text()) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     let cappedText = String(text.prefix(maxTextCharacters))
-    let html = body.isEmpty ? "<p>\(escape(cappedText))</p>" : body
+    let fallback = cappedText.isEmpty ? "" : "<p>\(escape(cappedText))</p>"
+    let html = body.isEmpty ? fallback : body
 
     let footnote = EpubFootnote(
       href: documentResourceURL.absoluteString,
@@ -111,11 +112,7 @@ nonisolated enum EpubFootnoteExtractor {
       return true
     }
 
-    // Untyped notes normally carry a link back to the reference that pointed at them,
-    // while section cross-references do not.
-    let text = ((try? element.text()) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    guard text.count < maxTextCharacters * 2 else { return false }
-    return containsBackReference(element)
+    return false
   }
 
   private static func matchesNoteClass(_ name: String) -> Bool {
@@ -123,15 +120,6 @@ nonisolated enum EpubFootnoteExtractor {
     for prefix in noteClassPrefixes where name.hasPrefix(prefix) {
       let suffix = name.dropFirst(prefix.count)
       if !suffix.isEmpty, suffix.allSatisfy({ $0.isNumber }) { return true }
-    }
-    return false
-  }
-
-  private static func containsBackReference(_ element: Element) -> Bool {
-    guard let anchors = try? element.select("a[href]") else { return false }
-    for anchor in anchors {
-      let href = ((try? anchor.attr("href")) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-      if href.hasPrefix("#"), href.count > 1 { return true }
     }
     return false
   }
@@ -360,9 +348,8 @@ nonisolated enum EpubFootnoteExtractor {
         truncated = true
         return
       }
-      inlineBytes += markup.count
       imageCount += 1
-      append(markup)
+      append(markup, inlineByteCount: inlined.count)
     }
 
     // MARK: Images
@@ -399,13 +386,14 @@ nonisolated enum EpubFootnoteExtractor {
       append(text)
     }
 
-    private func append(_ value: String) {
+    private func append(_ value: String, inlineByteCount: Int = 0) {
       guard !value.isEmpty, !truncated else { return }
-      if buffer.count + value.count > EpubFootnoteExtractor.maxBodyCharacters {
+      if buffer.count - inlineBytes + value.count - inlineByteCount > EpubFootnoteExtractor.maxBodyCharacters {
         truncated = true
         return
       }
       buffer += value
+      inlineBytes += inlineByteCount
     }
   }
 }

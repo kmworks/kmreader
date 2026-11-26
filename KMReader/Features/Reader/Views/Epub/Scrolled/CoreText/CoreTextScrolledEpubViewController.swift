@@ -30,10 +30,6 @@
     private var layoutOperation: CoreTextEpubLayoutOperation?
     private var layoutGeneration = 0
     private var navigationID = UUID()
-    /// A fragment request Core Text cannot resolve, because it keeps no anchor geometry.
-    /// The first content commit claims it on the chapter's first page, mirroring the
-    /// `EpubPageViewController.applyPendingAnchor` fallback.
-    private var unresolvedAnchorClaim: String?
     private var currentChapterIndex: Int
     private var currentPageIndex: Int
     private var restoreProgression: Double?
@@ -274,7 +270,6 @@
       let chapterIndex = max(
         0, min(viewModel.targetChapterIndex ?? viewModel.currentChapterIndex, viewModel.chapterCount - 1))
       navigationID = viewModel.navigationID
-      unresolvedAnchorClaim = viewModel.pendingAnchorNavigation(for: chapterIndex)?.anchor
       currentChapterIndex = chapterIndex
       currentPageIndex = max(0, viewModel.targetPageIndex ?? viewModel.currentPageIndex)
       restoreProgression = viewModel.requestedProgression(for: chapterIndex)
@@ -355,7 +350,8 @@
       // A claimed fragment request lands on the chapter's first page: Core Text
       // cannot place the anchor, and preserving a relative position would report
       // a page the note is not on.
-      let pageIndex = unresolvedAnchorClaim != nil ? 0 : max(0, min(pageCount - 1, requestedPage))
+      let hasPendingAnchor = viewModel.pendingAnchorNavigation(for: currentChapterIndex) != nil
+      let pageIndex = hasPendingAnchor ? 0 : max(0, min(pageCount - 1, requestedPage))
       restoreProgression = nil
       scrollToPage(at: pageIndex, animated: false)
       showContent()
@@ -413,8 +409,7 @@
       guard navigationID == viewModel.navigationID else { return }
       let pageIndex = scrollPagination.pageIndex(at: scrollView.contentOffset.y)
       currentPageIndex = pageIndex
-      let resolvedAnchor = unresolvedAnchorClaim
-      unresolvedAnchorClaim = nil
+      let resolvedAnchor = pageIndex == 0 ? viewModel.pendingAnchorNavigation(for: currentChapterIndex)?.anchor : nil
       viewModel.commitPosition(
         EpubPageLanding(
           chapterIndex: currentChapterIndex, pageIndex: pageIndex,

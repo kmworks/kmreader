@@ -657,13 +657,6 @@
       footnote = nil
     }
 
-    /// Hides the visible preview without cancelling a probe that is still
-    /// running: a page commit can land before the tap's probe answers, and the
-    /// note must still appear for the reference the reader actually tapped.
-    private func hideFootnote() {
-      footnote = nil
-    }
-
     /// Follows a link inside a note, closing the preview first.
     func followFootnoteLink(_ url: URL) {
       dismissFootnote()
@@ -1012,7 +1005,7 @@
     // MARK: - Navigation
 
     func commitInteractiveNavigation(chapterIndex: Int, pageIndex: Int) {
-      hideFootnote()
+      dismissFootnote()
       if navigationRequest != nil { navigationID = UUID() }
       navigationRequest = nil
       currentChapterIndex = chapterIndex
@@ -1045,9 +1038,14 @@
         }
         navigationRequest = nil
       }
-      hideFootnote()
+      let pageIndex = max(0, min(landing.pageIndex, pageCount - 1))
+      if landing.chapterIndex != currentChapterIndex || pageIndex != currentPageIndex {
+        dismissFootnote()
+      } else {
+        footnote = nil
+      }
       currentChapterIndex = landing.chapterIndex
-      currentPageIndex = max(0, min(landing.pageIndex, pageCount - 1))
+      currentPageIndex = pageIndex
       pageDidChange()
     }
 
@@ -1070,6 +1068,7 @@
       chapterIndex: Int, destination: EpubNavigationDestination, restoresRemoteProgress: Bool = false
     ) {
       guard readingOrder.indices.contains(chapterIndex) else { return }
+      dismissFootnote()
       navigationID = UUID()
       navigationRequest = EpubNavigationRequest(
         id: navigationID, chapterIndex: chapterIndex, destination: destination,
