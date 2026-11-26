@@ -55,7 +55,7 @@
       }
 
       // Custom tap/long-press handling with TapZoneHelper
-      let tapRecognizer = UITapGestureRecognizer(
+      let tapRecognizer = WebPubTapGestureRecognizer(
         target: context.coordinator,
         action: #selector(Coordinator.handleTap(_:))
       )
@@ -1000,7 +1000,7 @@
 
       // MARK: - Tap Handling
 
-      @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+      @objc func handleTap(_ recognizer: WebPubTapGestureRecognizer) {
         guard !isAnimating else { return }
         if let current = currentChapterController,
           current.handleLinkTap(at: recognizer.location(in: current.view))
@@ -1022,17 +1022,20 @@
           readingDirection: tapReadingDirection()
         )
 
-        switch action {
-        case .previous:
-          parent.viewModel.goToPreviousPage()
-        case .next:
-          if isAtLastPage() {
-            parent.onEndReached()
-          } else {
-            parent.viewModel.goToNextPage()
+        recognizer.performIfNotLink { [weak self] in
+          guard let self else { return }
+          switch action {
+          case .previous:
+            self.parent.viewModel.goToPreviousPage()
+          case .next:
+            if self.isAtLastPage() {
+              self.parent.onEndReached()
+            } else {
+              self.parent.viewModel.goToNextPage()
+            }
+          case .toggleControls:
+            self.parent.onCenterTap()
           }
-        case .toggleControls:
-          parent.onCenterTap()
         }
       }
 
