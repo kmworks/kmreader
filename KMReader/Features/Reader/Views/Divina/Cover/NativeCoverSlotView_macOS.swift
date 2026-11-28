@@ -6,7 +6,6 @@
   final class NativeCoverSlotView: NSView {
     private struct Configuration: Equatable {
       let item: ReaderViewItem?
-      let isVisible: Bool
       let screenSize: CGSize
       let readingDirection: ReadingDirection
       let splitWidePageMode: SplitWidePageMode
@@ -55,6 +54,14 @@
       fatalError("init(coder:) has not been implemented")
     }
 
+    // AppKit hit-testing walks subviews in reverse order and ignores layer.zPosition,
+    // so covered neighbor slots must opt out to keep clicks, pinch zoom, and context
+    // menus on the active page.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+      guard isPlaybackActive else { return nil }
+      return super.hitTest(point)
+    }
+
     func configure(
       item: ReaderViewItem?,
       viewModel: ReaderViewModel,
@@ -63,14 +70,12 @@
       splitWidePageMode: SplitWidePageMode,
       renderConfig: ReaderRenderConfig,
       readListContext: ReaderReadListContext?,
-      isVisible: Bool,
       isPlaybackActive: Bool,
       tracksGlobalZoomState: Bool,
       onDismiss: @escaping () -> Void
     ) {
       let configuration = Configuration(
         item: item,
-        isVisible: isVisible,
         screenSize: screenSize,
         readingDirection: readingDirection,
         splitWidePageMode: splitWidePageMode,
@@ -103,25 +108,6 @@
       applyConfiguration()
     }
 
-    func setPlaybackActive(_ isPlaybackActive: Bool, tracksGlobalZoomState: Bool) {
-      self.isPlaybackActive = isPlaybackActive
-      self.tracksGlobalZoomState = tracksGlobalZoomState
-      if let lastConfiguration {
-        self.lastConfiguration = Configuration(
-          item: lastConfiguration.item,
-          isVisible: lastConfiguration.isVisible,
-          screenSize: lastConfiguration.screenSize,
-          readingDirection: lastConfiguration.readingDirection,
-          splitWidePageMode: lastConfiguration.splitWidePageMode,
-          renderConfig: lastConfiguration.renderConfig,
-          readListContext: lastConfiguration.readListContext,
-          isPlaybackActive: isPlaybackActive,
-          tracksGlobalZoomState: tracksGlobalZoomState
-        )
-      }
-      applyConfiguration()
-    }
-
     func containsAny(pageIDs: Set<ReaderPageID>) -> Bool {
       guard let representedItem else { return false }
       return representedItem.pageIDs.contains(where: pageIDs.contains)
@@ -132,6 +118,7 @@
       representedItem = nil
       viewModel = nil
       readListContext = nil
+      isPlaybackActive = false
       onDismiss = nil
       pageContentView.resetContent()
       endPageContentView.configure(
@@ -180,7 +167,6 @@
         return
       }
 
-      isHidden = false
       wantsLayer = true
       layer?.backgroundColor = NSColor(renderConfig.readerBackground.color).cgColor
 

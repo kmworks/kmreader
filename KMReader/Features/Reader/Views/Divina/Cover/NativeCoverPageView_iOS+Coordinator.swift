@@ -153,12 +153,11 @@
         switch invalidation {
         case .all, .mangaTranslation:
           containerView.slotViews.forEach { slotView in
-            guard !slotView.isHidden else { return }
+            guard slotView.item != nil else { return }
             slotView.refreshContent()
           }
         case .pages(let pageIDs):
           containerView.slotViews.forEach { slotView in
-            guard !slotView.isHidden else { return }
             guard slotView.containsAny(pageIDs: pageIDs) else { return }
             slotView.refreshContent()
           }
@@ -507,6 +506,7 @@
         let duration = transitionDuration(for: animation)
 
         if targetIndex > currentIndex {
+          updateSlotLayout()
           animateDragOffset(to: endOffset, duration: duration, token: token) {
             self.completeTransition(
               to: targetItem,
@@ -518,6 +518,10 @@
           if abs(dragOffset) < TransitionMetrics.cancelThreshold {
             dragOffset = backwardStartOffset(for: directionSign)
             updateSlotLayout()
+            if let containerView {
+              containerView.layoutIfNeeded()
+              CATransaction.flush()
+            }
           }
           animateDragOffset(to: 0, duration: duration, token: token) {
             self.completeTransition(
@@ -732,7 +736,6 @@
             splitWidePageMode: parent.splitWidePageMode,
             renderConfig: parent.renderConfig,
             readListContext: parent.readListContext,
-            isVisible: renderState.isVisible,
             isPlaybackActive: renderState.isActive,
             tracksGlobalZoomState: renderState.isActive,
             onDismiss: parent.onDismiss
@@ -751,7 +754,7 @@
 
           slotView.frame = shiftedFrame(for: containerView.bounds, offset: offset)
           slotView.isHidden = !renderState.isVisible || slotView.item == nil
-          slotView.alpha = renderState.isVisible ? 1 : 0
+          slotView.accessibilityElementsHidden = !renderState.isActive || slotView.isHidden
           slotView.layer.zPosition = CGFloat(renderState.zIndex)
           slotView.layer.masksToBounds = false
           slotView.layer.shadowColor = UIColor.black.cgColor
@@ -777,7 +780,7 @@
         if let transitionDirection {
           if transitionDirection == 1 {
             if slotIndex == deckState.frontSlotIndex {
-              return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: true, zIndex: 1)
+              return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: true, zIndex: 2)
             }
             if slotIndex == deckState.middleSlotIndex {
               return SlotRenderState(
@@ -785,14 +788,14 @@
                 isMoving: false,
                 isElevated: false,
                 isActive: false,
-                zIndex: 0
+                zIndex: 1
               )
             }
             return .hidden
           }
 
           if slotIndex == deckState.backSlotIndex {
-            return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: false, zIndex: 1)
+            return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: false, zIndex: 2)
           }
           if slotIndex == deckState.frontSlotIndex {
             return SlotRenderState(
@@ -800,16 +803,21 @@
               isMoving: false,
               isElevated: false,
               isActive: true,
-              zIndex: 0
+              zIndex: 1
             )
           }
           return .hidden
         }
 
+        // Idle neighbors stay composited underneath the opaque front slot so a
+        // page turn reveals an already-rendered page with no fade or first-frame flash.
         if slotIndex == deckState.frontSlotIndex {
-          return SlotRenderState(isVisible: true, isMoving: false, isElevated: true, isActive: true, zIndex: 1)
+          return SlotRenderState(isVisible: true, isMoving: false, isElevated: true, isActive: true, zIndex: 2)
         }
-        return .hidden
+        if slotIndex == deckState.middleSlotIndex {
+          return SlotRenderState(isVisible: true, isMoving: false, isElevated: false, isActive: false, zIndex: 1)
+        }
+        return SlotRenderState(isVisible: true, isMoving: false, isElevated: false, isActive: false, zIndex: 0)
       }
 
       private func pageShadow(for offset: CGFloat, isElevated: Bool) -> (

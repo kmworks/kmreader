@@ -130,12 +130,11 @@
         switch invalidation {
         case .all, .mangaTranslation:
           containerView.slotViews.forEach { slotView in
-            guard !slotView.isHidden else { return }
+            guard slotView.item != nil else { return }
             slotView.refreshContent()
           }
         case .pages(let pageIDs):
           containerView.slotViews.forEach { slotView in
-            guard !slotView.isHidden else { return }
             guard slotView.containsAny(pageIDs: pageIDs) else { return }
             slotView.refreshContent()
           }
@@ -469,6 +468,7 @@
         let duration = transitionDuration(for: animation)
 
         if targetIndex > currentIndex {
+          updateSlotLayout()
           animateDragOffset(to: endOffset, duration: duration, token: token) {
             self.completeTransition(
               to: targetItem,
@@ -687,7 +687,6 @@
             splitWidePageMode: parent.splitWidePageMode,
             renderConfig: parent.renderConfig,
             readListContext: parent.readListContext,
-            isVisible: renderState.isVisible,
             isPlaybackActive: renderState.isActive,
             tracksGlobalZoomState: renderState.isActive,
             onDismiss: parent.onDismiss
@@ -707,12 +706,11 @@
           slotView.wantsLayer = true
           if animated {
             slotView.animator().frame = frame
-            slotView.animator().alphaValue = renderState.isVisible ? 1 : 0
           } else {
             slotView.frame = frame
-            slotView.alphaValue = renderState.isVisible ? 1 : 0
           }
           slotView.isHidden = !renderState.isVisible || slotView.item == nil
+          slotView.setAccessibilityHidden(!renderState.isActive || slotView.isHidden)
           slotView.layer?.zPosition = renderState.zIndex
           slotView.layer?.masksToBounds = false
           slotView.layer?.shadowColor = NSColor.black.cgColor
@@ -737,7 +735,7 @@
         if let transitionDirection {
           if transitionDirection == 1 {
             if slotIndex == deckState.frontSlotIndex {
-              return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: true, zIndex: 1)
+              return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: true, zIndex: 2)
             }
             if slotIndex == deckState.middleSlotIndex {
               return SlotRenderState(
@@ -745,14 +743,14 @@
                 isMoving: false,
                 isElevated: false,
                 isActive: false,
-                zIndex: 0
+                zIndex: 1
               )
             }
             return .hidden
           }
 
           if slotIndex == deckState.backSlotIndex {
-            return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: false, zIndex: 1)
+            return SlotRenderState(isVisible: true, isMoving: true, isElevated: true, isActive: false, zIndex: 2)
           }
           if slotIndex == deckState.frontSlotIndex {
             return SlotRenderState(
@@ -760,16 +758,21 @@
               isMoving: false,
               isElevated: false,
               isActive: true,
-              zIndex: 0
+              zIndex: 1
             )
           }
           return .hidden
         }
 
+        // Idle neighbors stay composited underneath the opaque front slot so a
+        // page turn reveals an already-rendered page with no fade or first-frame flash.
         if slotIndex == deckState.frontSlotIndex {
-          return SlotRenderState(isVisible: true, isMoving: false, isElevated: true, isActive: true, zIndex: 1)
+          return SlotRenderState(isVisible: true, isMoving: false, isElevated: true, isActive: true, zIndex: 2)
         }
-        return .hidden
+        if slotIndex == deckState.middleSlotIndex {
+          return SlotRenderState(isVisible: true, isMoving: false, isElevated: false, isActive: false, zIndex: 1)
+        }
+        return SlotRenderState(isVisible: true, isMoving: false, isElevated: false, isActive: false, zIndex: 0)
       }
 
       private func pageShadow(for offset: CGFloat, isElevated: Bool) -> (
