@@ -8,9 +8,6 @@
     let preferences: EpubThemePreferences
     let colorScheme: ColorScheme
     let animatePageTransitions: Bool
-    let overlayPreferences: EpubOverlayPreferences
-    let showingControls: Bool
-    let bookTitle: String?
     let onCenterTap: () -> Void
     let onEndReached: () -> Void
 
@@ -24,9 +21,6 @@
         preferences: preferences,
         colorScheme: colorScheme,
         animatePageTransitions: animatePageTransitions,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        bookTitle: bookTitle,
         onCenterTap: onCenterTap,
         onEndReached: onEndReached,
         tapZoneMode: tapZoneMode,
@@ -40,9 +34,6 @@
         preferences: preferences,
         colorScheme: colorScheme,
         animatePageTransitions: animatePageTransitions,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        bookTitle: bookTitle,
         onCenterTap: onCenterTap,
         onEndReached: onEndReached,
         tapZoneMode: tapZoneMode,

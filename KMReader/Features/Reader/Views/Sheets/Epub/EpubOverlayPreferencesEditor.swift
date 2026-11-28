@@ -40,17 +40,6 @@
           isOn: $preferences.showsReaderProgressBar
         )
       }
-
-      Section(String(localized: "epub.overlay.controls", defaultValue: "Controls")) {
-        textPicker(
-          title: String(localized: "epub.overlay.header_center", defaultValue: "Header Center"),
-          selection: $preferences.controlsHeaderCenter
-        )
-        textPicker(
-          title: String(localized: "epub.overlay.footer_center", defaultValue: "Footer Center"),
-          selection: $preferences.controlsFooterCenter
-        )
-      }
     }
 
     private func textPicker(

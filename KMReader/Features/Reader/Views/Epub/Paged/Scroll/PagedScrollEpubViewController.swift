@@ -44,13 +44,6 @@
     var requiresFullExtentProvider: ((Int) -> Bool)?
     var pendingAnchorProvider: ((Int) -> EpubAnchorNavigation?)?
 
-    private var bookTitle: String?
-    private var chapterTitle: String?
-    private var totalProgression: Double?
-    private var overlayPreferences: EpubOverlayPreferences
-    private var showingControls: Bool = false
-    private var labelTopOffset: CGFloat
-    private var labelBottomOffset: CGFloat
     private var useSafeArea: Bool
 
     // Chapter navigation
@@ -82,8 +75,6 @@
         trailing: NSLayoutConstraint, bottom: NSLayoutConstraint
       )?
 
-    private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
-
     private var loadingIndicator: UIActivityIndicatorView?
 
     // Tap gesture handling
@@ -114,13 +105,6 @@
       initialSubPageIndex: Int,
       destination: EpubNavigationDestination?,
       totalChapters: Int,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      overlayPreferences: EpubOverlayPreferences,
-      showingControls: Bool,
-      labelTopOffset: CGFloat,
-      labelBottomOffset: CGFloat,
       useSafeArea: Bool
     ) {
       self.chapterURL = chapterURL
@@ -138,13 +122,6 @@
       self.currentSubPageIndex = max(0, initialSubPageIndex)
       self.pendingDestination = destination
       self.totalChapters = totalChapters
-      self.bookTitle = bookTitle
-      self.chapterTitle = chapterTitle
-      self.totalProgression = totalProgression
-      self.overlayPreferences = overlayPreferences
-      self.showingControls = showingControls
-      self.labelTopOffset = labelTopOffset
-      self.labelBottomOffset = labelBottomOffset
       self.useSafeArea = useSafeArea
       super.init(nibName: nil, bundle: nil)
     }
@@ -156,7 +133,6 @@
     override func viewDidLoad() {
       super.viewDidLoad()
       setupWebView()
-      setupOverlayLabels()
       setupTapGesture()
       NotificationCenter.default.addObserver(
         self,
@@ -272,32 +248,6 @@
       panRecognizer.require(toFail: longPressRecognizer)
       view.addGestureRecognizer(panRecognizer)
       self.panGestureRecognizer = panRecognizer
-    }
-
-    private func setupOverlayLabels() {
-      infoOverlay = WebPubInfoOverlaySupport.UIKitOverlay(
-        containerView: view,
-        topAnchor: topAnchor,
-        bottomAnchor: bottomAnchor,
-        topOffset: labelTopOffset,
-        bottomOffset: labelBottomOffset,
-        theme: theme
-      )
-    }
-
-    func updateOverlayLabels() {
-      let content = WebPubInfoOverlaySupport.content(
-        flowStyle: .paged,
-        bookTitle: bookTitle,
-        chapterTitle: chapterTitle,
-        totalProgression: totalProgression,
-        currentPageIndex: currentSubPageIndex,
-        totalPagesInChapter: totalPagesInChapter,
-        showingControls: showingControls,
-        isRTL: publicationReadingProgression == .rtl,
-        overlayPreferences: overlayPreferences
-      )
-      infoOverlay?.update(content: content, animated: true)
     }
 
     @objc private func handleTap(_ recognizer: WebPubTapGestureRecognizer) {
@@ -449,7 +399,6 @@
       scrollToPage(targetPage, animated: animatePageTransitions)
       if targetPage != currentSubPageIndex {
         currentSubPageIndex = targetPage
-        updateOverlayLabels()
         reportCurrentPosition()
       }
     }
@@ -479,7 +428,6 @@
       let newIndex = currentSubPageIndex - 1
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
-      updateOverlayLabels()
       reportCurrentPosition()
     }
 
@@ -499,7 +447,6 @@
       let newIndex = currentSubPageIndex + 1
       scrollToPage(newIndex, animated: animatePageTransitions)
       currentSubPageIndex = newIndex
-      updateOverlayLabels()
       reportCurrentPosition()
     }
 
@@ -513,7 +460,6 @@
       loadingIndicator?.color = theme.uiColorText
 
       // Update overlay label colors
-      infoOverlay?.apply(theme: theme)
     }
 
     private func applyContainerInsets() {
@@ -541,13 +487,6 @@
       navigationID: UUID,
       navigationRequest: EpubNavigationRequest?,
       totalChapters: Int,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      overlayPreferences: EpubOverlayPreferences,
-      showingControls: Bool,
-      labelTopOffset: CGFloat,
-      labelBottomOffset: CGFloat,
       useSafeArea: Bool
     ) {
       let shouldReload =
@@ -562,8 +501,6 @@
         || readiumProperties != self.readiumProperties
         || publicationLanguage != self.publicationLanguage
         || publicationReadingProgression != self.publicationReadingProgression
-        || labelTopOffset != self.labelTopOffset
-        || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
 
       let navigationChanged = navigationRequest != nil && self.navigationID != navigationID
@@ -586,25 +523,18 @@
       self.animatePageTransitions = animatePageTransitions
       self.chapterIndex = chapterIndex
       self.totalChapters = totalChapters
-      self.bookTitle = bookTitle
-      self.chapterTitle = chapterTitle
-      self.totalProgression = totalProgression
-      self.overlayPreferences = overlayPreferences
-      self.showingControls = showingControls
-      self.labelTopOffset = labelTopOffset
-      self.labelBottomOffset = labelBottomOffset
       self.useSafeArea = useSafeArea
 
       guard isViewLoaded else { return }
-
-      updateOverlayLabels()
 
       if appearanceChanged {
         applyContainerInsets()
       }
 
       applyTheme()
-      refreshDocumentStartUserScript()
+      if shouldReload || appearanceChanged {
+        refreshDocumentStartUserScript()
+      }
       if shouldReload {
         loadContentIfNeeded(force: true)
       } else if appearanceChanged || navigationChanged {
@@ -665,7 +595,6 @@
 
     @objc private func handleAppDidBecomeActive() {
       refreshDisplay()
-      updateOverlayLabels()
     }
 
     func refreshDisplay() {
@@ -858,14 +787,12 @@
               let page = resolvedPage ?? 0
               if resolvedPage == nil { scrollToPage(0, animated: false) }
               self.currentSubPageIndex = page
-              self.updateOverlayLabels()
               self.reportCurrentPosition(resolvedAnchor: anchor.anchor)
             }
           }
         }
 
         pendingDestination = nil
-        updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
         reportCurrentPosition()
@@ -886,7 +813,6 @@
           totalPagesInChapter = normalizedTotal
           onPageCountReady?(chapterIndex, normalizedTotal, paginationNavigationID)
         }
-        updateOverlayLabels()
       } else if type == "writingModeMismatch" {
         if let generation = body["generation"] as? Int,
           generation != paginationGeneration
@@ -992,7 +918,6 @@
 
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
-        updateOverlayLabels()
         reportCurrentPosition()
       }
     }

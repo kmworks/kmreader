@@ -14,6 +14,7 @@ nonisolated enum EpubOverlayTextItem: String, CaseIterable, Identifiable, Sendab
   case chapterProgressPercent
   case chapterRemaining
   case chapterPosition
+  case bookPosition
 
   var id: String { rawValue }
 
@@ -35,6 +36,8 @@ nonisolated enum EpubOverlayTextItem: String, CaseIterable, Identifiable, Sendab
       return String(localized: "epub.overlay.item.chapter_remaining", defaultValue: "Chapter Remaining")
     case .chapterPosition:
       return String(localized: "epub.overlay.item.chapter_page", defaultValue: "Chapter Page")
+    case .bookPosition:
+      return String(localized: "epub.overlay.item.book_page", defaultValue: "Book Page")
     }
   }
 }

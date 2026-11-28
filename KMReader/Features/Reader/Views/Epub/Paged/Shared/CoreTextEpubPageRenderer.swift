@@ -173,7 +173,6 @@
       if errorView != nil {
         host.currentSubPageIndex = 0
         displayView.alpha = 1
-        host.updateOverlayLabels()
         return
       }
       guard displayLists.indices.contains(pageIndex) else { return }
@@ -181,7 +180,6 @@
       displayView.displayList = displayLists[pageIndex]
       displayView.layer.displayIfNeeded()
       displayView.alpha = 1
-      host.updateOverlayLabels()
     }
 
     private func finishSettleCompletions() {

@@ -10,9 +10,6 @@
     private var colorScheme: ColorScheme
     private var tapScrollPercentage: Double
     private var animateTapTurns: Bool
-    private var overlayPreferences: EpubOverlayPreferences
-    private var showingControls: Bool
-    private var bookTitle: String?
     private var onCenterTap: () -> Void
     private var onEndReached: () -> Void
     private var tapZoneMode: TapZoneMode
@@ -22,7 +19,6 @@
     private var documentView: CoreTextContinuousDocumentView!
     private var document: BrowserScrollDocument?
     private var linkRegions: LinkInteractionRegionSet?
-    private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
     private var loadingIndicator: UIActivityIndicatorView?
     private var errorView: CoreTextChapterErrorView?
 
@@ -42,9 +38,6 @@
       colorScheme: ColorScheme,
       tapScrollPercentage: Double,
       animateTapTurns: Bool,
-      overlayPreferences: EpubOverlayPreferences,
-      showingControls: Bool,
-      bookTitle: String?,
       onCenterTap: @escaping () -> Void,
       onEndReached: @escaping () -> Void,
       tapZoneMode: TapZoneMode,
@@ -55,9 +48,6 @@
       self.colorScheme = colorScheme
       self.tapScrollPercentage = tapScrollPercentage
       self.animateTapTurns = animateTapTurns
-      self.overlayPreferences = overlayPreferences
-      self.showingControls = showingControls
-      self.bookTitle = bookTitle
       self.onCenterTap = onCenterTap
       self.onEndReached = onEndReached
       self.tapZoneMode = tapZoneMode
@@ -93,7 +83,6 @@
       super.viewDidLoad()
       view.backgroundColor = theme.uiColorBackground
       setupScrollView()
-      setupOverlay()
       setupGestures()
       showLoading()
     }
@@ -118,9 +107,6 @@
       colorScheme: ColorScheme,
       tapScrollPercentage: Double,
       animateTapTurns: Bool,
-      overlayPreferences: EpubOverlayPreferences,
-      showingControls: Bool,
-      bookTitle: String?,
       onCenterTap: @escaping () -> Void,
       onEndReached: @escaping () -> Void,
       tapZoneMode: TapZoneMode,
@@ -134,9 +120,6 @@
       self.colorScheme = colorScheme
       self.tapScrollPercentage = tapScrollPercentage
       self.animateTapTurns = animateTapTurns
-      self.overlayPreferences = overlayPreferences
-      self.showingControls = showingControls
-      self.bookTitle = bookTitle
       self.onCenterTap = onCenterTap
       self.onEndReached = onEndReached
       self.tapZoneMode = tapZoneMode
@@ -144,8 +127,6 @@
 
       view.backgroundColor = theme.uiColorBackground
       documentView.backgroundColor = theme.uiColorBackground
-      infoOverlay?.apply(theme: theme)
-      updateOverlayLabels()
 
       let shouldLoadContent =
         !isContentReady && layoutTask == nil && !viewModel.isLoading && viewModel.hasContent
@@ -207,18 +188,6 @@
       loadingIndicator = indicator
     }
 
-    private func setupOverlay() {
-      infoOverlay = WebPubInfoOverlaySupport.UIKitOverlay(
-        containerView: view,
-        topAnchor: topAnchor,
-        bottomAnchor: bottomAnchor,
-        topOffset: viewModel.labelTopOffset,
-        bottomOffset: viewModel.labelBottomOffset,
-        theme: theme
-      )
-      updateOverlayLabels()
-    }
-
     private func setupGestures() {
       let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
       tapRecognizer.delegate = self
@@ -253,7 +222,6 @@
       isContentReady = true
       loadingIndicator?.stopAnimating()
       scrollView.alpha = 1
-      updateOverlayLabels()
     }
 
     private func reloadChapter(preservePosition: Bool = false) {
@@ -416,28 +384,6 @@
           layout: errorView != nil ? .failed : .content(pageCount: currentPageCount), navigationID: navigationID,
           resolvedAnchor: resolvedAnchor
         ))
-      updateOverlayLabels()
-    }
-
-    private func updateOverlayLabels() {
-      let location = viewModel.pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
-      let chapterProgress = location.flatMap {
-        $0.pageCount > 0 ? Double($0.pageIndex + 1) / Double($0.pageCount) : nil
-      }
-      let content = WebPubInfoOverlaySupport.content(
-        flowStyle: .scrolled,
-        bookTitle: bookTitle,
-        chapterTitle: location?.title,
-        totalProgression: location.flatMap {
-          viewModel.totalProgression(location: $0, chapterProgress: chapterProgress)
-        },
-        currentPageIndex: currentPageIndex,
-        totalPagesInChapter: currentPageCount,
-        showingControls: showingControls,
-        isRTL: viewModel.publicationReadingProgression == .rtl,
-        overlayPreferences: overlayPreferences
-      )
-      infoOverlay?.update(content: content, animated: true)
     }
 
     @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
