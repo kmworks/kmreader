@@ -41,27 +41,35 @@
       text(for: overlayPreferences.readerHeaderTrailing)
     }
 
+    private var hasLabels: Bool {
+      leadingText != nil || centerText != nil || trailingText != nil
+    }
+
     var body: some View {
-      HStack(spacing: 8) {
-        if let leadingText {
-          Text(leadingText)
-            .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        if let centerText {
-          Text(centerText)
-            .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        if let trailingText {
-          Text(trailingText)
-            .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .trailing)
+      Group {
+        if hasLabels {
+          HStack(spacing: 8) {
+            if let leadingText {
+              Text(leadingText)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let centerText {
+              Text(centerText)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            if let trailingText {
+              Text(trailingText)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+          }
+          .font(.footnote)
+          .foregroundStyle(theme.textColor.opacity(0.6))
+          .accessibilityElement(children: .combine)
         }
       }
-      .font(.footnote)
-      .foregroundStyle(theme.textColor.opacity(0.6))
-      .accessibilityElement(children: .combine)
     }
   }
 #endif

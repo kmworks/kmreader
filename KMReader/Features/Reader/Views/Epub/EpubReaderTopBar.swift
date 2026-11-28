@@ -102,12 +102,8 @@
       .accessibilityLabel(Text("Close"))
     }
 
-    private var trailingButton: some View {
-      trailingControl
-    }
-
     @ViewBuilder
-    private var trailingControl: some View {
+    private var trailingButton: some View {
       if incognito {
         // Incognito reading keeps no bookmarks; the inert marker still swallows
         // its tap so the slot never falls through to a page-turn zone.

@@ -17,6 +17,7 @@
 
     @State private var scrubFraction: Double?
     @State private var pendingSeekFraction: Double?
+    @State private var pendingSeekNavigationID: UUID?
     @State private var lastHapticPage: Int?
 
     private static let restingMaxTrackWidth: CGFloat = 360
@@ -37,7 +38,12 @@
       if let scrubFraction { return scrubFraction }
       // Hold the release target while a jump is in flight so the fill does not
       // snap back to the old page mid-collapse.
-      if viewModel.navigationRequest != nil, let pendingSeekFraction { return pendingSeekFraction }
+      if viewModel.navigationRequest != nil,
+        viewModel.navigationID == pendingSeekNavigationID,
+        let pendingSeekFraction
+      {
+        return pendingSeekFraction
+      }
       return baselineFraction
     }
 
@@ -218,6 +224,7 @@
       let didSeek = preview.map { viewModel.seek(toTotalFraction: $0.fraction) } ?? false
       withAnimation(.appCurve(0.24)) {
         pendingSeekFraction = didSeek ? preview?.fraction : nil
+        pendingSeekNavigationID = didSeek ? viewModel.navigationID : nil
         scrubFraction = nil
         lastHapticPage = nil
         isScrubbing = false
@@ -229,6 +236,7 @@
       HapticFeedback.light()
       withAnimation(.appCurve(0.24)) {
         pendingSeekFraction = nil
+        pendingSeekNavigationID = nil
         scrubFraction = nil
         lastHapticPage = nil
         isScrubbing = false

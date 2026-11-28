@@ -178,6 +178,7 @@
       publicationLanguage = nil
       publicationReadingProgression = nil
       chapterPageCounts = [:]
+      scrubBoundaryChapterIndexes = []
       chapterURLCache = [:]
       textLengthCache = [:]
       chapterTextWeights = [:]
@@ -242,6 +243,7 @@
         readingOrder = manifest.readingOrder
         tableOfContents = manifest.toc.isEmpty ? manifest.readingOrder : manifest.toc
         tocTitleByHref = buildTOCTitleMap(from: tableOfContents)
+        scrubBoundaryChapterIndexes = resolveScrubBoundaryChapterIndexes()
 
         resourceRootURL = offlineRoot
         mediaTypesByRelativePath = Self.mediaTypeMap(from: manifest)
@@ -1384,26 +1386,27 @@
     /// Ticks follow TOC chapters rather than raw spine items so split chapter
     /// files do not turn the bar into a dense comb; very large chapter counts
     /// fall back to top-level TOC sections.
-    var chapterBoundaryFractions: [Double] {
-      guard readingOrder.count > 1 else { return [] }
-      let leafLinks = Self.leafTOCLinks(tableOfContents)
-      let leafIndexes = tocChapterIndexes(from: leafLinks)
-      let chosenIndexes: [Int]
-      if leafIndexes.count > Self.maxScrubTickCount {
-        let topIndexes = tocChapterIndexes(from: tableOfContents)
-        chosenIndexes = topIndexes.count > 1 ? topIndexes : leafIndexes
-      } else if !leafIndexes.isEmpty {
-        chosenIndexes = leafIndexes
-      } else {
-        chosenIndexes = Array(readingOrder.indices)
-      }
+    /// Resolved once per book load so rendering the scrubber never walks the
+    /// TOC tree or normalizes hrefs on every drag frame.
+    private var scrubBoundaryChapterIndexes: [Int] = []
 
-      return chosenIndexes.compactMap { index in
+    var chapterBoundaryFractions: [Double] {
+      scrubBoundaryChapterIndexes.compactMap { index in
         guard index > 0, let fraction = seekFraction(chapterIndex: index, pageIndex: 0),
           fraction > 0, fraction < 1
         else { return nil }
         return fraction
       }
+    }
+
+    private func resolveScrubBoundaryChapterIndexes() -> [Int] {
+      guard readingOrder.count > 1 else { return [] }
+      let leafIndexes = tocChapterIndexes(from: Self.leafTOCLinks(tableOfContents))
+      if leafIndexes.count > Self.maxScrubTickCount {
+        let topIndexes = tocChapterIndexes(from: tableOfContents)
+        return topIndexes.count > 1 ? topIndexes : leafIndexes
+      }
+      return leafIndexes.isEmpty ? Array(readingOrder.indices) : leafIndexes
     }
 
     private func tocChapterIndexes(from links: [WebPubLink]) -> [Int] {
