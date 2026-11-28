@@ -12,6 +12,8 @@ enum NavDestination: Hashable {
   /// libraries are `browseLibrary`).
   case browse(scope: LibraryBrowseScope)
   case browseSearch
+  /// Paginated search results for one category, pushed from the search overview.
+  case searchCategory(category: BrowseContentType, query: String, scope: LibraryBrowseScope)
   /// Full single-type lists; `scope` seeds the pushed page's session scope
   /// from the surface that linked here (nil inherits the shared root scope).
   case browseCollections(scope: LibraryBrowseScope?)
@@ -139,10 +141,18 @@ enum NavDestination: Hashable {
       // reads it back through the shell-provided scope binding.
       BrowseView(authViewModel: context.authViewModel)
     case .browseSearch:
-      BrowseView(
+      SearchBrowseView(
         authViewModel: context.authViewModel,
         focusesSearchOnAppear: true,
+        usesSharedScope: false,
         initialScope: LibraryScopeSelectionStore.shared.scope
+      )
+    case .searchCategory(let category, let query, let scope):
+      SearchCategoryDetailView(
+        authViewModel: context.authViewModel,
+        category: category,
+        query: query,
+        scope: scope
       )
     case .browseCollections(let scope):
       ListsBrowseDetailView(

@@ -10,6 +10,8 @@ import SwiftUI
 @Observable
 class ReadListsViewModel {
   var isLoading = false
+  private(set) var totalCount: Int?
+  private(set) var loadError: Error?
 
   private(set) var pagination: PaginationState<IdentifiedString>
   private var pinnedIds: [String] = []
@@ -25,7 +27,9 @@ class ReadListsViewModel {
     libraryIds: [String]? = nil,
     searchText: String = "",
     sort: String? = nil,
-    refresh: Bool = false
+    refresh: Bool = false,
+    reportsErrors: Bool = true,
+    syncAutomaticBooks: Bool = true
   ) async {
     guard let loadID = beginLoad(refresh: refresh) else { return }
 
@@ -40,6 +44,7 @@ class ReadListsViewModel {
     let instanceId = AppConfig.current.instanceId
     guard !instanceId.isEmpty else {
       guard loadID == pagination.loadID else { return }
+      totalCount = 0
       applyPage(ids: [], moreAvailable: false)
       return
     }
@@ -52,6 +57,7 @@ class ReadListsViewModel {
     if AppConfig.isOffline {
       guard let database = try? await DatabaseOperator.database() else {
         guard loadID == pagination.loadID else { return }
+        totalCount = 0
         applyPage(ids: [], moreAvailable: false)
         return
       }
@@ -67,6 +73,7 @@ class ReadListsViewModel {
       let offset = pagination.currentPage * pagination.pageSize
       let pageIds = Array(offlineIds.dropFirst(offset).prefix(pagination.pageSize))
       guard loadID == pagination.loadID else { return }
+      totalCount = offlineIds.count
       applyPage(ids: pageIds, moreAvailable: offset + pageIds.count < offlineIds.count)
     } else {
       if refresh {
@@ -82,23 +89,30 @@ class ReadListsViewModel {
         }
       }
       do {
-        let (ids, moreAvailable) = try await fetchServerReadListPage(
+        let result = try await fetchServerReadListPage(
           libraryIds: libraryIds,
           searchText: searchText,
           sort: sort,
-          pinnedSet: Set(pinnedIds)
+          pinnedSet: Set(pinnedIds),
+          syncAutomaticBooks: syncAutomaticBooks
         )
 
         guard loadID == pagination.loadID else { return }
+        totalCount = result.totalElements
         if pagination.currentPage == 0 {
-          applyPage(ids: pinnedIds + ids, moreAvailable: moreAvailable)
+          applyPage(ids: pinnedIds + result.ids, moreAvailable: result.moreAvailable)
         } else {
-          applyPage(ids: ids, moreAvailable: moreAvailable)
+          applyPage(ids: result.ids, moreAvailable: result.moreAvailable)
         }
       } catch {
         guard loadID == pagination.loadID else { return }
+        if ErrorManager.shared.shouldShowError(error) {
+          loadError = error
+        }
         if refresh {
-          ErrorManager.shared.alert(error: error)
+          if reportsErrors {
+            ErrorManager.shared.alert(error: error)
+          }
         } else {
           pagination.hasMorePages = false
         }
@@ -110,15 +124,18 @@ class ReadListsViewModel {
     libraryIds: [String]?,
     searchText: String,
     sort: String?,
-    pinnedSet: Set<String>
-  ) async throws -> (ids: [String], moreAvailable: Bool) {
+    pinnedSet: Set<String>,
+    syncAutomaticBooks: Bool
+  ) async throws -> (ids: [String], moreAvailable: Bool, totalElements: Int) {
     var page = try await SyncService.syncReadLists(
       libraryIds: libraryIds,
       page: serverPage,
       size: pagination.pageSize,
       sort: sort,
-      search: searchText.isEmpty ? nil : searchText
+      search: searchText.isEmpty ? nil : searchText,
+      syncAutomaticBooks: syncAutomaticBooks
     )
+    let totalElements = page.totalElements
     serverPage += 1
     var ids = page.content.map { $0.id }.filter { !pinnedSet.contains($0) }
     while ids.isEmpty && !page.last {
@@ -127,12 +144,13 @@ class ReadListsViewModel {
         page: serverPage,
         size: pagination.pageSize,
         sort: sort,
-        search: searchText.isEmpty ? nil : searchText
+        search: searchText.isEmpty ? nil : searchText,
+        syncAutomaticBooks: syncAutomaticBooks
       )
       serverPage += 1
       ids = page.content.map { $0.id }.filter { !pinnedSet.contains($0) }
     }
-    return (ids, !page.last)
+    return (ids, !page.last, totalElements)
   }
 
   private func applyPage(ids: [String], moreAvailable: Bool) {
@@ -144,12 +162,16 @@ class ReadListsViewModel {
 
   func removeReadList(id: String) {
     withAnimation {
-      _ = pagination.removeItems(withIDs: [id])
+      if pagination.removeItems(withIDs: [id]), let count = totalCount {
+        totalCount = max(0, count - 1)
+      }
     }
   }
 
   private func beginLoad(refresh: Bool) -> UUID? {
     if refresh {
+      totalCount = nil
+      loadError = nil
       withAnimation {
         pagination.reset()
         isLoading = true

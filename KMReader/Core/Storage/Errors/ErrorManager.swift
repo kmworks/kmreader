@@ -204,9 +204,9 @@ class ErrorManager {
     return min(max(readingTime, 5), 8)
   }
 
-  // MARK: - Private Error Handling
+  // MARK: - Error Presentation
 
-  private func handleError(_ error: Error) -> String {
+  func handleError(_ error: Error) -> String {
     // Handle APIError
     if let apiError = error as? APIError {
       return apiError.description
@@ -232,7 +232,7 @@ class ErrorManager {
     return error.localizedDescription
   }
 
-  private func shouldShowError(_ error: Error) -> Bool {
+  func shouldShowError(_ error: Error) -> Bool {
     // Handle AppErrorType
     if let appError = error as? AppErrorType {
       return appError.shouldShow

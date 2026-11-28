@@ -584,6 +584,16 @@ enum AppConfig {
     set { UserDefaults.standard.set(newValue, forKey: "seriesBookBrowseOptions") }
   }
 
+  static nonisolated var collectionSortOptions: String {
+    get { UserDefaults.standard.string(forKey: "collectionSortOptions") ?? "" }
+    set { UserDefaults.standard.set(newValue, forKey: "collectionSortOptions") }
+  }
+
+  static nonisolated var readListSortOptions: String {
+    get { UserDefaults.standard.string(forKey: "readListSortOptions") ?? "" }
+    set { UserDefaults.standard.set(newValue, forKey: "readListSortOptions") }
+  }
+
   static nonisolated var coverOnlyCards: Bool {
     get {
       if UserDefaults.standard.object(forKey: "coverOnlyCards") != nil {

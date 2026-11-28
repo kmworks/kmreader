@@ -13,9 +13,9 @@ import SwiftUI
 struct BrowseActionsMenu: View {
   @Binding var layoutMode: BrowseLayoutMode
   let showsPresets: Bool
-  /// Off only while the iPhone Search tab shows its placeholder: the filter
-  /// sheet is hosted by the per-type chip row, which does not exist until
-  /// results render, so a tap there would stick the presentation flag.
+  /// Off while a fixed-type search page shows its empty-query placeholder:
+  /// the filter sheet is hosted by the per-type chip row, which does not
+  /// exist until results render, so a tap there would stick the flag.
   let isFilterEnabled: Bool
   let onShowPresets: () -> Void
   let onShowFilter: () -> Void

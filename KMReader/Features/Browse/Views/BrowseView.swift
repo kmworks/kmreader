@@ -15,14 +15,11 @@ struct BrowseView: View {
   /// iPhone Library tab root mode: no search field; the root scope switches
   /// between All Libraries, the pinned set, and a single library in place.
   let libraryTab: Bool
-  /// Search-tab mode (iPhone): show a search placeholder until a query is
-  /// entered instead of browsing all content.
-  let searchOnly: Bool
   /// Explicit library scope (empty = all libraries). When nil, the page's
   /// session scope applies.
   let libraryIds: [String]?
-  /// Tab root scope binding (iPhone Library/Search tabs): drives the scope
-  /// menu; the Library tab also renders the scope header from it.
+  /// iPhone Library tab root scope binding: drives the scope menu and renders
+  /// the scope header from it.
   let libraryTabScope: Binding<LibraryBrowseScope>?
 
   @Environment(\.browseLibrarySelection) private var librarySelection
@@ -30,6 +27,7 @@ struct BrowseView: View {
 
   @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
+  @AppStorage("isOffline") private var isOffline: Bool = false
   @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
   @AppStorage("seriesBrowseLayout") private var seriesBrowseLayout: BrowseLayoutMode = .grid
   @AppStorage("bookBrowseLayout") private var bookBrowseLayout: BrowseLayoutMode = .grid
@@ -38,6 +36,7 @@ struct BrowseView: View {
   @State private var initializedLibraryIdsKey: String?
   @State private var searchQuery: String = ""
   @State private var activeSearchText: String = ""
+  @State private var searchViewModel = SearchViewModel()
   @State private var showLibraryPicker = false
   @State private var showFilterSheet = false
   @State private var showSavedFilters = false
@@ -53,7 +52,6 @@ struct BrowseView: View {
     metadataFilter: MetadataFilterConfig? = nil,
     focusesSearchOnAppear: Bool = false,
     libraryTab: Bool = false,
-    searchOnly: Bool = false,
     libraryIds: [String]? = nil,
     libraryTabScope: Binding<LibraryBrowseScope>? = nil,
     initialScope: LibraryBrowseScope? = nil
@@ -63,7 +61,6 @@ struct BrowseView: View {
     self.metadataFilter = metadataFilter
     self.focusesSearchOnAppear = focusesSearchOnAppear
     self.libraryTab = libraryTab
-    self.searchOnly = searchOnly
     self.libraryIds = libraryIds
     self.libraryTabScope = libraryTabScope
     _browseScope = State(initialValue: initialScope)
@@ -72,8 +69,6 @@ struct BrowseView: View {
   var title: String {
     if libraryTab {
       return String(localized: "tab.library", defaultValue: "Library")
-    } else if searchOnly {
-      return String(localized: "tab.search", defaultValue: "Search")
     } else if librarySelection != nil || shellScope != nil {
       return effectiveScope.title(pinnedIds: dashboard.libraryIds, libraries: scopeStore.libraries)
         ?? librarySelection?.name
@@ -119,116 +114,149 @@ struct BrowseView: View {
     resolvedLibraryIds.joined(separator: ",")
   }
 
+  /// Aggregate and single-library browse pages (including tvOS Browse) search
+  /// across all categories on submit; metadata-filtered and fixed-type pages
+  /// keep filtering their own list.
+  private var showsSearchOverview: Bool {
+    fixedContent == nil && metadataFilter == nil && !libraryTab && !activeSearchText.isEmpty
+  }
+
+  private var searchTaskKey: String {
+    [
+      current.instanceId,
+      isOffline ? "offline" : "online",
+      resolvedLibraryIdsKey,
+      activeSearchText,
+    ].joined(separator: "|")
+  }
+
   var body: some View {
-    BrowseContentView(
-      fixedContent: fixedContent,
-      metadataFilter: metadataFilter,
-      searchOnly: searchOnly,
-      searchText: activeSearchText,
-      refreshTrigger: refreshTrigger,
-      showFilterSheet: $showFilterSheet,
-      showSavedFilters: $showSavedFilters,
-      libraryIds: resolvedLibraryIds,
-      libraryScope: libraryTab ? libraryTabScope?.wrappedValue : (searchOnly ? nil : effectiveScope),
-      searchScope: searchOnly ? libraryTabScope : nil,
-      showLibraryPicker: $showLibraryPicker,
-      scopeLibraries: scopeStore.libraries,
-      allLibrariesEntry: scopeStore.allLibrariesEntry
-    )
-    .inlineLargeBarTitleStyle(
-      enabled: (libraryTab || searchOnly) && !PlatformHelper.isPad
-    )
-    .platformNavigationTitle(title)
-    .searchableIfNeeded(text: $searchQuery, enabled: !libraryTab)
-    .browseSearchFocus($isSearchFocused, when: focusesSearchOnAppear)
-    .onAppear {
-      // iPhone Search tab: entering the tab with an empty query activates the
-      // search field directly.
-      if searchOnly && searchQuery.isEmpty {
-        isSearchFocused = true
-      }
-    }
-    #if os(iOS) || os(macOS)
-      .toolbar {
-        InlineLargeTitleToolbarItem(title: title, enabled: libraryTab || searchOnly)
+    content
+      .inlineLargeBarTitleStyle(enabled: libraryTab && !PlatformHelper.isPad)
+      .platformNavigationTitle(title)
+      .searchableIfNeeded(text: $searchQuery, enabled: !libraryTab)
+      .browseSearchFocus($isSearchFocused, when: focusesSearchOnAppear)
+      #if os(iOS) || os(macOS)
+        .toolbar {
+          InlineLargeTitleToolbarItem(title: title, enabled: libraryTab)
 
-        LibraryScopeToolbarItem(
-          showsOnPhone: librarySelection == nil,
-          separatesTrailingMenu: true
-        ) {
-          LibraryScopeMenu(
-            libraries: scopeStore.libraries,
-            showLibraryPicker: $showLibraryPicker,
-            scope: menuScopeBinding)
-        }
+          LibraryScopeToolbarItem(
+            showsOnPhone: librarySelection == nil,
+            separatesTrailingMenu: !showsSearchOverview
+          ) {
+            LibraryScopeMenu(
+              libraries: scopeStore.libraries,
+              showLibraryPicker: $showLibraryPicker,
+              scope: menuScopeBinding)
+          }
 
-        ToolbarItem(placement: .confirmationAction) {
-          BrowseActionsMenu(
-            layoutMode: browseLayoutBinding,
-            showsPresets: true,
-            isFilterEnabled: !searchOnly || !activeSearchText.isEmpty,
-            onShowPresets: { showSavedFilters = true },
-            onShowFilter: { showFilterSheet = true }
-          )
+          if !showsSearchOverview {
+            ToolbarItem(placement: .confirmationAction) {
+              BrowseActionsMenu(
+                layoutMode: browseLayoutBinding,
+                showsPresets: true,
+                isFilterEnabled: true,
+                onShowPresets: { showSavedFilters = true },
+                onShowFilter: { showFilterSheet = true }
+              )
+            }
+          }
+        }
+        .sheet(isPresented: $showLibraryPicker) {
+          LibraryPickerSheet()
+        }
+        .sheet(isPresented: $showSavedFilters) {
+          SavedFiltersView(filterType: effectiveContent == .series ? .series : .books)
+        }
+        .task(id: current.instanceId) {
+          await scopeStore.refresh(instanceId: current.instanceId)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
+          guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
+          Task {
+            await scopeStore.load(instanceId: current.instanceId)
+          }
+        }
+      #endif
+      .onSubmit(of: .search) {
+        activeSearchText = SearchViewModel.normalizedQuery(searchQuery)
+      }
+      .task(id: searchTaskKey) {
+        guard showsSearchOverview, !authViewModel.isSwitching else { return }
+        guard !searchViewModel.hasLoaded(query: activeSearchText, libraryIds: resolvedLibraryIds)
+        else { return }
+        await searchViewModel.search(query: activeSearchText, libraryIds: resolvedLibraryIds)
+      }
+      .onChange(of: searchQuery) { _, newValue in
+        if newValue.isEmpty {
+          activeSearchText = ""
         }
       }
-      .sheet(isPresented: $showLibraryPicker) {
-        LibraryPickerSheet()
+      .onChange(of: librarySelection) { _, _ in
+        // A reused page (macOS split detail) must not keep the previous
+        // library's scope.
+        browseScope = nil
       }
-      .sheet(isPresented: $showSavedFilters) {
-        SavedFiltersView(filterType: effectiveContent == .series ? .series : .books)
-      }
-      .task(id: current.instanceId) {
-        await scopeStore.refresh(instanceId: current.instanceId)
-      }
-      .onReceive(NotificationCenter.default.publisher(for: .sidebarProjectionDidChange)) { notification in
-        guard notification.userInfo?["instanceId"] as? String == current.instanceId else { return }
-        Task {
-          await scopeStore.load(instanceId: current.instanceId)
+      .onChange(of: scopeStore.libraries) { _, libraries in
+        // A page-local scoped library that vanished falls back to the aggregate.
+        if let scopedId = browseScope?.libraryId,
+          !libraries.contains(where: { $0.libraryId == scopedId })
+        {
+          browseScope = dashboard.libraryIds.isEmpty ? .all : .pinned
         }
       }
-    #endif
-    .onSubmit(of: .search) {
-      activeSearchText = searchQuery
-    }
-    .onChange(of: searchQuery) { _, newValue in
-      if newValue.isEmpty {
-        activeSearchText = ""
+      .onChange(of: dashboard.libraryIds) { _, pinnedIds in
+        // The Pinned item only exists while pins do; an emptied pinned set is
+        // the full set, which All already represents.
+        guard pinnedIds.isEmpty else { return }
+        if browseScope == .pinned {
+          browseScope = .all
+        }
       }
-    }
-    .onChange(of: librarySelection) { _, _ in
-      // A reused page (macOS split detail) must not keep the previous
-      // library's scope.
-      browseScope = nil
-    }
-    .onChange(of: scopeStore.libraries) { _, libraries in
-      // A page-local scoped library that vanished falls back to the aggregate.
-      if let scopedId = browseScope?.libraryId,
-        !libraries.contains(where: { $0.libraryId == scopedId })
-      {
-        browseScope = dashboard.libraryIds.isEmpty ? .all : .pinned
+      .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
+        guard librarySelection == nil else { return }
+        // Refresh when server switch completes to avoid race condition
+        if oldValue && !newValue {
+          refreshBrowse()
+          if showsSearchOverview {
+            Task {
+              await searchViewModel.search(query: activeSearchText, libraryIds: resolvedLibraryIds)
+            }
+          }
+        }
       }
-    }
-    .onChange(of: dashboard.libraryIds) { _, pinnedIds in
-      // The Pinned item only exists while pins do; an emptied pinned set is
-      // the full set, which All already represents.
-      guard pinnedIds.isEmpty else { return }
-      if browseScope == .pinned {
-        browseScope = .all
-      }
-    }
-    .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
-      guard librarySelection == nil else { return }
-      // Refresh when server switch completes to avoid race condition
-      if oldValue && !newValue {
+      .task(id: resolvedLibraryIdsKey) {
+        guard !authViewModel.isSwitching else { return }
+        guard initializedLibraryIdsKey != resolvedLibraryIdsKey else { return }
+        initializedLibraryIdsKey = resolvedLibraryIdsKey
         refreshBrowse()
       }
-    }
-    .task(id: resolvedLibraryIdsKey) {
-      guard !authViewModel.isSwitching else { return }
-      guard initializedLibraryIdsKey != resolvedLibraryIdsKey else { return }
-      initializedLibraryIdsKey = resolvedLibraryIdsKey
-      refreshBrowse()
+  }
+
+  @ViewBuilder
+  private var content: some View {
+    if showsSearchOverview {
+      SearchResultsContentView(
+        query: activeSearchText,
+        scope: effectiveScope,
+        viewModel: searchViewModel
+      )
+      .refreshableWithMinimumHold {
+        await searchViewModel.search(query: activeSearchText, libraryIds: resolvedLibraryIds)
+      }
+    } else {
+      BrowseContentView(
+        fixedContent: fixedContent,
+        metadataFilter: metadataFilter,
+        searchText: activeSearchText,
+        refreshTrigger: refreshTrigger,
+        showFilterSheet: $showFilterSheet,
+        showSavedFilters: $showSavedFilters,
+        libraryIds: resolvedLibraryIds,
+        libraryScope: libraryTab ? libraryTabScope?.wrappedValue : effectiveScope,
+        scopeLibraries: scopeStore.libraries,
+        allLibrariesEntry: scopeStore.allLibrariesEntry
+      )
     }
   }
 

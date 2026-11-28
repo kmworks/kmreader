@@ -143,7 +143,10 @@ struct DashboardView: View {
       // reloads sections. The overlay appears only once a query is submitted —
       // while typing or after clearing, the dashboard stays visible.
       if showsDashboardSearchField && isSearchPresented && !submittedSearchText.isEmpty {
-        DashboardSearchResultsView(searchText: submittedSearchText)
+        DashboardSearchResultsView(
+          authViewModel: authViewModel,
+          searchText: submittedSearchText
+        )
       }
     }
     #if os(iOS) || os(macOS)
@@ -153,7 +156,7 @@ struct DashboardView: View {
         enabled: showsDashboardSearchField
       )
       .onSubmit(of: .search) {
-        submittedSearchText = searchQuery
+        submittedSearchText = SearchViewModel.normalizedQuery(searchQuery)
       }
       .onChange(of: searchQuery) { _, newValue in
         // Clearing the field resets results immediately, like the standalone

@@ -105,6 +105,40 @@ extension DatabaseOperator {
       }) ?? []
   }
 
+  func countBrowseBooks(
+    instanceId: String,
+    libraryIds: [String]?,
+    searchText: String,
+    browseOpts: BookBrowseOptions,
+    offlineOnly: Bool = false
+  ) -> Int {
+    guard !instanceId.isEmpty else { return 0 }
+    return
+      (try? read { db in
+        var sql = """
+          SELECT COUNT(*)
+          FROM \(KomgaBook.databaseTableName)
+          WHERE instance_id = ?
+          """
+        var arguments: StatementArguments = [instanceId]
+
+        Self.appendSQLInFilter(
+          column: "library_id",
+          values: libraryIds ?? [],
+          sql: &sql,
+          arguments: &arguments
+        )
+        Self.appendBookBrowseSQLFilters(
+          searchText: searchText,
+          browseOpts: browseOpts,
+          offlineOnly: offlineOnly,
+          sql: &sql,
+          arguments: &arguments
+        )
+        return try Int.fetchOne(db, sql: sql, arguments: arguments) ?? 0
+      }) ?? 0
+  }
+
   func fetchSeriesBookIds(
     seriesId: String,
     browseOpts: BookBrowseOptions,

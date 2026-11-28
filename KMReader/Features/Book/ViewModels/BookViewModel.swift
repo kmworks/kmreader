@@ -11,8 +11,14 @@ import SwiftUI
 class BookViewModel {
   var currentBook: Book?
   var isLoading = false
+  private(set) var totalCount: Int?
+  private(set) var loadError: Error?
 
-  private(set) var pagination = PaginationState<IdentifiedString>(pageSize: 50)
+  private(set) var pagination: PaginationState<IdentifiedString>
+
+  init(pageSize: Int = 50) {
+    pagination = PaginationState<IdentifiedString>(pageSize: pageSize)
+  }
 
   private var lastBrowseQuery:
     (
@@ -118,7 +124,9 @@ class BookViewModel {
 
   func removeBook(id: String) {
     withAnimation {
-      _ = pagination.removeItems(withIDs: [id])
+      if pagination.removeItems(withIDs: [id]), let count = totalCount {
+        totalCount = max(0, count - 1)
+      }
     }
   }
 
@@ -158,6 +166,8 @@ class BookViewModel {
 
   private func beginLoad(refresh: Bool) -> UUID? {
     if refresh {
+      totalCount = nil
+      loadError = nil
       withAnimation {
         pagination.reset()
         isLoading = true
@@ -230,7 +240,8 @@ class BookViewModel {
     libraryIds: [String]? = nil,
     refresh: Bool = false,
     useLocalOnly: Bool = false,
-    offlineOnly: Bool = false
+    offlineOnly: Bool = false,
+    reportsErrors: Bool = true
   ) async {
     guard let loadID = beginLoad(refresh: refresh) else { return }
     lastBrowseQuery = (browseOpts, searchText, libraryIds, useLocalOnly, offlineOnly)
@@ -246,11 +257,13 @@ class BookViewModel {
     if AppConfig.isOffline || useLocalOnly {
       guard let database = try? await DatabaseOperator.database() else {
         guard loadID == pagination.loadID else { return }
+        totalCount = 0
         applyPage(ids: [], moreAvailable: false)
         return
       }
+      let instanceId = AppConfig.current.instanceId
       let ids = await database.fetchBrowseBookIds(
-        instanceId: AppConfig.current.instanceId,
+        instanceId: instanceId,
         libraryIds: libraryIds,
         searchText: searchText,
         browseOpts: browseOpts,
@@ -258,7 +271,15 @@ class BookViewModel {
         limit: pagination.pageSize,
         offlineOnly: offlineOnly
       )
+      let count = await database.countBrowseBooks(
+        instanceId: instanceId,
+        libraryIds: libraryIds,
+        searchText: searchText,
+        browseOpts: browseOpts,
+        offlineOnly: offlineOnly
+      )
       guard loadID == pagination.loadID else { return }
+      totalCount = count
       applyPage(ids: ids, moreAvailable: ids.count == pagination.pageSize)
     } else {
       do {
@@ -271,11 +292,17 @@ class BookViewModel {
         )
 
         guard loadID == pagination.loadID else { return }
+        totalCount = page.totalElements
         let ids = page.content.map { $0.id }
         applyPage(ids: ids, moreAvailable: !page.last)
       } catch {
         guard loadID == pagination.loadID else { return }
-        ErrorManager.shared.alert(error: error)
+        if ErrorManager.shared.shouldShowError(error) {
+          loadError = error
+        }
+        if reportsErrors {
+          ErrorManager.shared.alert(error: error)
+        }
       }
     }
   }

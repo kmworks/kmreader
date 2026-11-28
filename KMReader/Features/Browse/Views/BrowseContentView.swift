@@ -6,19 +6,15 @@
 import SwiftUI
 
 /// The scrollable content of a browse page: optional library header, the
-/// content-type menu (when browsing across types), the search placeholder,
-/// and the per-type content. The chrome around it (search field, toolbar,
-/// navigation title, refresh triggers) belongs to the enclosing shell —
-/// `BrowseView` for standalone pages, `DashboardSearchResultsView` for the
-/// Dashboard search overlay.
+/// content-type menu (when browsing across types), and the per-type content.
+/// The chrome around it (search field, toolbar, navigation title, refresh
+/// triggers) belongs to the enclosing shell — `BrowseView` for standalone
+/// pages, `ListsBrowseDetailView` and `SearchCategoryDetailView` for fixed-type
+/// pages.
 struct BrowseContentView: View {
   let fixedContent: BrowseContentType?
   let metadataFilter: MetadataFilterConfig?
-  /// Search mode: show a search placeholder until a query is entered instead
-  /// of browsing all content.
-  let searchOnly: Bool
-  /// The submitted query driving results; empty shows the placeholder in
-  /// search mode, or all content otherwise.
+  /// The submitted query filtering this list; empty browses all content.
   let searchText: String
   let refreshTrigger: UUID
   @Binding var showFilterSheet: Bool
@@ -29,13 +25,6 @@ struct BrowseContentView: View {
   /// In-place scope of the iPhone Library tab root; its header and the
   /// single-library section counts come from `scopeLibraries`.
   let libraryScope: LibraryBrowseScope?
-  /// iPhone Search tab root's scope binding, rendered as a scope menu inside
-  /// the empty placeholder: the auto-focused search field hides the toolbar's
-  /// scope picker, so the placeholder carries the scope identity itself.
-  let searchScope: Binding<LibraryBrowseScope>?
-  /// The library picker sheet stays hosted by the enclosing shell; the
-  /// empty-state scope menu's Pin Libraries entry drives this binding.
-  @Binding var showLibraryPicker: Bool
   let scopeLibraries: [SidebarLibraryItem]
   let allLibrariesEntry: SidebarLibraryItem?
 
@@ -47,29 +36,23 @@ struct BrowseContentView: View {
   init(
     fixedContent: BrowseContentType? = nil,
     metadataFilter: MetadataFilterConfig? = nil,
-    searchOnly: Bool = false,
     searchText: String = "",
     refreshTrigger: UUID,
     showFilterSheet: Binding<Bool> = .constant(false),
     showSavedFilters: Binding<Bool> = .constant(false),
     libraryIds: [String]? = nil,
     libraryScope: LibraryBrowseScope? = nil,
-    searchScope: Binding<LibraryBrowseScope>? = nil,
-    showLibraryPicker: Binding<Bool> = .constant(false),
     scopeLibraries: [SidebarLibraryItem] = [],
     allLibrariesEntry: SidebarLibraryItem? = nil
   ) {
     self.fixedContent = fixedContent
     self.metadataFilter = metadataFilter
-    self.searchOnly = searchOnly
     self.searchText = searchText
     self.refreshTrigger = refreshTrigger
     self._showFilterSheet = showFilterSheet
     self._showSavedFilters = showSavedFilters
     self.libraryIds = libraryIds
     self.libraryScope = libraryScope
-    self.searchScope = searchScope
-    self._showLibraryPicker = showLibraryPicker
     self.scopeLibraries = scopeLibraries
     self.allLibrariesEntry = allLibrariesEntry
   }
@@ -156,7 +139,7 @@ struct BrowseContentView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        if fixedContent == nil && !(searchOnly && searchText.isEmpty) {
+        if fixedContent == nil {
           HStack {
             BrowseContentTypeMenu(
               selection: browseContentBinding,
@@ -175,29 +158,7 @@ struct BrowseContentView: View {
           .padding(.vertical, 8)
         }
 
-        if searchOnly && searchText.isEmpty {
-          ContentUnavailableView {
-            Label(String(localized: "tab.search", defaultValue: "Search"), systemImage: AppIcon.search)
-          } description: {
-            Text(
-              String(
-                localized: "search.empty.hint",
-                defaultValue: "Search series, books, collections, and read lists."))
-          } actions: {
-            if let searchScope {
-              LibraryScopeMenu(
-                libraries: scopeLibraries,
-                showLibraryPicker: $showLibraryPicker,
-                scope: searchScope,
-                iconOnly: false
-              )
-              .adaptiveButtonStyle(.bordered)
-            }
-          }
-          .frame(maxWidth: .infinity, minHeight: 320)
-        } else {
-          browseContentView
-        }
+        browseContentView
       }
     }
   }
