@@ -6,7 +6,6 @@
   final class NativeCoverSlotView: NSView {
     private struct Configuration: Equatable {
       let item: ReaderViewItem?
-      let isVisible: Bool
       let screenSize: CGSize
       let readingDirection: ReadingDirection
       let splitWidePageMode: SplitWidePageMode
@@ -63,14 +62,12 @@
       splitWidePageMode: SplitWidePageMode,
       renderConfig: ReaderRenderConfig,
       readListContext: ReaderReadListContext?,
-      isVisible: Bool,
       isPlaybackActive: Bool,
       tracksGlobalZoomState: Bool,
       onDismiss: @escaping () -> Void
     ) {
       let configuration = Configuration(
         item: item,
-        isVisible: isVisible,
         screenSize: screenSize,
         readingDirection: readingDirection,
         splitWidePageMode: splitWidePageMode,
@@ -100,25 +97,6 @@
     }
 
     func refreshContent() {
-      applyConfiguration()
-    }
-
-    func setPlaybackActive(_ isPlaybackActive: Bool, tracksGlobalZoomState: Bool) {
-      self.isPlaybackActive = isPlaybackActive
-      self.tracksGlobalZoomState = tracksGlobalZoomState
-      if let lastConfiguration {
-        self.lastConfiguration = Configuration(
-          item: lastConfiguration.item,
-          isVisible: lastConfiguration.isVisible,
-          screenSize: lastConfiguration.screenSize,
-          readingDirection: lastConfiguration.readingDirection,
-          splitWidePageMode: lastConfiguration.splitWidePageMode,
-          renderConfig: lastConfiguration.renderConfig,
-          readListContext: lastConfiguration.readListContext,
-          isPlaybackActive: isPlaybackActive,
-          tracksGlobalZoomState: tracksGlobalZoomState
-        )
-      }
       applyConfiguration()
     }
 
@@ -180,7 +158,6 @@
         return
       }
 
-      isHidden = false
       wantsLayer = true
       layer?.backgroundColor = NSColor(renderConfig.readerBackground.color).cgColor
 
