@@ -25,6 +25,7 @@ struct SearchBrowseView: View {
   @State private var localScope: LibraryBrowseScope
   @State private var searchQuery = ""
   @State private var activeSearchText = ""
+  @State private var isSearchPresented = false
   @State private var showLibraryPicker = false
   @FocusState private var isSearchFocused: Bool
 
@@ -63,9 +64,23 @@ struct SearchBrowseView: View {
     ].joined(separator: "|")
   }
 
-  private var embedsScopeMenuInPlaceholder: Bool {
+  private var autoFocusesSearchOnAppear: Bool {
     #if os(iOS)
       return !PlatformHelper.isPad
+    #else
+      return false
+    #endif
+  }
+
+  /// Only while the iOS 26+ presented search bar hides the toolbar's scope
+  /// capsule; dismissing search (or iOS 17's drawer) keeps the toolbar picker
+  /// visible, so the placeholder must not render a duplicate.
+  private var showsPlaceholderScopeMenu: Bool {
+    #if os(iOS)
+      if #available(iOS 26.0, *) {
+        return !PlatformHelper.isPad && isSearchPresented
+      }
+      return false
     #else
       return false
     #endif
@@ -75,10 +90,14 @@ struct SearchBrowseView: View {
     content
       .inlineLargeBarTitleStyle(enabled: !PlatformHelper.isPad)
       .platformNavigationTitle(title)
-      .searchableIfNeeded(text: $searchQuery, enabled: true)
+      #if os(iOS) || os(macOS)
+        .searchableIfNeeded(text: $searchQuery, isPresented: $isSearchPresented, enabled: true)
+      #else
+        .searchableIfNeeded(text: $searchQuery, enabled: true)
+      #endif
       .browseSearchFocus($isSearchFocused, when: focusesSearchOnAppear)
       .onAppear {
-        if embedsScopeMenuInPlaceholder && searchQuery.isEmpty {
+        if autoFocusesSearchOnAppear && searchQuery.isEmpty {
           isSearchFocused = true
         }
       }
@@ -145,7 +164,7 @@ struct SearchBrowseView: View {
         SearchEmptyPlaceholderView(
           libraries: scopeStore.libraries,
           showLibraryPicker: $showLibraryPicker,
-          scope: embedsScopeMenuInPlaceholder ? scopeBinding : nil
+          scope: showsPlaceholderScopeMenu ? scopeBinding : nil
         )
       }
     } else {

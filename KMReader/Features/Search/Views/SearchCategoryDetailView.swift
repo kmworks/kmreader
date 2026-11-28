@@ -21,7 +21,6 @@ struct SearchCategoryDetailView: View {
   @AppStorage("readListBrowseLayout") private var readListBrowseLayout: BrowseLayoutMode = .grid
 
   @State private var refreshTrigger = UUID()
-  @State private var initializedLibraryIdsKey: String?
   @State private var searchQuery: String
   @State private var activeSearchText: String
   @State private var showLibraryPicker = false
@@ -128,10 +127,10 @@ struct SearchCategoryDetailView: View {
         activeSearchText = ""
       }
     }
-    .task(id: resolvedLibraryIdsKey) {
+    .onChange(of: resolvedLibraryIdsKey) { _, _ in
+      // Each list runs its own initial `.task` on mount; only post-mount
+      // scope changes need to retrigger lists that don't key on `libraryIds`.
       guard !authViewModel.isSwitching else { return }
-      guard initializedLibraryIdsKey != resolvedLibraryIdsKey else { return }
-      initializedLibraryIdsKey = resolvedLibraryIdsKey
       refreshTrigger = UUID()
     }
     .onChange(of: authViewModel.isSwitching) { oldValue, newValue in

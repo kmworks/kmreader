@@ -131,6 +131,8 @@ struct SeriesBrowseView: View {
     .task(id: initializationKey) {
       guard initializedKey != initializationKey else { return }
 
+      // Replaced scopes must not keep acting on items hidden by the new query.
+      selectedSeriesIds.removeAll()
       if let metadataFilter = metadataFilter {
         var opts = SeriesBrowseOptions()
         opts.metadataFilter = metadataFilter
@@ -142,6 +144,7 @@ struct SeriesBrowseView: View {
       await loadSeries(refresh: true)
     }
     .onChange(of: refreshTrigger) { _, _ in
+      selectedSeriesIds.removeAll()
       Task {
         await loadSeries(refresh: true)
       }
@@ -162,6 +165,7 @@ struct SeriesBrowseView: View {
       }
     }
     .onChange(of: searchText) { _, newValue in
+      selectedSeriesIds.removeAll()
       Task {
         await loadSeries(refresh: true)
       }

@@ -128,6 +128,8 @@ struct BooksBrowseView: View {
       .task(id: initializationKey) {
         guard initializedKey != initializationKey else { return }
 
+        // Replaced scopes must not keep acting on items hidden by the new query.
+        selectedBookIds.removeAll()
         if let metadataFilter = metadataFilter {
           var opts = BookBrowseOptions()
           opts.metadataFilter = metadataFilter
@@ -139,6 +141,7 @@ struct BooksBrowseView: View {
         await loadBooks(refresh: true)
       }
       .onChange(of: refreshTrigger) { _, _ in
+        selectedBookIds.removeAll()
         Task {
           await loadBooks(refresh: true)
         }
@@ -159,6 +162,7 @@ struct BooksBrowseView: View {
         }
       }
       .onChange(of: searchText) { _, newValue in
+        selectedBookIds.removeAll()
         Task {
           await loadBooks(refresh: true)
         }
