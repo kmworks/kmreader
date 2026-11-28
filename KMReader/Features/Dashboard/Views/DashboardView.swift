@@ -145,7 +145,7 @@ struct DashboardView: View {
       if showsDashboardSearchField && isSearchPresented && !submittedSearchText.isEmpty {
         DashboardSearchResultsView(
           authViewModel: authViewModel,
-          searchText: SearchViewModel.normalizedQuery(submittedSearchText)
+          searchText: submittedSearchText
         )
       }
     }
@@ -156,7 +156,7 @@ struct DashboardView: View {
         enabled: showsDashboardSearchField
       )
       .onSubmit(of: .search) {
-        submittedSearchText = searchQuery
+        submittedSearchText = SearchViewModel.normalizedQuery(searchQuery)
       }
       .onChange(of: searchQuery) { _, newValue in
         // Clearing the field resets results immediately, like the standalone

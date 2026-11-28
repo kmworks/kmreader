@@ -485,7 +485,8 @@ nonisolated enum SyncService {
     page: Int,
     size: Int,
     sort: String?,
-    search: String?
+    search: String?,
+    syncAutomaticBooks: Bool = true
   ) async throws -> Page<ReadList> {
     let database = try await DatabaseOperator.database()
     let result = try await ReadListService.getReadLists(
@@ -497,7 +498,9 @@ nonisolated enum SyncService {
     )
     let instanceId = AppConfig.current.instanceId
     let automaticPolicyReadListIds = await database.upsertReadLists(result.content, instanceId: instanceId)
-    await syncAutomaticReadListBooks(automaticPolicyReadListIds)
+    if syncAutomaticBooks {
+      await syncAutomaticReadListBooks(automaticPolicyReadListIds)
+    }
     return result
   }
 

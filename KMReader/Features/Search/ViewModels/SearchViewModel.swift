@@ -105,18 +105,25 @@ final class SearchViewModel {
       refresh: true,
       reportsErrors: false
     )
+    // Previews render list cards only; hydrating automatic-policy member
+    // books would stall every category behind unrelated book-page syncs.
     async let readLists: Void = readListsViewModel.loadReadLists(
       libraryIds: libraryIds,
       searchText: trimmed,
       sort: readListSort,
       refresh: true,
-      reportsErrors: false
+      reportsErrors: false,
+      syncAutomaticBooks: false
     )
     _ = await (series, books, collections, readLists)
 
     guard searchID == id else { return }
-    loadedKey = key
     isLoading = false
+    // Leaving the surface cancels the task without starting a replacement;
+    // only completed searches may satisfy `hasLoaded` on return.
+    if !Task.isCancelled {
+      loadedKey = key
+    }
   }
 
   func clear() {

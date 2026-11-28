@@ -28,7 +28,8 @@ class ReadListsViewModel {
     searchText: String = "",
     sort: String? = nil,
     refresh: Bool = false,
-    reportsErrors: Bool = true
+    reportsErrors: Bool = true,
+    syncAutomaticBooks: Bool = true
   ) async {
     guard let loadID = beginLoad(refresh: refresh) else { return }
 
@@ -92,7 +93,8 @@ class ReadListsViewModel {
           libraryIds: libraryIds,
           searchText: searchText,
           sort: sort,
-          pinnedSet: Set(pinnedIds)
+          pinnedSet: Set(pinnedIds),
+          syncAutomaticBooks: syncAutomaticBooks
         )
 
         guard loadID == pagination.loadID else { return }
@@ -122,14 +124,16 @@ class ReadListsViewModel {
     libraryIds: [String]?,
     searchText: String,
     sort: String?,
-    pinnedSet: Set<String>
+    pinnedSet: Set<String>,
+    syncAutomaticBooks: Bool
   ) async throws -> (ids: [String], moreAvailable: Bool, totalElements: Int) {
     var page = try await SyncService.syncReadLists(
       libraryIds: libraryIds,
       page: serverPage,
       size: pagination.pageSize,
       sort: sort,
-      search: searchText.isEmpty ? nil : searchText
+      search: searchText.isEmpty ? nil : searchText,
+      syncAutomaticBooks: syncAutomaticBooks
     )
     let totalElements = page.totalElements
     serverPage += 1
@@ -140,7 +144,8 @@ class ReadListsViewModel {
         page: serverPage,
         size: pagination.pageSize,
         sort: sort,
-        search: searchText.isEmpty ? nil : searchText
+        search: searchText.isEmpty ? nil : searchText,
+        syncAutomaticBooks: syncAutomaticBooks
       )
       serverPage += 1
       ids = page.content.map { $0.id }.filter { !pinnedSet.contains($0) }

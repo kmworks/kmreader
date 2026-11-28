@@ -58,13 +58,17 @@ struct SearchResultsContentView: View {
   @ViewBuilder
   private var seriesSection: some View {
     let vm = viewModel.seriesViewModel
-    let items = vm.pagination.items
+    let items = previewItems(vm.pagination.items)
     if !items.isEmpty {
       SearchCategorySectionView(
         category: .series,
         totalCount: vm.totalCount,
         showsViewAll: showsViewAll(
-          totalCount: vm.totalCount, loadedCount: items.count, hasMore: vm.pagination.hasMorePages),
+          totalCount: vm.totalCount,
+          loadedCount: vm.pagination.items.count,
+          previewCount: items.count,
+          hasMore: vm.pagination.hasMorePages
+        ),
         destination: destination(for: .series),
         itemIds: items.map(\.id)
       ) {
@@ -87,13 +91,17 @@ struct SearchResultsContentView: View {
   @ViewBuilder
   private var booksSection: some View {
     let vm = viewModel.bookViewModel
-    let items = vm.pagination.items
+    let items = previewItems(vm.pagination.items)
     if !items.isEmpty {
       SearchCategorySectionView(
         category: .books,
         totalCount: vm.totalCount,
         showsViewAll: showsViewAll(
-          totalCount: vm.totalCount, loadedCount: items.count, hasMore: vm.pagination.hasMorePages),
+          totalCount: vm.totalCount,
+          loadedCount: vm.pagination.items.count,
+          previewCount: items.count,
+          hasMore: vm.pagination.hasMorePages
+        ),
         destination: destination(for: .books),
         itemIds: items.map(\.id)
       ) {
@@ -117,13 +125,17 @@ struct SearchResultsContentView: View {
   @ViewBuilder
   private var collectionsSection: some View {
     let vm = viewModel.collectionsViewModel
-    let items = vm.pagination.items
+    let items = previewItems(vm.pagination.items)
     if !items.isEmpty {
       SearchCategorySectionView(
         category: .collections,
         totalCount: vm.totalCount,
         showsViewAll: showsViewAll(
-          totalCount: vm.totalCount, loadedCount: items.count, hasMore: vm.pagination.hasMorePages),
+          totalCount: vm.totalCount,
+          loadedCount: vm.pagination.items.count,
+          previewCount: items.count,
+          hasMore: vm.pagination.hasMorePages
+        ),
         destination: destination(for: .collections),
         itemIds: items.map(\.id)
       ) {
@@ -144,13 +156,17 @@ struct SearchResultsContentView: View {
   @ViewBuilder
   private var readListsSection: some View {
     let vm = viewModel.readListsViewModel
-    let items = vm.pagination.items
+    let items = previewItems(vm.pagination.items)
     if !items.isEmpty {
       SearchCategorySectionView(
         category: .readlists,
         totalCount: vm.totalCount,
         showsViewAll: showsViewAll(
-          totalCount: vm.totalCount, loadedCount: items.count, hasMore: vm.pagination.hasMorePages),
+          totalCount: vm.totalCount,
+          loadedCount: vm.pagination.items.count,
+          previewCount: items.count,
+          hasMore: vm.pagination.hasMorePages
+        ),
         destination: destination(for: .readlists),
         itemIds: items.map(\.id)
       ) {
@@ -168,7 +184,18 @@ struct SearchResultsContentView: View {
     }
   }
 
-  private func showsViewAll(totalCount: Int?, loadedCount: Int, hasMore: Bool) -> Bool {
-    hasMore || (totalCount ?? loadedCount) > loadedCount
+  /// Pinned collections/read lists can prepend more items than `pageSize`;
+  /// cap the eager strip so a preview never renders an unbounded row.
+  private func previewItems(_ items: [IdentifiedString]) -> [IdentifiedString] {
+    Array(items.prefix(SearchViewModel.previewPageSize))
+  }
+
+  private func showsViewAll(
+    totalCount: Int?,
+    loadedCount: Int,
+    previewCount: Int,
+    hasMore: Bool
+  ) -> Bool {
+    hasMore || loadedCount > previewCount || (totalCount ?? loadedCount) > previewCount
   }
 }

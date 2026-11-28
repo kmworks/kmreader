@@ -477,6 +477,26 @@ extension DatabaseOperator {
     guard !instanceId.isEmpty else { return 0 }
     return
       (try? read { db in
+        if browseOpts.sortString == "random" {
+          let candidates = try fetchBrowseSeriesSQLCandidates(
+            db: db,
+            instanceId: instanceId,
+            libraryIds: libraryIds ?? [],
+            searchText: searchText,
+            browseOpts: browseOpts,
+            offset: nil,
+            limit: nil,
+            offlineOnly: offlineOnly
+          )
+          return Self.filteredBrowseSeries(
+            candidates,
+            libraryIds: nil,
+            searchText: searchText,
+            browseOpts: browseOpts,
+            offlineOnly: offlineOnly
+          ).count
+        }
+
         let requiresResidualFilter =
           browseOpts.completeFilter.isActive
           || !browseOpts.includeSeriesStatuses.isEmpty
