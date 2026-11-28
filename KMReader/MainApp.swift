@@ -235,7 +235,7 @@ struct MainApp: App {
         }
 
         if state.hasTableOfContents || state.supportsPageJump || state.supportsSearch
-          || state.canReturnFromLink || state.supportsBookmarks
+          || state.canReturnToPreviousPosition || state.supportsBookmarks
         {
           Divider()
         }
@@ -274,9 +274,9 @@ struct MainApp: App {
           .disabled(!state.isActive || !state.canSearch)
         }
 
-        if state.canReturnFromLink {
+        if state.canReturnToPreviousPosition {
           Button(String(localized: "Return to previous position")) {
-            readerPresentation.returnFromLinkFromCommand()
+            readerPresentation.returnToPreviousPositionFromCommand()
           }
           .disabled(!state.isActive)
         }

@@ -192,7 +192,7 @@
       progressSubmissionSuppressed = false
       progressionRetryTask?.cancel()
       progressionRetryTask = nil
-      linkBackStack = []
+      positionBackStack = []
       bookmarks = []
       committedContentLocation = nil
       footnoteProbeToken = nil
@@ -245,8 +245,8 @@
 
         resourceRootURL = offlineRoot
         mediaTypesByRelativePath = Self.mediaTypeMap(from: manifest)
-        // Page count cache is memory-only, no file loading needed
         loadTextLengthCache()
+        loadPageCountCache()
         try await cacheChapterURLs()
 
         if !incognito {
@@ -563,6 +563,9 @@
 
     func goToChapter(link: WebPubLink) {
       guard let href = link.href, let chapterIndex = chapterIndexForHref(href) else { return }
+      if chapterIndex != currentChapterIndex || currentPageIndex != 0 {
+        recordCurrentPositionForReturn()
+      }
       navigateToPage(chapterIndex: chapterIndex, pageIndex: 0)
     }
 
@@ -611,31 +614,47 @@
 
     private func navigateToChapterLink(chapterIndex: Int, fragment: String?) {
       if chapterIndex == currentChapterIndex, fragment == nil || fragment?.isEmpty == true {
+        if currentPageIndex != 0 {
+          recordCurrentPositionForReturn()
+        }
         navigateToPage(chapterIndex: chapterIndex, pageIndex: 0)
         return
       }
-      pushLinkBack(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
+      recordCurrentPositionForReturn()
       requestNavigation(
         chapterIndex: chapterIndex,
         destination: fragment.flatMap { $0.isEmpty ? nil : .fragment($0) } ?? .page(0)
       )
     }
 
-    // MARK: - In-book link back stack
+    // MARK: - Position back stack
 
-    /// Origin positions of in-book link jumps (footnotes, cross-references),
-    /// so the reader can return to where the link was tapped.
-    private(set) var linkBackStack: [(chapterIndex: Int, pageIndex: Int)] = []
+    private static let positionBackStackLimit = 50
 
-    var canReturnFromLink: Bool { !linkBackStack.isEmpty }
+    /// Origin positions of explicit jumps (progress scrubbing, TOC, bookmarks,
+    /// and in-book links), so the reader can return with one tap. Ordinary page
+    /// turns never push onto this stack.
+    private(set) var positionBackStack: [(chapterIndex: Int, pageIndex: Int)] = []
 
-    func pushLinkBack(chapterIndex: Int, pageIndex: Int) {
-      if let last = linkBackStack.last,
-        last.chapterIndex == chapterIndex, last.pageIndex == pageIndex
+    var canReturnToPreviousPosition: Bool { !positionBackStack.isEmpty }
+
+    private func recordCurrentPositionForReturn() {
+      guard !readingOrder.isEmpty else { return }
+      let position = (chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
+      if let last = positionBackStack.last,
+        last.chapterIndex == position.chapterIndex, last.pageIndex == position.pageIndex
       {
         return
       }
-      linkBackStack.append((chapterIndex: chapterIndex, pageIndex: pageIndex))
+      positionBackStack.append(position)
+      if positionBackStack.count > Self.positionBackStackLimit {
+        positionBackStack.removeFirst(positionBackStack.count - Self.positionBackStackLimit)
+      }
+    }
+
+    func returnToPreviousPosition() {
+      guard let entry = positionBackStack.popLast() else { return }
+      navigateToPage(chapterIndex: entry.chapterIndex, pageIndex: entry.pageIndex)
     }
 
     func navigationRequiresFullExtent(for chapterIndex: Int) -> Bool {
@@ -647,11 +666,6 @@
         case .fragment(let anchor) = request.destination
       else { return nil }
       return EpubAnchorNavigation(id: request.id, chapterIndex: chapterIndex, anchor: anchor)
-    }
-
-    func returnFromLink() {
-      guard let entry = linkBackStack.popLast() else { return }
-      navigateToPage(chapterIndex: entry.chapterIndex, pageIndex: entry.pageIndex)
     }
 
     // MARK: - Bookmarks
@@ -720,10 +734,14 @@
 
     func goToBookmark(_ bookmark: EpubBookmark) {
       guard let chapterIndex = bookmarkChapterIndex(bookmark) else { return }
-      requestNavigation(
-        chapterIndex: chapterIndex,
-        destination: .fraction(min(max(bookmark.chapterFraction, 0), 1))
-      )
+      let fraction = min(max(bookmark.chapterFraction, 0), 1)
+      let destination = EpubNavigationDestination.fraction(fraction)
+      if chapterIndex != currentChapterIndex
+        || destination.pageIndex(pageCount: chapterPageCount(at: chapterIndex) ?? 1) != currentPageIndex
+      {
+        recordCurrentPositionForReturn()
+      }
+      requestNavigation(chapterIndex: chapterIndex, destination: destination)
     }
 
     private func insertBookmark(_ bookmark: EpubBookmark) {
@@ -1040,8 +1058,7 @@
 
       let link = readingOrder[chapterIndex]
       guard let href = link.href else { return nil }
-      let normalizedHref = Self.normalizedHref(href)
-      let title = link.title ?? tocTitleByHref[normalizedHref]
+      let title = inheritedChapterTitle(at: chapterIndex)
 
       return WebPubPageLocation(
         href: href,
@@ -1093,8 +1110,10 @@
       let effectiveViewport = viewportSize.width > 0 ? viewportSize : Self.defaultViewportSize
       guard let href = readingOrder[chapterIndex].href else { return }
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
-      pageCountCache[cacheKey] = normalizedCount
-
+      if pageCountCache[cacheKey] != normalizedCount {
+        pageCountCache[cacheKey] = normalizedCount
+        savePageCountCache()
+      }
     }
 
     func markChapterLoadFailed(_ chapterIndex: Int) {
@@ -1127,10 +1146,17 @@
     }
 
     func containerInsetsForLabels() -> ReaderContainerInsets {
-      WebPubInfoOverlaySupport.containerInsets(
-        topOffset: labelTopOffset,
-        bottomOffset: labelBottomOffset
-      )
+      #if os(iOS)
+        // iOS reserves both reading and controls chrome in EpubReaderView's
+        // constant-height VStack bar slots; the content viewport only needs
+        // breathing room between those bars and the text.
+        return ReaderContainerInsets(top: 8, left: 0, bottom: 8, right: 0)
+      #else
+        return WebPubInfoOverlaySupport.containerInsets(
+          topOffset: labelTopOffset,
+          bottomOffset: labelBottomOffset
+        )
+      #endif
     }
 
     // MARK: - Navigation
@@ -1326,49 +1352,252 @@
     }
 
     var totalSeekFraction: Double? {
-      guard let location = pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex) else {
+      guard pageLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex) != nil else {
         return nil
       }
-      if hasFullTextWeights {
-        return totalProgression(
-          location: location,
-          chapterProgress: Double(location.pageIndex) / Double(max(1, location.pageCount))
-        )
-      }
-      let totalPages = totalPageCount()
-      guard totalPages > 0 else { return nil }
-      return Double(pageOffsetBeforeChapter(location.chapterIndex) + location.pageIndex) / Double(totalPages)
+      return seekFraction(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
     }
 
-    /// Seeks to the page-start fraction exposed by totalSeekFraction.
-    func seek(toTotalFraction fraction: Double) {
+    /// Book-wide page position for reader chrome. Measured chapters use their
+    /// exact layout counts; unmeasured chapters are estimated from text weight
+    /// so the total reflects the whole book before every chapter is paginated.
+    var bookPageProgress: EpubBookPageProgress? {
+      guard !readingOrder.isEmpty, readingOrder.indices.contains(currentChapterIndex) else { return nil }
+      let counts = displayPageCounts()
+      let total = counts.reduce(0, +)
+      guard total > 0 else { return nil }
+      let offset = counts[..<currentChapterIndex].reduce(0, +)
+      let localPage = min(max(0, currentPageIndex), counts[currentChapterIndex] - 1)
+      return EpubBookPageProgress(currentPage: offset + localPage + 1, totalPages: total)
+    }
+
+    /// Seek fraction of the position `returnToPreviousPosition()` jumps back to,
+    /// marked on the progress bar while a return is available.
+    var returnSeekFraction: Double? {
+      guard let origin = positionBackStack.last else { return nil }
+      return seekFraction(chapterIndex: origin.chapterIndex, pageIndex: origin.pageIndex)
+    }
+
+    private static let maxScrubTickCount = 24
+
+    /// Chapter start fractions along the seek bar, used for scrub tick marks.
+    /// Ticks follow TOC chapters rather than raw spine items so split chapter
+    /// files do not turn the bar into a dense comb; very large chapter counts
+    /// fall back to top-level TOC sections.
+    var chapterBoundaryFractions: [Double] {
+      guard readingOrder.count > 1 else { return [] }
+      let leafLinks = Self.leafTOCLinks(tableOfContents)
+      let leafIndexes = tocChapterIndexes(from: leafLinks)
+      let chosenIndexes: [Int]
+      if leafIndexes.count > Self.maxScrubTickCount {
+        let topIndexes = tocChapterIndexes(from: tableOfContents)
+        chosenIndexes = topIndexes.count > 1 ? topIndexes : leafIndexes
+      } else if !leafIndexes.isEmpty {
+        chosenIndexes = leafIndexes
+      } else {
+        chosenIndexes = Array(readingOrder.indices)
+      }
+
+      return chosenIndexes.compactMap { index in
+        guard index > 0, let fraction = seekFraction(chapterIndex: index, pageIndex: 0),
+          fraction > 0, fraction < 1
+        else { return nil }
+        return fraction
+      }
+    }
+
+    private func tocChapterIndexes(from links: [WebPubLink]) -> [Int] {
+      var seen = Set<Int>()
+      var indexes: [Int] = []
+      for link in links {
+        guard let href = link.href, let index = chapterIndexForHref(href), seen.insert(index).inserted else {
+          continue
+        }
+        indexes.append(index)
+      }
+      return indexes.sorted()
+    }
+
+    private static func leafTOCLinks(_ links: [WebPubLink]) -> [WebPubLink] {
+      var leaves: [WebPubLink] = []
+      for link in links {
+        if let children = link.children, !children.isEmpty {
+          leaves.append(contentsOf: leafTOCLinks(children))
+        } else {
+          leaves.append(link)
+        }
+      }
+      return leaves
+    }
+
+    func scrubPreview(forTotalFraction fraction: Double) -> EpubScrubPreview? {
       let target = min(max(fraction, 0), 1)
-      guard target != totalSeekFraction else { return }
+      guard let resolved = resolveSeekTarget(forTotalFraction: target) else { return nil }
+      return EpubScrubPreview(
+        fraction: target,
+        chapterIndex: resolved.chapterIndex,
+        pageIndex: resolved.pageIndex,
+        chapterTitle: chapterDisplayTitle(at: resolved.chapterIndex),
+        bookPage: resolved.bookPage,
+        totalPages: resolved.totalPages
+      )
+    }
+
+    /// Spine items split out of one chapter often have no TOC entry of their own;
+    /// inherit the nearest preceding chapter title so chrome, bookmarks, and
+    /// previews name the chapter the reader recognizes from the table of contents.
+    private func inheritedChapterTitle(at index: Int) -> String? {
+      guard readingOrder.indices.contains(index) else { return nil }
+      for candidate in stride(from: index, through: 0, by: -1) {
+        let link = readingOrder[candidate]
+        let raw = link.title ?? tocTitleByHref[Self.normalizedHref(link.href ?? "")]
+        if let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
+          return trimmed
+        }
+      }
+      return nil
+    }
+
+    private func chapterDisplayTitle(at index: Int) -> String {
+      inheritedChapterTitle(at: index) ?? String(localized: "Chapter \(index + 1)")
+    }
+
+    /// Seeks to a fraction in the same mapping as `totalSeekFraction`, recording
+    /// the origin so the reader can jump back. Scrubbing within the current
+    /// page's own fraction band is a no-op. Returns whether a jump was requested.
+    @discardableResult
+    func seek(toTotalFraction fraction: Double) -> Bool {
+      let target = min(max(fraction, 0), 1)
+      guard let resolved = resolveSeekTarget(forTotalFraction: target) else { return false }
+
+      if resolved.chapterIndex == currentChapterIndex,
+        let lower = seekFraction(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex),
+        let upper = seekFraction(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex + 1)
+      {
+        let epsilon = 1e-9
+        if target >= lower - epsilon, target <= upper + epsilon {
+          return false
+        }
+      }
+
+      recordCurrentPositionForReturn()
+      if knownPageCount(at: resolved.chapterIndex) != nil {
+        navigateToPage(chapterIndex: resolved.chapterIndex, pageIndex: resolved.pageIndex)
+      } else {
+        navigateToProgression(chapterIndex: resolved.chapterIndex, progression: resolved.chapterFraction)
+      }
+      return true
+    }
+
+    /// Steps the seek position by whole pages along the seek scale, recording
+    /// the origin just like a scrub jump. Used by accessibility adjustments.
+    func stepSeekPosition(pageOffset: Int) {
+      guard pageOffset != 0, totalSeekFraction != nil else { return }
+      let epsilon = 1e-6
+      if pageOffset > 0,
+        let upper = seekFraction(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex + 1)
+      {
+        seek(toTotalFraction: min(1, upper + epsilon))
+      } else if pageOffset < 0,
+        let lower = seekFraction(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
+      {
+        seek(toTotalFraction: max(0, lower - epsilon))
+      }
+    }
+
+    /// Maps a chapter page index to the global seek scale. `pageIndex` may equal
+    /// the chapter's page count to address the chapter's upper boundary.
+    private func seekFraction(chapterIndex: Int, pageIndex: Int) -> Double? {
+      guard readingOrder.indices.contains(chapterIndex) else { return nil }
+      let count = max(1, chapterPageCounts[chapterIndex] ?? 1)
+      let page = Double(max(0, pageIndex))
       if hasFullTextWeights, totalTextWeight > 0 {
-        let targetWeight = target * Double(totalTextWeight)
+        var beforeWeight = 0
+        if chapterIndex > 0 {
+          for idx in 0..<chapterIndex {
+            beforeWeight += chapterTextWeights[idx] ?? 0
+          }
+        }
+        let chapterWeight = Double(chapterTextWeights[chapterIndex] ?? 0)
+        let progressed = Double(beforeWeight) + (page / Double(count)) * chapterWeight
+        return min(max(progressed / Double(totalTextWeight), 0), 1)
+      }
+      let total = totalPageCount()
+      guard total > 0 else { return nil }
+      let offset = pageOffsetBeforeChapter(chapterIndex)
+      return min(max((Double(offset) + page) / Double(total), 0), 1)
+    }
+
+    private func resolveSeekTarget(
+      forTotalFraction fraction: Double
+    ) -> (
+      chapterIndex: Int, pageIndex: Int, chapterFraction: Double, bookPage: Int, totalPages: Int
+    )? {
+      guard !readingOrder.isEmpty else { return nil }
+      let counts = displayPageCounts()
+      let totalPages = max(1, counts.reduce(0, +))
+      var chapterIndex = readingOrder.count - 1
+      var chapterFraction = 1.0
+
+      if hasFullTextWeights, totalTextWeight > 0 {
+        let targetWeight = fraction * Double(totalTextWeight)
         var accumulated = 0.0
-        for idx in 0..<readingOrder.count {
+        for idx in readingOrder.indices {
           let weight = Double(chapterTextWeights[idx] ?? 0)
           if accumulated + weight > targetWeight || idx == readingOrder.count - 1 {
-            let within = weight > 0 ? min(max((targetWeight - accumulated) / weight, 0), 1) : 0
-            navigateToProgression(chapterIndex: idx, progression: within)
-            return
+            chapterIndex = idx
+            chapterFraction = weight > 0 ? min(max((targetWeight - accumulated) / weight, 0), 1) : 0
+            break
           }
           accumulated += weight
         }
-        return
+      } else {
+        let measuredTotal = totalPageCount()
+        guard measuredTotal > 0 else { return nil }
+        let overallIndex = min(measuredTotal - 1, max(0, Int((fraction * Double(measuredTotal)).rounded(.down))))
+        var offset = 0
+        for idx in readingOrder.indices {
+          let count = max(1, chapterPageCounts[idx] ?? 1)
+          if overallIndex < offset + count || idx == readingOrder.count - 1 {
+            chapterIndex = idx
+            let localIndex = min(count - 1, max(0, overallIndex - offset))
+            chapterFraction = count > 1 ? Double(localIndex) / Double(count) : 0
+            break
+          }
+          offset += count
+        }
       }
 
-      let totalPages = totalPageCount()
-      guard totalPages > 0 else { return }
-      let overallIndex = min(totalPages - 1, max(0, Int((target * Double(totalPages)).rounded(.down))))
-      for idx in 0..<readingOrder.count {
-        let count = max(1, chapterPageCounts[idx] ?? 1)
-        let offset = pageOffsetBeforeChapter(idx)
-        if overallIndex < offset + count || idx == readingOrder.count - 1 {
-          navigateToPage(chapterIndex: idx, pageIndex: min(count - 1, overallIndex - offset))
-          return
+      let displayCount = counts[chapterIndex]
+      let pageIndex = min(displayCount - 1, max(0, Int((chapterFraction * Double(displayCount)).rounded(.down))))
+      let bookOffset = counts[..<chapterIndex].reduce(0, +)
+      return (chapterIndex, pageIndex, chapterFraction, bookOffset + pageIndex + 1, totalPages)
+    }
+
+    private func knownPageCount(at index: Int) -> Int? {
+      guard readingOrder.indices.contains(index), let href = readingOrder[index].href else { return nil }
+      let effectiveViewport = viewportSize.width > 0 ? viewportSize : Self.defaultViewportSize
+      return pageCountCache[pageCountCacheKey(for: href, viewport: effectiveViewport)]
+    }
+
+    /// Exact counts where the current geometry has been measured, else a
+    /// text-weight estimate scaled by the measured chapters' density.
+    private func displayPageCounts() -> [Int] {
+      var measuredPages = 0
+      var measuredWeight = 0
+      for index in readingOrder.indices {
+        if let count = knownPageCount(at: index), let weight = chapterTextWeights[index] {
+          measuredPages += max(1, count)
+          measuredWeight += weight
         }
+      }
+      let pagesPerCharacter = measuredWeight > 0 ? Double(measuredPages) / Double(measuredWeight) : 0
+      return readingOrder.indices.map { index in
+        if let count = knownPageCount(at: index) { return max(1, count) }
+        if pagesPerCharacter > 0, let weight = chapterTextWeights[index] {
+          return max(1, Int((Double(weight) * pagesPerCharacter).rounded()))
+        }
+        return max(1, chapterPageCounts[index] ?? 1)
       }
     }
 
@@ -1466,8 +1695,15 @@
 
       for (index, link) in readingOrder.enumerated() {
         let cacheKey = pageCountCacheKey(for: link.href ?? "", viewport: effectiveViewport)
-        let cachedCount = pageCountCache[cacheKey]
-        chapterPageCounts[index] = max(1, cachedCount ?? 1)
+        if let cachedCount = pageCountCache[cacheKey] {
+          chapterPageCounts[index] = max(1, cachedCount)
+        } else if keepingCurrent, let existing = chapterPageCounts[index] {
+          // Keep the last measured count until the new geometry reports, so
+          // uncached resizes (rotation, chrome insets) do not flash 1 page left.
+          chapterPageCounts[index] = max(1, existing)
+        } else {
+          chapterPageCounts[index] = 1
+        }
       }
       if keepingCurrent {
         normalizeCurrentPosition()
@@ -1556,6 +1792,25 @@
       guard let data = try? Data(contentsOf: cacheURL) else { return }
       if let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
         textLengthCache = decoded
+      }
+    }
+
+    private func loadPageCountCache() {
+      guard let rootURL = resourceRootURL else { return }
+      let cacheURL = rootURL.appendingPathComponent("page-counts.json", isDirectory: false)
+      guard let data = try? Data(contentsOf: cacheURL) else { return }
+      if let decoded = try? JSONDecoder().decode([String: Int].self, from: data) {
+        pageCountCache = decoded
+      }
+    }
+
+    private func savePageCountCache() {
+      guard let rootURL = resourceRootURL else { return }
+      let cacheURL = rootURL.appendingPathComponent("page-counts.json", isDirectory: false)
+      let encoder = JSONEncoder()
+      encoder.outputFormatting = [.sortedKeys]
+      if let data = try? encoder.encode(pageCountCache) {
+        try? data.write(to: cacheURL, options: [.atomic])
       }
     }
 

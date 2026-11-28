@@ -15,7 +15,26 @@
     let goToBookmark: (EpubBookmark) -> Void
     let deleteBookmark: (EpubBookmark) -> Void
 
-    @State private var tab: TocTab = .contents
+    @State private var tab: TocTab
+
+    init(
+      chapters: [WebPubLink],
+      currentLink: WebPubLink?,
+      bookmarks: [EpubBookmark],
+      currentBookmarkID: UUID?,
+      goToChapter: @escaping (WebPubLink) -> Void,
+      goToBookmark: @escaping (EpubBookmark) -> Void,
+      deleteBookmark: @escaping (EpubBookmark) -> Void
+    ) {
+      self.chapters = chapters
+      self.currentLink = currentLink
+      self.bookmarks = bookmarks
+      self.currentBookmarkID = currentBookmarkID
+      self.goToChapter = goToChapter
+      self.goToBookmark = goToBookmark
+      self.deleteBookmark = deleteBookmark
+      _tab = State(initialValue: chapters.isEmpty && !bookmarks.isEmpty ? .bookmarks : .contents)
+    }
 
     /// Rows for links with an href keep the href as their scroll identity;
     /// href-less container headings get a path-based id so siblings never

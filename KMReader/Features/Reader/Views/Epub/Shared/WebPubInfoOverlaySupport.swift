@@ -42,95 +42,114 @@
       isRTL: Bool,
       overlayPreferences: EpubOverlayPreferences = AppConfig.epubOverlayPreferences
     ) -> Content {
-      if showingControls {
+      #if os(iOS)
+        // iOS renders both reading and controls chrome in EpubReaderView's
+        // constant-height VStack bar slots so toggling controls never resizes
+        // the pagination viewport.
         return Content(
           showingControls: showingControls,
           topLeading: .hidden,
-          topCenter: entry(
-            for: overlayPreferences.controlsHeaderCenter,
-            flowStyle: flowStyle,
-            bookTitle: bookTitle,
-            chapterTitle: chapterTitle,
-            totalProgression: totalProgression,
-            currentPageIndex: currentPageIndex,
-            totalPagesInChapter: totalPagesInChapter
-          ),
+          topCenter: .hidden,
           topTrailing: .hidden,
           bottomLeading: .hidden,
-          bottomCenter: entry(
-            for: overlayPreferences.controlsFooterCenter,
-            flowStyle: flowStyle,
-            bookTitle: bookTitle,
-            chapterTitle: chapterTitle,
-            totalProgression: totalProgression,
-            currentPageIndex: currentPageIndex,
-            totalPagesInChapter: totalPagesInChapter
-          ),
+          bottomCenter: .hidden,
           bottomTrailing: .hidden,
           bottomProgress: nil,
           isRTL: isRTL
         )
-      }
+      #else
+        if showingControls {
+          let controlsHeader = entry(
+            for: .chapterRemaining,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          )
+          let controlsFooter = entry(
+            for: .chapterPosition,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          )
+          return Content(
+            showingControls: showingControls,
+            topLeading: .hidden,
+            topCenter: controlsHeader,
+            topTrailing: .hidden,
+            bottomLeading: .hidden,
+            bottomCenter: controlsFooter,
+            bottomTrailing: .hidden,
+            bottomProgress: nil,
+            isRTL: isRTL
+          )
+        }
 
-      return Content(
-        showingControls: showingControls,
-        topLeading: entry(
-          for: overlayPreferences.readerHeaderLeading,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        ),
-        topCenter: entry(
-          for: overlayPreferences.readerHeaderCenter,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        ),
-        topTrailing: entry(
-          for: overlayPreferences.readerHeaderTrailing,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        ),
-        bottomLeading: entry(
-          for: overlayPreferences.readerFooterLeading,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        ),
-        bottomCenter: entry(
-          for: overlayPreferences.readerFooterCenter,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        ),
-        bottomTrailing: entry(
-          for: overlayPreferences.readerFooterTrailing,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        ),
-        bottomProgress: overlayPreferences.showsReaderProgressBar ? totalProgression.map(clampedProgress) : nil,
-        isRTL: isRTL
-      )
+        return Content(
+          showingControls: showingControls,
+          topLeading: entry(
+            for: overlayPreferences.readerHeaderLeading,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          ),
+          topCenter: entry(
+            for: overlayPreferences.readerHeaderCenter,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          ),
+          topTrailing: entry(
+            for: overlayPreferences.readerHeaderTrailing,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          ),
+          bottomLeading: entry(
+            for: overlayPreferences.readerFooterLeading,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          ),
+          bottomCenter: entry(
+            for: overlayPreferences.readerFooterCenter,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          ),
+          bottomTrailing: entry(
+            for: overlayPreferences.readerFooterTrailing,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          ),
+          bottomProgress: overlayPreferences.showsReaderProgressBar ? totalProgression.map(clampedProgress) : nil,
+          isRTL: isRTL
+        )
+      #endif
     }
 
     private static func visibleEntry(_ text: String?) -> Entry {
@@ -138,6 +157,60 @@
         return .hidden
       }
       return Entry(text: trimmed, isVisible: true)
+    }
+
+    static func text(
+      for item: EpubOverlayTextItem,
+      flowStyle: FlowStyle,
+      bookTitle: String?,
+      chapterTitle: String?,
+      totalProgression: Double?,
+      currentPageIndex: Int,
+      totalPagesInChapter: Int,
+      bookPage: Int? = nil,
+      totalBookPages: Int? = nil
+    ) -> String? {
+      switch item {
+      case .none:
+        return nil
+      case .bookTitle:
+        return bookTitle
+      case .chapterTitle:
+        return chapterTitle
+      case .bookProgressPercent:
+        guard let totalProgression else { return nil }
+        let percentage = clampedProgress(totalProgression).formatted(.percent.precision(.fractionLength(2)))
+        return String(localized: "Book Progress \(percentage)")
+      case .bookRemainingPercent:
+        guard let totalProgression else { return nil }
+        let remaining = (1.0 - clampedProgress(totalProgression)).formatted(.percent.precision(.fractionLength(2)))
+        return String(localized: "\(remaining) left")
+      case .chapterProgressPercent:
+        guard totalPagesInChapter > 0 else { return nil }
+        let progress = chapterProgress(
+          currentPageIndex: currentPageIndex,
+          totalPagesInChapter: totalPagesInChapter
+        )
+        let percentage = progress.formatted(.percent.precision(.fractionLength(1)))
+        return String(localized: "Chapter Progress \(percentage)")
+      case .chapterRemaining:
+        guard totalPagesInChapter > 0 else { return nil }
+        return chapterRemainingText(
+          flowStyle: flowStyle,
+          currentPageIndex: currentPageIndex,
+          totalPagesInChapter: totalPagesInChapter
+        )
+      case .chapterPosition:
+        guard totalPagesInChapter > 0 else { return nil }
+        return chapterPositionText(
+          flowStyle: flowStyle,
+          currentPageIndex: currentPageIndex,
+          totalPagesInChapter: totalPagesInChapter
+        )
+      case .bookPosition:
+        guard let bookPage, let totalBookPages, bookPage > 0, totalBookPages > 0 else { return nil }
+        return String(localized: "\(bookPage) of \(totalBookPages)")
+      }
     }
 
     private static func entry(
@@ -149,97 +222,57 @@
       currentPageIndex: Int,
       totalPagesInChapter: Int
     ) -> Entry {
-      switch item {
-      case .none:
-        return .hidden
-      case .bookTitle:
-        return visibleEntry(bookTitle)
-      case .chapterTitle:
-        return visibleEntry(chapterTitle)
-      case .bookProgressPercent:
-        guard let totalProgression else { return .hidden }
-        let percentage = clampedProgress(totalProgression).formatted(.percent.precision(.fractionLength(2)))
-        return Entry(
-          text: String(localized: "Book Progress \(percentage)"),
-          isVisible: true
-        )
-      case .bookRemainingPercent:
-        guard let totalProgression else { return .hidden }
-        let remaining = (1.0 - clampedProgress(totalProgression)).formatted(.percent.precision(.fractionLength(2)))
-        return Entry(text: String(localized: "\(remaining) left"), isVisible: true)
-      case .chapterProgressPercent:
-        guard totalPagesInChapter > 0 else { return .hidden }
-        let progress = chapterProgress(
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        )
-        let percentage = progress.formatted(.percent.precision(.fractionLength(1)))
-        return Entry(
-          text: String(localized: "Chapter Progress \(percentage)"),
-          isVisible: true
-        )
-      case .chapterRemaining:
-        guard totalPagesInChapter > 0 else { return .hidden }
-        return chapterRemainingEntry(
+      visibleEntry(
+        text(
+          for: item,
           flowStyle: flowStyle,
+          bookTitle: bookTitle,
+          chapterTitle: chapterTitle,
+          totalProgression: totalProgression,
           currentPageIndex: currentPageIndex,
           totalPagesInChapter: totalPagesInChapter
         )
-      case .chapterPosition:
-        guard totalPagesInChapter > 0 else { return .hidden }
-        return chapterPositionEntry(
-          flowStyle: flowStyle,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        )
-      }
+      )
     }
 
-    private static func chapterPositionEntry(
+    private static func chapterPositionText(
       flowStyle: FlowStyle,
       currentPageIndex: Int,
       totalPagesInChapter: Int
-    ) -> Entry {
+    ) -> String {
       switch flowStyle {
       case .paged:
         let current = currentPageIndex + 1
-        return Entry(
-          text: String(localized: "Chapter Progress \(current) / \(totalPagesInChapter)"),
-          isVisible: true
-        )
+        return String(localized: "Chapter Progress \(current) / \(totalPagesInChapter)")
       case .scrolled:
         let progress = chapterProgress(
           currentPageIndex: currentPageIndex,
           totalPagesInChapter: totalPagesInChapter
         )
         let percentage = progress.formatted(.percent.precision(.fractionLength(1)))
-        return Entry(
-          text: String(localized: "Chapter Progress \(percentage)"),
-          isVisible: true
-        )
+        return String(localized: "Chapter Progress \(percentage)")
       }
     }
 
-    private static func chapterRemainingEntry(
+    private static func chapterRemainingText(
       flowStyle: FlowStyle,
       currentPageIndex: Int,
       totalPagesInChapter: Int
-    ) -> Entry {
+    ) -> String {
       switch flowStyle {
       case .paged:
         let remainingPages = totalPagesInChapter - (currentPageIndex + 1)
-        let text =
+        return
           remainingPages > 0
           ? String(localized: "\(remainingPages) pages left")
           : String(localized: "Last page")
-        return Entry(text: text, isVisible: true)
       case .scrolled:
         let progress = chapterProgress(
           currentPageIndex: currentPageIndex,
           totalPagesInChapter: totalPagesInChapter
         )
         let remaining = (1.0 - progress).formatted(.percent.precision(.fractionLength(1)))
-        return Entry(text: String(localized: "\(remaining) left"), isVisible: true)
+        return String(localized: "\(remaining) left")
       }
     }
 

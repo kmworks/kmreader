@@ -535,7 +535,9 @@
       }
 
       applyTheme()
-      refreshDocumentStartUserScript()
+      if shouldReload || appearanceChanged {
+        refreshDocumentStartUserScript()
+      }
       if shouldReload {
         loadContentIfNeeded(force: true)
       } else if appearanceChanged || navigationChanged {

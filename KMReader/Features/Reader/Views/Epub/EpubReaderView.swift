@@ -54,11 +54,12 @@
     @State private var showingThemeSheet = false
     @State private var showingSettingsSheet = false
     @State private var showingDetailSheet = false
-    @State private var showingQuickActions = false
     @State private var showingEndPage = false
-    /// Local preview value while the quick-progress slider is being dragged;
-    /// nil when not scrubbing.
-    @State private var progressScrub: Double?
+    @State private var isScrubbing = false
+    // Frozen per container size so toggling the status bar with the controls
+    // never changes bar heights and re-paginates the chapter.
+    @State private var barTopInset: CGFloat = 0
+    @State private var barBottomInset: CGFloat = 0
     @State private var keyboardHelpTimer: Timer?
     @State private var showKeyboardHelp = false
 
@@ -199,10 +200,6 @@
       currentBook?.metadata.title ?? book.metadata.title
     }
 
-    private var animation: Animation {
-      .default
-    }
-
     private var isUsingBookPreferences: Bool {
       bookThemePreferences != nil
     }
@@ -248,24 +245,6 @@
     private var loadingContentColor: Color {
       readerTheme.textColor
     }
-
-    #if os(macOS)
-      private var supportsOverlayControls: Bool {
-        false
-      }
-
-      private var supportsKeyboardOverlayToggle: Bool {
-        true
-      }
-    #else
-      private var supportsOverlayControls: Bool {
-        true
-      }
-
-      private var supportsKeyboardOverlayToggle: Bool {
-        supportsOverlayControls
-      }
-    #endif
 
     private func updateHandoff() {
       let url = KomgaWebLinkBuilder.epubReader(
@@ -467,14 +446,66 @@
     }
 
     @ViewBuilder
+    private var showsReaderControls: Bool {
+      shouldShowControls && viewModel.hasContent && !viewModel.isLoading && viewModel.errorMessage == nil
+    }
+
     private var readerBody: some View {
       GeometryReader { geometry in
         ZStack {
+          #if os(iOS)
+            Color.clear
+              .onAppear {
+                updateBarInsets(for: geometry)
+              }
+              .onChange(of: geometry.size) { _, _ in
+                updateBarInsets(for: geometry)
+              }
+          #endif
+
           readerTheme.backgroundColor.readerIgnoresSafeArea()
 
-          contentView(for: geometry.size, viewModel: viewModel)
+          #if os(iOS)
+            VStack(spacing: 0) {
+              EpubReaderTopBar(
+                viewModel: viewModel,
+                incognito: incognito,
+                theme: readerTheme,
+                flowStyle: epubFlowStyle,
+                overlayPreferences: epubOverlayPreferences,
+                bookTitle: currentBook?.metadata.title,
+                topInset: barTopInset,
+                showsControls: shouldShowControls,
+                isScrubbing: $isScrubbing,
+                onClose: closeReader
+              )
 
-          controlsOverlay
+              readerContentArea(for: geometry.size)
+
+              EpubReaderBottomBar(
+                viewModel: viewModel,
+                theme: readerTheme,
+                flowStyle: epubFlowStyle,
+                overlayPreferences: epubOverlayPreferences,
+                bookTitle: currentBook?.metadata.title,
+                bottomInset: barBottomInset,
+                showsControls: showsReaderControls,
+                showingChapterSheet: $showingChapterSheet,
+                showingThemeSheet: $showingThemeSheet,
+                showingSettingsSheet: $showingSettingsSheet,
+                showingDetailSheet: $showingDetailSheet,
+                isScrubbing: $isScrubbing
+              )
+            }
+            .readerIgnoresSafeArea()
+            .onChange(of: shouldShowControls) { _, visible in
+              if !visible {
+                isScrubbing = false
+              }
+            }
+          #else
+            readerContentArea(for: geometry.size)
+          #endif
 
           if let footnote = viewModel.footnote {
             EpubFootnotePopupView(
@@ -489,13 +520,79 @@
           keyboardHelpOverlay
         }
         .animation(.appCurve(0.24), value: viewModel.footnote)
-        .onAppear {
-          viewModel.updateViewport(size: geometry.size)
+        .sheet(isPresented: $showingChapterSheet) {
+          EpubTocSheetView(
+            chapters: viewModel.tableOfContents,
+            currentLink: currentChapterLink,
+            bookmarks: viewModel.bookmarks,
+            currentBookmarkID: viewModel.currentBookmark?.id,
+            goToChapter: { link in
+              showingChapterSheet = false
+              viewModel.goToChapter(link: link)
+            },
+            goToBookmark: { bookmark in
+              showingChapterSheet = false
+              viewModel.goToBookmark(bookmark)
+            },
+            deleteBookmark: { bookmark in
+              Task { await viewModel.deleteBookmark(bookmark) }
+            }
+          )
         }
-        .onChange(of: geometry.size) { _, newSize in
+        .sheet(isPresented: $showingThemeSheet) {
+          NavigationStack {
+            EpubThemePreferencesView(
+              inSheet: true,
+              bookId: currentBook?.id ?? book.id,
+              hasBookThemePreferences: bookThemePreferences != nil,
+              initialThemePreferences: activeThemePreferences,
+              onThemePreferencesSaved: { newPreferences in
+                activeThemePreferences = newPreferences
+                bookThemePreferences = newPreferences
+              },
+              onThemePreferencesCleared: {
+                activeThemePreferences = globalThemePreferences
+                bookThemePreferences = nil
+              }
+            )
+          }
+        }
+        .sheet(isPresented: $showingSettingsSheet) {
+          EpubReaderSettingsView(inSheet: true)
+        }
+        .readerDetailSheet(
+          isPresented: $showingDetailSheet,
+          book: currentBook,
+          series: currentSeries
+        )
+      }
+    }
+
+    #if os(iOS)
+      private func updateBarInsets(for geometry: GeometryProxy) {
+        let top = geometry.safeAreaInsets.top
+        let bottom = geometry.safeAreaInsets.bottom
+        // Touch-ID phones report top == 0 while the status bar is hidden in
+        // reading mode; keep a status-bar floor so revealing it with the
+        // controls neither overlaps the clock nor changes bar height.
+        let effectiveTop = (!PlatformHelper.isPad && bottom == 0) ? max(top, 20) : top
+        if barTopInset != effectiveTop { barTopInset = effectiveTop }
+        if barBottomInset != bottom { barBottomInset = bottom }
+      }
+    #endif
+
+    private func readerContentArea(for fallbackSize: CGSize) -> some View {
+      contentView(for: fallbackSize, viewModel: viewModel)
+        .onAppear {
+          viewModel.updateViewport(size: fallbackSize)
+        }
+        .onGeometryChange(for: CGSize.self) {
+          $0.size
+        } action: { newSize in
           viewModel.updateViewport(size: newSize)
         }
-      }
+        // Never interpolate the pagination viewport across chrome transition frames.
+        .transaction { $0.animation = nil }
     }
 
     @ViewBuilder
@@ -657,6 +754,8 @@
           )
         }
       #else
+        // iOS owns all chrome in SwiftUI's persistent bars; passing toggle state into
+        // the engines would reconfigure chapter hosts and WebKit scripts on every tap.
         if renderingEngine == .coreText {
           switch epubFlowStyle {
           case .paged:
@@ -668,7 +767,7 @@
                 colorScheme: readerColorScheme,
                 animatePageTransitions: animateEpubTapTurns,
                 overlayPreferences: epubOverlayPreferences,
-                showingControls: shouldShowControls,
+                showingControls: false,
                 bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
@@ -688,7 +787,7 @@
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
                 overlayPreferences: epubOverlayPreferences,
-                showingControls: shouldShowControls,
+                showingControls: false,
                 bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
@@ -708,7 +807,7 @@
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
                 overlayPreferences: epubOverlayPreferences,
-                showingControls: shouldShowControls,
+                showingControls: false,
                 bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
@@ -729,7 +828,7 @@
               tapScrollPercentage: epubTapScrollPercentage,
               animateTapTurns: animateEpubTapTurns,
               overlayPreferences: epubOverlayPreferences,
-              showingControls: shouldShowControls,
+              showingControls: false,
               bookTitle: currentBook?.metadata.title,
               onCenterTap: {
                 toggleControls()
@@ -753,7 +852,7 @@
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
                 overlayPreferences: epubOverlayPreferences,
-                showingControls: shouldShowControls,
+                showingControls: false,
                 bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
@@ -772,7 +871,7 @@
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
                 overlayPreferences: epubOverlayPreferences,
-                showingControls: shouldShowControls,
+                showingControls: false,
                 bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
@@ -791,7 +890,7 @@
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
                 overlayPreferences: epubOverlayPreferences,
-                showingControls: shouldShowControls,
+                showingControls: false,
                 bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
@@ -812,7 +911,7 @@
               tapScrollPercentage: epubTapScrollPercentage,
               animateTapTurns: animateEpubTapTurns,
               overlayPreferences: epubOverlayPreferences,
-              showingControls: shouldShowControls,
+              showingControls: false,
               bookTitle: currentBook?.metadata.title,
               onCenterTap: {
                 toggleControls()
@@ -892,273 +991,10 @@
       }
     }
 
-    @ViewBuilder
-    private var controlsOverlay: some View {
-      Color.clear
-        .overlay(alignment: .topLeading) {
-          if supportsOverlayControls && shouldShowControls {
-            Button {
-              closeReader()
-            } label: {
-              Image(systemName: AppIcon.close)
-                .contentShape(Circle())
-            }
-            .controlSize(.extraLarge)
-            .buttonBorderShape(.circle)
-            .readerControlButtonStyle()
-            .padding(.top, 24)
-            .padding(.leading, 12)
-            .accessibilityLabel(Text("Close"))
-            .transition(.scale(scale: 0).combined(with: .opacity))
-          }
-        }
-        .overlay(alignment: .topTrailing) {
-          if supportsOverlayControls && shouldShowControls {
-            if incognito {
-              // Incognito reading keeps no bookmarks, so this slot carries the privacy marker
-              // instead. It has no action, but it must still swallow the tap: the disc sits in
-              // the page-turn zone, and letting the tap through would turn the page.
-              Button {
-              } label: {
-                Image(systemName: "eye.slash")
-                  .opacity(0.6)
-                  .contentShape(Circle())
-              }
-              .controlSize(.extraLarge)
-              .buttonBorderShape(.circle)
-              .readerControlButtonStyle()
-              .padding(.top, 24)
-              .padding(.trailing, 12)
-              .accessibilityLabel(Text("Incognito Reading"))
-              .accessibilityRemoveTraits(.isButton)
-              .transition(.scale(scale: 0).combined(with: .opacity))
-            } else {
-              Button {
-                HapticFeedback.selectionChanged()
-                Task { await viewModel.toggleBookmark() }
-              } label: {
-                Image(systemName: AppIcon.bookmark)
-                  .symbolVariant(viewModel.isCurrentPositionBookmarked ? .fill : .none)
-                  .contentTransition(.symbolEffect(.replace, options: .nonRepeating))
-                  .contentShape(Circle())
-              }
-              .controlSize(.extraLarge)
-              .buttonBorderShape(.circle)
-              .readerControlButtonStyle()
-              .padding(.top, 24)
-              .padding(.trailing, 12)
-              .disabled(!viewModel.canToggleBookmark)
-              .accessibilityLabel(
-                viewModel.isCurrentPositionBookmarked ? Text("Remove Bookmark") : Text("Add Bookmark")
-              )
-              .transition(.scale(scale: 0).combined(with: .opacity))
-            }
-          }
-        }
-        .overlay(alignment: .bottomTrailing) {
-          VStack(alignment: .trailing) {
-            if supportsOverlayControls && shouldShowControls && showingQuickActions {
-              quickActionsPanel
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-            if supportsOverlayControls && shouldShowControls {
-              Button {
-                withAnimation(animation) {
-                  showingQuickActions.toggle()
-                }
-              } label: {
-                Image(systemName: showingQuickActions ? AppIcon.close : "line.3.horizontal")
-                  .padding(2)
-                  .contentTransition(.symbolEffect(.replace, options: .nonRepeating))
-                  .contentShape(Circle())
-              }
-              .controlSize(.extraLarge)
-              .buttonBorderShape(.circle)
-              .readerControlButtonStyle()
-              .padding(.bottom, 24)
-              .padding(.trailing, 12)
-              .transition(.scale(scale: 0).combined(with: .opacity))
-            }
-          }
-        }
-        .overlay(alignment: .bottomLeading) {
-          if supportsOverlayControls && shouldShowControls && viewModel.canReturnFromLink {
-            Button {
-              viewModel.returnFromLink()
-            } label: {
-              HStack {
-                Text("Return to previous position")
-                  .font(.callout)
-                Image(systemName: "arrow.uturn.backward")
-              }
-              .contentShape(Capsule())
-            }
-            .readerControlButtonStyle()
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
-            .padding(.bottom, 24)
-            .padding(.leading, 12)
-            .transition(.scale(scale: 0).combined(with: .opacity))
-          }
-        }
-        .iPadIgnoresSafeArea(paddingTop: 24)
-        .allowsHitTesting(supportsOverlayControls && shouldShowControls)
-        .sheet(isPresented: $showingChapterSheet) {
-          EpubTocSheetView(
-            chapters: viewModel.tableOfContents,
-            currentLink: currentChapterLink,
-            bookmarks: viewModel.bookmarks,
-            currentBookmarkID: viewModel.currentBookmark?.id,
-            goToChapter: { link in
-              showingChapterSheet = false
-              viewModel.goToChapter(link: link)
-            },
-            goToBookmark: { bookmark in
-              showingChapterSheet = false
-              viewModel.goToBookmark(bookmark)
-            },
-            deleteBookmark: { bookmark in
-              Task { await viewModel.deleteBookmark(bookmark) }
-            }
-          )
-        }
-        .sheet(isPresented: $showingThemeSheet) {
-          NavigationStack {
-            EpubThemePreferencesView(
-              inSheet: true,
-              bookId: currentBook?.id ?? book.id,
-              hasBookThemePreferences: bookThemePreferences != nil,
-              initialThemePreferences: activeThemePreferences,
-              onThemePreferencesSaved: { newPreferences in
-                activeThemePreferences = newPreferences
-                bookThemePreferences = newPreferences
-              },
-              onThemePreferencesCleared: {
-                activeThemePreferences = globalThemePreferences
-                bookThemePreferences = nil
-              }
-            )
-          }
-        }
-        .sheet(isPresented: $showingSettingsSheet) {
-          EpubReaderSettingsView(inSheet: true)
-        }
-        .readerDetailSheet(
-          isPresented: $showingDetailSheet,
-          book: currentBook,
-          series: currentSeries
-        )
-    }
-
-    @ViewBuilder
-    private var quickActionsPanel: some View {
-      VStack(alignment: .trailing, spacing: 6) {
-        if let currentLocation = viewModel.currentLocation,
-          let totalProgression = currentLocation.totalProgression
-        {
-          if let seekFraction = viewModel.totalSeekFraction {
-            quickProgressSlider(baseline: seekFraction)
-          }
-
-          Button {
-            showingChapterSheet = true
-          } label: {
-            HStack {
-              Text("Contents · \(totalProgression, format: .percent.precision(.fractionLength(1)))")
-                .font(.callout)
-              Image(systemName: "list.bullet")
-            }
-            .contentShape(Capsule())
-          }
-          .readerControlButtonStyle()
-          .buttonBorderShape(.capsule)
-          .controlSize(.large)
-          .disabled(viewModel.tableOfContents.isEmpty)
-        }
-
-        Button {
-          showingDetailSheet = true
-        } label: {
-          HStack {
-            Text("Book Info")
-              .font(.callout)
-            Image(systemName: AppIcon.details)
-          }
-          .contentShape(Capsule())
-        }
-        .readerControlButtonStyle()
-        .buttonBorderShape(.capsule)
-        .controlSize(.large)
-
-        Button {
-          showingSettingsSheet = true
-        } label: {
-          HStack {
-            Text("Settings")
-              .font(.callout)
-            Image(systemName: AppIcon.settings)
-          }
-          .contentShape(Capsule())
-        }
-        .readerControlButtonStyle()
-        .buttonBorderShape(.capsule)
-        .controlSize(.large)
-
-        Button {
-          showingThemeSheet = true
-        } label: {
-          HStack {
-            Text("Theme")
-              .font(.callout)
-            Image(systemName: "textformat")
-          }
-          .contentShape(Capsule())
-        }
-        .readerControlButtonStyle()
-        .buttonBorderShape(.capsule)
-        .controlSize(.large)
-      }
-      .transition(.move(edge: .trailing).combined(with: .opacity))
-    }
-
-    /// Quick progress scrubber: dragging previews the target percentage, the
-    /// seek commits on release.
-    private func quickProgressSlider(baseline: Double) -> some View {
-      HStack(spacing: 8) {
-        Text(progressScrub ?? baseline, format: .percent.precision(.fractionLength(0)))
-          .font(.caption.monospacedDigit())
-          .lineLimit(1)
-          .fixedSize()
-        Slider(value: progressScrubBinding(baseline: baseline), in: 0...1) { editing in
-          if editing {
-            progressScrub = baseline
-          } else if let scrub = progressScrub {
-            progressScrub = nil
-            viewModel.seek(toTotalFraction: scrub)
-          }
-        }
-        .frame(width: 200)
-      }
-      .padding(.horizontal, 14)
-      .padding(.vertical, 8)
-      .background(.ultraThinMaterial, in: Capsule())
-    }
-
-    private func progressScrubBinding(baseline: Double) -> Binding<Double> {
-      Binding(
-        get: { progressScrub ?? baseline },
-        set: { newValue in progressScrub = newValue }
-      )
-    }
-
     private func toggleControls() {
       cancelAutoHideAfterResume()
-      let shouldHideControls = showingControls
-      withAnimation(animation) {
+      withAnimation(.appCurve(0.24)) {
         showingControls.toggle()
-        if shouldHideControls {
-          showingQuickActions = false
-        }
       }
     }
 
@@ -1260,7 +1096,7 @@
           supportsPageLayoutSelection: false,
           supportsDualPageOptions: false,
           supportsSplitWidePageMode: false,
-          canReturnFromLink: viewModel.canReturnFromLink,
+          canReturnToPreviousPosition: viewModel.canReturnToPreviousPosition,
           supportsBookmarks: !incognito,
           canToggleBookmark: viewModel.canToggleBookmark,
           isCurrentPositionBookmarked: viewModel.isCurrentPositionBookmarked
@@ -1275,7 +1111,7 @@
         supportsFullscreenToggle: supportsFullscreenToggle,
         supportsLiveText: false,
         supportsJumpToPage: false,
-        supportsToggleControls: supportsKeyboardOverlayToggle,
+        supportsToggleControls: true,
         hasNextBook: false,
         spaceKeyAction: spaceKeyAction,
         onDismiss: {
@@ -1318,8 +1154,8 @@
             toggleContinuousScroll: {},
             toggleMangaTranslation: {},
             showMangaTranslationSettings: {},
-            returnFromLink: {
-              viewModel.returnFromLink()
+            returnToPreviousPosition: {
+              viewModel.returnToPreviousPosition()
             },
             toggleBookmark: {
               Task { await viewModel.toggleBookmark() }

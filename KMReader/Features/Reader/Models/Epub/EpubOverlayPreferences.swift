@@ -15,8 +15,6 @@ nonisolated struct EpubOverlayPreferences: RawRepresentable, Equatable, Sendable
   var readerFooterCenter: EpubOverlayTextItem
   var readerFooterTrailing: EpubOverlayTextItem
   var showsReaderProgressBar: Bool
-  var controlsHeaderCenter: EpubOverlayTextItem
-  var controlsFooterCenter: EpubOverlayTextItem
 
   init() {
     readerHeaderLeading = .none
@@ -26,8 +24,6 @@ nonisolated struct EpubOverlayPreferences: RawRepresentable, Equatable, Sendable
     readerFooterCenter = .none
     readerFooterTrailing = .chapterRemaining
     showsReaderProgressBar = false
-    controlsHeaderCenter = .bookProgressPercent
-    controlsFooterCenter = .chapterPosition
   }
 
   init?(rawValue: String) {
@@ -51,8 +47,6 @@ nonisolated struct EpubOverlayPreferences: RawRepresentable, Equatable, Sendable
     readerFooterCenter = Self.textItem(dict["readerFooterCenter"], default: readerFooterCenter)
     readerFooterTrailing = Self.textItem(dict["readerFooterTrailing"], default: readerFooterTrailing)
     showsReaderProgressBar = Self.bool(dict["showsReaderProgressBar"], default: showsReaderProgressBar)
-    controlsHeaderCenter = Self.textItem(dict["controlsHeaderCenter"], default: controlsHeaderCenter)
-    controlsFooterCenter = Self.textItem(dict["controlsFooterCenter"], default: controlsFooterCenter)
   }
 
   var rawValue: String {
@@ -64,8 +58,6 @@ nonisolated struct EpubOverlayPreferences: RawRepresentable, Equatable, Sendable
       "readerFooterCenter": readerFooterCenter.rawValue,
       "readerFooterTrailing": readerFooterTrailing.rawValue,
       "showsReaderProgressBar": showsReaderProgressBar,
-      "controlsHeaderCenter": controlsHeaderCenter.rawValue,
-      "controlsFooterCenter": controlsFooterCenter.rawValue,
     ]
     if let data = try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys]),
       let json = String(data: data, encoding: .utf8)

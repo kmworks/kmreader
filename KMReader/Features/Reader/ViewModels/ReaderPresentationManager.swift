@@ -346,8 +346,8 @@ final class ReaderPresentationManager {
       readerCommandHandlers?.toggleBookmark()
     }
 
-    func returnFromLinkFromCommand() {
-      readerCommandHandlers?.returnFromLink()
+    func returnToPreviousPositionFromCommand() {
+      readerCommandHandlers?.returnToPreviousPosition()
     }
   #endif
 
