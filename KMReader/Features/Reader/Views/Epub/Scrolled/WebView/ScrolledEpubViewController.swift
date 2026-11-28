@@ -42,13 +42,6 @@
     private var lastKnownDocumentContentHeight: CGFloat = 0
     private var lastKnownDocumentViewportHeight: CGFloat = 0
 
-    private var bookTitle: String?
-    private var chapterTitle: String?
-    private var totalProgression: Double?
-    private var overlayPreferences: EpubOverlayPreferences
-    private var showingControls: Bool = false
-    private var labelTopOffset: CGFloat
-    private var labelBottomOffset: CGFloat
     private var useSafeArea: Bool
 
     // Chapter navigation
@@ -78,7 +71,6 @@
       )?
 
     // Overlay labels
-    private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
     private var topBoundaryIndicatorView: UIVisualEffectView?
     private var bottomBoundaryIndicatorView: UIVisualEffectView?
     private var topBoundaryIconView: UIImageView?
@@ -116,13 +108,6 @@
       initialSubPageIndex: Int,
       destination: EpubNavigationDestination?,
       totalChapters: Int,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      overlayPreferences: EpubOverlayPreferences,
-      showingControls: Bool,
-      labelTopOffset: CGFloat,
-      labelBottomOffset: CGFloat,
       useSafeArea: Bool
     ) {
       self.chapterURL = chapterURL
@@ -141,13 +126,6 @@
       self.currentSubPageIndex = max(0, initialSubPageIndex)
       self.pendingDestination = destination
       self.totalChapters = totalChapters
-      self.bookTitle = bookTitle
-      self.chapterTitle = chapterTitle
-      self.totalProgression = totalProgression
-      self.overlayPreferences = overlayPreferences
-      self.showingControls = showingControls
-      self.labelTopOffset = labelTopOffset
-      self.labelBottomOffset = labelBottomOffset
       self.useSafeArea = useSafeArea
       super.init(nibName: nil, bundle: nil)
     }
@@ -159,7 +137,6 @@
     override func viewDidLoad() {
       super.viewDidLoad()
       setupWebView()
-      setupOverlayLabels()
       setupTapGesture()
       NotificationCenter.default.addObserver(
         self,
@@ -269,89 +246,6 @@
       self.longPressGestureRecognizer = longPressRecognizer
     }
 
-    private func setupOverlayLabels() {
-      let topOffset = labelTopOffset
-      let bottomOffset = -labelBottomOffset
-
-      infoOverlay = WebPubInfoOverlaySupport.UIKitOverlay(
-        containerView: view,
-        topAnchor: topAnchor,
-        bottomAnchor: bottomAnchor,
-        topOffset: labelTopOffset,
-        bottomOffset: labelBottomOffset,
-        theme: theme
-      )
-
-      let topIndicator = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-      topIndicator.translatesAutoresizingMaskIntoConstraints = false
-      topIndicator.layer.cornerRadius = 18
-      topIndicator.clipsToBounds = true
-      topIndicator.alpha = 0
-      topIndicator.isUserInteractionEnabled = false
-      let topIcon = UIImageView(image: UIImage(systemName: "chevron.up"))
-      topIcon.translatesAutoresizingMaskIntoConstraints = false
-      topIcon.contentMode = .scaleAspectFit
-      topIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 20, weight: .bold)
-      topIndicator.contentView.addSubview(topIcon)
-      NSLayoutConstraint.activate([
-        topIcon.centerXAnchor.constraint(equalTo: topIndicator.contentView.centerXAnchor),
-        topIcon.centerYAnchor.constraint(equalTo: topIndicator.contentView.centerYAnchor),
-        topIcon.widthAnchor.constraint(equalToConstant: 20),
-        topIcon.heightAnchor.constraint(equalToConstant: 20),
-      ])
-      view.addSubview(topIndicator)
-      NSLayoutConstraint.activate([
-        topIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-        topIndicator.topAnchor.constraint(equalTo: topAnchor, constant: topOffset + 14),
-        topIndicator.widthAnchor.constraint(equalToConstant: 40),
-        topIndicator.heightAnchor.constraint(equalToConstant: 40),
-      ])
-      self.topBoundaryIndicatorView = topIndicator
-      self.topBoundaryIconView = topIcon
-
-      let bottomIndicator = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-      bottomIndicator.translatesAutoresizingMaskIntoConstraints = false
-      bottomIndicator.layer.cornerRadius = 18
-      bottomIndicator.clipsToBounds = true
-      bottomIndicator.alpha = 0
-      bottomIndicator.isUserInteractionEnabled = false
-      let bottomIcon = UIImageView(image: UIImage(systemName: "chevron.down"))
-      bottomIcon.translatesAutoresizingMaskIntoConstraints = false
-      bottomIcon.contentMode = .scaleAspectFit
-      bottomIcon.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 20, weight: .bold)
-      bottomIndicator.contentView.addSubview(bottomIcon)
-      NSLayoutConstraint.activate([
-        bottomIcon.centerXAnchor.constraint(equalTo: bottomIndicator.contentView.centerXAnchor),
-        bottomIcon.centerYAnchor.constraint(equalTo: bottomIndicator.contentView.centerYAnchor),
-        bottomIcon.widthAnchor.constraint(equalToConstant: 20),
-        bottomIcon.heightAnchor.constraint(equalToConstant: 20),
-      ])
-      view.addSubview(bottomIndicator)
-      NSLayoutConstraint.activate([
-        bottomIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-        bottomIndicator.bottomAnchor.constraint(equalTo: bottomAnchor, constant: bottomOffset - 14),
-        bottomIndicator.widthAnchor.constraint(equalToConstant: 40),
-        bottomIndicator.heightAnchor.constraint(equalToConstant: 40),
-      ])
-      self.bottomBoundaryIndicatorView = bottomIndicator
-      self.bottomBoundaryIconView = bottomIcon
-    }
-
-    func updateOverlayLabels() {
-      let content = WebPubInfoOverlaySupport.content(
-        flowStyle: .scrolled,
-        bookTitle: bookTitle,
-        chapterTitle: chapterTitle,
-        totalProgression: totalProgression,
-        currentPageIndex: currentSubPageIndex,
-        totalPagesInChapter: totalPagesInChapter,
-        showingControls: showingControls,
-        isRTL: publicationReadingProgression == .rtl,
-        overlayPreferences: overlayPreferences
-      )
-      infoOverlay?.update(content: content, animated: true)
-    }
-
     @objc private func handleTap(_ recognizer: WebPubTapGestureRecognizer) {
       let location = recognizer.location(in: view)
       let size = view.bounds.size
@@ -437,7 +331,6 @@
       loadingIndicator?.color = theme.uiColorText
 
       // Update overlay label colors
-      infoOverlay?.apply(theme: theme)
       topBoundaryIconView?.tintColor = theme.uiColorText.withAlphaComponent(0.9)
       bottomBoundaryIconView?.tintColor = theme.uiColorText.withAlphaComponent(0.9)
     }
@@ -468,13 +361,6 @@
       navigationID: UUID,
       navigationRequest: EpubNavigationRequest?,
       totalChapters: Int,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      overlayPreferences: EpubOverlayPreferences,
-      showingControls: Bool,
-      labelTopOffset: CGFloat,
-      labelBottomOffset: CGFloat,
       useSafeArea: Bool
     ) {
       let shouldReload =
@@ -492,8 +378,6 @@
         || readiumProperties != self.readiumProperties
         || publicationLanguage != self.publicationLanguage
         || publicationReadingProgression != self.publicationReadingProgression
-        || labelTopOffset != self.labelTopOffset
-        || labelBottomOffset != self.labelBottomOffset
         || useSafeArea != self.useSafeArea
 
       let navigationChanged = navigationRequest != nil && self.navigationID != navigationID
@@ -517,18 +401,9 @@
       self.publicationReadingProgression = publicationReadingProgression
       self.chapterIndex = chapterIndex
       self.totalChapters = totalChapters
-      self.bookTitle = bookTitle
-      self.chapterTitle = chapterTitle
-      self.totalProgression = totalProgression
-      self.overlayPreferences = overlayPreferences
-      self.showingControls = showingControls
-      self.labelTopOffset = labelTopOffset
-      self.labelBottomOffset = labelBottomOffset
       self.useSafeArea = useSafeArea
 
       guard isViewLoaded else { return }
-
-      updateOverlayLabels()
 
       if appearanceChanged {
         applyContainerInsets()
@@ -680,7 +555,6 @@
 
     @objc private func handleAppDidBecomeActive() {
       refreshDisplay()
-      updateOverlayLabels()
     }
 
     func refreshDisplay() {
@@ -738,7 +612,6 @@
       let clampedIndex = max(0, min(totalPagesInChapter - 1, newPageIndex))
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
-        updateOverlayLabels()
         reportCurrentPosition()
       }
     }
@@ -851,7 +724,6 @@
                 guard let self, navigationID == requestID else { return }
                 lastKnownDocumentScrollTop = (result as? Double) ?? 0
                 currentSubPageIndex = scrollPagination.pageIndex(at: lastKnownDocumentScrollTop)
-                updateOverlayLabels()
                 reportCurrentPosition(resolvedAnchor: anchor.anchor)
               }
             }
@@ -859,7 +731,6 @@
         }
 
         pendingDestination = nil
-        updateOverlayLabels()
         loadingIndicator?.stopAnimating()
         webView.alpha = 1
         reportCurrentPosition()
@@ -870,7 +741,6 @@
         )
         if currentSubPageIndex != actualPage {
           currentSubPageIndex = actualPage
-          updateOverlayLabels()
           reportCurrentPosition()
         }
       }
@@ -1050,7 +920,6 @@
 
       if clampedIndex != currentSubPageIndex {
         currentSubPageIndex = clampedIndex
-        updateOverlayLabels()
         reportCurrentPosition()
       }
     }

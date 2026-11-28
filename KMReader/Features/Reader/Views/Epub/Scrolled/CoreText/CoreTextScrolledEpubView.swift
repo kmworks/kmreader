@@ -9,9 +9,6 @@
     let colorScheme: ColorScheme
     let tapScrollPercentage: Double
     let animateTapTurns: Bool
-    let overlayPreferences: EpubOverlayPreferences
-    let showingControls: Bool
-    let bookTitle: String?
     let onCenterTap: () -> Void
     let onEndReached: () -> Void
 
@@ -26,9 +23,6 @@
         colorScheme: colorScheme,
         tapScrollPercentage: tapScrollPercentage,
         animateTapTurns: animateTapTurns,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        bookTitle: bookTitle,
         onCenterTap: onCenterTap,
         onEndReached: onEndReached,
         tapZoneMode: tapZoneMode,
@@ -42,9 +36,6 @@
         colorScheme: colorScheme,
         tapScrollPercentage: tapScrollPercentage,
         animateTapTurns: animateTapTurns,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        bookTitle: bookTitle,
         onCenterTap: onCenterTap,
         onEndReached: onEndReached,
         tapZoneMode: tapZoneMode,

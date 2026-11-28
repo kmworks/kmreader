@@ -8,56 +8,41 @@
       case scrolled
     }
 
-    struct Entry: Equatable {
-      let text: String?
-      let isVisible: Bool
+    #if os(macOS)
+      struct Entry: Equatable {
+        let text: String?
+        let isVisible: Bool
 
-      static let hidden = Entry(text: nil, isVisible: false)
-    }
+        static let hidden = Entry(text: nil, isVisible: false)
+      }
 
-    struct Content: Equatable {
-      let showingControls: Bool
-      let topLeading: Entry
-      let topCenter: Entry
-      let topTrailing: Entry
-      let bottomLeading: Entry
-      let bottomCenter: Entry
-      let bottomTrailing: Entry
-      let bottomProgress: Double?
-      let isRTL: Bool
-    }
+      struct Content: Equatable {
+        let showingControls: Bool
+        let topLeading: Entry
+        let topCenter: Entry
+        let topTrailing: Entry
+        let bottomLeading: Entry
+        let bottomCenter: Entry
+        let bottomTrailing: Entry
+        let bottomProgress: Double?
+        let isRTL: Bool
+      }
 
-    static func containerInsets(topOffset: CGFloat, bottomOffset: CGFloat) -> ReaderContainerInsets {
-      ReaderContainerInsets(top: topOffset + 24, left: 0, bottom: bottomOffset + 24, right: 0)
-    }
+      static func containerInsets(topOffset: CGFloat, bottomOffset: CGFloat) -> ReaderContainerInsets {
+        ReaderContainerInsets(top: topOffset + 24, left: 0, bottom: bottomOffset + 24, right: 0)
+      }
 
-    static func content(
-      flowStyle: FlowStyle,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      currentPageIndex: Int,
-      totalPagesInChapter: Int,
-      showingControls: Bool,
-      isRTL: Bool,
-      overlayPreferences: EpubOverlayPreferences = AppConfig.epubOverlayPreferences
-    ) -> Content {
-      #if os(iOS)
-        // iOS renders both reading and controls chrome in EpubReaderView's
-        // constant-height VStack bar slots so toggling controls never resizes
-        // the pagination viewport.
-        return Content(
-          showingControls: showingControls,
-          topLeading: .hidden,
-          topCenter: .hidden,
-          topTrailing: .hidden,
-          bottomLeading: .hidden,
-          bottomCenter: .hidden,
-          bottomTrailing: .hidden,
-          bottomProgress: nil,
-          isRTL: isRTL
-        )
-      #else
+      static func content(
+        flowStyle: FlowStyle,
+        bookTitle: String?,
+        chapterTitle: String?,
+        totalProgression: Double?,
+        currentPageIndex: Int,
+        totalPagesInChapter: Int,
+        showingControls: Bool,
+        isRTL: Bool,
+        overlayPreferences: EpubOverlayPreferences = AppConfig.epubOverlayPreferences
+      ) -> Content {
         if showingControls {
           let controlsHeader = entry(
             for: .chapterRemaining,
@@ -149,24 +134,46 @@
           bottomProgress: overlayPreferences.showsReaderProgressBar ? totalProgression.map(clampedProgress) : nil,
           isRTL: isRTL
         )
-      #endif
-    }
-
-    private static func visibleEntry(_ text: String?) -> Entry {
-      guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
-        return .hidden
       }
-      return Entry(text: trimmed, isVisible: true)
-    }
+
+      private static func visibleEntry(_ text: String?) -> Entry {
+        guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+          return .hidden
+        }
+        return Entry(text: trimmed, isVisible: true)
+      }
+
+      private static func entry(
+        for item: EpubOverlayTextItem,
+        flowStyle: FlowStyle,
+        bookTitle: String?,
+        chapterTitle: String?,
+        totalProgression: Double?,
+        currentPageIndex: Int,
+        totalPagesInChapter: Int
+      ) -> Entry {
+        visibleEntry(
+          text(
+            for: item,
+            flowStyle: flowStyle,
+            bookTitle: bookTitle,
+            chapterTitle: chapterTitle,
+            totalProgression: totalProgression,
+            currentPageIndex: currentPageIndex,
+            totalPagesInChapter: totalPagesInChapter
+          )
+        )
+      }
+    #endif
 
     static func text(
       for item: EpubOverlayTextItem,
-      flowStyle: FlowStyle,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      currentPageIndex: Int,
-      totalPagesInChapter: Int,
+      flowStyle: FlowStyle = .paged,
+      bookTitle: String? = nil,
+      chapterTitle: String? = nil,
+      totalProgression: Double? = nil,
+      currentPageIndex: Int = 0,
+      totalPagesInChapter: Int = 0,
       bookPage: Int? = nil,
       totalBookPages: Int? = nil
     ) -> String? {
@@ -211,28 +218,6 @@
         guard let bookPage, let totalBookPages, bookPage > 0, totalBookPages > 0 else { return nil }
         return String(localized: "\(bookPage) of \(totalBookPages)")
       }
-    }
-
-    private static func entry(
-      for item: EpubOverlayTextItem,
-      flowStyle: FlowStyle,
-      bookTitle: String?,
-      chapterTitle: String?,
-      totalProgression: Double?,
-      currentPageIndex: Int,
-      totalPagesInChapter: Int
-    ) -> Entry {
-      visibleEntry(
-        text(
-          for: item,
-          flowStyle: flowStyle,
-          bookTitle: bookTitle,
-          chapterTitle: chapterTitle,
-          totalProgression: totalProgression,
-          currentPageIndex: currentPageIndex,
-          totalPagesInChapter: totalPagesInChapter
-        )
-      )
     }
 
     private static func chapterPositionText(

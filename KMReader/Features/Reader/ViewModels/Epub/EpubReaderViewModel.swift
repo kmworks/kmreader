@@ -48,6 +48,10 @@
     private var readingOrder: [WebPubLink] = []
     private var pageCountCache: [String: Int] = [:]
     private var chapterPageCounts: [Int: Int] = [:]
+    // Precomputed on preference/viewport changes so scrubbing never serializes
+    // EpubThemePreferences.rawValue JSON on every frame.
+    private var preferencesCacheKey = ""
+    private var measuredDisplayPageCounts: [Int: Int] = [:]
     // Chapters that failed to render show a placeholder error page; they must
     // not emit reading progress until a layout succeeds again.
     private var failedChapterIndexes: Set<Int> = []
@@ -113,6 +117,7 @@
     func applyPreferences(_ prefs: EpubThemePreferences, colorScheme: ColorScheme) {
       preferences = prefs
       theme = prefs.resolvedTheme(for: colorScheme)
+      preferencesCacheKey = "\(prefs.rawValue)|\(theme.rawValue)"
 
       if !readingOrder.isEmpty, viewportSize.width > 0 {
         refreshChapterPageCounts(keepingCurrent: true)
@@ -178,6 +183,7 @@
       publicationLanguage = nil
       publicationReadingProgression = nil
       chapterPageCounts = [:]
+      measuredDisplayPageCounts = [:]
       scrubBoundaryChapterIndexes = []
       chapterURLCache = [:]
       textLengthCache = [:]
@@ -1114,6 +1120,7 @@
       let cacheKey = pageCountCacheKey(for: href, viewport: effectiveViewport)
       if pageCountCache[cacheKey] != normalizedCount {
         pageCountCache[cacheKey] = normalizedCount
+        measuredDisplayPageCounts[chapterIndex] = normalizedCount
         savePageCountCache()
       }
     }
@@ -1125,20 +1132,10 @@
       updateLocation(chapterIndex: currentChapterIndex, pageIndex: currentPageIndex)
     }
 
-    var labelTopOffset: CGFloat {
-      #if os(iOS)
-        return PlatformHelper.isPad ? 24 : 8
-      #else
-        return 8
-      #endif
-    }
-    var labelBottomOffset: CGFloat {
-      #if os(iOS)
-        return PlatformHelper.isPad ? 16 : 8
-      #else
-        return 8
-      #endif
-    }
+    #if os(macOS)
+      var labelTopOffset: CGFloat { 8 }
+      var labelBottomOffset: CGFloat { 8 }
+    #endif
     var useSafeArea: Bool {
       #if os(iOS)
         return !PlatformHelper.isPad
@@ -1578,9 +1575,7 @@
     }
 
     private func knownPageCount(at index: Int) -> Int? {
-      guard readingOrder.indices.contains(index), let href = readingOrder[index].href else { return nil }
-      let effectiveViewport = viewportSize.width > 0 ? viewportSize : Self.defaultViewportSize
-      return pageCountCache[pageCountCacheKey(for: href, viewport: effectiveViewport)]
+      measuredDisplayPageCounts[index]
     }
 
     /// Exact counts where the current geometry has been measured, else a
@@ -1696,10 +1691,12 @@
         effectiveViewport = Self.defaultViewportSize
       }
 
+      measuredDisplayPageCounts = [:]
       for (index, link) in readingOrder.enumerated() {
         let cacheKey = pageCountCacheKey(for: link.href ?? "", viewport: effectiveViewport)
         if let cachedCount = pageCountCache[cacheKey] {
           chapterPageCounts[index] = max(1, cachedCount)
+          measuredDisplayPageCounts[index] = max(1, cachedCount)
         } else if keepingCurrent, let existing = chapterPageCounts[index] {
           // Keep the last measured count until the new geometry reports, so
           // uncached resizes (rotation, chrome insets) do not flash 1 page left.
@@ -1826,9 +1823,7 @@
     }
 
     private func pageCountCacheKey(for href: String, viewport: CGSize) -> String {
-      let sizeKey = "\(Int(viewport.width))x\(Int(viewport.height))"
-      let prefsKey = preferences.rawValue
-      return "\(href)|\(sizeKey)|\(prefsKey)|\(theme.rawValue)"
+      "\(href)|\(Int(viewport.width))x\(Int(viewport.height))|\(preferencesCacheKey)"
     }
 
     private func chapterIndexForHref(_ href: String) -> Int? {

@@ -64,7 +64,6 @@
 
     var isContentLoaded: Bool { renderer?.isContentLoaded ?? false }
 
-    private var infoOverlay: WebPubInfoOverlaySupport.UIKitOverlay?
     private var loadingIndicator: UIActivityIndicatorView?
     private var containerView: UIView?
     private var containerConstraints:
@@ -99,7 +98,6 @@
     override func viewDidLoad() {
       super.viewDidLoad()
       setupRenderer()
-      setupOverlayLabels()
       NotificationCenter.default.addObserver(
         self,
         selector: #selector(handleAppDidBecomeActive),
@@ -113,7 +111,6 @@
       super.viewWillAppear(animated)
       // Pagination re-runs on size changes in viewDidLayoutSubviews; appearance
       // fires on every page turn.
-      updateOverlayLabels()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -130,7 +127,6 @@
 
     @objc private func handleAppDidBecomeActive() {
       refreshDisplay()
-      updateOverlayLabels()
     }
 
     override func viewDidLayoutSubviews() {
@@ -144,7 +140,6 @@
         if contentSize.width > 0 && contentSize.height > 0 {
           onRepagination?()
           refreshDisplay()
-          updateOverlayLabels()
         }
       }
     }
@@ -166,8 +161,6 @@
         || configuration.readiumProperties != self.configuration.readiumProperties
         || configuration.publicationLanguage != self.configuration.publicationLanguage
         || configuration.publicationReadingProgression != self.configuration.publicationReadingProgression
-        || configuration.labelTopOffset != self.configuration.labelTopOffset
-        || configuration.labelBottomOffset != self.configuration.labelBottomOffset
         || configuration.useSafeArea != self.configuration.useSafeArea
 
       // Reset layout size when chapter changes to ensure proper size detection
@@ -181,7 +174,6 @@
       renderer?.configure(configuration)
 
       guard isViewLoaded else { return }
-      updateOverlayLabels()
       if appearanceChanged {
         applyContainerInsets()
         onRepagination?()
@@ -214,32 +206,6 @@
     }
     private var trailingAnchor: NSLayoutXAxisAnchor {
       configuration.useSafeArea ? view.safeAreaLayoutGuide.trailingAnchor : view.trailingAnchor
-    }
-
-    func setupOverlayLabels() {
-      infoOverlay = WebPubInfoOverlaySupport.UIKitOverlay(
-        containerView: view,
-        topAnchor: topAnchor,
-        bottomAnchor: bottomAnchor,
-        topOffset: configuration.labelTopOffset,
-        bottomOffset: configuration.labelBottomOffset,
-        theme: configuration.theme
-      )
-    }
-
-    func updateOverlayLabels() {
-      let content = WebPubInfoOverlaySupport.content(
-        flowStyle: .paged,
-        bookTitle: configuration.bookTitle,
-        chapterTitle: configuration.chapterTitle,
-        totalProgression: configuration.totalProgression,
-        currentPageIndex: currentSubPageIndex,
-        totalPagesInChapter: totalPagesInChapter,
-        showingControls: configuration.showingControls,
-        isRTL: configuration.publicationReadingProgression == .rtl,
-        overlayPreferences: configuration.overlayPreferences
-      )
-      infoOverlay?.update(content: content, animated: true)
     }
 
     func forceEnsureContentLoaded() {
@@ -323,7 +289,6 @@
       loadingIndicator?.color = configuration.theme.uiColorText
 
       // Update overlay label colors
-      infoOverlay?.apply(theme: configuration.theme)
     }
 
     private func applyContainerInsets() {
@@ -357,7 +322,6 @@
       } else {
         completion?()
       }
-      updateOverlayLabels()
     }
 
     // Unlike scrollToPageIndex, the completion fires only after the target page has
@@ -365,7 +329,6 @@
     func scrollToPageIndexAndSettle(_ pageIndex: Int, completion: @escaping () -> Void) {
       rendererSetPendingPageIndex(pageIndex)
       currentSubPageIndex = pageIndex
-      updateOverlayLabels()
       renderer?.scrollToPageAndSettle(pageIndex, completion: completion)
     }
 
@@ -391,7 +354,6 @@
       currentSubPageIndex = 0
       onChapterLoadFailed?()
       reportLanding()
-      updateOverlayLabels()
       onPaginationReady?()
     }
 
@@ -409,7 +371,6 @@
         else { return }
         self.currentSubPageIndex = pageIndex
         self.reportLanding()
-        self.updateOverlayLabels()
         self.applyPendingAnchor()
         self.onPaginationReady?()
       }
@@ -437,7 +398,6 @@
       currentSubPageIndex = page
       destination = .page(page)
       reportLanding(resolvedAnchor: anchor)
-      updateOverlayLabels()
     }
 
     func scrollToAnchor(_ anchor: String, completion: @escaping (Int?) -> Void) {

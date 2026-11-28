@@ -16,13 +16,6 @@
     let chapterIndex: Int
     let subPageIndex: Int
     let totalPages: Int
-    let bookTitle: String?
-    let chapterTitle: String?
-    let totalProgression: Double?
-    let overlayPreferences: EpubOverlayPreferences
-    let showingControls: Bool
-    let labelTopOffset: CGFloat
-    let labelBottomOffset: CGFloat
     let useSafeArea: Bool
   }
 #endif

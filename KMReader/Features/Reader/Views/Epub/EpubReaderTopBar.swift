@@ -33,9 +33,6 @@
       WebPubInfoOverlaySupport.text(
         for: .chapterRemaining,
         flowStyle: flowStyle == .paged ? .paged : .scrolled,
-        bookTitle: nil,
-        chapterTitle: nil,
-        totalProgression: nil,
         currentPageIndex: viewModel.currentPageIndex,
         totalPagesInChapter: viewModel.currentLocation?.pageCount ?? 0
       )

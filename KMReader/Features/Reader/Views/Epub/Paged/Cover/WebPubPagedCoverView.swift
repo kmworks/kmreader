@@ -13,9 +13,6 @@
     let preferences: EpubThemePreferences
     let colorScheme: ColorScheme
     let animateTapTurns: Bool
-    let overlayPreferences: EpubOverlayPreferences
-    let showingControls: Bool
-    let bookTitle: String?
     let onCenterTap: () -> Void
     let onEndReached: () -> Void
 
@@ -201,10 +198,7 @@
           viewModel: parent.viewModel,
           renderingEngine: parent.renderingEngine,
           preferences: parent.preferences,
-          colorScheme: parent.colorScheme,
-          overlayPreferences: parent.overlayPreferences,
-          showingControls: parent.showingControls,
-          bookTitle: parent.bookTitle
+          colorScheme: parent.colorScheme
         )
       }
 

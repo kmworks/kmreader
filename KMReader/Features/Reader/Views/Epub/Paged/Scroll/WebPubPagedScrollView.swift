@@ -15,9 +15,6 @@
     let animatePageTransitions: Bool
     let preferences: EpubThemePreferences
     let colorScheme: ColorScheme
-    let overlayPreferences: EpubOverlayPreferences
-    let showingControls: Bool
-    let bookTitle: String?
     let onCenterTap: () -> Void
     let onEndReached: () -> Void
 
@@ -28,8 +25,6 @@
     func makeUIViewController(context: Context) -> PagedScrollEpubViewController {
       let chapterIndex = viewModel.currentChapterIndex
       let pageIndex = viewModel.currentPageIndex
-      let currentLocation = viewModel.pageLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
-
       let theme = preferences.resolvedTheme(for: colorScheme)
       let fontPath = preferences.fontFamily.fontName.flatMap { CustomFontStore.shared.getFontPath(for: $0) }
       let readiumPayload = preferences.makeReadiumPayload(
@@ -55,18 +50,6 @@
         initialSubPageIndex: pageIndex,
         destination: viewModel.navigationRequest?.destination,
         totalChapters: viewModel.chapterCount,
-        bookTitle: bookTitle,
-        chapterTitle: currentLocation?.title,
-        totalProgression: currentLocation.flatMap { location in
-          viewModel.totalProgression(
-            location: location,
-            chapterProgress: nil
-          )
-        },
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        labelTopOffset: viewModel.labelTopOffset,
-        labelBottomOffset: viewModel.labelBottomOffset,
         useSafeArea: viewModel.useSafeArea
       )
 
@@ -111,8 +94,6 @@
       let pageIndex =
         chapterIndex == viewModel.currentChapterIndex
         ? viewModel.currentPageIndex : uiViewController.currentPageIndex
-      let currentLocation = viewModel.pageLocation(chapterIndex: chapterIndex, pageIndex: pageIndex)
-
       let containerInsets = viewModel.containerInsetsForLabels().uiEdgeInsets
       let theme = preferences.resolvedTheme(for: colorScheme)
 
@@ -123,17 +104,6 @@
         rootURL: viewModel.resourceRootURL,
         viewportSize: viewModel.resolvedViewportSize
       )
-
-      let chapterProgress =
-        currentLocation?.pageCount ?? 0 > 0
-        ? Double((currentLocation?.pageIndex ?? 0) + 1) / Double(currentLocation?.pageCount ?? 1)
-        : nil
-      let totalProgression = currentLocation.flatMap { location in
-        viewModel.totalProgression(
-          location: location,
-          chapterProgress: chapterProgress
-        )
-      }
 
       uiViewController.configure(
         chapterURL: viewModel.chapterURL(at: chapterIndex),
@@ -151,13 +121,6 @@
         navigationID: viewModel.navigationID,
         navigationRequest: viewModel.navigationRequest,
         totalChapters: viewModel.chapterCount,
-        bookTitle: bookTitle,
-        chapterTitle: currentLocation?.title,
-        totalProgression: totalProgression,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        labelTopOffset: viewModel.labelTopOffset,
-        labelBottomOffset: viewModel.labelBottomOffset,
         useSafeArea: viewModel.useSafeArea
       )
     }

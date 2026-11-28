@@ -8,9 +8,6 @@
     let renderingEngine: EpubRenderingEngine
     let preferences: EpubThemePreferences
     let colorScheme: ColorScheme
-    let overlayPreferences: EpubOverlayPreferences
-    let showingControls: Bool
-    let bookTitle: String?
 
     func makeController(
       chapterIndex: Int,
@@ -40,18 +37,9 @@
       let onPageCountReady = pageCountCallback(chapterIndex: chapterIndex)
 
       let locationPageIndex = min(max(subPageIndex, 0), max(0, pageCount - 1))
-      guard
-        let location = viewModel.pageLocation(
-          chapterIndex: chapterIndex,
-          pageIndex: locationPageIndex
-        )
-      else { return nil }
-      let chapterProgress =
-        location.pageCount > 0 ? Double(location.pageIndex + 1) / Double(location.pageCount) : nil
-      let totalProgression = viewModel.totalProgression(
-        location: location,
-        chapterProgress: chapterProgress
-      )
+      guard viewModel.pageLocation(chapterIndex: chapterIndex, pageIndex: locationPageIndex) != nil else {
+        return nil
+      }
 
       let configuration = EpubChapterConfiguration(
         preferences: preferences,
@@ -68,13 +56,6 @@
         chapterIndex: chapterIndex,
         subPageIndex: subPageIndex,
         totalPages: pageCount,
-        bookTitle: bookTitle,
-        chapterTitle: location.title,
-        totalProgression: totalProgression,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        labelTopOffset: viewModel.labelTopOffset,
-        labelBottomOffset: viewModel.labelBottomOffset,
         useSafeArea: viewModel.useSafeArea
       )
       let controller = EpubPageViewController(
@@ -113,19 +94,6 @@
         viewportSize: viewModel.resolvedViewportSize
       )
 
-      guard
-        let location = viewModel.pageLocation(
-          chapterIndex: chapterIndex,
-          pageIndex: controller.currentSubPageIndex
-        )
-      else { return }
-      let chapterProgress =
-        location.pageCount > 0 ? Double(location.pageIndex + 1) / Double(location.pageCount) : nil
-      let totalProgression = viewModel.totalProgression(
-        location: location,
-        chapterProgress: chapterProgress
-      )
-
       let configuration = EpubChapterConfiguration(
         preferences: preferences,
         chapterURL: viewModel.chapterURL(at: chapterIndex),
@@ -141,13 +109,6 @@
         chapterIndex: chapterIndex,
         subPageIndex: controller.currentSubPageIndex,
         totalPages: controller.totalPagesInChapter,
-        bookTitle: bookTitle,
-        chapterTitle: location.title,
-        totalProgression: totalProgression,
-        overlayPreferences: overlayPreferences,
-        showingControls: showingControls,
-        labelTopOffset: viewModel.labelTopOffset,
-        labelBottomOffset: viewModel.labelBottomOffset,
         useSafeArea: viewModel.useSafeArea
       )
       controller.configure(

@@ -54,12 +54,6 @@
     private var footerText: String? {
       WebPubInfoOverlaySupport.text(
         for: .bookPosition,
-        flowStyle: .paged,
-        bookTitle: nil,
-        chapterTitle: nil,
-        totalProgression: nil,
-        currentPageIndex: 0,
-        totalPagesInChapter: 0,
         bookPage: viewModel.bookPageProgress?.currentPage,
         totalBookPages: viewModel.bookPageProgress?.totalPages
       )

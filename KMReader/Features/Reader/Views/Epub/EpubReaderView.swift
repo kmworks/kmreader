@@ -754,8 +754,6 @@
           )
         }
       #else
-        // iOS owns all chrome in SwiftUI's persistent bars; passing toggle state into
-        // the engines would reconfigure chapter hosts and WebKit scripts on every tap.
         if renderingEngine == .coreText {
           switch epubFlowStyle {
           case .paged:
@@ -766,9 +764,6 @@
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
                 animatePageTransitions: animateEpubTapTurns,
-                overlayPreferences: epubOverlayPreferences,
-                showingControls: false,
-                bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
                 },
@@ -786,9 +781,6 @@
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
-                overlayPreferences: epubOverlayPreferences,
-                showingControls: false,
-                bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
                 },
@@ -806,9 +798,6 @@
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
-                overlayPreferences: epubOverlayPreferences,
-                showingControls: false,
-                bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
                 },
@@ -827,9 +816,6 @@
               colorScheme: readerColorScheme,
               tapScrollPercentage: epubTapScrollPercentage,
               animateTapTurns: animateEpubTapTurns,
-              overlayPreferences: epubOverlayPreferences,
-              showingControls: false,
-              bookTitle: currentBook?.metadata.title,
               onCenterTap: {
                 toggleControls()
               },
@@ -851,9 +837,6 @@
                 animatePageTransitions: animateEpubTapTurns,
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
-                overlayPreferences: epubOverlayPreferences,
-                showingControls: false,
-                bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
                 },
@@ -870,9 +853,6 @@
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
-                overlayPreferences: epubOverlayPreferences,
-                showingControls: false,
-                bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
                 },
@@ -889,9 +869,6 @@
                 preferences: activeThemePreferences,
                 colorScheme: readerColorScheme,
                 animateTapTurns: animateEpubTapTurns,
-                overlayPreferences: epubOverlayPreferences,
-                showingControls: false,
-                bookTitle: currentBook?.metadata.title,
                 onCenterTap: {
                   toggleControls()
                 },
@@ -910,9 +887,6 @@
               colorScheme: readerColorScheme,
               tapScrollPercentage: epubTapScrollPercentage,
               animateTapTurns: animateEpubTapTurns,
-              overlayPreferences: epubOverlayPreferences,
-              showingControls: false,
-              bookTitle: currentBook?.metadata.title,
               onCenterTap: {
                 toggleControls()
               },
