@@ -167,6 +167,7 @@ class AuthViewModel {
     // Alongside the user request, so kmrs-private features are known before
     // the first screen asks for them.
     async let profileRefresh: Void = ServerProfileService.refresh(instanceId: AppConfig.current.instanceId)
+    let attemptedURL = Current.normalizeServerURL(AppConfig.current.serverURL)
     do {
       let effectiveTimeout = timeout ?? AppConfig.authTimeout
       let user = try await AuthService.getCurrentUser(timeout: effectiveTimeout)
@@ -184,6 +185,16 @@ class AuthViewModel {
           logout()
           return true  // Server is reachable, just not authorized
         case .networkError:
+          if Current.normalizeServerURL(AppConfig.current.serverURL) != attemptedURL {
+            // `APIClient.handleNetworkError` already failed over to another
+            // endpoint while this request was in flight; validate the new route.
+            return await loadCurrentUser(timeout: timeout)
+          }
+          if await ServerEndpointSwitchService.shared.attemptFailover() {
+            await profileRefresh
+            bootstrapState = .ready
+            return true
+          }
           // Server unreachable
           bootstrapState = .ready
           return false
@@ -226,7 +237,14 @@ class AuthViewModel {
     return true
   }
 
-  func switchTo(instance: ServerDisplayItem) async -> Bool {
+  func switchEndpoint(_ endpoint: ServerEndpoint, of instance: ServerDisplayItem) async -> Bool {
+    if instance.instanceId == AppConfig.current.instanceId {
+      return await ServerEndpointSwitchService.shared.switchEndpoint(endpoint, for: instance)
+    }
+    return await switchTo(instance: instance, preferredEndpoint: endpoint)
+  }
+
+  func switchTo(instance: ServerDisplayItem, preferredEndpoint: ServerEndpoint? = nil) async -> Bool {
     if instance.protected {
       let authenticated = await LocalDeviceAuthenticationService.shared.authenticateProtectedAccess(
         reason: String(localized: "Authenticate to switch to this protected server.")
@@ -236,7 +254,9 @@ class AuthViewModel {
 
     isSwitching = true
     switchingInstanceId = instance.instanceId
+    ServerEndpointSwitchService.shared.beginInstanceSwitch()
     defer {
+      ServerEndpointSwitchService.shared.endInstanceSwitch()
       isSwitching = false
       switchingInstanceId = nil
     }
@@ -246,17 +266,42 @@ class AuthViewModel {
     try? await AuthService.logout()
 
     // Establish stateful session before switching
+    var targetURL = preferredEndpoint?.normalizedURL ?? instance.serverURL
     do {
-      let validatedUser = try await AuthService.establishSession(
-        serverURL: instance.serverURL,
-        authToken: instance.authToken,
-        authMethod: instance.authMethod,
-        timeout: AppConfig.authTimeout
-      )
+      let validatedUser: User
+      do {
+        validatedUser = try await AuthService.establishSession(
+          serverURL: targetURL,
+          authToken: instance.authToken,
+          authMethod: instance.authMethod,
+          timeout: AppConfig.authTimeout
+        )
+      } catch let apiError as APIError {
+        guard case .networkError = apiError,
+          let alternate = await ServerEndpointSwitchService.firstReachableAlternate(
+            for: instance, excluding: targetURL)
+        else {
+          throw apiError
+        }
+        targetURL = alternate.normalizedURL
+        validatedUser = try await AuthService.establishSession(
+          serverURL: targetURL,
+          authToken: instance.authToken,
+          authMethod: instance.authMethod,
+          timeout: AppConfig.authTimeout
+        )
+      }
+
+      if targetURL != instance.serverURL,
+        let database = await DatabaseOperator.databaseIfConfigured()
+      {
+        try? await database.updateInstanceActiveEndpoint(
+          instanceId: instance.instanceId, serverURL: targetURL)
+      }
 
       // Apply switch configuration
       try await applyLoginConfiguration(
-        serverURL: instance.serverURL,
+        serverURL: targetURL,
         username: instance.username,
         authToken: instance.authToken,
         authMethod: instance.authMethod,

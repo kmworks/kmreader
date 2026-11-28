@@ -157,6 +157,12 @@ nonisolated enum LocalDatabase {
       )
     }
 
+    migrator.registerMigration("00015_add_instance_endpoints") { db in
+      try db.alter(table: "komga_instances") { table in
+        table.add(column: "endpoints_raw", .text)
+      }
+    }
+
     try migrator.migrate(writer)
   }
 

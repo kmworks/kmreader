@@ -9,7 +9,10 @@ import SwiftUI
 /// account and server rows. Shown on the Server page
 /// (iPad and macOS sidebar, tvOS).
 struct ServerCardView: View {
+  let authViewModel: AuthViewModel
+
   @AppStorage("currentAccount") private var current: Current = .init()
+  @State private var endpointsModel = CurrentServerEndpointsModel()
 
   var body: some View {
     #if os(tvOS)
@@ -52,12 +55,15 @@ struct ServerCardView: View {
             .font(.caption)
             .foregroundColor(.secondary)
         #else
-          NavigationLink(value: NavDestination.settingsServers) {
-            Label(String(localized: "server.switch"), systemImage: "arrow.left.arrow.right")
+          HStack(spacing: 8) {
+            ServerEndpointQuickSwitchMenu(model: endpointsModel, authViewModel: authViewModel)
+            NavigationLink(value: NavDestination.settingsServers) {
+              Label(String(localized: "server.switch"), systemImage: "arrow.left.arrow.right")
+            }
+            .font(.caption)
+            .controlSize(.small)
+            .adaptiveButtonStyle(.borderedProminent)
           }
-          .font(.caption)
-          .controlSize(.small)
-          .adaptiveButtonStyle(.borderedProminent)
         #endif
       }
 
@@ -71,7 +77,8 @@ struct ServerCardView: View {
 
       InfoRow(
         label: String(localized: "Server"),
-        value: current.serverURL.isEmpty ? current.serverDisplayName : current.serverURL,
+        value: ServerEndpoint.displayURL(
+          for: current.serverURL.isEmpty ? current.serverDisplayName : current.serverURL),
         icon: "globe"
       )
 
@@ -79,6 +86,9 @@ struct ServerCardView: View {
     .padding(12)
     .background(.thinMaterial)
     .clipShape(RoundedRectangle(cornerRadius: 16))
+    .task(id: current.instanceId) {
+      await endpointsModel.refresh()
+    }
   }
 
   private var serverDisplayName: String {

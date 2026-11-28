@@ -642,10 +642,8 @@ nonisolated final class APIClient: Sendable {
       let statusEmoji = (200...299).contains(httpResponse.statusCode) ? "✅" : "❌"
       let durationMs = String(format: "%.2f", duration * 1000)
 
-      if let sessionToken = httpResponse.value(forHTTPHeaderField: "X-Auth-Token") {
-        if AppConfig.current.sessionToken != sessionToken {
-          AppConfig.current.sessionToken = sessionToken
-        }
+      if !isTemporary, let sessionToken = httpResponse.value(forHTTPHeaderField: "X-Auth-Token") {
+        await Self.recordSessionTokenIfCurrent(sessionToken, for: request.url)
       }
 
       logger.info(
@@ -654,7 +652,7 @@ nonisolated final class APIClient: Sendable {
 
       guard (200...299).contains(httpResponse.statusCode) else {
         if httpResponse.statusCode == 401 && retryCount == 0 && !isTemporary
-          && AppConfig.current.authMethod != .apiKey
+          && AppConfig.current.authMethod != .apiKey && Self.targetsCurrentServer(request.url)
         {
           let token = AppConfig.current.authToken
           if !token.isEmpty {
@@ -767,7 +765,7 @@ nonisolated final class APIClient: Sendable {
       logger.error("❌ Network error for \(urlString): \(appError.description)")
       let shouldHandleOffline = !isTemporary && requestCategory != .download
       if shouldHandleOffline {
-        await handleNetworkError(appError, requestCategory: requestCategory)
+        await handleNetworkError(appError, requestURL: request.url, requestCategory: requestCategory)
       }
       throw APIError.networkError(appError, url: urlString)
     } catch let nsError as NSError where nsError.domain == NSURLErrorDomain {
@@ -775,7 +773,7 @@ nonisolated final class APIClient: Sendable {
       logger.error("❌ Network error for \(urlString): \(appError.description)")
       let shouldHandleOffline = !isTemporary && requestCategory != .download
       if shouldHandleOffline {
-        await handleNetworkError(nsError, requestCategory: requestCategory)
+        await handleNetworkError(nsError, requestURL: request.url, requestCategory: requestCategory)
       }
       throw APIError.networkError(appError, url: urlString)
     } catch {
@@ -798,7 +796,7 @@ nonisolated final class APIClient: Sendable {
       logger.error("❌ Network error for \(urlString): \(error.localizedDescription)")
       let shouldHandleOffline = !isTemporary && requestCategory != .download
       if shouldHandleOffline {
-        await handleNetworkError(error, requestCategory: requestCategory)
+        await handleNetworkError(error, requestURL: request.url, requestCategory: requestCategory)
       }
       throw APIError.networkError(error, url: urlString)
     }
@@ -1029,10 +1027,8 @@ nonisolated final class APIClient: Sendable {
       let statusEmoji = (200...299).contains(httpResponse.statusCode) ? "✅" : "❌"
       let durationMs = String(format: "%.2f", duration * 1000)
 
-      if let sessionToken = httpResponse.value(forHTTPHeaderField: "X-Auth-Token") {
-        if AppConfig.current.sessionToken != sessionToken {
-          AppConfig.current.sessionToken = sessionToken
-        }
+      if !isTemporary, let sessionToken = httpResponse.value(forHTTPHeaderField: "X-Auth-Token") {
+        await Self.recordSessionTokenIfCurrent(sessionToken, for: request.url)
       }
 
       logger.info(
@@ -1044,7 +1040,7 @@ nonisolated final class APIClient: Sendable {
         try? FileManager.default.removeItem(at: result.temporaryURL)
 
         if httpResponse.statusCode == 401 && retryCount == 0 && !isTemporary
-          && AppConfig.current.authMethod != .apiKey
+          && AppConfig.current.authMethod != .apiKey && Self.targetsCurrentServer(request.url)
         {
           let token = AppConfig.current.authToken
           if !token.isEmpty {
@@ -1167,7 +1163,7 @@ nonisolated final class APIClient: Sendable {
       logger.error("❌ Network error for \(urlString): \(appError.description)")
       let shouldHandleOffline = !isTemporary && requestCategory != .download
       if shouldHandleOffline {
-        await handleNetworkError(appError, requestCategory: requestCategory)
+        await handleNetworkError(appError, requestURL: request.url, requestCategory: requestCategory)
       }
       throw APIError.networkError(appError, url: urlString)
     } catch let nsError as NSError where nsError.domain == NSURLErrorDomain {
@@ -1176,7 +1172,7 @@ nonisolated final class APIClient: Sendable {
       logger.error("❌ Network error for \(urlString): \(appError.description)")
       let shouldHandleOffline = !isTemporary && requestCategory != .download
       if shouldHandleOffline {
-        await handleNetworkError(nsError, requestCategory: requestCategory)
+        await handleNetworkError(nsError, requestURL: request.url, requestCategory: requestCategory)
       }
       throw APIError.networkError(appError, url: urlString)
     } catch {
@@ -1201,18 +1197,38 @@ nonisolated final class APIClient: Sendable {
       logger.error("❌ Network error for \(urlString): \(error.localizedDescription)")
       let shouldHandleOffline = !isTemporary && requestCategory != .download
       if shouldHandleOffline {
-        await handleNetworkError(error, requestCategory: requestCategory)
+        await handleNetworkError(error, requestURL: request.url, requestCategory: requestCategory)
       }
       throw APIError.networkError(error, url: urlString)
     }
   }
 
+  /// True only while `url` still points at the active base URL. A late
+  /// response or failure from a request sent to a previous endpoint must not
+  /// mutate session tokens or drive offline/failover decisions for the new
+  /// endpoint.
+  nonisolated static func targetsCurrentServer(_ url: URL?) -> Bool {
+    guard let urlString = url?.absoluteString else { return false }
+    let base = AppConfig.current.serverURL
+    guard !base.isEmpty else { return false }
+    return urlString == base || urlString.hasPrefix(base + "/")
+  }
+
+  @MainActor
+  private static func recordSessionTokenIfCurrent(_ sessionToken: String, for url: URL?) {
+    guard targetsCurrentServer(url), AppConfig.current.sessionToken != sessionToken else { return }
+    AppConfig.current.sessionToken = sessionToken
+  }
+
+  @MainActor
   private func handleNetworkError(
     _ error: Error,
+    requestURL: URL?,
     requestCategory: RequestCategory
   ) async {
     // Only switch to offline mode if not already offline
     guard !AppConfig.isOffline else { return }
+    guard Self.targetsCurrentServer(requestURL) else { return }
 
     // Identify if the error is a network connectivity issue
     let isConnectivityIssue: Bool
@@ -1240,15 +1256,22 @@ nonisolated final class APIClient: Sendable {
     }
 
     if isConnectivityIssue {
+      if ServerEndpointSwitchService.shared.isHandlingConnectionChange {
+        return
+      }
       let shouldSwitch = await offlineFailureTracker.shouldSwitchOffline(
         isAuth: requestCategory == .auth
       )
       guard shouldSwitch else { return }
+      if await ServerEndpointSwitchService.shared.attemptFailover() {
+        await offlineFailureTracker.recordSuccess()
+        return
+      }
       logger.info("🔌 Network issue detected, automatically switching to offline mode")
       guard !AppConfig.isOffline else { return }
       AppConfig.enterAutoOfflineMode()
       await SSEService.shared.disconnect()
-      await ErrorManager.shared.notify(
+      ErrorManager.shared.notify(
         message: String(localized: "notification.automaticOfflineMode"))
     }
   }

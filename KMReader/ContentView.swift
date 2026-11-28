@@ -343,7 +343,12 @@ struct ContentView: View {
     //   while this probe was in flight. Re-checking ensures only one caller
     //   fires the user-visible side effects (notification, SSE reconnect).
     guard AppConfig.isLoggedIn else { return .stop }
-    guard AppConfig.isOffline, AppConfig.offlineWasAutomatic else { return .stop }
+    if !AppConfig.isOffline {
+      // `loadCurrentUser` may have already exited offline mode by failing over
+      // to a reachable alternate endpoint (which also notified the user).
+      return reachable ? .recovered : .stop
+    }
+    guard AppConfig.offlineWasAutomatic else { return .stop }
     guard reachable else { return .retry }
 
     AppConfig.exitOfflineMode()

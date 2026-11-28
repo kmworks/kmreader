@@ -15,6 +15,7 @@ nonisolated struct KomgaInstance: Codable, Equatable, Sendable {
   var apiKeyId: String?
   var protected: Bool
   var selectedLibraryIdsRaw: String?
+  var endpointsRaw: String?
   var createdAt: Date
   var lastUsedAt: Date
   var seriesLastSyncedAt: Date
@@ -31,6 +32,7 @@ nonisolated struct KomgaInstance: Codable, Equatable, Sendable {
     apiKeyId: String? = nil,
     protected: Bool = false,
     selectedLibraryIdsRaw: String? = nil,
+    endpointsRaw: String? = nil,
     createdAt: Date = Date(),
     lastUsedAt: Date = Date(),
     seriesLastSyncedAt: Date = Date(timeIntervalSince1970: 0),
@@ -46,6 +48,7 @@ nonisolated struct KomgaInstance: Codable, Equatable, Sendable {
     self.apiKeyId = apiKeyId
     self.protected = protected
     self.selectedLibraryIdsRaw = selectedLibraryIdsRaw
+    self.endpointsRaw = endpointsRaw
     self.createdAt = createdAt
     self.lastUsedAt = lastUsedAt
     self.seriesLastSyncedAt = seriesLastSyncedAt
@@ -76,6 +79,41 @@ nonisolated extension KomgaInstance {
     guard let values = try? JSONSerialization.jsonObject(with: data) as? [String] else { return [] }
     var seen = Set<String>()
     return values.filter { !$0.isEmpty && seen.insert($0).inserted }
+  }
+
+  var endpoints: [ServerEndpoint] {
+    get {
+      let decoded = ServerEndpoint.decodeEndpoints(endpointsRaw)
+      let base = decoded.isEmpty ? [ServerEndpoint(url: serverURL)] : decoded
+      let normalizedActive = Current.normalizeServerURL(serverURL)
+      guard !normalizedActive.isEmpty,
+        !base.contains(where: { $0.normalizedURL == normalizedActive })
+      else {
+        return base
+      }
+      return [ServerEndpoint(url: normalizedActive)] + base
+    }
+    set {
+      let normalized = ServerEndpoint.normalized(newValue)
+      endpointsRaw = ServerEndpoint.encodeEndpoints(normalized)
+      if !normalized.contains(where: { $0.normalizedURL == Current.normalizeServerURL(serverURL) }),
+        let first = normalized.first
+      {
+        serverURL = first.normalizedURL
+      }
+    }
+  }
+
+  var activeEndpoint: ServerEndpoint {
+    let normalizedActive = Current.normalizeServerURL(serverURL)
+    return endpoints.first(where: { $0.normalizedURL == normalizedActive })
+      ?? ServerEndpoint(url: normalizedActive)
+  }
+
+  func containsServerURL(_ url: String) -> Bool {
+    let normalized = Current.normalizeServerURL(url)
+    guard !normalized.isEmpty else { return false }
+    return endpoints.contains { $0.normalizedURL == normalized }
   }
 
   static func encodeSelectedLibraryIds(_ libraryIds: [String]) -> String {

@@ -26,7 +26,7 @@ struct SettingsView: View {
     Form {
       if showsServerSections {
         Section {
-          SettingsServerCardView()
+          SettingsServerCardView(authViewModel: authViewModel)
         }
 
         Section {
