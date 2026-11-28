@@ -324,10 +324,11 @@ extension DatabaseOperator {
       let trimmedDisplayName = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
       let instances = try KomgaInstance.fetchAll(db)
       if var existing = instances.first(where: {
-        Current.normalizeServerURL($0.serverURL) == serverURL && $0.username == username
+        $0.containsServerURL(serverURL) && $0.username == username
       }) {
         // Heal legacy rows on touch: rewrite the stored URL in normalized
         // form so the row converges to the invariant without a migration.
+        existing.endpoints = existing.endpoints
         existing.serverURL = serverURL
         existing.authToken = authToken
         existing.isAdmin = isAdmin
@@ -443,10 +444,31 @@ extension DatabaseOperator {
     }
   }
 
+  func fetchServerDisplayItem(instanceId: String) throws -> ServerDisplayItem? {
+    guard let uuid = UUID(uuidString: instanceId) else { return nil }
+    return try read { db in
+      try KomgaInstance.fetchOne(db, key: uuid).map(Self.makeServerDisplayItem)
+    }
+  }
+
+  func updateInstanceActiveEndpoint(instanceId: String, serverURL: String) throws {
+    guard let uuid = UUID(uuidString: instanceId) else { return }
+    let normalized = Current.normalizeServerURL(serverURL)
+    try write { db in
+      guard var instance = try KomgaInstance.fetchOne(db, key: uuid) else { return }
+      if !instance.containsServerURL(normalized) {
+        instance.endpoints = [ServerEndpoint(url: normalized)] + instance.endpoints
+      }
+      instance.serverURL = normalized
+      try save(instance, db: db)
+    }
+  }
+
   func updateServerDisplayItem(
     id: UUID,
     name: String,
     serverURL: String,
+    endpoints: [ServerEndpoint],
     username: String,
     authToken: String,
     authMethod: AuthenticationMethod,
@@ -455,8 +477,16 @@ extension DatabaseOperator {
   ) throws -> ServerDisplayItem? {
     try write { db in
       guard var instance = try KomgaInstance.fetchOne(db, key: id) else { return nil }
+      let normalizedActive = Current.normalizeServerURL(serverURL)
+      var normalizedEndpoints = ServerEndpoint.normalized(endpoints)
+      if !normalizedActive.isEmpty,
+        !normalizedEndpoints.contains(where: { $0.normalizedURL == normalizedActive })
+      {
+        normalizedEndpoints.insert(ServerEndpoint(url: normalizedActive), at: 0)
+      }
       instance.name = name
-      instance.serverURL = serverURL
+      instance.endpoints = normalizedEndpoints
+      instance.serverURL = normalizedActive
       instance.username = username
       // A replaced credential drops the recorded auto-created key association
       // unless the caller just created that key and passes its id; without an
@@ -1143,6 +1173,7 @@ extension DatabaseOperator {
       id: instance.id,
       name: instance.name,
       serverURL: instance.serverURL,
+      endpoints: instance.endpoints,
       username: instance.username,
       authToken: instance.authToken,
       isAdmin: instance.isAdmin,

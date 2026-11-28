@@ -100,6 +100,9 @@ struct ServerListView: View {
           ForEach(visibleInstances) { instance in
             ServerRowView(
               instance: instance,
+              healthStore: ServerEndpointHealthStore.shared,
+              switchService: ServerEndpointSwitchService.shared,
+              activeServerURL: current.serverURL,
               isGlobalSwitching: authViewModel.isSwitching,
               isSwitching: isSwitching(instance),
               isActive: isActive(instance),
@@ -107,6 +110,9 @@ struct ServerListView: View {
                 withAnimation {
                   switchTo(instance)
                 }
+              },
+              onSelectEndpoint: { endpoint in
+                switchEndpoint(endpoint, of: instance)
               },
               onEdit: {
                 edit(instance)
@@ -156,6 +162,9 @@ struct ServerListView: View {
     .formStyle(.grouped)
     #if os(iOS) || os(macOS)
       .scrollContentBackground(.hidden)
+      .refreshable {
+        await loadInstances(forceProbe: true)
+      }
     #endif
     .platformNavigationTitle(navigationTitle)
     .sheet(item: $editingInstance) { instance in
@@ -164,7 +173,7 @@ struct ServerListView: View {
         authViewModel: authViewModel,
         onSaved: {
           Task {
-            await loadInstances()
+            await loadInstances(forceProbe: true)
           }
         }
       )
@@ -294,6 +303,14 @@ struct ServerListView: View {
     }
   }
 
+  private func switchEndpoint(_ endpoint: ServerEndpoint, of instance: ServerDisplayItem) {
+    Task {
+      let switched = await authViewModel.switchEndpoint(endpoint, of: instance)
+      guard switched else { return }
+      await loadInstances()
+    }
+  }
+
   private func delete(_ instance: ServerDisplayItem) {
     Task {
       if isActive(instance) {
@@ -323,7 +340,7 @@ struct ServerListView: View {
     }
   }
 
-  private func loadInstances() async {
+  private func loadInstances(forceProbe: Bool = false) async {
     do {
       let database = try await DatabaseOperator.database()
       let loadedInstances = try await database.fetchServerDisplayItems(includeProtected: true)
@@ -336,6 +353,10 @@ struct ServerListView: View {
           allInstances = loadedInstances
         }
       }
+      let probeTargets =
+        canShowProtectedServers
+        ? loadedInstances : loadedInstances.filter { !$0.protected }
+      ServerEndpointHealthStore.shared.probe(instances: probeTargets, force: forceProbe)
     } catch {
       ErrorManager.shared.alert(error: error)
     }
@@ -389,6 +410,7 @@ struct ServerListView: View {
         withAnimation {
           showProtectedServers = true
         }
+        await loadInstances()
       }
       isAuthenticatingProtectedServers = false
     }

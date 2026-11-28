@@ -7,6 +7,9 @@ import SwiftUI
 
 struct ServerRowView: View {
   let instance: ServerDisplayItem
+  let healthStore: ServerEndpointHealthStore
+  let switchService: ServerEndpointSwitchService
+  let activeServerURL: String
 
   @Environment(\.colorScheme) private var colorScheme
 
@@ -14,66 +17,107 @@ struct ServerRowView: View {
   let isSwitching: Bool
   let isActive: Bool
   let onSelect: () -> Void
+  let onSelectEndpoint: (ServerEndpoint) -> Void
   let onEdit: () -> Void
   let onDelete: () -> Void
 
   var body: some View {
-    Button {
-      onSelect()
-    } label: {
-      VStack(alignment: .leading, spacing: 12) {
-        HStack(alignment: .center, spacing: 12) {
-          serverAvatar
-          VStack(alignment: .leading, spacing: 4) {
-            Text(instance.displayName)
-              .font(.headline)
-              .foregroundStyle(.primary)
-            Text(instance.serverURL)
-              .font(.footnote)
-              .lineLimit(1)
-              .minimumScaleFactor(0.85)
-              .foregroundStyle(.secondary)
+    VStack(alignment: .leading, spacing: 12) {
+      Button {
+        onSelect()
+      } label: {
+        VStack(alignment: .leading, spacing: 12) {
+          HStack(alignment: .center, spacing: 12) {
+            serverAvatar
+            VStack(alignment: .leading, spacing: 4) {
+              Text(instance.displayName)
+                .font(.headline)
+                .foregroundStyle(.primary)
+              HStack(spacing: 6) {
+                ServerEndpointURLLabel(
+                  url: displayedURL,
+                  status: headerStatus,
+                  font: .footnote,
+                  showsDetail: !instance.hasMultipleEndpoints
+                )
+                if instance.hasMultipleEndpoints {
+                  Text("+\(instance.endpoints.count - 1)")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.12), in: Capsule())
+                    .fixedSize()
+                }
+              }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 8)
+            statusView
           }
-          Spacer(minLength: 8)
-          statusView
-        }
 
+          Divider()
+            .opacity(0.15)
+
+          VStack(alignment: .leading, spacing: 10) {
+            infoDetailRow(icon: "envelope.fill", text: instance.username)
+            infoDetailRow(
+              icon: instance.isAdmin ? "shield.checkered" : "shield.fill",
+              text: instance.isAdmin
+                ? String(localized: "Admin Access") : String(localized: "User Access"),
+              textColor: instance.isAdmin ? .green : .secondary
+            )
+            infoDetailRow(
+              icon: "key.fill",
+              text: instance.authMethod == .apiKey
+                ? String(localized: "API Key") : String(localized: "Username & Password"),
+              textColor: .secondary
+            )
+            if instance.protected {
+              infoDetailRow(
+                icon: "lock.fill",
+                text: String(localized: "Protected"),
+                textColor: .orange,
+                iconColor: .orange
+              )
+            }
+            infoDetailRow(
+              icon: "clock.arrow.circlepath", text: lastUsedDescription,
+              textColor: .secondary)
+          }
+        }
+        .contentShape(Rectangle())
+      }
+      .adaptiveButtonStyle(.plain)
+      .allowsHitTesting(!(isActive || isGlobalSwitching))
+
+      if instance.hasMultipleEndpoints {
         Divider()
           .opacity(0.15)
 
-        VStack(alignment: .leading, spacing: 10) {
-          infoDetailRow(icon: "envelope.fill", text: instance.username)
-          infoDetailRow(
-            icon: instance.isAdmin ? "shield.checkered" : "shield.fill",
-            text: instance.isAdmin
-              ? String(localized: "Admin Access") : String(localized: "User Access"),
-            textColor: instance.isAdmin ? .green : .secondary
-          )
-          infoDetailRow(
-            icon: "key.fill",
-            text: instance.authMethod == .apiKey
-              ? String(localized: "API Key") : String(localized: "Username & Password"),
-            textColor: .secondary
-          )
-          if instance.protected {
-            infoDetailRow(
-              icon: "lock.fill",
-              text: String(localized: "Protected"),
-              textColor: .orange,
-              iconColor: .orange
+        VStack(alignment: .leading, spacing: 8) {
+          Text(String(localized: "Addresses"))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+
+          ForEach(instance.endpoints) { endpoint in
+            ServerEndpointRowView(
+              endpoint: endpoint,
+              status: healthStore.status(for: endpoint.id),
+              isActive: isActive && isActiveEndpoint(endpoint),
+              isSwitching: switchService.switchingEndpointID == endpoint.id,
+              isDisabled: isGlobalSwitching || switchService.switchingEndpointID != nil,
+              onSelect: {
+                onSelectEndpoint(endpoint)
+              }
             )
           }
-          infoDetailRow(
-            icon: "clock.arrow.circlepath", text: lastUsedDescription,
-            textColor: .secondary)
         }
       }
-      .padding(18)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(cardBackground)
     }
-    .adaptiveButtonStyle(.plain)
-    .allowsHitTesting(!(isActive || isGlobalSwitching))
+    .padding(18)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(cardBackground)
     .animation(.appCurve(), value: isActive)
     #if os(iOS) || os(macOS)
       .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
@@ -81,13 +125,13 @@ struct ServerRowView: View {
     #endif
     #if os(iOS) || os(macOS)
       .swipeActions(edge: .trailing) {
-        if !isActive {
-          Button {
-            onEdit()
-          } label: {
-            Label(String(localized: "Edit"), systemImage: AppIcon.edit)
-          }
+        Button {
+          onEdit()
+        } label: {
+          Label(String(localized: "Edit"), systemImage: AppIcon.edit)
+        }
 
+        if !isActive {
           Button(role: .destructive) {
             onDelete()
           } label: {
@@ -97,13 +141,13 @@ struct ServerRowView: View {
       }
     #endif
     .contextMenu {
-      if !isActive {
-        Button {
-          onEdit()
-        } label: {
-          Label(String(localized: "Edit"), systemImage: AppIcon.edit)
-        }
+      Button {
+        onEdit()
+      } label: {
+        Label(String(localized: "Edit"), systemImage: AppIcon.edit)
+      }
 
+      if !isActive {
         Button(role: .destructive) {
           onDelete()
         } label: {
@@ -111,6 +155,23 @@ struct ServerRowView: View {
         }
       }
     }
+  }
+
+  private var displayedURL: String {
+    isActive && !activeServerURL.isEmpty ? activeServerURL : instance.serverURL
+  }
+
+  private var headerStatus: ServerEndpointProbeStatus? {
+    let normalizedDisplayed = Current.normalizeServerURL(displayedURL)
+    let target =
+      instance.endpoints.first(where: { $0.normalizedURL == normalizedDisplayed })
+      ?? instance.endpoints.first
+    guard let target else { return nil }
+    return healthStore.status(for: target.id)
+  }
+
+  private func isActiveEndpoint(_ endpoint: ServerEndpoint) -> Bool {
+    endpoint.normalizedURL == Current.normalizeServerURL(displayedURL)
   }
 
   @ViewBuilder

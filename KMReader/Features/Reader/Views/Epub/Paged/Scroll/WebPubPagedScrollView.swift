@@ -91,9 +91,6 @@
       uiViewController.onEndReached = onEndReached
 
       let chapterIndex = viewModel.targetChapterIndex ?? uiViewController.currentChapterIndex
-      let pageIndex =
-        chapterIndex == viewModel.currentChapterIndex
-        ? viewModel.currentPageIndex : uiViewController.currentPageIndex
       let containerInsets = viewModel.containerInsetsForLabels().uiEdgeInsets
       let theme = preferences.resolvedTheme(for: colorScheme)
 

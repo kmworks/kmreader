@@ -17,7 +17,7 @@ struct ServerView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        ServerCardView()
+        ServerCardView(authViewModel: authViewModel)
         if current.isAdmin {
           managementSection
         }
