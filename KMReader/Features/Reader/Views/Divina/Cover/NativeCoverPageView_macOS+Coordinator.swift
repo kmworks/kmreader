@@ -710,6 +710,7 @@
             slotView.frame = frame
           }
           slotView.isHidden = !renderState.isVisible || slotView.item == nil
+          slotView.setAccessibilityHidden(!renderState.isActive || slotView.isHidden)
           slotView.layer?.zPosition = renderState.zIndex
           slotView.layer?.masksToBounds = false
           slotView.layer?.shadowColor = NSColor.black.cgColor

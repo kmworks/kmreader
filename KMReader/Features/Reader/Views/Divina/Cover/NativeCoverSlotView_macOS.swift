@@ -54,6 +54,14 @@
       fatalError("init(coder:) has not been implemented")
     }
 
+    // AppKit hit-testing walks subviews in reverse order and ignores layer.zPosition,
+    // so covered neighbor slots must opt out to keep clicks, pinch zoom, and context
+    // menus on the active page.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+      guard isPlaybackActive else { return nil }
+      return super.hitTest(point)
+    }
+
     func configure(
       item: ReaderViewItem?,
       viewModel: ReaderViewModel,
@@ -110,6 +118,7 @@
       representedItem = nil
       viewModel = nil
       readListContext = nil
+      isPlaybackActive = false
       onDismiss = nil
       pageContentView.resetContent()
       endPageContentView.configure(
