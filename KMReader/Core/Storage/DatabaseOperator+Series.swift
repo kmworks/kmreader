@@ -467,6 +467,55 @@ extension DatabaseOperator {
     return matchesSeriesMetadataFilter(series: series, filter: collectionBrowseOpts.metadataFilter)
   }
 
+  func countBrowseSeries(
+    instanceId: String,
+    libraryIds: [String]?,
+    searchText: String,
+    browseOpts: SeriesBrowseOptions,
+    offlineOnly: Bool = false
+  ) -> Int {
+    guard !instanceId.isEmpty else { return 0 }
+    return
+      (try? read { db in
+        let requiresResidualFilter =
+          browseOpts.completeFilter.isActive
+          || !browseOpts.includeSeriesStatuses.isEmpty
+          || !browseOpts.excludeSeriesStatuses.isEmpty
+          || browseOpts.metadataFilter.notableEntities != nil
+
+        if requiresResidualFilter {
+          let candidates = try fetchBrowseSeriesSQLCandidates(
+            db: db,
+            instanceId: instanceId,
+            libraryIds: libraryIds ?? [],
+            searchText: searchText,
+            browseOpts: browseOpts,
+            offset: nil,
+            limit: nil,
+            offlineOnly: offlineOnly
+          )
+          return candidates.filter { Self.matchesSeries($0, browseOpts: browseOpts) }.count
+        }
+
+        var sql = """
+          SELECT COUNT(*)
+          FROM \(KomgaSeries.databaseTableName)
+          WHERE instance_id = ?
+          """
+        var arguments: StatementArguments = [instanceId]
+        Self.appendSQLInFilter(
+          column: "library_id", values: libraryIds ?? [], sql: &sql, arguments: &arguments)
+        Self.appendSeriesBrowseSQLFilters(
+          searchText: searchText,
+          browseOpts: browseOpts,
+          offlineOnly: offlineOnly,
+          sql: &sql,
+          arguments: &arguments
+        )
+        return try Int.fetchOne(db, sql: sql, arguments: arguments) ?? 0
+      }) ?? 0
+  }
+
   func fetchBrowseSeriesRecords(
     db: Database,
     instanceId: String,

@@ -5,40 +5,54 @@
 
 import SwiftUI
 
-/// Search results for the Dashboard's `.searchable` overlay: a browse content
-/// area driven by the submitted query, with no search field, toolbar, or
-/// refresh triggers of its own — the Dashboard underneath owns all chrome and
-/// stays mounted, so cancelling a search never reloads sections. Only shown
-/// once a query is submitted, so there is no placeholder state.
+/// All-category search results for the Dashboard's `.searchable` overlay on
+/// iPad/macOS. The Dashboard stays mounted underneath so cancelling a search
+/// never reloads sections; tapping a category strip pushes its full results
+/// page onto the enclosing stack, and popping back keeps this overlay intact.
 struct DashboardSearchResultsView: View {
+  let authViewModel: AuthViewModel
   let searchText: String
 
-  @AppStorage("browseContent") private var browseContent: BrowseContentType = .series
+  @AppStorage("currentAccount") private var current: Current = .init()
   @AppStorage("dashboard") private var dashboard: DashboardConfiguration = DashboardConfiguration()
+  @AppStorage("isOffline") private var isOffline: Bool = false
 
   @State private var scopeSelectionStore = LibraryScopeSelectionStore.shared
-  @State private var refreshTrigger = UUID()
-  // The in-content filter bars drive these bindings; without real state the
-  // sort/preset chips would be dead buttons here (unlike `BrowseView`, the
-  // overlay has no toolbar filter buttons of its own).
-  @State private var showFilterSheet = false
-  @State private var showSavedFilters = false
+  @State private var viewModel = SearchViewModel()
 
-  private var effectiveContent: BrowseContentType {
-    .effective(fixed: nil, persisted: browseContent)
+  private var libraryIds: [String] {
+    scopeSelectionStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
+  }
+
+  private var searchTaskKey: String {
+    [
+      current.instanceId,
+      isOffline ? "offline" : "online",
+      libraryIds.joined(separator: ","),
+      searchText,
+    ].joined(separator: "|")
   }
 
   var body: some View {
-    BrowseContentView(
-      searchText: searchText,
-      refreshTrigger: refreshTrigger,
-      showFilterSheet: $showFilterSheet,
-      showSavedFilters: $showSavedFilters,
-      libraryIds: scopeSelectionStore.effectiveLibraryIds(pinned: dashboard.libraryIds)
+    SearchResultsContentView(
+      query: searchText,
+      scope: scopeSelectionStore.scope,
+      viewModel: viewModel
     )
     .background(PlatformHelper.systemBackgroundColor)
-    .sheet(isPresented: $showSavedFilters) {
-      SavedFiltersView(filterType: effectiveContent == .series ? .series : .books)
+    .refreshableWithMinimumHold {
+      await viewModel.search(query: searchText, libraryIds: libraryIds)
+    }
+    .task(id: searchTaskKey) {
+      guard !authViewModel.isSwitching else { return }
+      guard !viewModel.hasLoaded(query: searchText, libraryIds: libraryIds) else { return }
+      await viewModel.search(query: searchText, libraryIds: libraryIds)
+    }
+    .onChange(of: authViewModel.isSwitching) { oldValue, newValue in
+      guard oldValue && !newValue else { return }
+      Task {
+        await viewModel.search(query: searchText, libraryIds: libraryIds)
+      }
     }
   }
 }
