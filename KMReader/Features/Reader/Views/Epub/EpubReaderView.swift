@@ -712,7 +712,8 @@
                 }
               }
             )
-          case .scroll, .pageCurl:
+          // Fade is DIVINA-only; EPUB falls back to its default paged scroll.
+          case .scroll, .fade, .pageCurl:
             WebPubPagedScrollView(
               viewModel: viewModel,
               animatePageTransitions: animateEpubTapTurns,
@@ -758,7 +759,7 @@
           switch epubFlowStyle {
           case .paged:
             switch epubPageTransitionStyle {
-            case .scroll:
+            case .scroll, .fade:
               CoreTextPagedEpubView(
                 viewModel: viewModel,
                 preferences: activeThemePreferences,
@@ -831,7 +832,7 @@
           switch epubFlowStyle {
           case .paged:
             switch epubPageTransitionStyle {
-            case .scroll:
+            case .scroll, .fade:
               WebPubPagedScrollView(
                 viewModel: viewModel,
                 animatePageTransitions: animateEpubTapTurns,

@@ -9,6 +9,7 @@
       let isElevated: Bool
       let isActive: Bool
       let zIndex: Double
+      var alpha: CGFloat = 1
 
       static let hidden = SlotRenderState(
         isVisible: false,
@@ -26,6 +27,7 @@
       static let cancelThreshold: CGFloat = 0.5
       static let commitDistanceRatio: CGFloat = 0.18
       static let commitVelocityThreshold: CGFloat = 700
+      static let fadeFullDragRatio: CGFloat = 0.5
       static let gestureAnimationDuration: Double = 0.3
       static let movingShadowOpacity: Double = 0.12
       static let idleShadowOpacity: Double = 0.05
@@ -39,6 +41,7 @@
     let readingDirection: ReadingDirection
     let splitWidePageMode: SplitWidePageMode
     let tapNavigationAnimationDuration: Double
+    let usesFadeTransition: Bool
     let renderConfig: ReaderRenderConfig
     @Bindable var viewModel: ReaderViewModel
     let readListContext: ReaderReadListContext?

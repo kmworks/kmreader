@@ -1195,13 +1195,14 @@ struct DivinaReaderView: View {
           #endif
         case .scroll:
           standardScrollPageView(useDualPage: useDualPage, screenSize: screenSize)
-        case .cover:
+        case .cover, .fade:
           #if os(macOS)
             NativeCoverPageView(
               mode: PageViewMode(direction: readingDirection, useDualPage: useDualPage),
               readingDirection: readingDirection,
               splitWidePageMode: splitWidePageMode,
               tapNavigationAnimationDuration: pageTurnAnimationDuration,
+              usesFadeTransition: effectiveTransitionStyle == .fade,
               renderConfig: renderConfig,
               viewModel: viewModel,
               readListContext: readListContext,
@@ -1214,6 +1215,7 @@ struct DivinaReaderView: View {
               readingDirection: readingDirection,
               splitWidePageMode: splitWidePageMode,
               tapNavigationAnimationDuration: pageTurnAnimationDuration,
+              usesFadeTransition: effectiveTransitionStyle == .fade,
               renderConfig: renderConfig,
               viewModel: viewModel,
               readListContext: readListContext,

@@ -19,6 +19,7 @@
       private var deckState = NativeCoverDeckState()
       private var transitionDirection: Int?
       private var dragOffset: CGFloat = 0
+      private var fadeProgress: CGFloat = 0
       private var isAnimatingTransition = false
       private var transitionToken = 0
       private var lastViewportSize: CGSize = .zero
@@ -258,6 +259,10 @@
         deckState.currentItem
       }
 
+      private var isFadeTransition: Bool {
+        parent.usesFadeTransition
+      }
+
       private var isUserPanning: Bool {
         guard let panRecognizer else { return false }
         switch panRecognizer.state {
@@ -311,6 +316,7 @@
           deckState.updateAdjacentSlots(around: resolved, viewModel: parent.viewModel)
           transitionDirection = nil
           dragOffset = 0
+          fadeProgress = 0
           syncSlotContent()
           updateSlotLayout()
           if force {
@@ -323,6 +329,7 @@
           deckState.reset()
           transitionDirection = nil
           dragOffset = 0
+          fadeProgress = 0
           syncSlotContent()
           updateSlotLayout()
           postTransitionTask?.cancel()
@@ -333,6 +340,7 @@
         deckState.rebuild(around: resolved, viewModel: parent.viewModel)
         transitionDirection = nil
         dragOffset = 0
+        fadeProgress = 0
         syncSlotContent()
         updateSlotLayout()
         applyCurrentItem(resolved)
@@ -379,6 +387,7 @@
 
         if abs(targetIndex - currentIndex) == 1 {
           dragOffset = 0
+          fadeProgress = 0
           commitTransition(
             to: targetItem,
             positionAnchor: targetAnchor,
@@ -389,6 +398,7 @@
           deckState.rebuild(around: targetItem, viewModel: parent.viewModel)
           transitionDirection = nil
           dragOffset = 0
+          fadeProgress = 0
           syncSlotContent()
           updateSlotLayout()
           applyCurrentPosition(targetAnchor)
@@ -408,6 +418,7 @@
         let directionOffset = adjacentOffset(for: primary)
         guard let targetItem = parent.viewModel.adjacentViewItem(from: currentItem, offset: directionOffset) else {
           dragOffset = primary * TransitionMetrics.overscrollResistance
+          fadeProgress = 0
           transitionDirection = nil
           updateSlotLayout()
           return
@@ -416,10 +427,19 @@
         transitionDirection = directionOffset
         deckState.prepareTransitionTarget(targetItem, direction: directionOffset)
         syncSlotContent()
-        if directionOffset == 1 {
-          dragOffset = primary
+        if isFadeTransition {
+          dragOffset = 0
+          fadeProgress = min(
+            max(abs(primary) / (primaryExtent * TransitionMetrics.fadeFullDragRatio), 0),
+            1
+          )
         } else {
-          dragOffset = backwardInteractiveOffset(for: primary)
+          fadeProgress = 0
+          if directionOffset == 1 {
+            dragOffset = primary
+          } else {
+            dragOffset = backwardInteractiveOffset(for: primary)
+          }
         }
         updateSlotLayout()
       }
@@ -497,13 +517,26 @@
         deckState.prepareTransitionTarget(targetItem, direction: direction)
         syncSlotContent()
 
-        let directionSign = transitionDirectionSign(from: currentIndex, to: targetIndex)
-        let endOffset = directionSign * primaryExtent
-
         isAnimatingTransition = true
         transitionToken += 1
         let token = transitionToken
         let duration = transitionDuration(for: animation)
+
+        if isFadeTransition {
+          dragOffset = 0
+          prepareFadeStartIfNeeded()
+          animateFadeProgress(to: 1, duration: duration, token: token) {
+            self.completeTransition(
+              to: targetItem,
+              positionAnchor: positionAnchor,
+              navigationTarget: navigationTarget
+            )
+          }
+          return
+        }
+
+        let directionSign = transitionDirectionSign(from: currentIndex, to: targetIndex)
+        let endOffset = directionSign * primaryExtent
 
         if targetIndex > currentIndex {
           updateSlotLayout()
@@ -546,6 +579,7 @@
         )
         transitionDirection = nil
         dragOffset = 0
+        fadeProgress = 0
         isAnimatingTransition = false
         syncSlotContent()
         updateSlotLayout()
@@ -592,6 +626,15 @@
       private func cancelDragWithAnimation() {
         transitionToken += 1
         let token = transitionToken
+        isAnimatingTransition = true
+
+        if isFadeTransition, transitionDirection != nil {
+          animateFadeProgress(to: 0, duration: gestureTransitionDuration, token: token) {
+            self.resetDragStateImmediately()
+          }
+          return
+        }
+
         let cancelTargetOffset: CGFloat = {
           guard transitionDirection == -1,
             let currentItem,
@@ -605,7 +648,6 @@
           return backwardStartOffset(for: directionSign)
         }()
 
-        isAnimatingTransition = true
         animateDragOffset(to: cancelTargetOffset, duration: gestureTransitionDuration, token: token) {
           self.resetDragStateImmediately()
         }
@@ -614,10 +656,55 @@
       private func resetDragStateImmediately() {
         transitionDirection = nil
         dragOffset = 0
+        fadeProgress = 0
         isAnimatingTransition = false
-        syncSlotContent()
-        updateSlotLayout()
+        UIView.performWithoutAnimation {
+          syncSlotContent()
+          updateSlotLayout()
+        }
         applyPanRecognizerState()
+      }
+
+      private func prepareFadeStartIfNeeded() {
+        guard fadeProgress <= 0 else { return }
+        UIView.performWithoutAnimation {
+          updateSlotLayout()
+          containerView?.layoutIfNeeded()
+        }
+        CATransaction.flush()
+      }
+
+      private func animateFadeProgress(
+        to targetProgress: CGFloat,
+        duration: Double,
+        token: Int,
+        completion: @escaping () -> Void
+      ) {
+        guard containerView != nil else {
+          fadeProgress = targetProgress
+          completion()
+          return
+        }
+
+        if duration <= 0 || fadeProgress == targetProgress {
+          fadeProgress = targetProgress
+          updateSlotLayout()
+          guard token == transitionToken else { return }
+          completion()
+          return
+        }
+
+        UIView.animate(
+          withDuration: duration,
+          delay: 0,
+          options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+          self.fadeProgress = targetProgress
+          self.updateSlotLayout()
+        } completion: { _ in
+          guard token == self.transitionToken else { return }
+          completion()
+        }
       }
 
       private func animateDragOffset(
@@ -753,6 +840,7 @@
           let shadow = pageShadow(for: offset, isElevated: renderState.isElevated)
 
           slotView.frame = shiftedFrame(for: containerView.bounds, offset: offset)
+          slotView.alpha = renderState.alpha
           slotView.isHidden = !renderState.isVisible || slotView.item == nil
           slotView.accessibilityElementsHidden = !renderState.isActive || slotView.isHidden
           slotView.layer.zPosition = CGFloat(renderState.zIndex)
@@ -777,6 +865,31 @@
       }
 
       private func slotRenderState(for slotIndex: Int) -> SlotRenderState {
+        if isFadeTransition, let transitionDirection {
+          let targetSlotIndex =
+            transitionDirection == 1 ? deckState.middleSlotIndex : deckState.backSlotIndex
+          if slotIndex == targetSlotIndex {
+            return SlotRenderState(
+              isVisible: true,
+              isMoving: false,
+              isElevated: false,
+              isActive: false,
+              zIndex: 2,
+              alpha: fadeProgress
+            )
+          }
+          if slotIndex == deckState.frontSlotIndex {
+            return SlotRenderState(
+              isVisible: true,
+              isMoving: false,
+              isElevated: false,
+              isActive: true,
+              zIndex: 1
+            )
+          }
+          return .hidden
+        }
+
         if let transitionDirection {
           if transitionDirection == 1 {
             if slotIndex == deckState.frontSlotIndex {
@@ -812,7 +925,13 @@
         // Idle neighbors stay composited underneath the opaque front slot so a
         // page turn reveals an already-rendered page with no fade or first-frame flash.
         if slotIndex == deckState.frontSlotIndex {
-          return SlotRenderState(isVisible: true, isMoving: false, isElevated: true, isActive: true, zIndex: 2)
+          return SlotRenderState(
+            isVisible: true,
+            isMoving: false,
+            isElevated: !isFadeTransition,
+            isActive: true,
+            zIndex: 2
+          )
         }
         if slotIndex == deckState.middleSlotIndex {
           return SlotRenderState(isVisible: true, isMoving: false, isElevated: false, isActive: false, zIndex: 1)
@@ -823,7 +942,7 @@
       private func pageShadow(for offset: CGFloat, isElevated: Bool) -> (
         opacity: Double, radius: CGFloat, x: CGFloat, y: CGFloat
       ) {
-        guard isElevated else {
+        guard !isFadeTransition, isElevated else {
           return (0, 0, 0, 0)
         }
 
